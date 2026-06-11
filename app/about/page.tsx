@@ -60,19 +60,19 @@ export default function AboutPage() {
   const locations = [
     {
       name: "Tower 6789",
-      address: "6789 Ayala Avenue, Makati City, Metro Manila",
+      address: "23F Tower 6789 Ayala Avenue, Makati City, Metro Manila",
       mapEmbed:
-        "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.802!2d121.0168084!3d14.5568556!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c907b28e8d5d%3A0x8f1c4f3db27b2e5!2s6789%20Ayala%20Ave%2C%20Makati%2C%20Metro%20Manila!5e0!3m2!1sen!2sph!4v1700000000000",
+        "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.7200608897456!2d121.01756961072985!3d14.557994485864604!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c90f304c137d%3A0x580219e924b84918!2sTower%206789!5e0!3m2!1sen!2sph!4v1781155754072!5m2!1sen!2sph",
       mapUrl:
-        "https://www.google.com/maps/place/Leopalace21+Philippines+Inc./@14.5568556,121.0168084,16z",
+        "https://maps.app.goo.gl/jAR9csHtx3PUmMFi6",
     },
     {
       name: "Insular Life Building",
-      address: "Insular Life Building, Ayala Avenue, Makati, Metro Manila",
+      address: "11F Insular Life Building, Ayala Avenue, Makati, Metro Manila",
       mapEmbed:
-        "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.9!2d121.0155!3d14.5558!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c90773c4b1e7%3A0x4f10e04b5cc764d6!2sInsular%20Life%20Building%2C%20Ayala%20Ave%2C%20Makati%2C%20Metro%20Manila!5e0!3m2!1sen!2sph!4v1700000000001",
+        "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.7349367396077!2d121.01852111072995!3d14.55714458586539!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c90f31651de5%3A0xf2d7d4161752e079!2sHero%20Serviced%20Office!5e0!3m2!1sen!2sph!4v1781155861898!5m2!1sen!2sph",
       mapUrl:
-        "https://www.google.com/maps/place/Insular+Life+Building,+Ayala+Ave,+Makati,+Metro+Manila",
+        "https://maps.app.goo.gl/YJssvia5wSw1RMrx8",
     },
   ];
 

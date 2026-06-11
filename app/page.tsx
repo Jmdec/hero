@@ -63,27 +63,27 @@ export default function Home() {
     {
       title: "Private Offices",
       description: "Private offices designed for individual professionals and small teams.",
-      image: "/office-1.jpg",
+      image: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80",
     },
     {
       title: "Shared Offices",
       description: "Collaborative workspaces perfect for startups and remote teams.",
-      image: "/shared-office.jpg",
+      image: "https://images.unsplash.com/photo-1564069114553-7215e1ff1890?w=800&q=80",
     },
     {
       title: "Co-working Spaces",
       description: "Flexible workspaces designed for freelancers and entrepreneurs.",
-      image: "/coworking.jpg",
+      image: "https://images.unsplash.com/photo-1543269664-7eef42226a21?w=800&q=80",
     },
     {
       title: "Virtual Offices",
       description: "Remote office solutions for businesses that need flexibility and scalability.",
-      image: "/virtual-office.jpg",
+      image: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=80",
     },
     {
       title: "Conference Rooms",
       description: "Professional meeting spaces equipped with the latest technology.",
-      image: "/conference.jpg",
+      image: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&q=80",
     },
   ];
 
@@ -126,11 +126,11 @@ export default function Home() {
             className="max-w-3xl pb-10"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
-              Your Gateway to Business Success in the <br/>
+              Your Gateway to Business Success in the <br />
               <span className="text-[#8FA8D6]">Philippines</span>
             </h1>
             <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl">
-              Premium serviced offices in the heart of Makati City. <br/>
+              Premium serviced offices in the heart of Makati City. <br />
               Perfect for Japanese companies expanding into the Philippines market.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -226,7 +226,7 @@ export default function Home() {
               href="/services"
               className="inline-flex items-center gap-2 mt-4 md:mt-0 text-[#1B3A8C] font-semibold hover:text-[#3B5EA6]"
             >
-              View All Services 
+              View All Services
               <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
@@ -240,8 +240,15 @@ export default function Home() {
                 viewport={{ once: true }}
                 className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
               >
-                <div className="aspect-video bg-linear-to-br from-[#C5D2EC]/50 to-[#8FA8D6]/30 flex items-center justify-center">
-                  <Building2 className="w-16 h-16 text-[#1B3A8C]/30" />
+                <div className="relative aspect-video overflow-hidden">
+                  <Image
+                    src={service.image}
+                    alt={service.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500 bg-opacity-50 group-hover:opacity-100"
+                    unoptimized
+                  />
+                  <div className="absolute inset-0 bg-gray-400/40" />
                 </div>
                 <div className="p-6">
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -284,8 +291,15 @@ export default function Home() {
               </ul>
             </div>
             <div className="relative">
-              <div className="aspect-square bg-linear-to-br from-[#C5D2EC]/30 to-[#8FA8D6]/20 rounded-2xl flex items-center justify-center">
-                <Building2 className="w-48 h-48 text-[#1B3A8C]/10" />
+              <div className="relative aspect-square rounded-2xl overflow-hidden">
+                <Image
+                  src="https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=800&q=80"
+                  alt="Office interior"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+                <div className="absolute inset-0 bg-gray-400/20" />
               </div>
               <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl">
                 <div className="flex items-center gap-4">
