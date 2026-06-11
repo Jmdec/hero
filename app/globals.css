@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --primary: #1B3A8C;
+  --primary-dark: #3B5EA6;
+  --secondary: #6C6E71;
+  --accent: #5C7ABF;
+  
+  /* Hero Brand Colors */
+  --hero-blue: #1B3A8C;
+  --sky-blue: #5C7ABF;
+  --mid-blue: #3B5EA6;
+  --steel-gray: #6C6E71;
+  --warm-white: #F5F5F3;
+  --deep-navy: #1A1A2E;
+  --light-blue: #C5D2EC;
+  --mist-blue: #8FA8D6;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  
+  /* Hero Brand Colors */
+  --color-hero-blue: var(--hero-blue);
+  --color-sky-blue: var(--sky-blue);
+  --color-mid-blue: var(--mid-blue);
+  --color-steel-gray: var(--steel-gray);
+  --color-warm-white: var(--warm-white);
+  --color-deep-navy: var(--deep-navy);
+  --color-light-blue: var(--light-blue);
+  --color-mist-blue: var(--mist-blue);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+* {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Custom utility classes */
+.text-gradient {
+  background: linear-gradient(135deg, #1B3A8C 0%, #5C7ABF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bg-gradient-hero {
+  background: linear-gradient(135deg, #1B3A8C 0%, #1A1A2E 50%, #3B5EA6 100%);
+}
+
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #1B3A8C 0%, #5C7ABF 100%);
+}
+
+/* Focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Smooth transitions */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}

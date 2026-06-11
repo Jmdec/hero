@@ -1,0 +1,413 @@
+{
+  "metadata": {
+    "title": "HERO Serviced Office | Premium Office Space in Manila",
+    "description": "HERO Serviced Office, Inc. offers premium serviced offices in Manila, Philippines. Perfect for Japanese companies expanding into the Philippines. Located on Ayala Avenue, Makati with full support system."
+  },
+  "navigation": {
+    "home": "Home",
+    "about": "About",
+    "services": "Services",
+    "virtualTour": "Virtual Tour",
+    "reservation": "Reservation",
+    "contact": "Contact",
+    "getInTouch": "Get in Touch",
+    "phone": "+63 2 8801-3417"
+  },
+  "footer": {
+    "company": "Hero Serviced Office",
+    "tagline": "Your gateway to professional workspace solutions in Manila.",
+    "quickLinks": "Quick Links",
+    "ourServices": "Our Services",
+    "contactUs": "Contact Us",
+    "businessHours": "Business Hours",
+    "hours": "Mon-Fri: 9:00 AM - 6:00 PM (PH Time)",
+    "copyright": "© {year} HERO Serviced Office, Inc. All rights reserved.",
+    "peza": "PEZA Certified | Serviced Office in Makati",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service"
+  },
+  "home": {
+    "hero": {
+      "badge": "Now Open in Tower 6789, Makati",
+      "title": "Your Gateway to Business Success in the",
+      "highlight": "Philippines",
+      "description": "Premium serviced offices in the heart of Makati City. Perfect for Japanese companies expanding into the Philippines market.",
+      "virtualTour": "Take Virtual Tour",
+      "getQuote": "Get a Quote",
+      "yearsExperience": "Years Experience",
+      "companiesServed": "Companies Served",
+      "satisfactionRate": "Satisfaction Rate"
+    },
+    "features": {
+      "title": "Why Choose HERO Serviced Office?",
+      "subtitle": "We provide comprehensive office solutions with Japanese-standard service quality right in the heart of Manila's business district.",
+      "excellentLocation": "Excellent Location",
+      "excellentLocationDesc": "Conveniently located along Ayala Avenue, the central business district of Makati City.",
+      "fullSupport": "Full Support System",
+      "fullSupportDesc": "Japanese-speaking staff ready to assist with all your business needs and concerns.",
+      "comfortableSpace": "Comfortable Office Space",
+      "comfortableSpaceDesc": "Ample shared space and well-equipped offices to help start your business.",
+      "professionalSupport": "Professional Support",
+      "professionalSupportDesc": "Comprehensive business support for Japanese companies operating in the Philippines."
+    },
+    "services": {
+      "title": "Our Services",
+      "subtitle": "Flexible office solutions tailored to your business needs",
+      "viewAll": "View All Services",
+      "privateOffices": "Private Office",
+      "privateOfficesDesc": "Fully furnished private offices with modern amenities and flexible lease terms.",
+      "sharedOffices": "Shared Office",
+      "sharedOfficesDesc": "Collaborative workspaces designed for networking and productivity.",
+      "coworking": "Co-working Space",
+      "coworkingDesc": "Open-plan work areas with access to all office facilities and a vibrant community.",
+      "virtualOffices": "Virtual Office",
+      "virtualOfficesDesc": "Professional business address and call handling services for remote businesses.",
+      "conferenceRooms": "Conference Room",
+      "conferenceRoomsDesc": "State-of-the-art meeting rooms equipped with video conferencing capabilities.",
+      "reserveNow": "Reserve Now →"
+    },
+    "benefits": {
+      "title": "Everything You Need to Succeed",
+      "subtitle": "Our offices come fully equipped with modern facilities and amenities to ensure your business operates smoothly from day one.",
+      "readyToUse": "Ready to Use",
+      "moveInImmediately": "Move in immediately",
+      "benefitsList": [
+        "High-speed internet and WiFi connectivity",
+        "24/7 security and access control",
+        "Professional reception and mail handling",
+        "Meeting rooms with video conferencing",
+        "Cafe and lounge areas",
+        "Japanese-speaking support staff",
+        "Printing and copying facilities",
+        "Cleaning and maintenance services"
+      ]
+    },
+    "testimonials": {
+      "title": "What Our Clients Say",
+      "subtitle": "Trusted by Japanese companies expanding into the Philippines",
+      "testimonial1": "HERO Serviced Office made our expansion to the Philippines seamless. The Japanese-speaking staff is incredibly helpful.",
+      "testimonial1Name": "Takeshi Yamamoto",
+      "testimonial1Company": "TechStart Japan Co.",
+      "testimonial2": "The location on Ayala Avenue is perfect for our business. Professional environment with excellent facilities.",
+      "testimonial2Name": "Yuki Tanaka",
+      "testimonial2Company": "Global Trade Solutions"
+    },
+    "cta": {
+      "title": "Ready to Start Your Business in the Philippines?",
+      "subtitle": "Contact us today for a personalized tour and discover the perfect office solution for your business.",
+      "makeReservation": "Make a Reservation",
+      "contactUs": "Contact Us"
+    }
+  },
+  "about": {
+    "hero": {
+      "title": "About HERO Serviced Office",
+      "subtitle": "Supporting Japanese business expansion in the Philippines since 2019"
+    },
+    "company": {
+      "title": "Company Overview",
+      "description": "HERO Serviced Office, Inc. is a leading provider of serviced office solutions in Manila, Philippines. We specialize in supporting Japanese companies with their expansion into the Philippine market, offering fully equipped office spaces with Japanese-standard service quality.",
+      "founded": "Founded",
+      "foundedYear": "2019",
+      "location": "Headquarters",
+      "locationValue": "Makati City, Philippines",
+      "clients": "Clients Served",
+      "clientsValue": "100+ Japanese Companies"
+    },
+    "stats": {
+      "rooms": "Private Rooms",
+      "roomsValue": "49+",
+      "support": "Japanese Support",
+      "supportValue": "100%",
+      "access": "24/7 Access",
+      "accessValue": "Yes",
+      "peza": "PEZA Certified",
+      "pezaValue": "Yes"
+    },
+    "vision": {
+      "title": "Our Vision",
+      "description": "To be the leading serviced office provider in the Philippines, empowering international businesses to thrive in the Asian market through world-class facilities and exceptional support services."
+    },
+    "mission": {
+      "title": "Our Mission",
+      "description": "To provide flexible, professional office solutions that enable businesses to focus on growth while we handle the operational complexities. We bridge cultural and business gaps for Japanese companies entering the Philippine market."
+    },
+    "values": {
+      "title": "Our Core Values",
+      "subtitle": "The principles that guide everything we do",
+      "excellence": "Excellence",
+      "excellenceDesc": "We maintain Japanese-quality standards in all our services and facilities.",
+      "support": "Support",
+      "supportDesc": "Comprehensive bilingual support to ensure smooth business operations.",
+      "flexibility": "Flexibility",
+      "flexibilityDesc": "Flexible terms and customizable solutions to meet your unique needs.",
+      "community": "Community",
+      "communityDesc": "Building a network of Japanese businesses in the Philippines."
+    },
+    "locations": {
+      "title": "Our Locations",
+      "subtitle": "Conveniently located in the heart of Makati's business district",
+      "tower6789": "Tower 6789 Makati",
+      "tower6789Address": "23F, Ayala Avenue 6789, Makati City 1209, Manila, Philippines",
+      "insularLife": "Insular Life Building",
+      "insularLifeAddress": "11F, 6781 Ayala Avenue corner Paseo de Roxas, Makati City, Manila, Philippines",
+      "viewOnMap": "View on Google Maps"
+    },
+    "whyChooseUs": {
+      "title": "Why Businesses Trust Us",
+      "subtitle": "We understand the unique needs of international businesses",
+      "japaneseHours": "Japanese Business Hours",
+      "japaneseHoursDesc": "We align our operations with Japanese business hours for seamless coordination.",
+      "bilingual": "Bilingual Support",
+      "bilingualDesc": "Our team speaks both Japanese and English for effective communication.",
+      "privacy": "Complete Privacy",
+      "privacyDesc": "Secure facilities with strict confidentiality protocols for your business."
+    }
+  },
+  "services": {
+    "hero": {
+      "title": "Office Guidance & Services",
+      "subtitle": "Comprehensive office solutions for your business needs"
+    },
+    "locations": {
+      "title": "Our Locations",
+      "subtitle": "Choose the Hero PH location that best suits your business needs",
+      "tower6789": "Tower 6789",
+      "tower6789Location": "Makati CBD",
+      "tower6789Address": "23rd Floor, 6789 Ayala Avenue, Makati City",
+      "tower6789Feature1": "49 private rooms (up to 17 people)",
+      "tower6789Feature2": "PEZA certified building",
+      "tower6789Feature3": "24-hour air conditioning",
+      "tower6789Feature4": "Meeting rooms up to 10 people",
+      "tower6789Feature5": "Use of multifunction copier, printer and scanner.",
+      "tower6789Cta": "View Tower 6789 Makati",
+      "insularLife": "Insular Life Building",
+      "insularLifeLocation": "Ayala & Paseo de Roxas",
+      "insularLifeAddress": "11th Floor, 6781 Ayala Avenue corner Paseo de Roxas, Makati",
+      "insularLifeFeature1": "49 private rooms (up to 35 people)",
+      "insularLifeFeature2": "PEZA certified building",
+      "insularLifeFeature3": "Opened April 2019",
+      "insularLifeFeature4": "24-hour air conditioning",
+      "insularLifeFeature5": "Meeting rooms up to 20 people",
+      "insularLifeFeature6": "Mailbox & locker room included",
+      "insularLifeCta": "View Insular Life Building"
+    },
+    "moveInFlow": {
+      "title": "Flow Until Moving In",
+      "subtitle": "Simple 6-step process to start using our office",
+      "step1": "Inquiry",
+      "step1Desc": "Contact us via phone or inquiry form",
+      "step2": "Introduction",
+      "step2Desc": "Office tour and quotation discussion",
+      "step3": "Application",
+      "step3Desc": "Submit the required documents",
+      "step4": "Examination",
+      "step4Desc": "Document review within 5 business days",
+      "step5": "Contract",
+      "step5Desc": "Sign the contract and pay initial fees",
+      "step6": "Start Using",
+      "step6Desc": "Receive orientation and room key"
+    },
+    "inquiry": {
+      "title": "Service Office Inquiry",
+      "subtitle": "Contact us to learn more about our office spaces and services",
+      "callUs": "Call Us",
+      "emailUs": "Email Us",
+      "replyTime": "We reply within 24 hours",
+      "sendInquiry": "Send Inquiry"
+    },
+    "cta": {
+      "title": "Ready to Get Started?",
+      "subtitle": "Take a virtual tour or schedule a visit to see our facilities in person",
+      "virtualTour": "Take Virtual Tour",
+      "makeReservation": "Make a Reservation"
+    }
+  },
+  "contact": {
+    "hero": {
+      "title": "Contact Us",
+      "subtitle": "Get in touch with our team for inquiries and reservations"
+    },
+    "info": {
+      "title": "Contact Information",
+      "phone": "Phone",
+      "email": "Email",
+      "address": "Address",
+      "businessHours": "Business Hours",
+      "weekdays": "Mon-Fri: 9:00 AM - 6:00 PM (PH Time)",
+      "location": "Tower 6789, Ayala Avenue, Makati City, Metro Manila, Philippines"
+    },
+    "form": {
+      "title": "Send us a Message",
+      "subtitle": "Fill out the form below and we'll get back to you within 24 hours",
+      "name": "Full Name",
+      "namePlaceholder": "Enter your full name",
+      "email": "Email Address",
+      "emailPlaceholder": "Enter your email address",
+      "phone": "Phone Number",
+      "phonePlaceholder": "Enter your phone number",
+      "company": "Company Name",
+      "companyPlaceholder": "Enter your company name",
+      "service": "Service Interested In",
+      "selectService": "Select a service",
+      "servicedOffice": "Serviced Office",
+      "virtualOffice": "Virtual Office",
+      "meetingRoom": "Meeting Room",
+      "other": "Other",
+      "message": "Message",
+      "messagePlaceholder": "Tell us about your requirements...",
+      "privacy": "I agree to the privacy policy and terms of service",
+      "submit": "Send Message",
+      "sending": "Sending...",
+      "success": "Message sent successfully! We'll get back to you soon.",
+      "error": "Failed to send message. Please try again or contact us directly."
+    }
+  },
+  "virtualTour": {
+    "hero": {
+      "title": "Virtual Office Tour",
+      "subtitle": "Experience our facilities from anywhere in the world"
+    },
+    "viewer": {
+      "title": "360° Virtual Tour",
+      "description": "Explore our office spaces in immersive 360° view. Navigate through different areas and see what we offer.",
+      "instructions": "Use your mouse to drag and look around. Click on hotspots for more information.",
+      "loading": "Loading 360° Viewer..."
+    },
+    "locations": {
+      "title": "Tour Locations",
+      "tower6789": "Reception",
+      "tower6789Desc": "Main reception and lobby area",
+      "tower6789Features": [
+        "Japanese-speaking staff",
+        "Visitor waiting area",
+        "Mail handling"
+      ],
+      "tower6789Office": "Private Office",
+      "tower6789OfficeDesc": "Typical private office room",
+      "tower6789OfficeFeatures": [
+        "Ergonomic furniture",
+        "High-speed internet",
+        "Phone line"
+      ],
+      "insularLife": "Coworking",
+      "insularLifeDesc": "Collaborative workspace area",
+      "insularLifeFeatures": [
+        "Flexible seating",
+        "Networking opportunities",
+        "Free coffee"
+      ],
+      "insularLifeMeeting": "Meeting Room",
+      "insularLifeMeetingDesc": "Professional meeting space",
+      "insularLifeMeetingFeatures": [
+        "Up to 20 people capacity",
+        "Video conferencing",
+        "Whiteboard"
+      ]
+    },
+    "amenities": {
+      "title": "Featured Amenities",
+      "subtitle": "Modern facilities to support your business operations"
+    },
+    "features": {
+      "title": "Tour Features",
+      "subtitle": "What you can expect from our virtual tour",
+      "immersive": "Immersive 360° View",
+      "immersiveDesc": "Experience our spaces as if you were physically present",
+      "interactive": "Interactive Hotspots",
+      "interactiveDesc": "Click on highlighted areas to learn more about specific features",
+      "multiple": "Multiple Locations",
+      "multipleDesc": "Tour both Tower 6789 and Insular Life Building facilities",
+      "anytime": "Available Anytime",
+      "anytimeDesc": "Access the virtual tour 24/7 from any device"
+    },
+    "howTo": {
+      "title": "How to Navigate",
+      "step1": "Start Tour",
+      "step1Desc": "Click on any location card above to begin your virtual tour",
+      "step2": "Look Around",
+      "step2Desc": "Click and drag with your mouse to explore the 360° environment",
+      "step3": "Use Controls",
+      "step3Desc": "Use the bottom navigation to switch between rooms. Click the compass for auto-rotation",
+      "step4": "Fullscreen Mode",
+      "step4Desc": "Click the expand button for an immersive full-screen experience"
+    },
+    "cta": {
+      "title": "Ready to See It in Person?",
+      "subtitle": "Schedule a physical tour and experience our facilities firsthand",
+      "bookTour": "Book a Physical Tour",
+      "contactUs": "Contact Us"
+    }
+  },
+  "reservation": {
+    "hero": {
+      "title": "Make a Reservation",
+      "subtitle": "Book your office space or schedule a tour"
+    },
+    "steps": {
+      "title": "Reservation Process",
+      "step1": "Select Service",
+      "step2": "Choose Date",
+      "step3": "Your Details",
+      "step4": "Confirm"
+    },
+    "form": {
+      "serviceType": "Service Type",
+      "selectService": "Select a service",
+      "privateOffice": "Private Office",
+      "sharedOffice": "Shared Office",
+      "coworking": "Co-working Space",
+      "virtualOffice": "Virtual Office",
+      "meetingRoom": "Meeting Room",
+      "tour": "Facility Tour",
+      "date": "Preferred Date",
+      "time": "Preferred Time",
+      "selectTime": "Select a time",
+      "morning": "Morning (9:00 - 12:00)",
+      "afternoon": "Afternoon (13:00 - 17:00)",
+      "name": "Full Name",
+      "email": "Email Address",
+      "phone": "Phone Number",
+      "company": "Company Name",
+      "message": "Additional Message",
+      "messagePlaceholder": "Any specific requirements or questions...",
+      "back": "Back",
+      "next": "Next",
+      "submit": "Submit Reservation",
+      "submitting": "Submitting...",
+      "success": "Reservation submitted successfully! We'll contact you shortly to confirm.",
+      "error": "Failed to submit reservation. Please try again or contact us directly."
+    },
+    "benefits": {
+      "title": "Why Reserve With Us",
+      "noDeposit": "No Security Deposit",
+      "flexible": "Flexible Terms",
+      "immediate": "Immediate Move-in",
+      "support": "Full Support"
+    },
+    "cta": {
+      "title": "Questions?",
+      "subtitle": "Contact us directly for immediate assistance",
+      "callUs": "Call Us",
+      "emailUs": "Email Us"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "close": "Close",
+    "open": "Open",
+    "learnMore": "Learn More",
+    "viewDetails": "View Details",
+    "getStarted": "Get Started",
+    "contactUs": "Contact Us",
+    "callNow": "Call Now",
+    "emailNow": "Email Now",
+    "pezaCertified": "PEZA Certified Building"
+  }
+}
