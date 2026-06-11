@@ -47,7 +47,7 @@
       "fullSupport": "充実のサポート体制",
       "fullSupportDesc": "日本語対応スタッフがビジネスニーズをサポートします。",
       "comfortableSpace": "快適なオフィススペース",
-      "comfortableDesc": "広々とした共有スペースと設備の整ったオフィスでビジネスをスタート。",
+      "comfortableSpaceDesc": "広々とした共有スペースと設備の整ったオフィスでビジネスをスタート。",
       "professionalSupport": "プロフェッショナルサポート",
       "professionalSupportDesc": "フィリピンで事業展開する日本企業のための包括的なビジネスサポート。"
     },
@@ -178,8 +178,9 @@
       "tower6789Address": "23階、アヤラ通り6789、マカティ市",
       "tower6789Feature1": "49の個室（最大17名）",
       "tower6789Feature2": "PEZA認定ビル",
-      "tower6789Feature3": "エアコン：平日8:00〜20:00",
+      "tower6789Feature3": "24時間エアコン",
       "tower6789Feature4": "最大10名の会議室",
+      "tower6789Feature5": "複合機・プリンター・スキャナーのご利用可能",
       "tower6789Cta": "Tower 6789 マカティを見る",
       "insularLife": "インシュラーライフビル",
       "insularLifeLocation": "アヤラ＆パセオ・デ・ロハス",
@@ -276,24 +277,24 @@
     },
     "locations": {
       "title": "ツアーロケーション",
-      "tower6789": "Tower 6789 - 受付",
+      "tower6789": "受付",
       "tower6789Desc": "メイン受付とロビーエリア",
       "tower6789Features": ["日本語対応スタッフ", "来客待合室", "郵便物管理"],
-      "tower6789Office": "Tower 6789 - 個室",
+      "tower6789Office": "個室",
       "tower6789OfficeDesc": "典型的なプライベートオフィス",
       "tower6789OfficeFeatures": [
         "人間工学家具",
         "高速インターネット",
         "電話回線"
       ],
-      "insularLife": "インシュラーライフ - コワーキング",
+      "insularLife": "コワーキング",
       "insularLifeDesc": "共同作業スペース",
       "insularLifeFeatures": [
         "フレキシブルな座席",
         "ネットワーキングの機会",
         "無料コーヒー"
       ],
-      "insularLifeMeeting": "インシュラーライフ - 会議室",
+      "insularLifeMeeting": "会議室",
       "insularLifeMeetingDesc": "プロフェッショナルな会議スペース",
       "insularLifeMeetingFeatures": [
         "最大20名収容",
