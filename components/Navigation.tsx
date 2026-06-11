@@ -7,20 +7,19 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import LanguageSwitcher from "./LanguageSwitcher";
 import UserProfileDropdown from "./UserProfileDropdown";
-import { useAuth } from "@/contexts/AuthContext";
+// import { useAuth } from "@/contexts/AuthContext";
 
-// All labels are plain English strings — Google Translate will translate them
-const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/about", label: "About" },
-  { href: "/services", label: "Services" },
-  { href: "/virtual-tour", label: "Virtual Tour" },
-  { href: "/contact", label: "Contact" },
-];
+  const navLinks = [
+    { href: '/', label: "Home" },
+    { href: '/about', label: "About" },
+    { href: '/services', label: "Services" },
+    { href: '/virtual-tour', label: "Virtual Tour" },
+    { href: '/contact', label: "Contact" },
+  ];
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
-  const { isAuthenticated } = useAuth();
+    // const { isAuthenticated } = useAuth();
 
   return (
     <nav className="sticky top-0 z-50 bg-white backdrop-blur-md shadow-sm">
@@ -52,7 +51,7 @@ export default function Navigation() {
           {/* Right side: Language switcher + CTA */}
           <div className="hidden lg:flex items-center gap-4">
             <LanguageSwitcher />
-            {isAuthenticated ? <UserProfileDropdown /> : null}
+            {/* {isAuthenticated ? <UserProfileDropdown /> : null} */}
             <Link
               href="/reservation"
               className="px-5 py-2.5 bg-[#1B3A8C] text-white font-medium text-sm rounded-full hover:bg-[#3B5EA6] transition-colors"
@@ -93,11 +92,11 @@ export default function Navigation() {
                 </Link>
               ))}
               <div className="pt-4 border-t border-gray-100">
-                {isAuthenticated ? (
+                {/* {isAuthenticated ? (
                   <div className="px-4 py-3">
                     <UserProfileDropdown />
                   </div>
-                ) : (
+                ) : ( 
                   <Link
                     href="/login"
                     onClick={() => setIsOpen(false)}
@@ -105,7 +104,7 @@ export default function Navigation() {
                   >
                     Login
                   </Link>
-                )}
+                )}*/}
                 <Link
                   href="/reservation"
                   onClick={() => setIsOpen(false)}

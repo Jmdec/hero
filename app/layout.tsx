@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import FloatingSocialMedia from "@/components/FloatingSocialMedia"
 import ClientLayout from "./ClientLayout";
-import { LanguageProvider } from "../components/LanguageProvider";
 import { ToastProvider } from "../components/Toast";
 import { AuthProvider } from "@/contexts/AuthContext";
 
@@ -326,12 +325,10 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <AuthProvider>
-          <LanguageProvider>
             <ToastProvider>
               <ClientLayout>{children}</ClientLayout>
               <FloatingSocialMedia />
             </ToastProvider>
-          </LanguageProvider>
         </AuthProvider>
       </body>
     </html>

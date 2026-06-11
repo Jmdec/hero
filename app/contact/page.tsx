@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import Link from "next/link";
+import Image from "next/image";
 import {
   Mail,
   Phone,
@@ -15,53 +15,54 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
-import { useLanguage } from "../../components/LanguageProvider";
 
 export default function ContactPage() {
-  const { t } = useLanguage();
-
   const contactInfo = [
     {
       icon: Phone,
-      title: t("contact.info.phone") as string,
-      details: Array.isArray(t("contact.info.phoneNumbers")) ? t("contact.info.phoneNumbers") as unknown as string[] : [t("contact.info.phoneNumbers") as string],
-      action: { label: t("contact.info.callNow") as string, href: "tel:+63288013417" },
+      title: "Phone",
+      details: ["+63288013417"],
+      action: { label: "Call Now", href: "tel:+63288013417" },
     },
     {
       icon: Mail,
-      title: t("contact.info.email") as string,
-      details: Array.isArray(t("contact.info.emailAddresses")) ? t("contact.info.emailAddresses") as unknown as string[] : [t("contact.info.emailAddresses") as string],
-      action: { label: t("contact.info.sendEmail") as string, href: "mailto:sales@heroph.net" },
+      title: "Email",
+      details: ["sales@heroph.net"],
+      action: { label: "Send Email", href: "mailto:sales@heroph.net" },
     },
     {
       icon: MapPin,
-      title: t("contact.info.address") as string,
-      details: Array.isArray(t("contact.info.addressDetails")) ? t("contact.info.addressDetails") as unknown as string[] : [t("contact.info.addressDetails") as string],
-      action: { label: t("contact.info.getDirections") as string, href: "https://goo.gl/maps/location" },
+      title: "Address",
+      details: ["Tower 6789, Ayala Avenue", "Makati City, Philippines"],
+      action: {
+        label: "Get Directions",
+        href: "https://goo.gl/maps/location",
+      },
     },
     {
       icon: Clock,
-      title: t("contact.info.businessHours") as string,
-      details: Array.isArray(t("contact.info.hoursDetails")) ? t("contact.info.hoursDetails") as unknown as string[] : [t("contact.info.hoursDetails") as string],
+      title: "Business Hours",
+      details: ["Monday - Friday: 9:00 AM - 6:00 PM"],
     },
   ];
 
   const socialLinks = [
     { icon: Globe, label: "Facebook", href: "https://facebook.com/herophilippines", color: "bg-blue-600" },
-    { icon: Camera, label: "Instagram", href: "https://instagram.com/herophilippines", color: "bg-gradient-to-r from-purple-500 to-pink-500" },
+    { icon: Camera, label: "Instagram", href: "https://instagram.com/herophilippines", color: "bg-linear-to-r from-purple-500 to-pink-500" },
     { icon: MessageCircle, label: "TikTok", href: "https://tiktok.com/@herophilippines", color: "bg-black" },
   ];
 
   const inquiryTypes = [
-    { value: "", label: t("contact.form.selectInquiry") as string },
-    { value: "general", label: t("contact.form.general") as string },
-    { value: "office-rental", label: t("contact.form.officeRental") as string },
-    { value: "meeting-room", label: t("contact.form.meetingRoom") as string },
-    { value: "virtual-office", label: t("contact.form.virtualOffice") as string },
-    { value: "tour", label: t("contact.form.tour") as string },
-    { value: "support", label: t("contact.form.support") as string },
-    { value: "partnership", label: t("contact.form.partnership") as string },
+    { value: "", label: "Select Inquiry Type" },
+    { value: "general", label: "General Inquiry" },
+    { value: "office-rental", label: "Office Rental" },
+    { value: "meeting-room", label: "Meeting Room" },
+    { value: "virtual-office", label: "Virtual Office" },
+    { value: "tour", label: "Tour" },
+    { value: "support", label: "Support" },
+    { value: "partnership", label: "Partnership" },
   ];
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -109,47 +110,52 @@ export default function ContactPage() {
     }));
   };
 
-  const faqData = Array.isArray(t("contact.faq.questions"))
-    ? (t("contact.faq.questions") as unknown as Array<{
-        q: string;
-        a: string;
-      }>)
-    : [
-        {
-          q: "How quickly can I move in?",
-          a: "You can move in immediately after completing the reservation and payment process, usually within 24 hours.",
-        },
-        {
-          q: "Do you offer short-term leases?",
-          a: "Yes, we offer flexible lease terms starting from 1 month for serviced offices.",
-        },
-        {
-          q: "Is there parking available?",
-          a: "Yes, we have dedicated parking spaces for tenants and visitors at Tower 6789.",
-        },
-        {
-          q: "Do you provide Japanese-speaking staff?",
-          a: "Yes, we have bilingual staff fluent in Japanese and English to assist you.",
-        },
-      ];
+  const faqData = [
+    {
+      q: "How quickly can I move in?",
+      a: "You can move in immediately after completing the reservation and payment process, usually within 24 hours.",
+    },
+    {
+      q: "Do you offer short-term leases?",
+      a: "Yes, we offer flexible lease terms starting from 1 month for serviced offices.",
+    },
+    {
+      q: "Is there parking available?",
+      a: "Yes, we have dedicated parking spaces for tenants and visitors at Tower 6789.",
+    },
+    {
+      q: "Do you provide Japanese-speaking staff?",
+      a: "Yes, we have bilingual staff fluent in Japanese and English to assist you.",
+    },
+  ];
 
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-hero text-white py-20 lg:py-32">
-        <div className="absolute inset-0 bg-[url('/pattern.svg')] opacity-10" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <section className="relative text-white py-20 lg:py-32 overflow-hidden">
+        <div className="absolute inset-0">
+          <Image
+            src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80"
+            alt="About HERO Serviced Office"
+            fill
+            className="object-cover"
+            unoptimized
+            priority
+          />
+          <div className="absolute inset-0 bg-linear-to-r from-[#1B3A8C]/90 to-[#1B3A8C]/60" />
+        </div>
+        <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-center max-w-3xl mx-auto"
+            className="w-full text-center mx-auto text-shadow-4xl"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-              {t("contact.hero.title") as string}
+              Contact Us
             </h1>
             <p className="text-xl text-gray-300">
-              {t("contact.hero.subtitle") as string}
+              Reach out to us for inquiries, reservations, or support.
             </p>
           </motion.div>
         </div>
@@ -205,10 +211,10 @@ export default function ContactPage() {
               viewport={{ once: true }}
             >
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                {t("contact.form.title") as string}
+                Send Us a Message
               </h2>
               <p className="text-gray-600 mb-8">
-                {t("contact.form.subtitle") as string}
+                Fill out the form below and we'll get back to you within 24 hours
               </p>
 
               {submitStatus === "success" && (
@@ -219,9 +225,9 @@ export default function ContactPage() {
                 >
                   <CheckCircle2 className="w-5 h-5 text-green-600" />
                   <div>
-                    <p className="font-medium text-green-900">{t("contact.form.success") as string}</p>
+                    <p className="font-medium text-green-900">Message sent successfully! We'll get back to you soon.</p>
                     <p className="text-sm text-green-700">
-                      {t("contact.form.successDesc") as string}
+                      Thank you for reaching out to us. We appreciate your interest in HERO Serviced Office.
                     </p>
                   </div>
                 </motion.div>
@@ -235,9 +241,9 @@ export default function ContactPage() {
                 >
                   <AlertCircle className="w-5 h-5 text-red-600" />
                   <div>
-                    <p className="font-medium text-red-900">{t("contact.form.error") as string}</p>
+                    <p className="font-medium text-red-900">Failed to send message. Please try again or contact us directly.</p>
                     <p className="text-sm text-red-700">
-                      {t("contact.form.errorDesc") as string}
+                      Thank you for your message. We apologize for any inconvenience and will respond to you as soon as possible.
                     </p>
                   </div>
                 </motion.div>
@@ -250,7 +256,7 @@ export default function ContactPage() {
                       htmlFor="name"
                       className="block text-sm font-medium text-gray-700 mb-2"
                     >
-                      {t("contact.form.name") as string} *
+                      Name *
                     </label>
                     <input
                       type="text"
@@ -268,7 +274,7 @@ export default function ContactPage() {
                       htmlFor="email"
                       className="block text-sm font-medium text-gray-700 mb-2"
                     >
-                      {t("contact.form.email") as string} *
+                      Email *
                     </label>
                     <input
                       type="email"
@@ -289,7 +295,7 @@ export default function ContactPage() {
                       htmlFor="phone"
                       className="block text-sm font-medium text-gray-700 mb-2"
                     >
-                      {t("contact.form.phone") as string}
+                      Phone
                     </label>
                     <input
                       type="tel"
@@ -306,7 +312,7 @@ export default function ContactPage() {
                       htmlFor="company"
                       className="block text-sm font-medium text-gray-700 mb-2"
                     >
-                      {t("contact.form.company") as string}
+                      Company
                     </label>
                     <input
                       type="text"
@@ -325,7 +331,7 @@ export default function ContactPage() {
                     htmlFor="inquiryType"
                     className="block text-sm font-medium text-gray-700 mb-2"
                   >
-                    {t("contact.form.inquiryType") as string} *
+                    Inquiry Type *
                   </label>
                   <select
                     id="inquiryType"
@@ -348,7 +354,7 @@ export default function ContactPage() {
                     htmlFor="message"
                     className="block text-sm font-medium text-gray-700 mb-2"
                   >
-                    {t("contact.form.message") as string} *
+                    Message *
                   </label>
                   <textarea
                     id="message"
@@ -372,7 +378,7 @@ export default function ContactPage() {
                     className="w-5 h-5 text-[#1B3A8C] border-gray-300 rounded focus:ring-[#1B3A8C]"
                   />
                   <label htmlFor="newsletter" className="text-sm text-gray-600">
-                    {t("contact.form.newsletter") as string}
+                    Subscribe to our newsletter
                   </label>
                 </div>
 
@@ -384,11 +390,11 @@ export default function ContactPage() {
                   {isSubmitting ? (
                     <>
                       <span className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                      {t("contact.form.sending") as string}
+                      Sending...
                     </>
                   ) : (
                     <>
-                      {t("contact.form.sendMessage") as string}
+                      Send Message
                       <Send className="w-5 h-5" />
                     </>
                   )}
@@ -406,69 +412,12 @@ export default function ContactPage() {
             >
               {/* Map Placeholder */}
               <div className="bg-gray-200 rounded-2xl overflow-hidden aspect-video">
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#C5D2EC]/50 to-[#8FA8D6]/30">
+                <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#C5D2EC]/50 to-[#8FA8D6]/30">
                   <div className="text-center">
                     <MapPin className="w-16 h-16 text-[#1B3A8C]/30 mx-auto mb-4" />
                     <p className="text-gray-600 font-medium">Tower 6789, Ayala Avenue</p>
                     <p className="text-gray-500 text-sm">Makati City, Philippines</p>
                   </div>
-                </div>
-              </div>
-
-              {/* Social Media */}
-              <div className="p-6 bg-white rounded-2xl shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  {t("contact.social.title") as string}
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  {t("contact.social.subtitle") as string}
-                </p>
-                <div className="flex items-center gap-4">
-                  {socialLinks.map((social) => (
-                    <a
-                      key={social.label}
-                      href={social.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`w-12 h-12 ${social.color} rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform`}
-                      aria-label={social.label}
-                    >
-                      <social.icon className="w-5 h-5" />
-                    </a>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quick Links */}
-              <div className="p-6 bg-[#C5D2EC]/30 rounded-2xl">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  {t("contact.quickActions.title") as string}
-                </h3>
-                <div className="space-y-3">
-                  <Link
-                    href="/reservation"
-                    className="flex items-center gap-3 p-3 bg-white rounded-xl hover:shadow-md transition-shadow"
-                  >
-                    <div className="w-10 h-10 bg-[#C5D2EC]/50 rounded-lg flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-[#1B3A8C]" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{t("contact.quickActions.reservation") as string}</p>
-                      <p className="text-sm text-gray-600">{t("contact.quickActions.reservationDesc") as string}</p>
-                    </div>
-                  </Link>
-                  <Link
-                    href="/virtual-tour"
-                    className="flex items-center gap-3 p-3 bg-white rounded-xl hover:shadow-md transition-shadow"
-                  >
-                    <div className="w-10 h-10 bg-[#8FA8D6]/30 rounded-lg flex items-center justify-center">
-                      <MapPin className="w-5 h-5 text-[#3B5EA6]" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{t("contact.quickActions.virtualTour") as string}</p>
-                      <p className="text-sm text-gray-600">{t("contact.quickActions.virtualTourDesc") as string}</p>
-                    </div>
-                  </Link>
                 </div>
               </div>
             </motion.div>
@@ -481,11 +430,8 @@ export default function ContactPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              {t("contact.faq.title") as string}
+              Frequently Asked Questions
             </h2>
-            <p className="text-gray-600">
-              {t("contact.faq.subtitle") as string}
-            </p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             {faqData.map((faq, index) => (

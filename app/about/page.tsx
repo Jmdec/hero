@@ -20,6 +20,7 @@ import {
   Utensils,
   Train,
   ExternalLink,
+  Link,
 } from "lucide-react";
 
 export default function AboutPage() {
@@ -136,7 +137,7 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative text-white py-20 lg:py-32 overflow-hidden min-h-[400px]">
+      <section className="relative text-white py-20 lg:py-32 overflow-hidden">
         <div className="absolute inset-0">
           <Image
             src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80"
@@ -146,14 +147,14 @@ export default function AboutPage() {
             unoptimized
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#1B3A8C]/90 to-[#1B3A8C]/60" />
+          <div className="absolute inset-0 bg-linear-to-r from-[#1B3A8C]/90 to-[#1B3A8C]/60" />
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="max-w-3xl"
+            className="w-full text-center mx-auto text-shadow-4xl"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
               About HERO Serviced Office
@@ -207,7 +208,7 @@ export default function AboutPage() {
               viewport={{ once: true }}
               className="relative"
             >
-              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden">
+              <div className="relative aspect-4/3 rounded-2xl overflow-hidden">
                 <Image
                   src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80"
                   alt="Our office"
@@ -422,37 +423,42 @@ export default function AboutPage() {
       </section>
 
       {/* Why Choose Us */}
-      <section className="py-20 bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Why Choose Us
-            </h2>
-            <p className="text-lg text-gray-400">
-              Experience the difference with HERO Serviced Office
-            </p>
-          </div>
+      <section className="py-20 bg-linear-to-r from-[#1B3A8C] to-[#3B5EA6]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+            Why Choose Us
+          </h2>
+          <p className="text-lg text-gray-100 mb-8">
+            Experience the difference with HERO Serviced Office
+          </p>
+
           <div className="grid md:grid-cols-3 gap-8">
             <div className="p-6 bg-white/5 backdrop-blur-sm rounded-2xl">
-              <Clock className="w-10 h-10 text-[#5C7ABF] mb-4" />
-              <h3 className="text-xl font-semibold mb-2">24/7 Access</h3>
-              <p className="text-gray-400">
+              <span className="flex gap-4 justify-center items-center mb-4">
+                <Clock className="w-10 h-10 text-white mb-4" />
+                <h3 className="text-xl font-semibold mb-2">24/7 Access</h3>
+              </span>
+              <p className="text-gray-200">
                 Access your workspace anytime, day or night, with secure entry
                 systems.
               </p>
             </div>
             <div className="p-6 bg-white/5 backdrop-blur-sm rounded-2xl">
-              <Users className="w-10 h-10 text-[#5C7ABF] mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Bilingual Support</h3>
-              <p className="text-gray-400">
+              <span className="flex gap-4 justify-center items-center mb-4">
+                <Users className="w-10 h-10 text-white mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Bilingual Support</h3>
+              </span>
+              <p className="text-gray-200">
                 Our team speaks both English and Japanese to serve your needs
                 effectively.
               </p>
             </div>
             <div className="p-6 bg-white/5 backdrop-blur-sm rounded-2xl">
-              <Shield className="w-10 h-10 text-[#5C7ABF] mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Privacy & Security</h3>
-              <p className="text-gray-400">
+              <span className="flex gap-4 justify-center items-center mb-4">
+                <Shield className="w-10 h-10 text-white mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Privacy & Security</h3>
+              </span>
+              <p className="text-gray-200">
                 Your data and privacy are protected with our comprehensive
                 security measures.
               </p>

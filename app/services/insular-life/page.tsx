@@ -120,7 +120,7 @@ export default function InsularLifePage() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-[#1B3A8C] via-[#3B5EA6] to-[#1A1A2E] text-white py-20 lg:py-32">
+      <section className="relative bg-linear-to-br from-[#1B3A8C] via-[#3B5EA6] to-[#1A1A2E] text-white py-20 lg:py-32">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#5C7ABF]/20 via-transparent to-transparent" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
@@ -171,7 +171,7 @@ export default function InsularLifePage() {
               </h2>
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-[#8FA8D6]/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 bg-[#8FA8D6]/30 rounded-lg flex items-center justify-center shrink-0">
                     <MapPin className="w-5 h-5 text-[#3B5EA6]" />
                   </div>
                   <div>
@@ -182,7 +182,7 @@ export default function InsularLifePage() {
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-[#8FA8D6]/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 bg-[#8FA8D6]/30 rounded-lg flex items-center justify-center shrink-0">
                     <Building2 className="w-5 h-5 text-[#3B5EA6]" />
                   </div>
                   <div>
@@ -191,7 +191,7 @@ export default function InsularLifePage() {
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-[#8FA8D6]/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 bg-[#8FA8D6]/30 rounded-lg flex items-center justify-center shrink-0">
                     <Users className="w-5 h-5 text-[#3B5EA6]" />
                   </div>
                   <div>
@@ -208,7 +208,7 @@ export default function InsularLifePage() {
               viewport={{ once: true }}
               className="relative"
             >
-              <div className="aspect-[4/3] bg-gradient-to-br from-[#8FA8D6]/30 to-[#C5D2EC]/30 rounded-2xl flex items-center justify-center">
+              <div className="aspect-[4/3] bg-linear-to-br from-[#8FA8D6]/30 to-[#C5D2EC]/30 rounded-2xl flex items-center justify-center">
                 <Building2 className="w-32 h-32 text-[#3B5EA6]/20" />
               </div>
               <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl">
@@ -277,7 +277,7 @@ export default function InsularLifePage() {
                 <ul className="space-y-3">
                   {type.details.map((detail, i) => (
                     <li key={i} className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
                       <span className="text-gray-700">{detail}</span>
                     </li>
                   ))}
@@ -353,7 +353,7 @@ export default function InsularLifePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-[#1B3A8C] to-[#3B5EA6]">
+      <section className="py-20 bg-linear-to-r from-[#1B3A8C] to-[#3B5EA6]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
             Service Office Inquiry

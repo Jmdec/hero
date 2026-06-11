@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import Image from 'next/image'
 import { Globe, Camera, Mail, MapPin, Phone, MessageCircle } from 'lucide-react';
-import { useLanguage } from './LanguageProvider';
 
 const socialLinks = [
   { href: 'https://facebook.com/herophilippines', icon: Globe, label: 'Facebook' },
@@ -12,22 +11,19 @@ const socialLinks = [
 ];
 
 export default function Footer() {
-  const { t } = useLanguage();
-
   const quickLinks = [
-    { href: '/about', label: t('footer.quickLinks') as string },
-    { href: '/services', label: t('footer.ourServices') as string },
-    { href: '/virtual-tour', label: t('navigation.virtualTour') as string },
-    { href: '/reservation', label: t('reservation.hero.title') as string },
-    { href: '/contact', label: t('navigation.contact') as string },
+    { href: '/about', label: "About Us" },
+    { href: '/services', label: "Our Services" },
+    { href: '/virtual-tour', label: "Virtual Tour" },
+    { href: '/reservation', label: "Reservation" },
+    { href: '/contact', label: "Contact Us" },
   ];
 
   const services = [
-    t('home.services.servicedOffices') as string,
-    t('home.services.virtualOffices') as string,
-    t('home.services.conferenceRooms') as string,
-    t('reservation.form.virtualOffice') as string,
-    t('reservation.form.meetingRoom') as string,
+    { href: '/services', label: "Private Offices" },
+    { href: '/services', label: "Conference Rooms" },
+    { href: '/reservation', label: "Virtual Offices" },
+    { href: '/reservation', label: "Meeting Rooms" },
   ];
   return (
     <footer className="bg-[#1A1A2E] text-gray-300">
@@ -36,7 +32,7 @@ export default function Footer() {
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#1B3A8C] to-[#3B5EA6] rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-linear-to-br from-[#1B3A8C] to-[#3B5EA6] rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-xl">H</span>
               </div>
               <div>
@@ -45,7 +41,7 @@ export default function Footer() {
               </div>
             </div>
             <p className="text-sm text-gray-400 leading-relaxed">
-              {t('footer.tagline') as string}
+              Your gateway to professional workspace solutions in Makati.
             </p>
             {/* Social Media Links */}
             <div className="flex items-center gap-3 pt-2">
@@ -66,7 +62,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-white font-semibold mb-4">{t('footer.quickLinks') as string}</h3>
+            <h3 className="text-white font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-3">
               {quickLinks.map((link) => (
                 <li key={link.href}>
@@ -83,15 +79,15 @@ export default function Footer() {
 
           {/* Services */}
           <div>
-            <h3 className="text-white font-semibold mb-4">{t('footer.ourServices') as string}</h3>
+            <h3 className="text-white font-semibold mb-4">Our Services</h3>
             <ul className="space-y-3">
               {services.map((service, index) => (
                 <li key={index}>
                   <Link
-                    href="/services"
+                    href={service.href}
                     className="text-sm hover:text-[#5C7ABF] transition-colors"
                   >
-                    {service}
+                    {service.label}
                   </Link>
                 </li>
               ))}
@@ -100,25 +96,27 @@ export default function Footer() {
 
           {/* Contact Info */}
           <div>
-            <h3 className="text-white font-semibold mb-4">{t('footer.contactUs') as string}</h3>
+            <h3 className="text-white font-semibold mb-4">Contact Us</h3>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-[#5C7ABF] flex-shrink-0 mt-0.5" />
+                <MapPin className="w-5 h-5 text-[#5C7ABF] shrink-0 mt-0.5" />
                 <span className="text-sm">
-                  {Array.isArray(t('contact.info.addressDetails')) 
-                    ? (t('contact.info.addressDetails') as unknown as string[]).join(', ')
-                    : t('contact.info.addressDetails') as string}
+                  23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-[#5C7ABF] shrink-0 mt-0.5" />
+                <span className="text-sm">
+                  11F Insular Life Building, 6781 Ayala Avenue Corner Paseo de Roxas Ave., Makati City, Metro Manila, Philippines.
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="w-5 h-5 text-[#5C7ABF]" />
                 <a
-                  href="tel:+63288013417"
+                  href="tel:+63-(0)2-8801-3417"
                   className="text-sm hover:text-[#5C7ABF] transition-colors"
                 >
-                  {Array.isArray(t('contact.info.phoneNumbers'))
-                    ? (t('contact.info.phoneNumbers') as unknown as string[])[0]
-                    : t('contact.info.phoneNumbers') as string}
+                  +63-(0)2-8801-3417
                 </a>
               </li>
               <li className="flex items-center gap-3">
@@ -127,33 +125,30 @@ export default function Footer() {
                   href="mailto:sales@heroph.net"
                   className="text-sm hover:text-[#5C7ABF] transition-colors"
                 >
-                  {Array.isArray(t('contact.info.emailAddresses'))
-                    ? (t('contact.info.emailAddresses') as unknown as string[])[0]
-                    : t('contact.info.emailAddresses') as string}
+                  sales@heroph.net
                 </a>
               </li>
             </ul>
-            <div className="mt-6 p-4 bg-gray-800 rounded-lg">
-              <p className="text-xs text-gray-400">
-                {t('footer.businessHours') as string}:<br />
-                <span className="text-white">{t('footer.hours') as string}</span>
-              </p>
-            </div>
           </div>
         </div>
 
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-gray-800">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-500">
-              {t('footer.copyright') as string}
-            </p>
+            <div className="flex-col items-center gap-2">
+              <p className="text-sm text-gray-500">
+                &copy; {new Date().getFullYear()} HERO Serviced Office. All rights reserved.
+              </p>
+              <span className="text-sm text-gray-500">Powered by&nbsp; 
+                <a href="https://www.infinitechphil.com/" className="hover:text-[#5C7ABF] transition-colors underline">Infinitech Advertising Corporation</a>
+              </span>
+            </div>
             <div className="flex items-center gap-6 text-sm text-gray-500">
               <Link href="/privacy" className="hover:text-[#5C7ABF] transition-colors">
-                {t('footer.privacyPolicy') as string}
+                Privacy Policy
               </Link>
               <Link href="/terms" className="hover:text-[#5C7ABF] transition-colors">
-                {t('footer.termsOfService') as string}
+                Terms of Service
               </Link>
             </div>
           </div>

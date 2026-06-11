@@ -11,34 +11,63 @@ import {
   Mail,
   ChevronRight,
 } from "lucide-react";
-import { useLanguage } from "../../components/LanguageProvider";
 
 export default function ServicesPage() {
-  const { t } = useLanguage();
 
   const moveInSteps = [
-    { step: 1, title: t("services.moveInFlow.step1") as string, description: t("services.moveInFlow.step1Desc") as string },
-    { step: 2, title: t("services.moveInFlow.step2") as string, description: t("services.moveInFlow.step2Desc") as string },
-    { step: 3, title: t("services.moveInFlow.step3") as string, description: t("services.moveInFlow.step3Desc") as string },
-    { step: 4, title: t("services.moveInFlow.step4") as string, description: t("services.moveInFlow.step4Desc") as string },
-    { step: 5, title: t("services.moveInFlow.step5") as string, description: t("services.moveInFlow.step5Desc") as string },
-    { step: 6, title: t("services.moveInFlow.step6") as string, description: t("services.moveInFlow.step6Desc") as string },
+    { step: 1, title: "Inquiry", description: "Contact us to learn more about our office spaces and availability." },
+    { step: 2, title: "Introduction", description: "We will provide you with detailed information about our office spaces." },
+    { step: 3, title: "Application", description: "Submit your application and provide the necessary documentation." },
+    { step: 4, title: "Examination", description: "We will review your application and conduct a site visit." },
+    { step: 5, title: "Contract", description: "Sign the lease agreement and finalize the move-in process." },
+    { step: 6, title: "Start Using", description: "Begin using your new office space and receive ongoing support." },
   ];
+
+  const tower6789Features = [
+    "49 private rooms (up to 17 people)",
+    "PEZA certified building",
+    "24-hour air conditioning",
+    "Meeting rooms up to 10 people",
+    "Use of multifunction copier, printer and scanner.",
+  ];
+
+  const insularLifeFeatures = [
+    "49 private rooms (up to 35 people)",
+    "PEZA certified building",
+    "Opened April 2019",
+    "24-hour air conditioning",
+    "Meeting rooms up to 20 people",
+    "Mailbox & locker room included",
+  ];
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-hero text-white py-20 lg:py-32">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#5C7ABF]/20 via-transparent to-transparent" />
+      <section className="relative text-white py-20 lg:py-32 overflow-hidden">
+        <div className="absolute inset-0">
+          <Image
+            src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80"
+            alt="About HERO Serviced Office"
+            fill
+            className="object-cover"
+            unoptimized
+            priority
+          />
+          <div className="absolute inset-0 bg-linear-to-r from-[#1B3A8C]/90 to-[#1B3A8C]/60" />
+        </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-center max-w-3xl mx-auto"
+            className="w-full text-center mx-auto text-shadow-4xl"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-              {t("services.hero.title") as string}
+              Office Guidance & Services
             </h1>
+            <p className="text-xl text-gray-300">
+              Comprehensive office solutions for your business needs
+            </p>
           </motion.div>
         </div>
       </section>
@@ -48,13 +77,14 @@ export default function ServicesPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              {t("services.locations.title") as string}
+              Our Locations
             </h2>
             <p className="text-lg text-gray-600">
-              {t("services.locations.subtitle") as string}
+              Choose the HERO PH location that best suits your business needs
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
+            
             {/* Tower 6789 Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -64,46 +94,45 @@ export default function ServicesPage() {
               className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-shadow overflow-hidden"
             >
               <div className="p-6 border-b border-gray-100 relative">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 bg-[#1B3A8C] rounded-xl flex items-center justify-center flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-[#1B3A8C] rounded-xl flex items-center justify-center shrink-0">
                     <Building2 className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">{t("services.locations.tower6789") as string}</h3>
-                    <p className="text-sm text-[#1B3A8C] font-medium">{t("services.locations.tower6789Location") as string}</p>
+                    <h3 className="text-xl font-bold text-gray-900">Tower 6789</h3>
+                    <p className="text-sm text-[#1B3A8C] font-medium">23rd Floor, 6789 Ayala Avenue, Makati City</p>
                   </div>
                 </div>
-                <p className="text-gray-600 text-sm">{t("services.locations.tower6789Address") as string}</p>
               </div>
 
               <div className="p-6">
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start gap-3 text-sm text-gray-700">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>{t("services.locations.tower6789Feature1") as string}</span>
+                    <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                    <span>{tower6789Features[0]}</span>
                   </li>
                   <li className="flex items-start gap-3 text-sm text-gray-700">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>{t("services.locations.tower6789Feature2") as string}</span>
+                    <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                    <span>{tower6789Features[1]}</span>
                   </li>
                   <li className="flex items-start gap-3 text-sm text-gray-700">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>{t("services.locations.tower6789Feature3") as string}</span>
+                    <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                    <span>{tower6789Features[2]}</span>
                   </li>
                   <li className="flex items-start gap-3 text-sm text-gray-700">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>{t("services.locations.tower6789Feature4") as string}</span>
+                    <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                    <span>{tower6789Features[3]}</span>
                   </li>
                   <li className="flex items-start gap-3 text-sm text-gray-700">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>{t("services.locations.tower6789Feature5") as string}</span>
+                    <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                    <span>{tower6789Features[4]}</span>
                   </li>
                 </ul>
                 <Link
                   href="/services/tower-6789"
                   className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#1B3A8C] text-white rounded-xl font-semibold hover:bg-[#3B5EA6] transition-colors"
                 >
-                  {t("services.locations.tower6789Cta") as string}
+                  View Tower 6789 Makati
                   <ChevronRight className="w-5 h-5" />
                 </Link>
               </div>
@@ -118,46 +147,45 @@ export default function ServicesPage() {
               className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-shadow overflow-hidden"
             >
               <div className="p-6 border-b border-gray-100">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 bg-[#1B3A8C] rounded-xl flex items-center justify-center flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-[#1B3A8C] rounded-xl flex items-center justify-center shrink-0">
                     <Building2 className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">{t("services.locations.insularLife") as string}</h3>
-                    <p className="text-sm text-[#3B5EA6] font-medium">{t("services.locations.insularLifeLocation") as string}</p>
+                    <h3 className="text-xl font-bold text-gray-900">Insular Life Building</h3>
+                    <p className="text-sm text-[#3B5EA6] font-medium">11th Floor, 6781 Ayala Avenue corner Paseo de Roxas, Makati</p>
                   </div>
                 </div>
-                <p className="text-gray-600 text-sm">{t("services.locations.insularLifeAddress") as string}</p>
               </div>
-              
+
               <div className="p-6">
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start gap-3 text-sm text-gray-700">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>{t("services.locations.insularLifeFeature1") as string}</span>
+                    <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                    <span>{insularLifeFeatures[0]}</span>
                   </li>
                   <li className="flex items-start gap-3 text-sm text-gray-700">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>{t("services.locations.insularLifeFeature2") as string}</span>
+                    <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                    <span>{insularLifeFeatures[1]}</span>
                   </li>
                   <li className="flex items-start gap-3 text-sm text-gray-700">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>{t("services.locations.insularLifeFeature4") as string}</span>
+                    <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                    <span>{insularLifeFeatures[2]}</span>
                   </li>
                   <li className="flex items-start gap-3 text-sm text-gray-700">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>{t("services.locations.insularLifeFeature5") as string}</span>
+                    <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                    <span>{insularLifeFeatures[3]}</span>
                   </li>
                   <li className="flex items-start gap-3 text-sm text-gray-700">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>{t("services.locations.insularLifeFeature6") as string}</span>
+                    <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                    <span>{insularLifeFeatures[4]}</span>
                   </li>
                 </ul>
                 <Link
                   href="/services/insular-life"
                   className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#1B3A8C] text-white rounded-xl font-semibold hover:bg-[#3B5EA6] transition-colors"
                 >
-                  {t("services.locations.insularLifeCta") as string}
+                  View Insular Life Building
                   <ChevronRight className="w-5 h-5" />
                 </Link>
               </div>
@@ -169,12 +197,12 @@ export default function ServicesPage() {
       {/* Move-in Flow */}
       <section className="py-20 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <div className="text-center max-w-6xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              {t("services.moveInFlow.title") as string}
+              Flow Until Moving In
             </h2>
             <p className="text-lg text-gray-600">
-              {t("services.moveInFlow.subtitle") as string}
+              Simple 6-step process to start using our office
             </p>
           </div>
           <div className="relative">
@@ -212,7 +240,7 @@ export default function ServicesPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-[#1B3A8C] to-[#3B5EA6]">
+      <section className="py-20 bg-linear-to-r from-[#1B3A8C] to-[#3B5EA6]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
             Service Office Inquiry

@@ -19,7 +19,6 @@ import {
   MapPin,
   ArrowRight,
 } from "lucide-react";
-import { useLanguage } from "../../components/LanguageProvider";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface FormData {
@@ -216,8 +215,6 @@ function NavRow({
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function ReservationPage() {
-  const { t } = useLanguage();
-
   const spaceTypes = [
     { id: "serviced-office", name: "Serviced Office", icon: Building2, desc: "Private rooms, 1–17 seats" },
     { id: "meeting-room", name: "Meeting Room", icon: Users, desc: "Hourly, up to 10 people" },
@@ -317,7 +314,7 @@ export default function ReservationPage() {
               "Our team will contact you for any additional information if needed",
             ].map((s, i) => (
               <div key={i} className="flex items-start gap-3">
-                <span className="w-5 h-5 rounded-full bg-[#1B3A8C] text-white text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="w-5 h-5 rounded-full bg-[#1B3A8C] text-white text-[10px] flex items-center justify-center shrink-0 mt-0.5">
                   {i + 1}
                 </span>
                 <p className="text-sm text-[#4A4740]">{s}</p>
@@ -347,7 +344,7 @@ export default function ReservationPage() {
   return (
     <div style={{ background: "#F7F4EF", fontFamily: "'DM Sans', system-ui, sans-serif" }} className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-hero text-white py-20 lg:py-32">
+      <section className="relative bg-linear-hero text-white py-20 lg:py-32">
         <div className="absolute inset-0 bg-[url('/pattern.svg')] opacity-10" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
@@ -357,10 +354,10 @@ export default function ReservationPage() {
             className="text-center max-w-3xl mx-auto"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-              {t("reservation.hero.title") as string}
+              Reservation
             </h1>
             <p className="text-xl text-gray-300">
-              {t("reservation.hero.subtitle") as string}
+              Book a tour or reserve your workspace at HERO Serviced Office. We offer flexible plans and spaces to suit your needs.
             </p>
           </motion.div>
         </div>
@@ -401,7 +398,7 @@ export default function ReservationPage() {
                             onClick={() => setFormData((p) => ({ ...p, spaceType: type.id, plan: "" }))}
                             className={`relative p-6 rounded-2xl border-2 text-left transition-all duration-300 group overflow-hidden ${
                               active
-                                ? "border-[#1B3A8C] bg-gradient-to-br from-[#EEF2FB] to-[#C5D2EC]/30 shadow-lg shadow-[#1B3A8C]/10"
+                                ? "border-[#1B3A8C] bg-linear-to-br from-[#EEF2FB] to-[#C5D2EC]/30 shadow-lg shadow-[#1B3A8C]/10"
                                 : "border-[#E0DBD4] bg-white hover:border-[#1B3A8C] hover:shadow-md"
                             }`}
                           >
@@ -443,7 +440,7 @@ export default function ReservationPage() {
                                 onClick={() => setFormData((p) => ({ ...p, plan: plan.id }))}
                                 className={`relative w-full px-6 py-5 rounded-2xl border-2 flex items-center justify-between transition-all duration-300 group overflow-hidden ${
                                   active
-                                    ? "border-[#1B3A8C] bg-gradient-to-r from-[#EEF2FB] to-[#C5D2EC]/20 shadow-md shadow-[#1B3A8C]/10"
+                                    ? "border-[#1B3A8C] bg-linear-to-r from-[#EEF2FB] to-[#C5D2EC]/20 shadow-md shadow-[#1B3A8C]/10"
                                     : "border-[#E0DBD4] bg-white hover:border-[#1B3A8C] hover:shadow-sm"
                                 }`}
                               >
@@ -528,11 +525,11 @@ export default function ReservationPage() {
                             onChange={handleInput}
                             className={inputCls}
                           >
-                            <option value="1">{t("reservation.step2.1hour") as string}</option>
-                            <option value="2">{t("reservation.step2.2hours") as string}</option>
-                            <option value="3">{t("reservation.step2.3hours") as string}</option>
-                            <option value="4">{t("reservation.step2.halfDay") as string}</option>
-                            <option value="8">{t("reservation.step2.fullDay") as string}</option>
+                            <option value="1">1 hour</option>
+                            <option value="2">2 hours</option>
+                            <option value="3">3 hours</option>
+                            <option value="4">Half Day</option>
+                            <option value="8">Full Day</option>
                           </select>
                         </Field>
                       </div>
@@ -643,7 +640,7 @@ export default function ReservationPage() {
                     </p>
 
                     {/* Bank details */}
-                    <div className="bg-gradient-to-br from-[#EEF2FB] to-[#C5D2EC]/30 border border-[#C5D2EC] rounded-2xl p-7 mb-8 shadow-sm">
+                    <div className="bg-linear-to-br from-[#EEF2FB] to-[#C5D2EC]/30 border border-[#C5D2EC] rounded-2xl p-7 mb-8 shadow-sm">
                       <p className="text-[11px] tracking-[0.25em] uppercase text-[#4A6AAC] mb-5 flex items-center gap-2 font-semibold">
                         <CreditCard className="w-4 h-4" />
                         Bank Details
@@ -678,7 +675,7 @@ export default function ReservationPage() {
                               onClick={() => setFormData((p) => ({ ...p, paymentMethod: m.id }))}
                               className={`relative w-full px-6 py-5 rounded-2xl border-2 text-left transition-all duration-300 group overflow-hidden ${
                                 active
-                                  ? "border-[#1B3A8C] bg-gradient-to-r from-[#EEF2FB] to-[#C5D2EC]/20 shadow-md shadow-[#1B3A8C]/10"
+                                  ? "border-[#1B3A8C] bg-linear-to-r from-[#EEF2FB] to-[#C5D2EC]/20 shadow-md shadow-[#1B3A8C]/10"
                                   : "border-[#E0DBD4] bg-white hover:border-[#1B3A8C] hover:shadow-sm"
                               }`}
                             >
@@ -707,7 +704,7 @@ export default function ReservationPage() {
                         htmlFor="payment-proof"
                         className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 group ${
                           formData.paymentProof
-                            ? "border-[#2E7D4F] bg-gradient-to-br from-[#F0FAF3] to-[#E8F5EC] shadow-md shadow-[#2E7D4F]/10"
+                            ? "border-[#2E7D4F] bg-linear-to-br from-[#F0FAF3] to-[#E8F5EC] shadow-md shadow-[#2E7D4F]/10"
                             : "border-[#DDD9D2] bg-[#F7F4EF] hover:border-[#1B3A8C] hover:bg-white hover:shadow-md"
                         }`}
                       >
@@ -739,14 +736,14 @@ export default function ReservationPage() {
                     </div>
 
                     {/* Note */}
-                    <div className="bg-gradient-to-r from-[#FEF9EC] to-[#FDF6E3] border border-[#F5E0A0] rounded-2xl px-6 py-5 text-sm text-[#7A6020] shadow-sm">
+                    <div className="bg-linear-to-r from-[#FEF9EC] to-[#FDF6E3] border border-[#F5E0A0] rounded-2xl px-6 py-5 text-sm text-[#7A6020] shadow-sm">
                       <strong className="font-semibold">Note:</strong>{" "}
                       Your reservation will be confirmed within 24 hours after payment verification.
                     </div>
 
                     <NavRow
                       onBack={() => setStep(3)}
-                      nextLabel={t("reservation.step4.completeReservation") as string}
+                      nextLabel="Complete Reservation"
                       nextDisabled={!formData.paymentMethod || !formData.paymentProof}
                       isSubmit
                       isSubmitting={isSubmitting}

@@ -460,7 +460,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
       </button>
 
       {showCarousel && (
-        <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent pt-8 pb-4">
+        <div className="absolute bottom-0 left-0 right-0 z-20 bg-linear-to-t from-black/80 to-transparent pt-8 pb-4">
           <div className="flex items-center justify-center gap-2 px-4">
             <Button
               size="icon"
@@ -484,7 +484,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
                 >
                   <div className="relative w-32 h-20">
                     <Image src={room.thumbnail || "/placeholder.svg"} alt={room.name} fill className="object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
                   </div>
                   <div className="absolute top-1 left-1 right-1">
                     <span className="text-white text-xs font-medium drop-shadow-lg line-clamp-1">{room.name}</span>
