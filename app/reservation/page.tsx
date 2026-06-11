@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -26,7 +27,6 @@ interface FormData {
   plan: string;
   date: string;
   time: string;
-  duration: string;
   name: string;
   email: string;
   phone: string;
@@ -41,7 +41,7 @@ const STEPS = ["Space", "Schedule", "Details", "Payment"];
 
 function StepRail({ step }: { step: number }) {
   return (
-    <div className="flex items-center gap-0 mb-10">
+    <div className="flex items-center justify-center gap-0 mb-10">
       {STEPS.map((label, i) => {
         const idx = i + 1;
         const done = idx < step;
@@ -50,29 +50,26 @@ function StepRail({ step }: { step: number }) {
           <div key={label} className="flex items-center">
             <div className="flex flex-col items-center">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300 ${
-                  done
-                    ? "bg-[#1B3A8C] text-white"
-                    : active
+                className={`w-12 h-12 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300 ${done
+                  ? "bg-[#1B3A8C] text-white"
+                  : active
                     ? "bg-[#1B3A8C] text-white ring-4 ring-[#C5D2EC]"
                     : "bg-[#F0EDE6] text-[#9B9690]"
-                }`}
+                  }`}
               >
                 {done ? <CheckCircle2 className="w-4 h-4" /> : idx}
               </div>
               <span
-                className={`mt-1.5 text-[10px] tracking-widest uppercase font-medium ${
-                  active ? "text-[#1B3A8C]" : "text-[#9B9690]"
-                }`}
+                className={`mt-1.5 text-[12px] tracking-widest uppercase font-medium ${active ? "text-[#1B3A8C]" : "text-[#9B9690]"
+                  }`}
               >
                 {label}
               </span>
             </div>
             {i < STEPS.length - 1 && (
               <div
-                className={`h-px w-12 md:w-20 mx-1 mb-5 transition-all duration-500 ${
-                  done ? "bg-[#1B3A8C]" : "bg-[#DDD9D2]"
-                }`}
+                className={`h-px w-12 md:w-20 mx-1 mb-5 transition-all duration-500 ${done ? "bg-[#1B3A8C]" : "bg-[#DDD9D2]"
+                  }`}
               />
             )}
           </div>
@@ -95,12 +92,9 @@ function BookingSummary({ data, planLabel, price }: { data: FormData; planLabel:
   ].filter((r) => r.value);
 
   return (
-    <aside className="hidden lg:flex flex-col bg-[#0F2460] text-white rounded-2xl p-8 sticky top-8 self-start min-h-[420px] min-w-[60vh]">
+    <aside className="hidden lg:flex flex-col bg-[#0F2460] text-white rounded-2xl p-8 sticky top-8 self-start min-h-105 min-w-[60vh]">
       <p className="text-[10px] tracking-[0.2em] uppercase text-[#8FA8D6] mb-1">Your booking</p>
-      <h3
-        className="text-2xl mb-6"
-        style={{ fontFamily: "'Playfair Display', serif", fontWeight: 500 }}
-      >
+      <h3 className="text-2xl mb-6">
         Summary
       </h3>
 
@@ -123,10 +117,7 @@ function BookingSummary({ data, planLabel, price }: { data: FormData; planLabel:
         <div className="mt-6 pt-6 border-t border-white/20">
           <div className="flex justify-between items-baseline">
             <span className="text-[#8FA8D6] text-xs uppercase tracking-widest">Total</span>
-            <span
-              className="text-xl text-white"
-              style={{ fontFamily: "'Playfair Display', serif" }}
-            >
+            <span className="text-xl text-white">
               {price}
             </span>
           </div>
@@ -134,13 +125,15 @@ function BookingSummary({ data, planLabel, price }: { data: FormData; planLabel:
       )}
 
       <div className="mt-8 pt-6 border-t border-white/20 space-y-2">
-        <p className="text-[10px] text-[#8FA8D6] tracking-wider uppercase">Need help?</p>
-        <p className="text-sm text-white flex items-center gap-2">
-          <Phone className="w-3.5 h-3.5 text-[#8FA8D6]" /> +63 2 8801-3417
-        </p>
-        <p className="text-sm text-white flex items-center gap-2">
-          <Mail className="w-3.5 h-3.5 text-[#8FA8D6]" /> sales@heroph.net
-        </p>
+        <p className="text-[13px] text-[#8FA8D6] tracking-wider uppercase">Need help?</p>
+        <span className="text-sm text-white flex justify-between items-center gap-2">
+          <p className="text-sm text-white flex items-center gap-2">
+            <Phone className="w-3.5 h-3.5 text-[#8FA8D6]" /> +63 2 8801-3417
+          </p>
+          <p className="text-sm text-white flex items-center gap-2">
+            <Mail className="w-3.5 h-3.5 text-[#8FA8D6]" /> sales@heroph.net
+          </p>
+        </span>
       </div>
     </aside>
   );
@@ -215,6 +208,7 @@ function NavRow({
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function ReservationPage() {
+
   const spaceTypes = [
     { id: "serviced-office", name: "Serviced Office", icon: Building2, desc: "Private rooms, 1–17 seats" },
     { id: "meeting-room", name: "Meeting Room", icon: Users, desc: "Hourly, up to 10 people" },
@@ -244,8 +238,20 @@ export default function ReservationPage() {
   ];
 
   const [step, setStep] = useState(1);
+
+  const formRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (formRef.current) {
+      formRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [step]);
+
   const [formData, setFormData] = useState<FormData>({
-    spaceType: "", plan: "", date: "", time: "", duration: "1",
+    spaceType: "", plan: "", date: "", time: "",
     name: "", email: "", phone: "", company: "", message: "",
     paymentMethod: "", paymentProof: null,
   });
@@ -342,35 +348,47 @@ export default function ReservationPage() {
   }
 
   return (
-    <div style={{ background: "#F7F4EF", fontFamily: "'DM Sans', system-ui, sans-serif" }} className="min-h-screen">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative bg-linear-hero text-white py-20 lg:py-32">
-        <div className="absolute inset-0 bg-[url('/pattern.svg')] opacity-10" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <section className="relative text-white py-20 lg:py-32 overflow-hidden">
+        <div className="absolute inset-0">
+          <Image
+            src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80"
+            alt="About HERO Serviced Office"
+            fill
+            className="object-cover"
+            unoptimized
+            priority
+          />
+          <div className="absolute inset-0 bg-linear-to-r from-[#1B3A8C]/90 to-[#1B3A8C]/60" />
+        </div>
+        <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-center max-w-3xl mx-auto"
+            className="w-full text-center mx-auto text-shadow-4xl"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
               Reservation
             </h1>
             <p className="text-xl text-gray-300">
-              Book a tour or reserve your workspace at HERO Serviced Office. We offer flexible plans and spaces to suit your needs.
+              Book a tour or reserve your workspace at HERO Serviced Office.<br />
+              We offer flexible plans and spaces to suit your needs.
             </p>
           </motion.div>
         </div>
       </section>
 
       {/* ── Form area ─────────────────────────────────────────────────────────── */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 bg-white">
+        <StepRail step={step} />
         <div className="grid lg:grid-cols-[1fr_300px] gap-8 items-start">
 
           {/* Left: form card */}
-          <div className="bg-white rounded-3xl p-8 md:p-12 shadow-xl shadow-[#0F2460]/5 border border-[#EAE6DF]">
-            <StepRail step={step} />
-
+          <div
+            ref={formRef}
+            className="bg-white rounded-3xl p-8 md:p-12 shadow-2xl shadow-[#0F2460]/5 border border-[#EAE6DF]">
             <form onSubmit={handleSubmit}>
               <AnimatePresence mode="wait">
 
@@ -383,7 +401,7 @@ export default function ReservationPage() {
                     exit={{ opacity: 0, x: -16 }}
                     transition={{ duration: 0.25 }}
                   >
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                    <h2 className="text-2xl text-center font-bold text-gray-900 mb-6">
                       Select Space Type
                     </h2>
 
@@ -396,19 +414,17 @@ export default function ReservationPage() {
                             key={type.id}
                             type="button"
                             onClick={() => setFormData((p) => ({ ...p, spaceType: type.id, plan: "" }))}
-                            className={`relative p-6 rounded-2xl border-2 text-left transition-all duration-300 group overflow-hidden ${
-                              active
-                                ? "border-[#1B3A8C] bg-linear-to-br from-[#EEF2FB] to-[#C5D2EC]/30 shadow-lg shadow-[#1B3A8C]/10"
-                                : "border-[#E0DBD4] bg-white hover:border-[#1B3A8C] hover:shadow-md"
-                            }`}
+                            className={`relative p-6 rounded-2xl border-2 text-left transition-all duration-300 group overflow-hidden ${active
+                              ? "border-[#1B3A8C] bg-linear-to-br from-[#EEF2FB] to-[#C5D2EC]/30 shadow-lg shadow-[#1B3A8C]/10"
+                              : "border-[#E0DBD4] bg-white hover:border-[#1B3A8C] hover:shadow-md"
+                              }`}
                           >
                             {active && (
                               <div className="absolute top-0 right-0 w-20 h-20 bg-[#1B3A8C]/5 rounded-full -translate-y-1/2 translate-x-1/2" />
                             )}
                             <div
-                              className={`relative w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 ${
-                                active ? "bg-[#1B3A8C] shadow-lg shadow-[#1B3A8C]/20" : "bg-[#E0DBD4] group-hover:bg-[#1B3A8C]"
-                              }`}
+                              className={`relative w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 ${active ? "bg-[#1B3A8C] shadow-lg shadow-[#1B3A8C]/20" : "bg-[#E0DBD4] group-hover:bg-[#1B3A8C]"
+                                }`}
                             >
                               <Icon className={`w-6 h-6 transition-colors ${active ? "text-white" : "text-[#9B9690] group-hover:text-white"}`} />
                             </div>
@@ -438,11 +454,10 @@ export default function ReservationPage() {
                                 key={plan.id}
                                 type="button"
                                 onClick={() => setFormData((p) => ({ ...p, plan: plan.id }))}
-                                className={`relative w-full px-6 py-5 rounded-2xl border-2 flex items-center justify-between transition-all duration-300 group overflow-hidden ${
-                                  active
-                                    ? "border-[#1B3A8C] bg-linear-to-r from-[#EEF2FB] to-[#C5D2EC]/20 shadow-md shadow-[#1B3A8C]/10"
-                                    : "border-[#E0DBD4] bg-white hover:border-[#1B3A8C] hover:shadow-sm"
-                                }`}
+                                className={`relative w-full px-6 py-5 rounded-2xl border-2 flex items-center justify-between transition-all duration-300 group overflow-hidden ${active
+                                  ? "border-[#1B3A8C] bg-linear-to-r from-[#EEF2FB] to-[#C5D2EC]/20 shadow-md shadow-[#1B3A8C]/10"
+                                  : "border-[#E0DBD4] bg-white hover:border-[#1B3A8C] hover:shadow-sm"
+                                  }`}
                               >
                                 {active && (
                                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#1B3A8C]" />
@@ -481,7 +496,7 @@ export default function ReservationPage() {
                     exit={{ opacity: 0, x: -16 }}
                     transition={{ duration: 0.25 }}
                   >
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                    <h2 className="text-2xl text-center font-bold text-gray-900 mb-6">
                       Schedule Visit
                     </h2>
 
@@ -516,25 +531,6 @@ export default function ReservationPage() {
                       </Field>
                     </div>
 
-                    {formData.spaceType === "meeting-room" && (
-                      <div className="mt-6">
-                        <Field label="Duration" icon={Clock}>
-                          <select
-                            name="duration"
-                            value={formData.duration}
-                            onChange={handleInput}
-                            className={inputCls}
-                          >
-                            <option value="1">1 hour</option>
-                            <option value="2">2 hours</option>
-                            <option value="3">3 hours</option>
-                            <option value="4">Half Day</option>
-                            <option value="8">Full Day</option>
-                          </select>
-                        </Field>
-                      </div>
-                    )}
-
                     <NavRow
                       onBack={() => setStep(1)}
                       onNext={() => setStep(3)}
@@ -552,7 +548,7 @@ export default function ReservationPage() {
                     exit={{ opacity: 0, x: -16 }}
                     transition={{ duration: 0.25 }}
                   >
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                    <h2 className="text-2xl text-center font-bold text-gray-900 mb-6">
                       Your Details
                     </h2>
 
@@ -632,12 +628,9 @@ export default function ReservationPage() {
                     exit={{ opacity: 0, x: -16 }}
                     transition={{ duration: 0.25 }}
                   >
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    <h2 className="text-2xl text-center font-bold text-gray-900 mb-2">
                       Payment
                     </h2>
-                    <p className="text-gray-600 mb-6">
-                      Complete your reservation by making a payment
-                    </p>
 
                     {/* Bank details */}
                     <div className="bg-linear-to-br from-[#EEF2FB] to-[#C5D2EC]/30 border border-[#C5D2EC] rounded-2xl p-7 mb-8 shadow-sm">
@@ -673,11 +666,10 @@ export default function ReservationPage() {
                               key={m.id}
                               type="button"
                               onClick={() => setFormData((p) => ({ ...p, paymentMethod: m.id }))}
-                              className={`relative w-full px-6 py-5 rounded-2xl border-2 text-left transition-all duration-300 group overflow-hidden ${
-                                active
-                                  ? "border-[#1B3A8C] bg-linear-to-r from-[#EEF2FB] to-[#C5D2EC]/20 shadow-md shadow-[#1B3A8C]/10"
-                                  : "border-[#E0DBD4] bg-white hover:border-[#1B3A8C] hover:shadow-sm"
-                              }`}
+                              className={`relative w-full px-6 py-5 rounded-2xl border-2 text-left transition-all duration-300 group overflow-hidden ${active
+                                ? "border-[#1B3A8C] bg-linear-to-r from-[#EEF2FB] to-[#C5D2EC]/20 shadow-md shadow-[#1B3A8C]/10"
+                                : "border-[#E0DBD4] bg-white hover:border-[#1B3A8C] hover:shadow-sm"
+                                }`}
                             >
                               {active && (
                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#1B3A8C]" />
@@ -702,11 +694,10 @@ export default function ReservationPage() {
                       </p>
                       <label
                         htmlFor="payment-proof"
-                        className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 group ${
-                          formData.paymentProof
-                            ? "border-[#2E7D4F] bg-linear-to-br from-[#F0FAF3] to-[#E8F5EC] shadow-md shadow-[#2E7D4F]/10"
-                            : "border-[#DDD9D2] bg-[#F7F4EF] hover:border-[#1B3A8C] hover:bg-white hover:shadow-md"
-                        }`}
+                        className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 group ${formData.paymentProof
+                          ? "border-[#2E7D4F] bg-linear-to-br from-[#F0FAF3] to-[#E8F5EC] shadow-md shadow-[#2E7D4F]/10"
+                          : "border-[#DDD9D2] bg-[#F7F4EF] hover:border-[#1B3A8C] hover:bg-white hover:shadow-md"
+                          }`}
                       >
                         {formData.paymentProof ? (
                           <div className="flex items-center gap-3 text-[#2E7D4F]">
