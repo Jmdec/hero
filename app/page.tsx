@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import Image from 'next/image'
-import { useState, useEffect } from 'react'
+import Image from "next/image";
+import { useState, useEffect } from "react";
 import {
   MapPin,
   Building2,
@@ -12,7 +12,6 @@ import {
   ArrowRight,
   CheckCircle2,
   Play,
-  Star,
 } from "lucide-react";
 import { useLanguage } from "../components/LanguageProvider";
 
@@ -22,13 +21,23 @@ export default function Home() {
 
   const heroSlides = [
     {
-      image: "/tower6789.jpg",
+      image:
+        "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80",
       location: "Tower 6789, Ayala Avenue, Makati City",
     },
     {
-      image: "/insular_life.jpg",
+      image:
+        "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1600&q=80",
       location: "Insular Life Building, Ayala Avenue, Makati City",
     },
+  ];
+
+  const serviceImages = [
+    "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80", // private office
+    "https://images.unsplash.com/photo-1564069114553-7215e1ff1890?w=800&q=80", // shared office
+    "https://images.unsplash.com/photo-1543269664-7eef42226a21?w=800&q=80", // coworking
+    "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=80", // virtual office
+    "https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=800&q=80", // conference room
   ];
 
   useEffect(() => {
@@ -37,14 +46,6 @@ export default function Home() {
     }, 5000);
     return () => clearInterval(timer);
   }, []);
-
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
-  };
 
   const features = [
     {
@@ -73,29 +74,30 @@ export default function Home() {
     {
       title: t("home.services.privateOffices") as string,
       description: t("home.services.privateOfficesDesc") as string,
-      image: "/office-1.jpg",
+      image: serviceImages[0],
     },
     {
       title: t("home.services.sharedOffices") as string,
       description: t("home.services.sharedOfficesDesc") as string,
-      image: "/shared-office.jpg",
+      image: serviceImages[1],
     },
     {
       title: t("home.services.coworking") as string,
       description: t("home.services.coworkingDesc") as string,
-      image: "/coworking.jpg",
+      image: serviceImages[2],
     },
     {
       title: t("home.services.virtualOffices") as string,
       description: t("home.services.virtualOfficesDesc") as string,
-      image: "/virtual-office.jpg",
+      image: serviceImages[3],
     },
     {
       title: t("home.services.conferenceRooms") as string,
       description: t("home.services.conferenceRoomsDesc") as string,
-      image: "/conference.jpg",
+      image: serviceImages[4],
     },
   ];
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -112,6 +114,7 @@ export default function Home() {
                 currentSlide === index ? "opacity-100" : "opacity-0"
               }`}
               priority={index === 0}
+              unoptimized
             />
           ))}
           <div className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/60 to-black/80" />
@@ -126,7 +129,9 @@ export default function Home() {
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
               {t("home.hero.title") as string}{" "}
-              <span className="text-[#8FA8D6]">{t("home.hero.highlight") as string}</span>
+              <span className="text-[#8FA8D6]">
+                {t("home.hero.highlight") as string}
+              </span>
             </h1>
             <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-xl">
               {t("home.hero.description") as string}
@@ -150,15 +155,21 @@ export default function Home() {
             <div className="flex items-center gap-8 mt-10 pt-10 border-t border-white/10">
               <div>
                 <div className="text-3xl font-bold">15+</div>
-                <div className="text-sm text-gray-400">{t("home.hero.yearsExperience") as string}</div>
+                <div className="text-sm text-gray-400">
+                  {t("home.hero.yearsExperience") as string}
+                </div>
               </div>
               <div>
                 <div className="text-3xl font-bold">500+</div>
-                <div className="text-sm text-gray-400">{t("home.hero.companiesServed") as string}</div>
+                <div className="text-sm text-gray-400">
+                  {t("home.hero.companiesServed") as string}
+                </div>
               </div>
               <div>
                 <div className="text-3xl font-bold">98%</div>
-                <div className="text-sm text-gray-400">{t("home.hero.satisfactionRate") as string}</div>
+                <div className="text-sm text-gray-400">
+                  {t("home.hero.satisfactionRate") as string}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -240,22 +251,26 @@ export default function Home() {
                 viewport={{ once: true }}
                 className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
               >
-                <div className="aspect-video bg-gradient-to-br from-[#C5D2EC]/50 to-[#8FA8D6]/30 flex items-center justify-center">
-                  <Building2 className="w-16 h-16 text-[#1B3A8C]/30" />
+                <div className="relative aspect-video overflow-hidden">
+                  <Image
+                    src={service.image}
+                    alt={service.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    unoptimized
+                  />
                 </div>
                 <div className="p-6">
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
                     {service.title}
                   </h3>
                   <p className="text-gray-600 mb-4">{service.description}</p>
-                  <div className="flex items-center justify-between">
-                    <Link
-                      href="/reservation"
-                      className="text-sm font-medium text-gray-900 hover:text-[#1B3A8C] transition-colors"
-                    >
-                      Reserve Now →
-                    </Link>
-                  </div>
+                  <Link
+                    href="/reservation"
+                    className="text-sm font-medium text-gray-900 hover:text-[#1B3A8C] transition-colors"
+                  >
+                    {t("home.services.reserveNow") as string}
+                  </Link>
                 </div>
               </motion.div>
             ))}
@@ -275,17 +290,25 @@ export default function Home() {
                 {t("home.benefits.subtitle") as string}
               </p>
               <ul className="space-y-4">
-                {(t("home.benefits.benefitsList") as unknown as string[]).map((benefit) => (
-                  <li key={benefit} className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-[#1B3A8C] flex-shrink-0" />
-                    <span className="text-gray-700">{benefit}</span>
-                  </li>
-                ))}
+                {(t("home.benefits.benefitsList") as unknown as string[]).map(
+                  (benefit) => (
+                    <li key={benefit} className="flex items-center gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-[#1B3A8C] flex-shrink-0" />
+                      <span className="text-gray-700">{benefit}</span>
+                    </li>
+                  ),
+                )}
               </ul>
             </div>
             <div className="relative">
-              <div className="aspect-square bg-gradient-to-br from-[#C5D2EC]/30 to-[#8FA8D6]/20 rounded-2xl flex items-center justify-center">
-                <Building2 className="w-48 h-48 text-[#1B3A8C]/10" />
+              <div className="relative aspect-square rounded-2xl overflow-hidden">
+                <Image
+                  src="https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=800&q=80"
+                  alt="Office interior"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
               </div>
               <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl">
                 <div className="flex items-center gap-4">
@@ -293,8 +316,12 @@ export default function Home() {
                     <CheckCircle2 className="w-6 h-6 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-900">{t("home.benefits.readyToUse") as string}</div>
-                    <div className="text-sm text-gray-600">{t("home.benefits.moveInImmediately") as string}</div>
+                    <div className="font-semibold text-gray-900">
+                      {t("home.benefits.readyToUse") as string}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {t("home.benefits.moveInImmediately") as string}
+                    </div>
                   </div>
                 </div>
               </div>
