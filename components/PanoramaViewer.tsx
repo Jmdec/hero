@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Expand,
   RotateCcw,
   Eye,
 } from "lucide-react"
@@ -56,6 +55,10 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
   const [showShareMenu, setShowShareMenu] = useState(false)
 
   const visibleThumbnails = 5
+  const carouselRef = useRef<HTMLDivElement>(null)
+  const ITEM_WIDTH = 172
+
+  const maxIndex = Math.max(0, rooms.length - visibleThumbnails)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -63,9 +66,6 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     const container = containerRef.current
     const width = container.clientWidth
     const height = container.clientHeight
-
-    console.log("[v0] Initializing Three.js panorama viewer", { width, height })
-    console.log("[v0] Loading panorama:", selectedRoom.panoramaUrl)
 
     const scene = new THREE.Scene()
     sceneRef.current = scene
@@ -90,17 +90,12 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
 
     const texture = textureLoader.load(
       selectedRoom.panoramaUrl,
-      (loadedTexture) => {
-        console.log("[v0] Texture loaded successfully:", selectedRoom.panoramaUrl)
-        console.log("[v0] Texture size:", loadedTexture.image?.width, "x", loadedTexture.image?.height)
+      () => {
         setIsLoading(false)
         setLoadError(null)
       },
-      (progress) => {
-        console.log("[v0] Loading progress:", progress)
-      },
-      (error) => {
-        console.error("[v0] Texture load error:", error)
+      undefined,
+      () => {
         setIsLoading(false)
         setLoadError("Failed to load panorama image")
       },
@@ -110,10 +105,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     texture.minFilter = THREE.LinearFilter
     texture.magFilter = THREE.LinearFilter
 
-    const material = new THREE.MeshBasicMaterial({
-      map: texture,
-    })
-
+    const material = new THREE.MeshBasicMaterial({ map: texture })
     const sphere = new THREE.Mesh(geometry, material)
     sphereRef.current = sphere
     scene.add(sphere)
@@ -121,12 +113,11 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     const updateCameraTarget = () => {
       const phi = THREE.MathUtils.degToRad(90 - lat.current)
       const theta = THREE.MathUtils.degToRad(lon.current)
-
-      const x = 500 * Math.sin(phi) * Math.cos(theta)
-      const y = 500 * Math.cos(phi)
-      const z = 500 * Math.sin(phi) * Math.sin(theta)
-
-      camera.lookAt(x, y, z)
+      camera.lookAt(
+        500 * Math.sin(phi) * Math.cos(theta),
+        500 * Math.cos(phi),
+        500 * Math.sin(phi) * Math.sin(theta),
+      )
     }
 
     const onPointerDown = (event: PointerEvent) => {
@@ -138,15 +129,9 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
 
     const onPointerMove = (event: PointerEvent) => {
       if (!isDragging.current) return
-
-      const deltaX = event.clientX - previousMousePosition.current.x
-      const deltaY = event.clientY - previousMousePosition.current.y
-
-      lon.current -= deltaX * 0.2
-      lat.current += deltaY * 0.2
-
+      lon.current -= (event.clientX - previousMousePosition.current.x) * 0.2
+      lat.current += (event.clientY - previousMousePosition.current.y) * 0.2
       lat.current = Math.max(-85, Math.min(85, lat.current))
-
       previousMousePosition.current = { x: event.clientX, y: event.clientY }
     }
 
@@ -157,41 +142,27 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault()
-      const newFov = camera.fov + event.deltaY * 0.05
-      camera.fov = THREE.MathUtils.clamp(newFov, 30, 100)
+      camera.fov = THREE.MathUtils.clamp(camera.fov + event.deltaY * 0.05, 30, 100)
       camera.updateProjectionMatrix()
     }
 
     const onTouchStart = (event: TouchEvent) => {
       if (event.touches.length === 1) {
         isDragging.current = true
-        previousMousePosition.current = {
-          x: event.touches[0].clientX,
-          y: event.touches[0].clientY,
-        }
+        previousMousePosition.current = { x: event.touches[0].clientX, y: event.touches[0].clientY }
       }
     }
 
     const onTouchMove = (event: TouchEvent) => {
       if (!isDragging.current || event.touches.length !== 1) return
       event.preventDefault()
-
-      const deltaX = event.touches[0].clientX - previousMousePosition.current.x
-      const deltaY = event.touches[0].clientY - previousMousePosition.current.y
-
-      lon.current -= deltaX * 0.2
-      lat.current += deltaY * 0.2
+      lon.current -= (event.touches[0].clientX - previousMousePosition.current.x) * 0.2
+      lat.current += (event.touches[0].clientY - previousMousePosition.current.y) * 0.2
       lat.current = Math.max(-85, Math.min(85, lat.current))
-
-      previousMousePosition.current = {
-        x: event.touches[0].clientX,
-        y: event.touches[0].clientY,
-      }
+      previousMousePosition.current = { x: event.touches[0].clientX, y: event.touches[0].clientY }
     }
 
-    const onTouchEnd = () => {
-      isDragging.current = false
-    }
+    const onTouchEnd = () => { isDragging.current = false }
 
     container.addEventListener("pointerdown", onPointerDown)
     container.addEventListener("pointermove", onPointerMove)
@@ -204,12 +175,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
 
     const animate = () => {
       animationFrameRef.current = requestAnimationFrame(animate)
-      
-      // Auto-rotation when not dragging
-      if (isAutoRotating && !isDragging.current) {
-        lon.current += 0.1
-      }
-      
+      if (isAutoRotating && !isDragging.current) lon.current += 0.1
       updateCameraTarget()
       renderer.render(scene, camera)
     }
@@ -225,7 +191,6 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     window.addEventListener("resize", handleResize)
 
     return () => {
-      console.log("[v0] Cleaning up Three.js")
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
       container.removeEventListener("pointerdown", onPointerDown)
       container.removeEventListener("pointermove", onPointerMove)
@@ -240,9 +205,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
       geometry.dispose()
       material.dispose()
       texture.dispose()
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement)
-      }
+      if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement)
     }
   }, [selectedRoom.panoramaUrl, isAutoRotating])
 
@@ -263,13 +226,8 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     }
   }
 
-  const handleCarouselPrev = () => {
-    setCarouselIndex((prev) => Math.max(0, prev - 1))
-  }
-
-  const handleCarouselNext = () => {
-    setCarouselIndex((prev) => Math.min(rooms.length - visibleThumbnails, prev + 1))
-  }
+  const handleCarouselNext = () => setCarouselIndex((prev) => Math.min(prev + 1, maxIndex))
+  const handleCarouselPrev = () => setCarouselIndex((prev) => Math.max(prev - 1, 0))
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -283,235 +241,197 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
 
   const handleShare = async () => {
     const url = window.location.href
-    
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: `${selectedRoom.name} - 360° Virtual Tour`,
-          text: `Check out this 360° view of ${selectedRoom.name}`,
-          url: url,
-        })
-        console.log('Share successful')
-      } catch (err) {
-        console.log('Share cancelled:', err)
-        // If share fails, copy to clipboard
-        try {
-          await navigator.clipboard.writeText(url)
-          setShowShareMenu(true)
-          setTimeout(() => setShowShareMenu(false), 2000)
-        } catch (clipErr) {
-          console.error('Clipboard failed:', clipErr)
-          alert('Link: ' + url)
-        }
+        await navigator.share({ title: `${selectedRoom.name} - 360° Virtual Tour`, url })
+      } catch {
+        try { await navigator.clipboard.writeText(url); setShowShareMenu(true); setTimeout(() => setShowShareMenu(false), 2000) } catch { alert("Link: " + url) }
       }
     } else {
-      // Fallback: Copy to clipboard
-      try {
-        await navigator.clipboard.writeText(url)
-        setShowShareMenu(true)
-        setTimeout(() => setShowShareMenu(false), 2000)
-      } catch (err) {
-        console.error('Clipboard not available:', err)
-        // Final fallback: show alert with URL
-        alert('Copy this link to share: ' + url)
-      }
+      try { await navigator.clipboard.writeText(url); setShowShareMenu(true); setTimeout(() => setShowShareMenu(false), 2000) } catch { alert("Copy this link to share: " + url) }
     }
   }
 
-  const toggleInfo = () => {
-    console.log('Toggle info clicked, current state:', showInfo)
-    setShowInfo(!showInfo)
-  }
-
   return (
-    <div className={`relative w-full ${isEmbedded ? "h-[600px]" : "h-screen"} bg-[#1a0a10] overflow-hidden`}>
+    <div className={`relative w-full ${isEmbedded ? "h-[560px]" : "h-screen"} bg-[#0f172a] overflow-hidden rounded-2xl`}>
       <div ref={containerRef} className="absolute inset-0 cursor-grab" style={{ touchAction: "none" }} />
 
+      {/* Loading overlay */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-30">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-30">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-12 h-12 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
-            <p className="text-white text-sm">Loading 360° View...</p>
+            <div className="w-10 h-10 border-[3px] border-[#1B3A8C] border-t-transparent rounded-full animate-spin" />
+            <p className="text-white/70 text-sm tracking-wide">Loading 360° view…</p>
           </div>
         </div>
       )}
 
+      {/* Error overlay */}
       {loadError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-30">
-          <div className="flex flex-col items-center gap-3 text-center px-4">
-            <p className="text-red-400 text-lg">Failed to load panorama</p>
-            <p className="text-white/60 text-sm">Image: {selectedRoom.panoramaUrl}</p>
-            <p className="text-white/40 text-xs mt-2">
-              Please ensure panorama images are uploaded to the public folder
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-30">
+          <div className="flex flex-col items-center gap-2 text-center px-6">
+            <p className="text-white/80">Could not load this panorama</p>
+            <p className="text-white/40 text-xs">{selectedRoom.panoramaUrl}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Room name badge — top left */}
+      <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/50 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-full border border-white/10">
+        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+        {selectedRoom.name}
+      </div>
+
+      {/* Info panel */}
+      {showInfo && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-[#0f172a]/95 border border-white/10 rounded-xl shadow-2xl w-72 backdrop-blur-sm">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+            <div className="flex items-center gap-2 text-white text-sm font-medium">
+              <Eye className="w-4 h-4 text-cyan-400" />
+              Room info
+            </div>
+            <button onClick={() => setShowInfo(false)} className="text-white/40 hover:text-white transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="p-4 space-y-3">
+            <div>
+              <p className="text-white font-medium mb-0.5">{selectedRoom.name}</p>
+              <p className="text-white/50 text-xs">360° interactive view</p>
+            </div>
+            <ul className="space-y-1.5">
+              {["Drag to look around", "Scroll to zoom in/out", "Click thumbnails to switch rooms"].map((tip) => (
+                <li key={tip} className="flex items-center gap-2 text-xs text-white/70">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0" />
+                  {tip}
+                </li>
+              ))}
+            </ul>
+            <p className="text-white/30 text-xs pt-2 border-t border-white/10">
+              Auto-rotation is {isAutoRotating ? "active" : "paused"}
             </p>
           </div>
         </div>
       )}
 
-      
-      {showInfo && (
-        <div className="absolute top-4 right-20 z-20 bg-[#1a1a1a]/95 rounded-lg overflow-hidden shadow-2xl w-80 backdrop-blur-sm animate-in fade-in slide-in-from-right duration-200">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-            <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-cyan-400" />
-              <span className="text-white text-sm font-medium">Room Information</span>
-            </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="w-7 h-7 text-white/60 hover:text-white hover:bg-white/10"
-              onClick={() => setShowInfo(false)}
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <div className="p-4 space-y-3">
-            <div>
-              <h3 className="text-white font-semibold text-lg mb-1">{selectedRoom.name}</h3>
-              <p className="text-white/60 text-sm">Experience this room in stunning 360° view</p>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
-                <span className="text-white/80">Drag to look around</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
-                <span className="text-white/80">Scroll to zoom in/out</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
-                <span className="text-white/80">Click thumbnails to switch rooms</span>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-white/10">
-              <p className="text-white/40 text-xs">
-                Auto-rotation is {isAutoRotating ? 'active' : 'paused'}. Start dragging to pause, click reset to resume.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="absolute top-1/2 right-4 -translate-y-1/2 z-20 flex flex-col gap-2">
-        <Button 
-          size="icon" 
-          className={`w-10 h-10 ${showInfo ? 'bg-cyan-500 hover:bg-cyan-600' : 'bg-black/60 hover:bg-black/80'} text-white rounded-lg backdrop-blur-sm transition-all`}
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            console.log('Eye button clicked')
-            toggleInfo()
-          }}
-          title="Room Information"
+      {/* Right-side controls */}
+      <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+        <Button
+          size="icon"
+          className={`w-9 h-9 rounded-lg backdrop-blur-sm border border-white/10 text-white transition-all ${showInfo ? "bg-[#1B3A8C]" : "bg-black/50 hover:bg-black/70"}`}
+          onClick={() => setShowInfo(!showInfo)}
+          title="Room info"
         >
-          <Eye className="w-5 h-5" />
+          <Eye className="w-4 h-4" />
         </Button>
-        
+
         <div className="relative">
-          <Button 
-            size="icon" 
-            className="w-10 h-10 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-sm"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              console.log('Share button clicked')
-              handleShare()
-            }}
-            title="Share Tour"
+          <Button
+            size="icon"
+            className="w-9 h-9 rounded-lg bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-white/10 text-white"
+            onClick={handleShare}
+            title="Share"
           >
-            <Share2 className="w-5 h-5" />
+            <Share2 className="w-4 h-4" />
           </Button>
           {showShareMenu && (
-            <div className="absolute right-full mr-2 top-0 bg-green-500 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap shadow-lg">
-              ✓ Link copied!
+            <div className="absolute right-full mr-2 top-0 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs whitespace-nowrap shadow-lg">
+              ✓ Link copied
             </div>
           )}
         </div>
-        
+
         <Button
           size="icon"
-          className="w-10 h-10 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-sm"
+          className="w-9 h-9 rounded-lg bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-white/10 text-white"
           onClick={toggleFullscreen}
-          title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
         >
-          {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
         </Button>
-        
+
         <Button
           size="icon"
-          className="w-10 h-10 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-sm"
+          className="w-9 h-9 rounded-lg bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-white/10 text-white"
           onClick={handleResetView}
-          title="Reset View"
+          title="Reset view"
         >
-          <RotateCcw className="w-5 h-5" />
+          <RotateCcw className="w-4 h-4" />
         </Button>
       </div>
 
+      {/* Carousel toggle */}
       <button
         onClick={() => setShowCarousel(!showCarousel)}
-        className="absolute left-1/2 -translate-x-1/2 z-20 bg-black/60 hover:bg-black/80 text-white px-4 py-1 rounded-full backdrop-blur-sm transition-all"
-        style={{ bottom: showCarousel ? "140px" : "20px" }}
+        className="absolute left-1/2 -translate-x-1/2 z-20 bg-black/50 hover:bg-black/70 text-white px-4 py-1 rounded-full backdrop-blur-sm border border-white/10 transition-all"
+        style={{ bottom: showCarousel ? "132px" : "16px" }}
       >
-        {showCarousel ? <ChevronDown className="w-5 h-5" /> : <ChevronUp className="w-5 h-5" />}
+        {showCarousel ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
       </button>
 
+      {/* Thumbnail carousel */}
       {showCarousel && (
-        <div className="absolute bottom-0 left-0 right-0 z-20 bg-linear-to-t from-black/80 to-transparent pt-8 pb-4">
-          <div className="flex items-center justify-center gap-2 px-4">
+        <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 via-black/30 to-transparent pt-10 pb-4 px-4">
+          <div className="relative flex items-center">
             <Button
               size="icon"
-              className="w-10 h-10 bg-black/60 hover:bg-black/80 text-white rounded-full backdrop-blur-sm shrink-0"
+              variant="ghost"
               onClick={handleCarouselPrev}
               disabled={carouselIndex === 0}
+              className="absolute left-0 z-10 w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black/80 disabled:opacity-20 flex-shrink-0"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4" />
             </Button>
 
-            <div className="flex gap-3 overflow-hidden">
-              {rooms.slice(carouselIndex, carouselIndex + visibleThumbnails).map((room) => (
-                <button
-                  key={room.id}
-                  onClick={() => handleRoomChange(room)}
-                  className={`relative shrink-0 rounded-xl overflow-hidden transition-all ${
-                    selectedRoom.id === room.id
-                      ? "ring-2 ring-cyan-400 ring-offset-2 ring-offset-black"
-                      : "opacity-80 hover:opacity-100"
-                  }`}
-                >
-                  <div className="relative w-32 h-20">
-                    <Image src={room.thumbnail || "/placeholder.svg"} alt={room.name} fill className="object-cover" />
-                    <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
-                  </div>
-                  <div className="absolute top-1 left-1 right-1">
-                    <span className="text-white text-xs font-medium drop-shadow-lg line-clamp-1">{room.name}</span>
-                  </div>
-                </button>
-              ))}
+            <div className="overflow-hidden mx-10">
+              <div
+                ref={carouselRef}
+                className="flex gap-2.5 transition-transform duration-500 ease-in-out"
+                style={{ transform: `translateX(-${carouselIndex * ITEM_WIDTH}px)` }}
+              >
+                {rooms.map((room) => (
+                  <button
+                    key={room.id}
+                    onClick={() => handleRoomChange(room)}
+                    className={`relative w-40 flex-shrink-0 overflow-hidden rounded-xl transition-all duration-200 ${
+                      selectedRoom.id === room.id
+                        ? "ring-2 ring-cyan-400 scale-[1.03]"
+                        : "opacity-60 hover:opacity-90 hover:scale-[1.02]"
+                    }`}
+                  >
+                    <div className="relative h-[72px] w-full">
+                      <Image src={room.thumbnail} alt={room.name} fill className="object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    </div>
+                    <span className="absolute bottom-1.5 left-2 right-2 text-[11px] font-medium text-white line-clamp-1 text-left">
+                      {room.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <Button
               size="icon"
-              className="w-10 h-10 bg-black/60 hover:bg-black/80 text-white rounded-full backdrop-blur-sm shrink-0"
+              variant="ghost"
               onClick={handleCarouselNext}
-              disabled={carouselIndex >= rooms.length - visibleThumbnails}
+              disabled={carouselIndex === maxIndex}
+              className="absolute right-0 z-10 w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black/80 disabled:opacity-20 flex-shrink-0"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
         </div>
       )}
 
+      {/* Close button (modal mode) */}
       {onClose && (
         <Button
           size="icon"
-          className="absolute top-4 right-4 z-30 w-10 h-10 bg-black/60 hover:bg-black/80 text-white rounded-full backdrop-blur-sm"
+          className="absolute top-4 right-4 z-30 w-9 h-9 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm border border-white/10"
           onClick={onClose}
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </Button>
       )}
     </div>

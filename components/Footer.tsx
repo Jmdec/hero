@@ -1,14 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image'
-import { Globe, Camera, Mail, MapPin, Phone, MessageCircle } from 'lucide-react';
-
-const socialLinks = [
-  { href: 'https://facebook.com/herophilippines', icon: Globe, label: 'Facebook' },
-  { href: 'https://instagram.com/herophilippines', icon: Camera, label: 'Instagram' },
-  { href: 'https://tiktok.com/@herophilippines', icon: MessageCircle, label: 'TikTok' },
-];
+import { Mail, MapPin, Phone, } from 'lucide-react';
 
 export default function Footer() {
   const quickLinks = [
@@ -43,21 +36,6 @@ export default function Footer() {
             <p className="text-sm text-gray-400 leading-relaxed">
               Your gateway to professional workspace solutions in Makati.
             </p>
-            {/* Social Media Links */}
-            <div className="flex items-center gap-3 pt-2">
-              {socialLinks.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-[#1B3A8C] transition-colors group"
-                  aria-label={social.label}
-                >
-                  <social.icon className="w-5 h-5 group-hover:text-white transition-colors" />
-                </a>
-              ))}
-            </div>
           </div>
 
           {/* Quick Links */}
@@ -100,15 +78,23 @@ export default function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-[#5C7ABF] shrink-0 mt-0.5" />
-                <span className="text-sm">
-                  23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines
-                </span>
+                <div className="text-sm leading-6">
+                  <div>23F TOWER6789</div>
+                  <div>6789 Ayala Avenue</div>
+                  <div>Makati City 1209</div>
+                  <div>Metro Manila, Philippines</div>
+                </div>
               </li>
+
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-[#5C7ABF] shrink-0 mt-0.5" />
-                <span className="text-sm">
-                  11F Insular Life Building, 6781 Ayala Avenue Corner Paseo de Roxas Ave., Makati City, Metro Manila, Philippines.
-                </span>
+                <div className="text-sm leading-6">
+                  <div>11F Insular Life Building</div>
+                  <div>6781 Ayala Avenue</div>
+                  <div>Corner Paseo de Roxas</div>
+                  <div>Makati City</div>
+                  <div>Metro Manila, Philippines</div>
+                </div>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="w-5 h-5 text-[#5C7ABF]" />
@@ -139,7 +125,7 @@ export default function Footer() {
               <p className="text-sm text-gray-500">
                 &copy; {new Date().getFullYear()} HERO Serviced Office. All rights reserved.
               </p>
-              <span className="text-sm text-gray-500">Powered by&nbsp; 
+              <span className="text-sm text-gray-500">Powered by&nbsp;
                 <a href="https://www.infinitechphil.com/" className="hover:text-[#5C7ABF] transition-colors underline">Infinitech Advertising Corporation</a>
               </span>
             </div>

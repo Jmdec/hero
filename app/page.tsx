@@ -248,7 +248,7 @@ export default function Home() {
                     className="object-cover group-hover:scale-105 transition-transform duration-500 bg-opacity-50 group-hover:opacity-100"
                     unoptimized
                   />
-                  <div className="absolute inset-0 bg-gray-400/40" />
+                  <div className="absolute inset-0 bg-gray-400/20" />
                 </div>
                 <div className="p-6">
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">

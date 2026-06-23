@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Mail,
@@ -14,32 +15,42 @@ import {
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface LoginResponse {
+  user: any;
+  token: string;
+  message?: string;
+  error?: string;
+}
+
 export default function LoginPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const { login } = useAuth();
+
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     rememberMe: false,
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!formData.email || !formData.password) {
-      showToast('Please fill in all fields', 'error');
+      showToast("Please fill in all fields", "error");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: formData.email,
@@ -47,26 +58,30 @@ export default function LoginPage() {
         }),
       });
 
-      const data = await response.json();
+      const data: LoginResponse = await response.json();
 
-      if (response.ok) {
-        login(data.user, data.token);
-        showToast('Login successful!', 'success');
-        window.location.href = '/';
-      } else {
-        if (data.error === 'email_not_verified') {
-          showToast(data.message, 'error');
+      if (!response.ok) {
+        if (data.error === "email_not_verified") {
+          showToast(data.message || "Email not verified", "error");
         } else {
-          showToast(data.message || 'Login failed', 'error');
+          showToast(data.message || "Login failed", "error");
         }
+
+        return;
       }
-    } catch (error) {
-      showToast('An error occurred. Please try again.', 'error');
+
+      login(data.user, data.token);
+
+      showToast("Login successful!", "success");
+
+      router.push("/admin");
+    } catch {
+      showToast("An error occurred. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-[#F5F5F3] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
       {/* Back to Home Button */}
@@ -114,7 +129,7 @@ export default function LoginPage() {
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                   placeholder="you@company.com"
                 />
               </div>
@@ -137,7 +152,7 @@ export default function LoginPage() {
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                  className="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                   placeholder="Enter your password"
                 />
                 <button

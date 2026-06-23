@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
   Mail,
@@ -12,6 +12,7 @@ import {
   Globe,
   Camera,
   MessageCircle,
+  ChevronDown,
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
@@ -31,25 +32,10 @@ export default function ContactPage() {
       action: { label: "Send Email", href: "mailto:sales@heroph.net" },
     },
     {
-      icon: MapPin,
-      title: "Address",
-      details: ["Tower 6789, Ayala Avenue", "Makati City, Philippines"],
-      action: {
-        label: "Get Directions",
-        href: "https://goo.gl/maps/location",
-      },
-    },
-    {
       icon: Clock,
       title: "Business Hours",
       details: ["Monday - Friday: 9:00 AM - 6:00 PM"],
     },
-  ];
-
-  const socialLinks = [
-    { icon: Globe, label: "Facebook", href: "https://facebook.com/herophilippines", color: "bg-blue-600" },
-    { icon: Camera, label: "Instagram", href: "https://instagram.com/herophilippines", color: "bg-linear-to-r from-purple-500 to-pink-500" },
-    { icon: MessageCircle, label: "TikTok", href: "https://tiktok.com/@herophilippines", color: "bg-black" },
   ];
 
   const inquiryTypes = [
@@ -110,24 +96,201 @@ export default function ContactPage() {
     }));
   };
 
-  const faqData = [
+  const faqTabs = [
     {
-      q: "How quickly can I move in?",
-      a: "You can move in immediately after completing the reservation and payment process, usually within 24 hours.",
+      id: "service",
+      label: "About HERO Serviced Office",
+      faqs: [
+        {
+          q: "What are the advantages of serviced offices?",
+          a: "HERO Serviced Office is equipped with the facilities and services necessary to start a business, so the initial cost of opening an office can be reduced and business can be started immediately. You can also flexibly choose the size of the room and the period of use according to your purpose.",
+        },
+        {
+          q: "Where is the office located?",
+          a: "HERO Serviced Office is conveniently located near Ayala Triangle Park along Ayala Avenue, the main street in Makati City, Metro Manila, Philippines.",
+        },
+        {
+          q: "What is the surrounding environment like?",
+          a: "Our offices are located in Makati City — the economic center of the Philippines, often called the Wall Street of the Philippines. Many Japanese and foreign companies have offices nearby. Access from the airport takes about 20 minutes, and there are restaurants from various countries and large shopping malls in the area.",
+        },
+        {
+          q: "Do you have Japanese-speaking staff?",
+          a: "Yes. Japanese expatriates and staff who can speak Japanese are stationed at our offices.",
+        },
+        {
+          q: "Can a serviced office be used as a business registration (SEC) address?",
+          a: "Yes, it is possible. If you need address registration for corporate registration (SEC registration), please let us know and we will provide the necessary documents.",
+        },
+        {
+          q: "What is the contract period?",
+          a: "The contract period can start from 1 month. The contract form is a service use contract.",
+        },
+        {
+          q: "What is the smoking policy?",
+          a: "Smoking is prohibited in all office buildings.",
+        },
+      ],
     },
     {
-      q: "Do you offer short-term leases?",
-      a: "Yes, we offer flexible lease terms starting from 1 month for serviced offices.",
+      id: "payment",
+      label: "Contract & Payment",
+      faqs: [
+        {
+          q: "What documents are required for a service office contract?",
+          a: "A review is required before signing. For corporate contracts: examination application form, SEC registration certificate (or Japan company registration for pre-establishment), and a copy of the representative's passport. For personal contracts: examination application form, business description, and photo ID of all users.",
+        },
+        {
+          q: "What currency is used for payment?",
+          a: "Payment is made in Philippine Pesos (PHP). You can also pay in Japanese Yen or US Dollars.",
+        },
+        {
+          q: "How do I pay monthly?",
+          a: "We send an invoice every month. You can pay by cash, check, or bank transfer — whichever is convenient for you.",
+        },
+        {
+          q: "Will the contract fee be refunded when I move out?",
+          a: "No. The contract fee includes the basic setup fee for the office and is non-refundable.",
+        },
+        {
+          q: "Are electricity and internet usage charged separately?",
+          a: "No. The monthly usage fee (rent and common service fee) includes electricity and internet usage (shared line). There are no additional charges for these.",
+        },
+      ],
     },
     {
-      q: "Is there parking available?",
-      a: "Yes, we have dedicated parking spaces for tenants and visitors at Tower 6789.",
+      id: "rooms",
+      label: "Private Rooms",
+      faqs: [
+        {
+          q: "What types of private rooms are available?",
+          a: "TOWER6789 MAKATI offers rooms for 1 to a maximum of 12 people. INSULAR LIFE BUILDING MAKATI offers rooms for 3 to a maximum of 35 people. Please see each floor layout for details.",
+        },
+        {
+          q: "What facilities are in the private rooms?",
+          a: "All private rooms are equipped with desks, cabinets, and wireless and wired internet access.",
+        },
+        {
+          q: "Are there spaces other than private rooms?",
+          a: "Yes. There is a shared office with booth-type desks for individual use. Shared spaces include a reception area, cafe area, lounge area, and meeting space.",
+        },
+        {
+          q: "What services come with a private room contract?",
+          a: "Private room tenants can use the reception service, cafe area, lounge area, and wireless/wired internet access at no extra charge. Optional services include telephone lines, telephone answering service, parking, cloud services, and multifunction device usage.",
+        },
+      ],
     },
     {
-      q: "Do you provide Japanese-speaking staff?",
-      a: "Yes, we have bilingual staff fluent in Japanese and English to assist you.",
+      id: "facilities",
+      label: "Services & Facilities",
+      faqs: [
+        {
+          q: "Can I get a dedicated phone number?",
+          a: "Yes. A landline phone is available as an optional service for PHP 2,400/month (excl. VAT). Call charges are billed at actual cost.",
+        },
+        {
+          q: "Can staff answer calls on my behalf?",
+          a: "Yes. A telephone answering service is available for PHP 2,000/month (excl. VAT). The phone number acquisition fee is charged separately.",
+        },
+        {
+          q: "Is the office available 24 hours a day?",
+          a: "Yes. You can enter and leave the office anytime, 24 hours a day, 365 days a year. However, staff and receptionists are available Monday–Friday during Philippine business hours, and are closed on weekends, Philippine holidays, and year-end/New Year holidays.",
+        },
+        {
+          q: "Can I use the meeting space?",
+          a: "Yes. Meeting spaces are available in hourly increments for a fee.",
+        },
+        {
+          q: "Is there a rest area with free drinks?",
+          a: "Yes. Coffee and mineral water are available free of charge in the shared cafe and lounge areas. A paid vending machine is also available.",
+        },
+        {
+          q: "Is parking available?",
+          a: "Yes. Please contact us as there are vehicle restrictions and subject to availability.",
+        },
+        {
+          q: "Can I use a printer or scanner?",
+          a: "Yes. You can use a multifunction machine that supports copying, scanning, and printing.",
+        },
+        {
+          q: "Can mail be forwarded for Virtual Office users?",
+          a: "Yes. Mail arriving at the service office can be forwarded to a pre-designated address. A fixed monthly fee plus actual postage costs apply.",
+        },
+      ],
     },
   ];
+
+  function FaqItem({ faq }: { faq: { q: string; a: string } }) {
+    const [open, setOpen] = useState(false);
+    return (
+      <div className="border border-gray-200 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => setOpen(!open)}
+          className="w-full flex items-center justify-between px-6 py-4 text-left bg-white hover:bg-gray-50 transition-colors"
+        >
+          <span className="font-medium text-gray-900 pr-4">{faq.q}</span>
+          <ChevronDown
+            className={`w-5 h-5 text-[#1B3A8C] shrink-0 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+          />
+        </button>
+        <AnimatePresence initial={false}>
+          {open && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="overflow-hidden"
+            >
+              <p className="px-6 py-4 text-md text-gray-600 bg-gray-50 border-t border-gray-200">
+                {faq.a}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  function FaqTabs() {
+    const [activeTab, setActiveTab] = useState("service");
+    const active = faqTabs.find((t) => t.id === activeTab)!;
+
+    return (
+      <div>
+        {/* Tab buttons */}
+        <div className="flex flex-wrap gap-2 mb-8 justify-center">
+          {faqTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${activeTab === tab.id
+                  ? "bg-[#1B3A8C] text-white shadow-md"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* FAQ items */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-3"
+          >
+            {active.faqs.map((faq, i) => (
+              <FaqItem key={i} faq={faq} />
+            ))}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -158,44 +321,6 @@ export default function ContactPage() {
               Reach out to us for inquiries, reservations, or support.
             </p>
           </motion.div>
-        </div>
-      </section>
-
-      {/* Contact Info Cards */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {contactInfo.map((info, index) => (
-              <motion.div
-                key={info.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="p-6 bg-gray-50 rounded-2xl hover:bg-[#C5D2EC]/30 transition-colors"
-              >
-                <div className="w-12 h-12 bg-[#C5D2EC]/50 rounded-xl flex items-center justify-center mb-4">
-                  <info.icon className="w-6 h-6 text-[#1B3A8C]" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  {info.title}
-                </h3>
-                <div className="space-y-1 text-gray-600 text-sm">
-                  {info.details.map((detail, i) => (
-                    <p key={i}>{detail}</p>
-                  ))}
-                </div>
-                {info.action && (
-                  <a
-                    href={info.action.href}
-                    className="inline-block mt-4 text-[#1B3A8C] font-medium text-sm hover:text-[#3B5EA6]"
-                  >
-                    {info.action.label} →
-                  </a>
-                )}
-              </motion.div>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -265,7 +390,7 @@ export default function ContactPage() {
                       value={formData.name}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 text-gray-600 rounded-xl focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent"
                       placeholder="John Doe"
                     />
                   </div>
@@ -283,7 +408,7 @@ export default function ContactPage() {
                       value={formData.email}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 text-gray-600 rounded-xl focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent"
                       placeholder="john@company.com"
                     />
                   </div>
@@ -303,7 +428,7 @@ export default function ContactPage() {
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 text-gray-600 rounded-xl focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent"
                       placeholder="+63 XXX XXX XXXX"
                     />
                   </div>
@@ -320,7 +445,7 @@ export default function ContactPage() {
                       name="company"
                       value={formData.company}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 text-gray-600 rounded-xl focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent"
                       placeholder="Your Company"
                     />
                   </div>
@@ -339,7 +464,7 @@ export default function ContactPage() {
                     value={formData.inquiryType}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 text-gray-600 rounded-xl focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent"
                   >
                     {inquiryTypes.map((type) => (
                       <option key={type.value} value={type.value}>
@@ -363,7 +488,7 @@ export default function ContactPage() {
                     onChange={handleChange}
                     required
                     rows={5}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-3 border border-gray-300 text-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                     placeholder="Tell us about your requirements..."
                   />
                 </div>
@@ -402,28 +527,55 @@ export default function ContactPage() {
               </form>
             </motion.div>
 
-            {/* Map & Social */}
+            {/* Map & Contact Section */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.6 }}
               viewport={{ once: true }}
               className="space-y-8"
             >
-              {/* Map Placeholder */}
-              <div className="bg-gray-200 rounded-2xl overflow-hidden aspect-video">
-                <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#C5D2EC]/50 to-[#8FA8D6]/30">
-                  <div className="text-center">
-                    <MapPin className="w-16 h-16 text-[#1B3A8C]/30 mx-auto mb-4" />
-                    <p className="text-gray-600 font-medium">Tower 6789, Ayala Avenue</p>
-                    <p className="text-gray-500 text-sm">Makati City, Philippines</p>
+              {/* Map Card */}
+              <div className="group relative overflow-hidden rounded-4xl border border-gray-200 bg-white shadow-xl">
+                <div className="absolute inset-0 bg-linear-to-tr from-[#1B3A8C]/10 via-transparent to-[#C5D2EC]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10" />
+
+                <div className="relative aspect-video overflow-hidden">
+                  <Image
+                    src="/hero-map.png"
+                    alt="Map Location"
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-700"
+                    unoptimized
+                  />
+                </div>
+
+                {/* Floating Location Badge */}
+                <div className="absolute bottom-5 left-5 z-20 backdrop-blur-xl bg-white/90 border border-white/40 shadow-lg rounded-2xl px-5 py-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#1B3A8C]/10 flex items-center justify-center">
+                      <MapPin className="w-5 h-5 text-[#1B3A8C]" />
+                    </div>
+
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-gray-500 font-medium">
+                        Office Location
+                      </p>
+
+                      <h3 className="font-semibold text-gray-900">
+                        HERO Serviced Office
+                      </h3>
+
+                      <p className="text-sm text-gray-600">
+                        Makati City, Philippines
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             </motion.div>
           </div>
-        </div>
-      </section>
+        </div >
+      </section >
 
       {/* FAQ Section */}
       <section className="py-20 bg-white">
@@ -433,23 +585,9 @@ export default function ContactPage() {
               Frequently Asked Questions
             </h2>
           </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            {faqData.map((faq, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="p-6 bg-gray-50 rounded-2xl"
-              >
-                <h3 className="font-semibold text-gray-900 mb-2">{faq.q}</h3>
-                <p className="text-gray-600 text-sm">{faq.a}</p>
-              </motion.div>
-            ))}
-          </div>
+          <FaqTabs />
         </div>
       </section>
-    </div>
+    </div >
   );
 }
