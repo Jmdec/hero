@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Bell, LogOut } from "lucide-react";
 
-export default function AdminDashboard() {
+export default function SettingsPage() {
     const router = useRouter();
 
     const handleLogout = () => {

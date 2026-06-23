@@ -6,7 +6,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import LanguageSwitcher from "./LanguageSwitcher";
-import UserProfileDropdown from "./UserProfileDropdown";
+// import UserProfileDropdown from "./UserProfileDropdown";
 import { useAuth } from "@/contexts/AuthContext";
 
 const navLinks = [
