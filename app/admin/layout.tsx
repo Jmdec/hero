@@ -31,11 +31,11 @@ const menuItems = [
             { title: "Blogs", href: "/admin/blogs", icon: FileText },
         ]
     },
-    {
-        section: "General", items: [
-            { title: "Settings", href: "/admin/settings", icon: },
-        ]
-    }
+    // {
+    //     section: "General", items: [
+    //         { title: "Settings", href: "/admin/settings", icon: },
+    //     ]
+    // }
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
