@@ -66,9 +66,9 @@ export default function Home() {
       image: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80",
     },
     {
-      title: "Shared Offices",
-      description: "Collaborative workspaces perfect for startups and remote teams.",
-      image: "https://images.unsplash.com/photo-1564069114553-7215e1ff1890?w=800&q=80",
+      title: "Virtual Offices",
+      description: "Remote office solutions for businesses that need flexibility and scalability.",
+      image: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=80",
     },
     {
       title: "Co-working Spaces",
@@ -76,14 +76,14 @@ export default function Home() {
       image: "https://images.unsplash.com/photo-1543269664-7eef42226a21?w=800&q=80",
     },
     {
-      title: "Virtual Offices",
-      description: "Remote office solutions for businesses that need flexibility and scalability.",
-      image: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=80",
-    },
-    {
-      title: "Conference Rooms",
+      title: "Meeting Rooms",
       description: "Professional meeting spaces equipped with the latest technology.",
       image: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&q=80",
+    },
+    {
+      title: "Event Space",
+      description: "Versatile event spaces ideal for seminars, workshops, networking events, and corporate gatherings.",
+      image: "https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&q=80",
     },
   ];
 
@@ -328,10 +328,10 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/reservation"
+              href="/quotation"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-semibold hover:bg-gray-100 transition-colors"
             >
-              Make a Reservation
+              Get a Quote
             </Link>
             <Link
               href="/contact"

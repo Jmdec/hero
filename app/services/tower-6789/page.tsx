@@ -155,38 +155,49 @@ export default function Tower6789Page() {
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
                 Base Overview
               </h2>
-              <div className="space-y-4">
+
+              <div className="space-y-6">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-[#C5D2EC]/50 rounded-lg flex items-center justify-center shrink-0">
                     <MapPin className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900">Address</p>
-                    <p className="text-gray-600">23rd Floor, Tower 6789</p>
-                    <p className="text-gray-600">6789 Ayala Avenue</p>
-                    <p className="text-gray-600">Makati City, Metro Manila, Philippines</p>
+                    <p className="text-gray-600">
+                      23rd Floor, Tower 6789
+                    </p>
+                    <p className="text-gray-600">
+                      6789 Ayala Avenue, Makati City, Metro Manila, Philippines
+                    </p>
                   </div>
                 </div>
+
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-[#C5D2EC]/50 rounded-lg flex items-center justify-center shrink-0">
                     <Building2 className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Total Rooms</p>
-                    <p className="text-gray-600">49 private rooms in total</p>
+                    <p className="font-semibold text-gray-900">Building Specifications</p>
+                    <p className="text-gray-600">
+                      35-storey PEZA-accredited Class A office tower rising 180 meters above the Makati CBD.
+                    </p>
                   </div>
                 </div>
+
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-[#C5D2EC]/50 rounded-lg flex items-center justify-center shrink-0">
-                    <Users className="w-5 h-5 text-[#1B3A8C]" />
+                    <CheckCircle2 className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Capacity</p>
-                    <p className="text-gray-600">Up to 17 people in private rooms</p>
+                    <p className="font-semibold text-gray-900">Premium Features</p>
+                    <p className="text-gray-600">
+                      LEED Gold certified with energy-efficient systems and modern business facilities.
+                    </p>
                   </div>
                 </div>
               </div>
             </motion.div>
+
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -194,9 +205,16 @@ export default function Tower6789Page() {
               viewport={{ once: true }}
               className="relative"
             >
-              <div className="aspect-[4/3] bg-linear-to-br from-[#C5D2EC]/30 to-[#8FA8D6]/30 rounded-2xl flex items-center justify-center">
-                <Building2 className="w-32 h-32 text-[#1B3A8C]/20" />
+              <div className="relative aspect-4/3 overflow-hidden rounded-2xl">
+                <Image
+                  src="/tower-6789.jpg"
+                  alt="Tower 6789"
+                  fill
+                  priority
+                  className="object-cover object-top"
+                />
               </div>
+
               <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-[#1B3A8C] rounded-full flex items-center justify-center">
@@ -358,7 +376,7 @@ export default function Tower6789Page() {
               </div>
               <div className="text-left">
                 <p className="font-semibold text-gray-900">Call Us</p>
-                <p className="text-2xl font-bold text-[#1B3A8C]">+63 2 8801-3417</p>
+                <p className="text-2xl font-bold text-[#1B3A8C]">+63-(0)2-8801-3417</p>
                 <p className="text-sm text-gray-500">Mon-Fri 9:00-18:00 (PH Time)</p>
               </div>
             </a>
@@ -372,7 +390,7 @@ export default function Tower6789Page() {
               </div>
               <div className="text-left">
                 <p className="font-semibold text-gray-900">Email Us</p>
-                <p className="text-xl font-bold text-[#1B3A8C]">sales@heroph.net</p>
+                <p className="text-2xl font-bold text-[#1B3A8C]">sales@heroph.net</p>
                 <p className="text-sm text-gray-500">We reply within 24 hours</p>
               </div>
             </a>

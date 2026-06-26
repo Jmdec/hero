@@ -62,10 +62,10 @@ export default function Navigation() {
               </Link>
             } */}
             <Link
-              href="/reservation"
+              href="/quotation"
               className="px-5 py-2.5 bg-[#1B3A8C] text-white font-medium text-sm rounded-full hover:bg-[#3B5EA6] transition-colors"
             >
-              Reservation
+              Get a Quote
             </Link>
           </div>
 
@@ -115,11 +115,11 @@ export default function Navigation() {
                   </Link>
                 )} */}
                 <Link
-                  href="/reservation"
+                  href="/quotation"
                   onClick={() => setIsOpen(false)}
                   className="block w-full text-center mt-2 px-5 py-3 bg-[#1B3A8C] text-white font-medium rounded-full hover:bg-[#3B5EA6] transition-colors"
                 >
-                  Reservation
+                  Get a Quote
                 </Link>
               </div>
             </div>

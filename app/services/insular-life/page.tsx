@@ -121,7 +121,7 @@ export default function InsularLifePage() {
     <div className="min-h-screen">
       {/* Hero Section */}
       <section className="relative bg-linear-to-br from-[#1B3A8C] via-[#3B5EA6] to-[#1A1A2E] text-white py-20 lg:py-32">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#5C7ABF]/20 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-[#5C7ABF]/20 via-transparent to-transparent" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -146,7 +146,7 @@ export default function InsularLifePage() {
             <Image src="/peza.png" alt="PEZA Logo" width={100} height={100} />z
             <div className="flex flex-col gap-3">
               <h1 className="text-xl font-bold text-gray-900">
-                The building where the service office is located (TOWER6789) is a PEZA certified building.
+                The building (INSULAR LIFE BUILDING MAKATI) where the service office is located is a PEZA certified building.
               </h1>
               <p className="text-gray-500">
                 In districts certified by the Philippine Economic Zone Authority (PEZA), as part of preferential treatment for foreign investment, depending on the type of business, you can receive preferential treatment such as exemption from corporate income tax, customs duty, and value added tax.
@@ -158,7 +158,7 @@ export default function InsularLifePage() {
 
       {/* Base Overview */}
       <section className="py-20 bg-gray-50 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -169,38 +169,55 @@ export default function InsularLifePage() {
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
                 Base Overview
               </h2>
-              <div className="space-y-4">
+
+              <div className="space-y-6">
+                {/* Address */}
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-[#8FA8D6]/30 rounded-lg flex items-center justify-center shrink-0">
-                    <MapPin className="w-5 h-5 text-[#3B5EA6]" />
+                  <div className="w-10 h-10 bg-[#C5D2EC]/50 rounded-lg flex items-center justify-center shrink-0">
+                    <MapPin className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900">Address</p>
-                    <p className="text-gray-600">11th Floor, Insular Life Building</p>
-                    <p className="text-gray-600">6781 Ayala Avenue corner Paseo de Roxas Avenue</p>
-                    <p className="text-gray-600">Makati City, Metro Manila, Philippines</p>
+                    <p className="text-gray-600">
+                      11th Floor, Insular Life Building
+                    </p>
+                    <p className="text-gray-600">
+                      6781 Ayala Avenue corner Paseo de Roxas
+                    </p>
+                    <p className="text-gray-600">
+                      Makati City, Metro Manila, Philippines
+                    </p>
                   </div>
                 </div>
+
+                {/* Building Specifications */}
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-[#8FA8D6]/30 rounded-lg flex items-center justify-center shrink-0">
-                    <Building2 className="w-5 h-5 text-[#3B5EA6]" />
+                  <div className="w-10 h-10 bg-[#C5D2EC]/50 rounded-lg flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Total Rooms</p>
-                    <p className="text-gray-600">49 private rooms in total</p>
+                    <p className="font-semibold text-gray-900">Building Specifications</p>
+                    <p className="text-gray-600">
+                      14-storey PEZA-accredited Class A office building, renovated in 2017.
+                    </p>
                   </div>
                 </div>
+
+                {/* Premium Features */}
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-[#8FA8D6]/30 rounded-lg flex items-center justify-center shrink-0">
-                    <Users className="w-5 h-5 text-[#3B5EA6]" />
+                  <div className="w-10 h-10 bg-[#C5D2EC]/50 rounded-lg flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Capacity</p>
-                    <p className="text-gray-600">Up to 35 people in private rooms</p>
+                    <p className="font-semibold text-gray-900">Premium Features</p>
+                    <p className="text-gray-600">
+                      LEED Gold certified with modern facilities and a 300-seat ballroom.
+                    </p>
                   </div>
                 </div>
               </div>
             </motion.div>
+
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -208,9 +225,16 @@ export default function InsularLifePage() {
               viewport={{ once: true }}
               className="relative"
             >
-              <div className="aspect-[4/3] bg-linear-to-br from-[#8FA8D6]/30 to-[#C5D2EC]/30 rounded-2xl flex items-center justify-center">
-                <Building2 className="w-32 h-32 text-[#3B5EA6]/20" />
+              <div className="relative aspect-4/3 overflow-hidden rounded-2xl">
+                <Image
+                  src="/Insular-Life.jpg"
+                  alt="Tower 6789"
+                  fill
+                  priority
+                  className="object-cover object-top"
+                />
               </div>
+
               <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-[#3B5EA6] rounded-full flex items-center justify-center">

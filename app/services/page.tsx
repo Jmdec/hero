@@ -14,6 +14,25 @@ import {
 
 export default function ServicesPage() {
 
+  const locations = [
+    {
+      name: "Tower 6789",
+      address: "23F Tower 6789 Ayala Avenue, Makati City, Metro Manila",
+      mapEmbed:
+        "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.7200608897456!2d121.01756961072985!3d14.557994485864604!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c90f304c137d%3A0x580219e924b84918!2sTower%206789!5e0!3m2!1sen!2sph!4v1781155754072!5m2!1sen!2sph",
+      mapUrl:
+        "https://maps.app.goo.gl/jAR9csHtx3PUmMFi6",
+    },
+    {
+      name: "Insular Life Building",
+      address: "11F Insular Life Building, Ayala Avenue, Makati, Metro Manila",
+      mapEmbed:
+        "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.7349367396077!2d121.01852111072995!3d14.55714458586539!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c90f31651de5%3A0xf2d7d4161752e079!2sHero%20Serviced%20Office!5e0!3m2!1sen!2sph!4v1781155861898!5m2!1sen!2sph",
+      mapUrl:
+        "https://maps.app.goo.gl/YJssvia5wSw1RMrx8",
+    },
+  ];
+
   const moveInSteps = [
     { step: 1, title: "Inquiry", description: "Contact us to learn more about our office spaces and availability." },
     { step: 2, title: "Introduction", description: "We will provide you with detailed information about our office spaces." },
@@ -84,16 +103,36 @@ export default function ServicesPage() {
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
-            
+
             {/* Tower 6789 Card */}
             <motion.div
+              key="Tower 67889"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
               viewport={{ once: true }}
-              className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-shadow overflow-hidden"
+              className="bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 shadow-xl"
             >
-              <div className="p-6 border-b border-gray-100 relative">
+              <div className="relative h-48 overflow-hidden group">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.7200608897456!2d121.01756961072985!3d14.557994485864604!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c90f304c137d%3A0x580219e924b84918!2sTower%206789!5e0!3m2!1sen!2sph!4v1781155754072!5m2!1sen!2sph"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="absolute inset-0"
+                />
+
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 pointer-events-none flex items-center justify-center">
+                  <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    View on Google Maps
+                  </span>
+                </div>
+              </div>
+              <div className="p-6">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-[#1B3A8C] rounded-xl flex items-center justify-center shrink-0">
                     <Building2 className="w-6 h-6 text-white" />
@@ -105,7 +144,7 @@ export default function ServicesPage() {
                 </div>
               </div>
 
-              <div className="p-6">
+              <div className="px-6">
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start gap-3 text-sm text-gray-700">
                     <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
@@ -130,7 +169,7 @@ export default function ServicesPage() {
                 </ul>
                 <Link
                   href="/services/tower-6789"
-                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#1B3A8C] text-white rounded-xl font-semibold hover:bg-[#3B5EA6] transition-colors"
+                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 mb-5 bg-[#1B3A8C] text-white rounded-xl font-semibold hover:bg-[#3B5EA6] transition-colors"
                 >
                   View Tower 6789 Makati
                   <ChevronRight className="w-5 h-5" />
@@ -140,25 +179,45 @@ export default function ServicesPage() {
 
             {/* Insular Life Building Card */}
             <motion.div
+              key="Insular Life"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
               viewport={{ once: true }}
-              className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-shadow overflow-hidden"
+              className="bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 shadow-xl"
             >
-              <div className="p-6 border-b border-gray-100">
+              <div className="relative h-48 overflow-hidden group">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.7349367396077!2d121.01852111072995!3d14.55714458586539!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c90f31651de5%3A0xf2d7d4161752e079!2sHero%20Serviced%20Office!5e0!3m2!1sen!2sph!4v1781155861898!5m2!1sen!2sph"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="absolute inset-0"
+                />
+
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 pointer-events-none flex items-center justify-center">
+                  <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    View on Google Maps
+                  </span>
+                </div>
+              </div>
+              <div className="p-6">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-[#1B3A8C] rounded-xl flex items-center justify-center shrink-0">
                     <Building2 className="w-6 h-6 text-white" />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">Insular Life Building</h3>
-                    <p className="text-sm text-[#3B5EA6] font-medium">11th Floor, 6781 Ayala Avenue corner Paseo de Roxas, Makati</p>
+                    <p className="text-sm text-[#1B3A8C] font-medium">11th Floor, 6781 Ayala Avenue corner Paseo de Roxas, Makati</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6">
+              <div className="px-6">
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start gap-3 text-sm text-gray-700">
                     <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
@@ -183,7 +242,7 @@ export default function ServicesPage() {
                 </ul>
                 <Link
                   href="/services/insular-life"
-                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#1B3A8C] text-white rounded-xl font-semibold hover:bg-[#3B5EA6] transition-colors"
+                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 mb-5 bg-[#1B3A8C] text-white rounded-xl font-semibold hover:bg-[#3B5EA6] transition-colors"
                 >
                   View Insular Life Building
                   <ChevronRight className="w-5 h-5" />
@@ -259,7 +318,7 @@ export default function ServicesPage() {
               </div>
               <div className="text-left">
                 <p className="font-semibold text-gray-900">Call Us</p>
-                <p className="text-2xl font-bold text-[#1B3A8C]">+63 2 8801-3417</p>
+                <p className="text-2xl font-bold text-[#1B3A8C]">+63-(0)2-8801-3417</p>
                 <p className="text-sm text-gray-500">Mon-Fri 9:00-18:00 (PH Time)</p>
               </div>
             </a>
@@ -273,7 +332,7 @@ export default function ServicesPage() {
               </div>
               <div className="text-left">
                 <p className="font-semibold text-gray-900">Email Us</p>
-                <p className="text-xl font-bold text-[#1B3A8C]">sales@heroph.net</p>
+                <p className="text-2xl font-bold text-[#1B3A8C]">sales@heroph.net</p>
                 <p className="text-sm text-gray-500">We reply within 24 hours</p>
               </div>
             </a>
