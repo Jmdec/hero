@@ -27,6 +27,7 @@ const menuItems = [
             { title: "Users", href: "/admin/users", icon: Users },
             { title: "Inquiries", href: "/admin/inquiries", icon: MessageSquare },
             { title: "Announcements", href: "/admin/announcements", icon: Megaphone },
+            { title: "Testimonials", href: "/admin/testimonials", icon: MessageSquare },
             { title: "Blogs", href: "/admin/blogs", icon: FileText },
         ]
     },
