@@ -1,0 +1,66 @@
+import { NextRequest, NextResponse } from "next/server";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const auth = request.headers.get("Authorization");
+
+  const res = await fetch(`${API_URL}/api/admin/contacts/${id}`, {
+    headers: {
+      Accept: "application/json",
+      Authorization: auth ?? "",
+    },
+    cache: "no-store",
+  });
+
+  return NextResponse.json(await res.json(), {
+    status: res.status,
+  });
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const auth = request.headers.get("Authorization");
+  const body = await request.json();
+
+  const res = await fetch(`${API_URL}/api/admin/contacts/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: auth ?? "",
+    },
+    body: JSON.stringify(body),
+  });
+
+  return NextResponse.json(await res.json(), {
+    status: res.status,
+  });
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const auth = request.headers.get("Authorization");
+
+  const res = await fetch(`${API_URL}/api/admin/contacts/${id}`, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+      Authorization: auth ?? "",
+    },
+  });
+
+  return NextResponse.json(await res.json(), {
+    status: res.status,
+  });
+}
