@@ -271,16 +271,57 @@ function MultiStepForm() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setSubmitStatus("idle");
-    await new Promise((r) => setTimeout(r, 1500));
-    setIsSubmitting(false);
+  e.preventDefault();
+
+  setIsSubmitting(true);
+  setSubmitStatus("idle");
+
+  try {
+
+    const res = await fetch("/api/contact", {
+      method: "POST",
+      headers:{
+        "Content-Type":"application/json",
+        Accept:"application/json",
+      },
+      body: JSON.stringify({
+        ...formData,
+        dynamicData,
+      }),
+    });
+
+
+    if(!res.ok){
+      throw new Error("Failed");
+    }
+
+
     setSubmitStatus("success");
-    setFormData({ name: "", email: "", phone: "", company: "", inquiryType: "", message: "", policy: false });
+
+    setFormData({
+      name:"",
+      email:"",
+      phone:"",
+      company:"",
+      inquiryType:"",
+      message:"",
+      policy:false
+    });
+
     setDynamicData({});
     setStep(1);
-  };
+
+
+  } catch(error){
+
+    setSubmitStatus("error");
+
+  } finally {
+
+    setIsSubmitting(false);
+
+  }
+};
 
   const variants = {
     enter: (dir: number) => ({ opacity: 0, x: dir > 0 ? 40 : -40 }),

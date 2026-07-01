@@ -11,46 +11,45 @@ import {
   ChevronRight,
   X,
   AlertTriangle,
-  Calendar,
-  Tag,
+  Star,
+  Quote,
 } from "lucide-react"
 
-interface Announcement {
+interface Testimonial {
   id: number
-  tag: string
-  date: string
+  name: string
   title: string
-  excerpt: string
-  content: string
-  status: "draft" | "published" | "archived"
+  company: string
+  rating: number
+  quote: string
+  status: "pending" | "approved" | "rejected"
   created_at: string
   updated_at?: string
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200",
-  published:
+  pending: "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200",
+  approved:
     "bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-200",
-  archived: "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200",
+  rejected: "bg-red-100 text-red-700 ring-1 ring-inset ring-red-200",
 }
 
 const EMPTY_FORM = {
-  tag: "",
-  date: "",
+  name: "",
   title: "",
-  excerpt: "",
-  content: "",
-  status: "draft" as Announcement["status"],
+  company: "",
+  rating: 5,
+  quote: "",
+  status: "pending" as Testimonial["status"],
 }
 
-function formatDate(value: string) {
-  const d = new Date(value)
-  if (isNaN(d.getTime())) return value
-  return d.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  })
+function getInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("")
 }
 
 function authHeaders(json = false) {
@@ -63,13 +62,46 @@ function authHeaders(json = false) {
   }
 }
 
-export default function AnnouncementsAdmin() {
-  const [items, setItems] = useState<Announcement[]>([])
+function StarRating({
+  value,
+  onChange,
+  readOnly = false,
+}: {
+  value: number
+  onChange?: (n: number) => void
+  readOnly?: boolean
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          disabled={readOnly}
+          onClick={() => onChange?.(n)}
+          className={readOnly ? "cursor-default" : "cursor-pointer"}
+        >
+          <Star
+            className={`h-5 w-5 ${
+              n <= value
+                ? "fill-amber-400 text-amber-400"
+                : "fill-transparent text-slate-300"
+            }`}
+          />
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export default function TestimonialsAdmin() {
+  const [items, setItems] = useState<Testimonial[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("")
+  const [rating, setRating] = useState("")
 
   const [page, setPage] = useState(1)
   const [lastPage, setLastPage] = useState(1)
@@ -77,17 +109,17 @@ export default function AnnouncementsAdmin() {
 
   // Create / Edit dialog
   const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<Announcement | null>(null)
+  const [editing, setEditing] = useState<Testimonial | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
 
   // Delete dialog
-  const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Testimonial | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  async function fetchAnnouncements() {
+  async function fetchTestimonials() {
     setLoading(true)
     setError(null)
 
@@ -99,8 +131,9 @@ export default function AnnouncementsAdmin() {
 
       if (search) params.append("search", search)
       if (status) params.append("status", status)
+      if (rating) params.append("rating", rating)
 
-      const res = await fetch(`/api/admin/announcements?${params}`, {
+      const res = await fetch(`/api/admin/testimonials?${params}`, {
         headers: authHeaders(),
       })
 
@@ -115,7 +148,7 @@ export default function AnnouncementsAdmin() {
       setError(
         err instanceof Error
           ? err.message
-          : "Could not load announcements. Please try again.",
+          : "Could not load testimonials. Please try again."
       )
       setItems([])
     } finally {
@@ -124,9 +157,9 @@ export default function AnnouncementsAdmin() {
   }
 
   useEffect(() => {
-    fetchAnnouncements()
+    fetchTestimonials()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, status])
+  }, [page, search, status, rating])
 
   function openCreate() {
     setEditing(null)
@@ -135,15 +168,15 @@ export default function AnnouncementsAdmin() {
     setFormOpen(true)
   }
 
-  function openEdit(a: Announcement) {
-    setEditing(a)
+  function openEdit(t: Testimonial) {
+    setEditing(t)
     setForm({
-      tag: a.tag,
-      date: a.date?.slice(0, 10) ?? "",
-      title: a.title,
-      excerpt: a.excerpt,
-      content: a.content,
-      status: a.status,
+      name: t.name,
+      title: t.title,
+      company: t.company,
+      rating: t.rating,
+      quote: t.quote,
+      status: t.status,
     })
     setFormErrors({})
     setFormOpen(true)
@@ -155,8 +188,8 @@ export default function AnnouncementsAdmin() {
 
     const isEdit = Boolean(editing)
     const url = isEdit
-      ? `/api/admin/announcements/${editing!.id}`
-      : `/api/admin/announcements`
+      ? `/api/admin/testimonials/${editing!.id}`
+      : `/api/admin/testimonials`
 
     try {
       const res = await fetch(url, {
@@ -172,27 +205,27 @@ export default function AnnouncementsAdmin() {
             Object.entries(data.errors ?? {}).map(([k, v]) => [
               k,
               Array.isArray(v) ? (v[0] as string) : String(v),
-            ]),
-          ),
+            ])
+          )
         )
         return
       }
 
       if (!res.ok) throw new Error(`Request failed (${res.status})`)
 
-      const saved: Announcement = await res.json()
+      const saved: Testimonial = await res.json()
 
       setItems((prev) =>
         isEdit
-          ? prev.map((a) => (a.id === saved.id ? saved : a))
-          : [saved, ...prev],
+          ? prev.map((t) => (t.id === saved.id ? saved : t))
+          : [saved, ...prev]
       )
 
       setFormOpen(false)
       setEditing(null)
       setForm(EMPTY_FORM)
 
-      if (!isEdit) fetchAnnouncements()
+      if (!isEdit) fetchTestimonials()
     } catch {
       setFormErrors({ general: "Something went wrong. Please try again." })
     } finally {
@@ -200,8 +233,8 @@ export default function AnnouncementsAdmin() {
     }
   }
 
-  function openDeleteDialog(a: Announcement) {
-    setDeleteTarget(a)
+  function openDeleteDialog(t: Testimonial) {
+    setDeleteTarget(t)
     setDeleteOpen(true)
   }
 
@@ -210,14 +243,14 @@ export default function AnnouncementsAdmin() {
     setDeleting(true)
 
     try {
-      const res = await fetch(`/api/admin/announcements/${deleteTarget.id}`, {
+      const res = await fetch(`/api/admin/testimonials/${deleteTarget.id}`, {
         method: "DELETE",
         headers: authHeaders(),
       })
 
       if (!res.ok) throw new Error(`Request failed (${res.status})`)
 
-      setItems((prev) => prev.filter((a) => a.id !== deleteTarget.id))
+      setItems((prev) => prev.filter((t) => t.id !== deleteTarget.id))
       setDeleteOpen(false)
       setDeleteTarget(null)
     } catch {
@@ -229,21 +262,21 @@ export default function AnnouncementsAdmin() {
 
   function updateField<K extends keyof typeof form>(
     key: K,
-    value: (typeof form)[K],
+    value: (typeof form)[K]
   ) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
   return (
     <div className="min-h-screen p-4 md:p-8">
-      <main className="mx-auto  space-y-6">
+      <main className="mx-auto space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
-              Announcements
+              Testimonials
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              Create and manage site announcements
+              Manage customer testimonials
             </p>
           </div>
 
@@ -252,7 +285,7 @@ export default function AnnouncementsAdmin() {
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
           >
             <Plus className="h-4 w-4" />
-            New Announcement
+            New Testimonial
           </button>
         </div>
 
@@ -263,7 +296,7 @@ export default function AnnouncementsAdmin() {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="Search title, tag, excerpt..."
+                placeholder="Search name, title, quote..."
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value)
@@ -273,7 +306,7 @@ export default function AnnouncementsAdmin() {
             </div>
 
             <select
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 md:w-48"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 md:w-44"
               value={status}
               onChange={(e) => {
                 setStatus(e.target.value)
@@ -281,9 +314,25 @@ export default function AnnouncementsAdmin() {
               }}
             >
               <option value="">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-              <option value="archived">Archived</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+
+            <select
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 md:w-40"
+              value={rating}
+              onChange={(e) => {
+                setRating(e.target.value)
+                setPage(1)
+              }}
+            >
+              <option value="">All Ratings</option>
+              {[5, 4, 3, 2, 1].map((r) => (
+                <option key={r} value={r}>
+                  {r} Star{r > 1 ? "s" : ""}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -294,10 +343,10 @@ export default function AnnouncementsAdmin() {
             <table className="w-full text-sm">
               <thead className="bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
                 <tr>
-                  <th className="px-5 py-3 text-left">Title</th>
-                  <th className="px-5 py-3 text-left">Tag</th>
+                  <th className="px-5 py-3 text-left">Author</th>
+                  <th className="px-5 py-3 text-left">Quote</th>
+                  <th className="px-5 py-3 text-left">Rating</th>
                   <th className="px-5 py-3 text-left">Status</th>
-                  <th className="px-5 py-3 text-left">Date</th>
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -309,7 +358,7 @@ export default function AnnouncementsAdmin() {
                       <div className="flex flex-col items-center gap-2 text-slate-400">
                         <Loader2 className="h-5 w-5 animate-spin" />
                         <span className="text-sm">
-                          Loading announcements...
+                          Loading testimonials...
                         </span>
                       </div>
                     </td>
@@ -325,7 +374,7 @@ export default function AnnouncementsAdmin() {
                           {error}
                         </p>
                         <button
-                          onClick={fetchAnnouncements}
+                          onClick={fetchTestimonials}
                           className="mt-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
                         >
                           Try again
@@ -339,7 +388,7 @@ export default function AnnouncementsAdmin() {
                   <tr>
                     <td colSpan={5} className="px-5 py-12 text-center">
                       <p className="text-sm text-slate-500">
-                        No announcements match your filters.
+                        No testimonials match your filters.
                       </p>
                     </td>
                   </tr>
@@ -347,43 +396,50 @@ export default function AnnouncementsAdmin() {
 
                 {!loading &&
                   !error &&
-                  items.map((a) => (
-                    <tr key={a.id} className="hover:bg-blue-50/40">
+                  items.map((t) => (
+                    <tr key={t.id} className="hover:bg-blue-50/40">
                       <td className="px-5 py-4">
-                        <p className="font-semibold text-slate-900">
-                          {a.title}
-                        </p>
-                        <p className="line-clamp-1 text-xs text-slate-500">
-                          {a.excerpt}
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
+                            {getInitials(t.name)}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-900">
+                              {t.name}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {t.title}
+                              {t.company ? ` · ${t.company}` : ""}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="max-w-xs px-5 py-4">
+                        <p className="line-clamp-2 text-slate-600">
+                          {t.quote}
                         </p>
                       </td>
 
                       <td className="px-5 py-4">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                          <Tag className="h-3 w-3" />
-                          {a.tag}
-                        </span>
+                        <StarRating value={t.rating} readOnly />
                       </td>
 
                       <td className="px-5 py-4">
                         <span
                           className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize ${
-                            STATUS_STYLES[a.status] ??
+                            STATUS_STYLES[t.status] ??
                             "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
                           }`}
                         >
-                          {a.status}
+                          {t.status}
                         </span>
-                      </td>
-
-                      <td className="px-5 py-4 text-slate-500">
-                        {formatDate(a.date)}
                       </td>
 
                       <td className="px-5 py-4">
                         <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => openEdit(a)}
+                            onClick={() => openEdit(t)}
                             className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
                             title="Edit"
                           >
@@ -391,7 +447,7 @@ export default function AnnouncementsAdmin() {
                           </button>
 
                           <button
-                            onClick={() => openDeleteDialog(a)}
+                            onClick={() => openDeleteDialog(t)}
                             className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                             title="Delete"
                           >
@@ -410,7 +466,7 @@ export default function AnnouncementsAdmin() {
         {!loading && !error && items.length > 0 && (
           <div className="flex flex-col items-center justify-between gap-3 md:flex-row">
             <p className="text-sm text-slate-500">
-              {total > 0 ? `${total} total announcements` : null}
+              {total > 0 ? `${total} total testimonials` : null}
             </p>
 
             <div className="flex items-center gap-2">
@@ -443,10 +499,10 @@ export default function AnnouncementsAdmin() {
       {/* Create / Edit Dialog */}
       {formOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-xl rounded-xl bg-white shadow-xl">
+          <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-900">
-                {editing ? "Edit Announcement" : "New Announcement"}
+                {editing ? "Edit Testimonial" : "New Testimonial"}
               </h2>
               <button
                 onClick={() => setFormOpen(false)}
@@ -466,37 +522,34 @@ export default function AnnouncementsAdmin() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-600">
-                    Tag
+                    Name
                   </label>
                   <input
-                    value={form.tag}
-                    onChange={(e) => updateField("tag", e.target.value)}
-                    placeholder="e.g. Promo, Event"
+                    value={form.name}
+                    onChange={(e) => updateField("name", e.target.value)}
+                    placeholder="Full name"
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
-                  {formErrors.tag && (
+                  {formErrors.name && (
                     <p className="mt-1 text-xs text-red-600">
-                      {formErrors.tag}
+                      {formErrors.name}
                     </p>
                   )}
                 </div>
 
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-600">
-                    Date
+                    Company
                   </label>
-                  <div className="relative">
-                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="date"
-                      value={form.date}
-                      onChange={(e) => updateField("date", e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    />
-                  </div>
-                  {formErrors.date && (
+                  <input
+                    value={form.company}
+                    onChange={(e) => updateField("company", e.target.value)}
+                    placeholder="e.g. Acme Inc."
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                  {formErrors.company && (
                     <p className="mt-1 text-xs text-red-600">
-                      {formErrors.date}
+                      {formErrors.company}
                     </p>
                   )}
                 </div>
@@ -509,7 +562,7 @@ export default function AnnouncementsAdmin() {
                 <input
                   value={form.title}
                   onChange={(e) => updateField("title", e.target.value)}
-                  placeholder="Announcement title"
+                  placeholder="e.g. CEO"
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
                 {formErrors.title && (
@@ -521,36 +574,36 @@ export default function AnnouncementsAdmin() {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Excerpt
+                  Rating
                 </label>
-                <textarea
-                  value={form.excerpt}
-                  onChange={(e) => updateField("excerpt", e.target.value)}
-                  rows={2}
-                  placeholder="Short summary shown in listings"
-                  className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                <StarRating
+                  value={form.rating}
+                  onChange={(n) => updateField("rating", n)}
                 />
-                {formErrors.excerpt && (
+                {formErrors.rating && (
                   <p className="mt-1 text-xs text-red-600">
-                    {formErrors.excerpt}
+                    {formErrors.rating}
                   </p>
                 )}
               </div>
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Content
+                  Quote
                 </label>
-                <textarea
-                  value={form.content}
-                  onChange={(e) => updateField("content", e.target.value)}
-                  rows={6}
-                  placeholder="Full announcement content"
-                  className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                />
-                {formErrors.content && (
+                <div className="relative">
+                  <Quote className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-300" />
+                  <textarea
+                    value={form.quote}
+                    onChange={(e) => updateField("quote", e.target.value)}
+                    rows={4}
+                    placeholder="What the customer said"
+                    className="w-full resize-none rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+                {formErrors.quote && (
                   <p className="mt-1 text-xs text-red-600">
-                    {formErrors.content}
+                    {formErrors.quote}
                   </p>
                 )}
               </div>
@@ -560,21 +613,28 @@ export default function AnnouncementsAdmin() {
                   Status
                 </label>
                 <div className="flex gap-2">
-                  {(["draft", "published", "archived"] as const).map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => updateField("status", opt)}
-                      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium capitalize transition ${
-                        form.status === opt
-                          ? "border-blue-400 bg-blue-50 text-blue-700"
-                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
+                  {(["pending", "approved", "rejected"] as const).map(
+                    (opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => updateField("status", opt)}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium capitalize transition ${
+                          form.status === opt
+                            ? "border-blue-400 bg-blue-50 text-blue-700"
+                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    )
+                  )}
                 </div>
+                {formErrors.status && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {formErrors.status}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -591,7 +651,7 @@ export default function AnnouncementsAdmin() {
                 className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                {editing ? "Save Changes" : "Create Announcement"}
+                {editing ? "Save Changes" : "Create Testimonial"}
               </button>
             </div>
           </div>
@@ -609,13 +669,15 @@ export default function AnnouncementsAdmin() {
                 </div>
                 <div>
                   <h2 className="text-base font-semibold text-slate-900">
-                    Delete this announcement?
+                    Delete this testimonial?
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
+                    The testimonial from{" "}
                     <span className="font-medium text-slate-700">
-                      {deleteTarget.title}
+                      {deleteTarget.name}
                     </span>{" "}
-                    will be permanently removed. This action cannot be undone.
+                    will be permanently removed. This action cannot be
+                    undone.
                   </p>
                 </div>
               </div>
