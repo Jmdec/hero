@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -13,8 +13,249 @@ import {
   ArrowRight,
   CheckCircle2,
   RefreshCw,
+  X,
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
+
+// ── Modal ────────────────────────────────────────────────────────────────
+
+function Modal({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  // Close on Escape key
+  const handleKey = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    },
+    [onClose],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    document.addEventListener("keydown", handleKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
+    };
+  }, [open, handleKey]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Panel */}
+      <div className="relative z-10 w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl bg-white shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h2 id="modal-title" className="text-lg font-semibold text-[#0A1E3F]">
+            {title}
+          </h2>
+          <button
+            onClick={onClose}
+            className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto px-6 py-5 text-sm text-gray-700 leading-relaxed space-y-4">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="font-semibold text-[#0A1E3F] mb-1">{title}</h3>
+      <div className="text-gray-600">{children}</div>
+    </div>
+  );
+}
+
+// ── Privacy Policy Content ──────────────────────────────────────────────
+
+function PrivacyPolicyContent() {
+  return (
+    <>
+      <p>
+        Thank you very much for using the services provided by Hero PH INC. (hereinafter,
+        "we/our/us").
+      </p>
+      <p>
+        The Privacy Policy (hereinafter, "the Policy") sets forth our privacy information handling
+        principles. You or users are deemed to have agreed with the Policy if you use our services.
+      </p>
+
+      <Section title="(1) What is privacy information?">
+        Privacy information includes both personal information; and history information and
+        characteristic information. Personal information refers to the personal information
+        prescribed in the Act on the Protection of Personal Information or information relating to a
+        living individual, specifically the name, date of birth, address, telephone number and other
+        contact information, and any other described information that can identify individuals.
+        Information other than personal information corresponds to history and characteristic
+        information, such as services used, products purchased, history of pages/ads viewed, search
+        keywords used by users, time and date of use, methods of using, using environment, postal
+        code, gender, occupation, age, user's IP address, cookie information, location information,
+        and terminal identification information.
+      </Section>
+
+      <Section title="(2) How do you collect privacy information?">
+        We may collect personal information when a user makes a user registration or use any of our
+        services and/or history and characteristic information of a user when a user uses any of our
+        services or views any of the pages of our website. If a user performs settings in such a way
+        that the use of the services is linked with any external service, we will collect the ID to
+        be used by the user in the external service and/or the information that the user agrees to
+        disclose to the linked service under the external service's privacy settings.
+      </Section>
+
+      <Section title="(3) For what purpose do you use privacy information?">
+        <ul className="list-[upper-alpha] list-inside space-y-2 mt-1">
+          <li>To present registered information so that users can view and/or correct their registered information and view the status of use.</li>
+          <li>To use an e-mail address to notify or contact users, or to send products to users.</li>
+          <li>To use information such as name, date of birth, and address for user identity verification.</li>
+          <li>To use payment-related information in order to charge users.</li>
+          <li>To display registered information on input screens so that users can enter data easily.</li>
+          <li>To refuse the use of the Service by users who violate the Terms of Use.</li>
+          <li>To answer inquiries from users.</li>
+          <li>To prepare statistical data processed in a form that does not permit personal identification.</li>
+          <li>To distribute or display advertisements of us or a third party.</li>
+          <li>To use privacy information for marketing.</li>
+          <li>Purposes incidental to the purposes of use above.</li>
+        </ul>
+      </Section>
+
+      <Section title="(4) Do you provide privacy information for a third party?">
+        We will not provide privacy information for a third party without prior approval of users
+        except where required under laws and regulations, where required for protecting human life or
+        property, or where necessary to help a national organization perform clerical work prescribed
+        by law.
+      </Section>
+
+      <Section title="(5) Can I check my privacy information or request correction?">
+        If a user requests disclosure of their own privacy information, we will disclose it without
+        delay unless doing so would harm the interests of the user or third party, significantly
+        hinder our operations, or violate laws and regulations. A fee of 1,000 yen applies per
+        disclosure instance. Incorrect personal information can be corrected or deleted upon request.
+      </Section>
+
+      <Section title="(6) Can I request discontinuation of use?">
+        Users may request discontinuation of use of their privacy information. We will conduct a
+        necessary investigation and take appropriate measures, informing the user without delay.
+      </Section>
+
+      <Section title="(7) Change of Privacy Policy">
+        This Privacy Policy is subject to changes without notice. Changes take effect when posted to
+        this website.
+      </Section>
+
+      <Section title="(8) Inquiry Contact">
+        <p>Contact person: Minoru Kobayashi</p>
+        <p>Company name: Hero Serviced Office Inc.</p>
+        <p>Address: 23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines</p>
+        <p>
+          E-mail:{" "}
+          <a href="mailto:salesofficer@heroph.net" className="text-[#1565C0] underline">
+            salesofficer@heroph.net
+          </a>
+        </p>
+      </Section>
+    </>
+  );
+}
+
+// ── Terms of Service Content ────────────────────────────────────────────
+
+function TermsOfServiceContent() {
+  return (
+    <>
+      <p>
+        By accessing or using the services provided by Hero Serviced Office Inc., you agree to be
+        bound by these Terms of Service. Please read them carefully before using our services.
+      </p>
+
+      <Section title="1. Use of Services">
+        You agree to use our services only for lawful purposes and in accordance with these Terms.
+        You must not use our services in any way that violates applicable laws or regulations, or in
+        a manner that is harmful, fraudulent, or deceptive.
+      </Section>
+
+      <Section title="2. User Accounts">
+        You are responsible for maintaining the confidentiality of your account credentials and for
+        all activities that occur under your account. Please notify us immediately of any
+        unauthorized use of your account.
+      </Section>
+
+      <Section title="3. Payment and Charges">
+        All charges for services are due as specified in your service agreement. Failure to pay
+        charges may result in suspension or termination of services. All fees are non-refundable
+        unless otherwise stated.
+      </Section>
+
+      <Section title="4. Limitation of Liability">
+        Hero Serviced Office Inc. shall not be liable for any indirect, incidental, or consequential
+        damages arising from your use of our services. Our total liability shall not exceed the
+        amount paid by you for the services in the preceding month.
+      </Section>
+
+      <Section title="5. Termination">
+        We reserve the right to terminate or suspend access to our services immediately, without
+        prior notice, if you breach these Terms of Service or engage in conduct that we determine to
+        be harmful to other users or to us.
+      </Section>
+
+      <Section title="6. Changes to Terms">
+        We reserve the right to modify these Terms at any time. Changes will be effective upon
+        posting to our website. Continued use of our services after any such changes constitutes
+        your acceptance of the new Terms.
+      </Section>
+
+      <Section title="7. Governing Law">
+        These Terms shall be governed by and construed in accordance with the laws of the Republic
+        of the Philippines. Any disputes shall be subject to the exclusive jurisdiction of the courts
+        of Makati City.
+      </Section>
+
+      <Section title="8. Contact">
+        <p>For questions about these Terms, please contact us:</p>
+        <p>Hero Serviced Office Inc.</p>
+        <p>23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines</p>
+        <p>
+          <a href="mailto:sales@heroph.net" className="text-[#1565C0] underline">
+            sales@heroph.net
+          </a>
+        </p>
+      </Section>
+    </>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────
 
 export default function SignupPage() {
   const { showToast } = useToast();
@@ -26,6 +267,7 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [modal, setModal] = useState<"privacy" | "terms" | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -203,225 +445,244 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F3] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
-      {/* Back to Home Button */}
-      <Link
-        href="/"
-        className="absolute top-8 left-8 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-      >
-        <ArrowLeft className="w-5 h-5" />
-        <span className="text-sm font-medium">Back to Home</span>
-      </Link>
+    <>
+      <div className="min-h-screen bg-[#F5F5F3] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
+        {/* Back to Home Button */}
+        <Link
+          href="/"
+          className="absolute top-8 left-8 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span className="text-sm font-medium">Back to Home</span>
+        </Link>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-md w-full space-y-8"
-      >
-        {/* Logo */}
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-gray-600">
-            Start your journey with HERO Serviced Office
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-md w-full space-y-8"
+        >
+          {/* Logo */}
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-gray-900">
+              Create your account
+            </h2>
+            <p className="mt-2 text-gray-600">
+              Start your journey with HERO Serviced Office
+            </p>
+          </div>
+
+          {/* Form */}
+          <form className="mt-8 space-y-6 text-gray-900" onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              {/* Name */}
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    autoComplete="name"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                    placeholder="John Doe"
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                    placeholder="you@company.com"
+                  />
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                    placeholder="09123456789"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                    placeholder="Create a password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    required
+                    value={formData.password_confirmation}
+                    onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
+                    className="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                    placeholder="Confirm your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Terms */}
+            <div className="flex items-start">
+              <input
+                id="agree-terms"
+                name="agree-terms"
+                type="checkbox"
+                checked={formData.agreeTerms}
+                onChange={(e) => setFormData({ ...formData, agreeTerms: e.target.checked })}
+                className="h-4 w-4 mt-1 text-[#1B3A8C] focus:ring-[#1B3A8C] border-gray-300 rounded"
+              />
+              <label htmlFor="agree-terms" className="ml-2 block text-sm text-gray-700">
+                I agree to the{" "}
+                <button
+                  type="button"
+                  onClick={() => setModal("terms")}
+                  className="text-[#1B3A8C] hover:text-[#3B5EA6] underline underline-offset-2"
+                >
+                  Terms of Service
+                </button>{" "}
+                and{" "}
+                <button
+                  type="button"
+                  onClick={() => setModal("privacy")}
+                  className="text-[#1B3A8C] hover:text-[#3B5EA6] underline underline-offset-2"
+                >
+                  Privacy Policy
+                </button>
+              </label>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading || !formData.agreeTerms}
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-[#1B3A8C] hover:bg-[#3B5EA6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1B3A8C] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Creating account...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  Create Account
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </span>
+              )}
+            </button>
+          </form>
+
+          {/* Login link */}
+          <p className="text-center text-sm text-gray-600">
+            Already have an account?{" "}
+            <Link href="/login" className="font-medium text-[#1B3A8C] hover:text-[#3B5EA6]">
+              Sign in
+            </Link>
           </p>
-        </div>
+        </motion.div>
+      </div>
 
-        {/* Form */}
-        <form className="mt-8 space-y-6 text-gray-900" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            {/* Name */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                Full Name
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  autoComplete="name"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
-                  placeholder="John Doe"
-                />
-              </div>
-            </div>
+      {/* Modals */}
+      <Modal open={modal === "privacy"} onClose={() => setModal(null)} title="Privacy Policy">
+        <PrivacyPolicyContent />
+      </Modal>
 
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
-                  placeholder="you@company.com"
-                />
-              </div>
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                Phone Number
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
-                  placeholder="09123456789"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="new-password"
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
-                  placeholder="Create a password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  autoComplete="new-password"
-                  required
-                  value={formData.password_confirmation}
-                  onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
-                  className="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
-                  placeholder="Confirm your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Terms */}
-          <div className="flex items-start">
-            <input
-              id="agree-terms"
-              name="agree-terms"
-              type="checkbox"
-              checked={formData.agreeTerms}
-              onChange={(e) => setFormData({ ...formData, agreeTerms: e.target.checked })}
-              className="h-4 w-4 mt-1 text-[#1B3A8C] focus:ring-[#1B3A8C] border-gray-300 rounded"
-            />
-            <label htmlFor="agree-terms" className="ml-2 block text-sm text-gray-700">
-              I agree to the{" "}
-              <Link href="/terms" className="text-[#1B3A8C] hover:text-[#3B5EA6]">
-                Terms of Service
-              </Link>{" "}
-              and{" "}
-              <Link href="/privacy" className="text-[#1B3A8C] hover:text-[#3B5EA6]">
-                Privacy Policy
-              </Link>
-            </label>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isLoading || !formData.agreeTerms}
-            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-[#1B3A8C] hover:bg-[#3B5EA6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1B3A8C] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Creating account...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                Create Account
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </span>
-            )}
-          </button>
-        </form>
-
-        {/* Login link */}
-        <p className="text-center text-sm text-gray-600">
-          Already have an account?{" "}
-          <Link href="/login" className="font-medium text-[#1B3A8C] hover:text-[#3B5EA6]">
-            Sign in
-          </Link>
-        </p>
-      </motion.div>
-    </div>
+      <Modal open={modal === "terms"} onClose={() => setModal(null)} title="Terms of Service">
+        <TermsOfServiceContent />
+      </Modal>
+    </>
   );
 }

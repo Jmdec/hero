@@ -19,6 +19,8 @@ import {
     XCircle,
 } from "lucide-react";
 
+// ─── Types ──────────────────────────────────────────────────────────────────
+
 type Status =
     | "pending"
     | "awaiting_payment"
@@ -118,7 +120,7 @@ interface ToastItem {
 function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: number) => void }) {
     if (toasts.length === 0) return null;
     return (
-        <div className="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 w-full max-w-sm pointer-events-none">
+        <div className="fixed bottom-5 right-5 z-100 flex flex-col gap-2 w-full max-w-sm pointer-events-none">
             {toasts.map((t) => (
                 <div
                     key={t.id}
@@ -142,6 +144,42 @@ function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id
                     </button>
                 </div>
             ))}
+        </div>
+    );
+}
+
+// ─── Stats ──────────────────────────────────────────────────────────────────
+
+type StatTone = "neutral" | "amber" | "green" | "red";
+
+const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
+    neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]" },
+    amber: { bg: "bg-amber-50", text: "text-amber-700" },
+    green: { bg: "bg-green-50", text: "text-green-700" },
+    red: { bg: "bg-red-50", text: "text-red-600" },
+};
+
+function StatCard({
+    label,
+    value,
+    icon: Icon,
+    tone = "neutral",
+}: {
+    label: string;
+    value: string;
+    icon: React.ComponentType<{ className?: string }>;
+    tone?: StatTone;
+}) {
+    const t = STAT_TONE_STYLES[tone];
+    return (
+        <div className="bg-white border border-[#D9E2F0] rounded-2xl p-5 shadow-[0_4px_24px_rgba(11,31,74,0.04)] flex items-center gap-4">
+            <span className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${t.bg}`}>
+                <Icon className={`w-5 h-5 ${t.text}`} />
+            </span>
+            <div className="min-w-0">
+                <p className="text-2xl font-bold text-[#0B1F4A] leading-none truncate">{value}</p>
+                <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mt-1.5">{label}</p>
+            </div>
         </div>
     );
 }
@@ -227,6 +265,14 @@ export default function AdminQuotationsPage() {
         return c;
     }, [quotations]);
 
+    const needsAttention = counts.pending + counts.awaiting_payment + counts.payment_verification;
+
+    const paidRevenue = useMemo(() => {
+        return quotations
+            .filter((q) => q.status === "paid" || q.status === "completed")
+            .reduce((sum, q) => sum + (q.detail ? Number(q.detail.total) || 0 : 0), 0);
+    }, [quotations]);
+
     const handleStatusUpdate = async (quote: Quotation, status: Status) => {
         const previousStatus = quote.status;
         const statusLabel = STATUSES.find((s) => s.value === status)?.label ?? status;
@@ -294,6 +340,14 @@ export default function AdminQuotationsPage() {
                         <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
                         Refresh
                     </button>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <StatCard label="Total requests" value={String(counts.all)} icon={Inbox} tone="neutral" />
+                    <StatCard label="Needs attention" value={String(needsAttention)} icon={AlertCircle} tone="amber" />
+                    <StatCard label="Paid revenue" value={formatCurrency(paidRevenue)} icon={Banknote} tone="green" />
+                    <StatCard label="Cancelled" value={String(counts.cancelled)} icon={XCircle} tone="red" />
                 </div>
 
                 {error && (
@@ -518,7 +572,7 @@ export default function AdminQuotationsPage() {
                             </button>
 
                             {deleteTarget && (
-                                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                                <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
 
                                     {/* Backdrop */}
                                     <div

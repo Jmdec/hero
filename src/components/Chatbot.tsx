@@ -43,7 +43,7 @@ function Modal({ open, onClose, title, children }: ModalProps) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/40"
@@ -58,11 +58,11 @@ function Modal({ open, onClose, title, children }: ModalProps) {
                 aria-labelledby="modal-title"
                 className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden"
             >
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
                     <h2 id="modal-title" className="text-base font-bold text-gray-900">{title}</h2>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-1.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
+                        className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
                         aria-label="Close"
                     >
                         <X className="w-4 h-4" />

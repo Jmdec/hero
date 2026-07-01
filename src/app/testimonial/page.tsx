@@ -158,7 +158,7 @@ export default function TestimonialPage() {
             unoptimized
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#1B3A8C]/90 to-[#1B3A8C]/60" />
+          <div className="absolute inset-0 bg-linear-to-r from-[#1B3A8C]/90 to-[#1B3A8C]/60" />
         </div>
         <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
@@ -253,7 +253,7 @@ export default function TestimonialPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 bg-gradient-to-r from-[#0D47A1] to-[#00ACC1]">
+      <section className="py-20 bg-linear-to-r from-[#0D47A1] to-[#00ACC1]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Love working at Hero?

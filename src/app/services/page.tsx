@@ -22,7 +22,8 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from "lucide-react";
 
 type SpaceType = {
@@ -288,6 +289,34 @@ function FaqAccordion({ faqs }: { faqs: { q: string; a: string }[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/* Map Embed with loading state */
+function MapEmbed({ src, title }: { src: string; title: string }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <>
+      {!loaded && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-gray-100 animate-pulse">
+          <Loader2 className="w-5 h-5 text-[#0D47A1] animate-spin" />
+          <span className="text-xs font-medium text-gray-400">Loading map…</span>
+        </div>
+      )}
+      <iframe
+        src={src}
+        title={title}
+        width="100%"
+        height="100%"
+        style={{ border: 0 }}
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        onLoad={() => setLoaded(true)}
+        className={`absolute inset-0 transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
+      />
+    </>
   );
 }
 
@@ -562,11 +591,9 @@ export default function ServicesPage() {
               className="bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 shadow-xl"
             >
               <div className="relative h-48 overflow-hidden group">
-                <iframe
+                <MapEmbed
                   src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.7277203334647!2d121.01805607468263!3d14.557556885923752!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c90f316aaaab%3A0xf80063632113a229!2sHERO%20PH!5e0!3m2!1sen!2sph!4v1782451174323!5m2!1sen!2sph"
-                  width="100%" height="100%" style={{ border: 0 }}
-                  allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"
-                  className="absolute inset-0"
+                  title="Tower 6789 map"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 pointer-events-none flex items-center justify-center">
                   <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">View on Google Maps</span>
@@ -609,11 +636,9 @@ export default function ServicesPage() {
               className="bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 shadow-xl"
             >
               <div className="relative h-48 overflow-hidden group">
-                <iframe
+                <MapEmbed
                   src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.7349367396077!2d121.01852111072995!3d14.55714458586539!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c90f31651de5%3A0xf2d7d4161752e079!2sHero%20Serviced%20Office!5e0!3m2!1sen!2sph!4v1781155861898!5m2!1sen!2sph"
-                  width="100%" height="100%" style={{ border: 0 }}
-                  allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"
-                  className="absolute inset-0"
+                  title="Insular Life Building map"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 pointer-events-none flex items-center justify-center">
                   <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">View on Google Maps</span>

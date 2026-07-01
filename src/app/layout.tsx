@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
 import { ToastProvider } from "../components/Toast";
 import { AuthProvider } from "@/contexts/AuthContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+import { Montserrat, Geist_Mono } from "next/font/google";
+
+const montserrat = Montserrat({
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-montserrat",
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-geist-mono",
 });
 
 // Metadata 
@@ -124,15 +125,20 @@ export const metadata: Metadata = {
     },
   },
 
-  // Icons
   icons: {
     icon: [
-      { url: "", sizes: "any" },
-      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.png" },
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-    shortcut: "",
+    apple: [
+      {
+        url: "/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+    shortcut: "/favicon.png",
   },
 
   // PWA / Apple Web App
@@ -512,8 +518,7 @@ export default function RootLayout({
   return (
     <html
       lang="en-PH"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      data-scroll-behavior="smooth"
+      className={`${montserrat.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
         {/* ── Structured Data (SEO + AEO) ── */}

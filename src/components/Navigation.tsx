@@ -49,7 +49,7 @@ export default function Navigation() {
               return (
                 <Link
                   key={link.href}
-                  href={link.href || undefined}
+                  href={link.href}
                   className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     active
                       ? "text-[#1B3A8C] bg-[#C5D2EC]/30"
@@ -115,7 +115,7 @@ export default function Navigation() {
                 return (
                   <Link
                     key={link.href}
-                    href={link.href || undefined}
+                    href={link.href}
                     onClick={() => setIsOpen(false)}
                     className={`flex items-center justify-between px-4 py-3 text-base font-medium rounded-lg transition-colors ${
                       active

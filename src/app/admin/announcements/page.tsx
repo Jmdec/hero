@@ -604,7 +604,7 @@ export default function AnnouncementsAdmin() {
           <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
             <div className="px-6 py-5">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
                   <AlertTriangle className="h-5 w-5 text-red-600" />
                 </div>
                 <div>

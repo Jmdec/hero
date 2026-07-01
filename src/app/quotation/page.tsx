@@ -266,8 +266,8 @@ function SuccessModalContent({
         </p>
       ) : (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
-          Thank you for your inquiry! Your quotation request has been received. A HERO Serviced
-          Office representative will contact you within <strong>24 business hours</strong>.
+         Your quotation request has been received. {" "}
+         A HERO Serviced Office representative will contact you within <strong>24 business hours</strong>.
         </p>
       )}
 

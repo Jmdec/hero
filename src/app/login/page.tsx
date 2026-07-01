@@ -13,6 +13,7 @@ import {
   ArrowRight,
   MailCheck,
   RefreshCw,
+  UserX,
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,11 +35,12 @@ export default function LoginPage() {
   const [isResending, setIsResending] = useState(false);
   const [showVerificationNotice, setShowVerificationNotice] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [showNotFoundNotice, setShowNotFoundNotice] = useState(false);
+  const [notFoundEmail, setNotFoundEmail] = useState("");
 
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    rememberMe: false,
   });
 
   const handleResendVerification = async () => {
@@ -76,6 +78,7 @@ export default function LoginPage() {
 
     setIsLoading(true);
     setShowVerificationNotice(false);
+    setShowNotFoundNotice(false);
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -93,6 +96,9 @@ export default function LoginPage() {
         if (data.error === "email_not_verified") {
           setUnverifiedEmail(formData.email);
           setShowVerificationNotice(true);
+        } else if (data.error === "user_not_found" || response.status === 404) {
+          setNotFoundEmail(formData.email);
+          setShowNotFoundNotice(true);
         } else {
           showToast(data.message || "Login failed", "error");
         }
@@ -185,6 +191,44 @@ export default function LoginPage() {
           )}
         </AnimatePresence>
 
+        {/* No Account Found Notice */}
+        <AnimatePresence>
+          {showNotFoundNotice && (
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.98 }}
+              transition={{ duration: 0.25 }}
+              className="rounded-xl border border-red-200 bg-red-50 p-4"
+            >
+              <div className="flex gap-3">
+                <div className="shrink-0 mt-0.5">
+                  <UserX className="w-5 h-5 text-red-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-red-800">
+                    No account found
+                  </p>
+                  <p className="mt-1 text-sm text-red-700">
+                    We couldn&apos;t find an account for{" "}
+                    <span className="font-medium break-all">{notFoundEmail}</span>.
+                    Double-check the address, or create a new account.
+                  </p>
+                  <div className="mt-3">
+                    <Link
+                      href="/register"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-red-800 hover:text-red-900 underline underline-offset-2 transition-colors"
+                    >
+                      Create an account
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Form */}
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
@@ -207,9 +251,11 @@ export default function LoginPage() {
                   autoComplete="email"
                   required
                   value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value });
+                    if (showNotFoundNotice) setShowNotFoundNotice(false);
+                    if (showVerificationNotice) setShowVerificationNotice(false);
+                  }}
                   className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                   placeholder="you@company.com"
                 />
@@ -256,35 +302,15 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Remember & Forgot */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                checked={formData.rememberMe}
-                onChange={(e) =>
-                  setFormData({ ...formData, rememberMe: e.target.checked })
-                }
-                className="h-4 w-4 text-[#1B3A8C] focus:ring-[#1B3A8C] border-gray-300 rounded"
-              />
-              <label
-                htmlFor="remember-me"
-                className="ml-2 block text-sm text-gray-700"
-              >
-                Remember me
-              </label>
-            </div>
-            <div className="text-sm">
+          {/* Forgot
+          <div className="flex items-center justify-end">
               <Link
                 href="/forgot-password"
-                className="font-medium text-[#1B3A8C] hover:text-[#3B5EA6]"
+                className="font-medium text-sm text-[#1B3A8C] hover:text-[#3B5EA6]"
               >
                 Forgot password?
               </Link>
-            </div>
-          </div>
+          </div> */}
 
           {/* Submit Button */}
           <button

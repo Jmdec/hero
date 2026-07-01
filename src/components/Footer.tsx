@@ -291,7 +291,7 @@ export default function Footer() {
               <ul className="space-y-3">
                 {quickLinks.filter(link => link.href?.trim()).map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href || undefined} className="text-sm hover:text-[#1565C0] transition-colors">
+                    <Link href={link.href} className="text-sm hover:text-[#1565C0] transition-colors">
                       {link.label}
                     </Link>
                   </li>
@@ -305,7 +305,7 @@ export default function Footer() {
               <ul className="space-y-3">
                 {services.filter(service => service.href?.trim()).map((service, index) => (
                   <li key={index}>
-                    <Link href={service.href || undefined} className="text-sm hover:text-[#1565C0] transition-colors">
+                    <Link href={service.href} className="text-sm hover:text-[#1565C0] transition-colors">
                       {service.label}
                     </Link>
                   </li>

@@ -258,10 +258,10 @@ export default function Home() {
                   <p className="text-gray-600 mb-4">{service.description}</p>
                   <div className="flex items-center justify-between">
                     <Link
-                      href="/reservation"
+                      href="/quotation"
                       className="text-sm font-medium text-gray-900 hover:text-[#1B3A8C] transition-colors"
                     >
-                      Reserve Now →
+                      Get Quotation →
                     </Link>
                   </div>
                 </div>
@@ -324,12 +324,12 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-linear-to-r from-[#1B3A8C] to-[#3B5EA6]">
+      <section className="py-20 bg-linear-to-r from-[#0D47A1] to-[#00ACC1]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+          <h2 className="text-2xl md:text-4xl font-bold text-white mb-6">
             Ready to Start Your Business in the Philippines?
           </h2>
-          <p className="text-xl text-white/90 mb-8">
+          <p className="text-md text-white/90 mb-8">
             Contact us today for a personalized tour and discover the perfect office solution for your business.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -337,7 +337,7 @@ export default function Home() {
               href="/quotation"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-semibold hover:bg-gray-100 transition-colors"
             >
-              Get a Quote
+              Get a Quote →
             </Link>
             <Link
               href="/contact"
