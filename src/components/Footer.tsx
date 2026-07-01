@@ -289,9 +289,9 @@ export default function Footer() {
             <div>
               <h3 className="text-white font-semibold mb-4">Quick Links</h3>
               <ul className="space-y-3">
-                {quickLinks.map((link) => (
+                {quickLinks.filter(link => link.href?.trim()).map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="text-sm hover:text-[#1565C0] transition-colors">
+                    <Link href={link.href || undefined} className="text-sm hover:text-[#1565C0] transition-colors">
                       {link.label}
                     </Link>
                   </li>
@@ -303,9 +303,9 @@ export default function Footer() {
             <div>
               <h3 className="text-white font-semibold mb-4">Our Services</h3>
               <ul className="space-y-3">
-                {services.map((service, index) => (
+                {services.filter(service => service.href?.trim()).map((service, index) => (
                   <li key={index}>
-                    <Link href={service.href} className="text-sm hover:text-[#1565C0] transition-colors">
+                    <Link href={service.href || undefined} className="text-sm hover:text-[#1565C0] transition-colors">
                       {service.label}
                     </Link>
                   </li>
@@ -321,7 +321,8 @@ export default function Footer() {
                   <MapPin className="w-5 h-5 text-[#64B5F6] shrink-0 mt-0.5" />
                   <a
                     href="https://www.google.com/maps/search/?api=1&query=23F+Tower+6789+6789+Ayala+Avenue+Makati+City"
-                    target="next"
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
                     <div className="text-sm leading-6 hover:text-[#1565C0]">
                       <div>23F TOWER6789</div>
@@ -333,7 +334,7 @@ export default function Footer() {
                 </li>
                 <li className="flex items-start gap-3">
                   <MapPin className="w-5 h-5 text-[#64B5F6] shrink-0 mt-0.5" />
-                  <a href="https://maps.app.goo.gl/UAXd38SMpp9LyU9y7" target="next">
+                  <a href="https://maps.app.goo.gl/UAXd38SMpp9LyU9y7" target="_blank" rel="noopener noreferrer">
                     <div className="text-sm leading-6 hover:text-[#1565C0]">
                       <div>11F Insular Life Building</div>
                       <div>6781 Ayala Avenue</div>

@@ -251,13 +251,13 @@ export default function AboutPage() {
       {/* HERO Group of Companies */}
 
       {/* Why Choose HERO */}
-      <section className="relative overflow-hidden bg-linear-to-b from-[#0A1E3F] to-[#1565C0] px-14 py-20">
+      <section className="relative overflow-hidden bg-linear-to-r from-[#0A1E3F] to-[#1565C0] px-14 py-20">
         {/* Decorative Circle */}
 
         <div className="relative z-10">
 
           <h2 className="mb-12 text-center text-4xl font-extrabold leading-[1.2] tracking-[-0.01em] text-white">
-            Why Choose HERO
+            Why Choose HERO?
           </h2>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -276,7 +276,7 @@ export default function AboutPage() {
                   </h3>
                 </div>
 
-                <p className="text-sm leading-relaxed text-white/60">
+                <p className="text-sm leading-relaxed text-white/70">
                   {desc}
                 </p>
               </div>

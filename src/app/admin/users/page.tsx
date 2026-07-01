@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Users,
     UserCheck,
@@ -14,60 +14,24 @@ import {
     Clock,
     Mail,
     Phone,
+    AlertCircle,
 } from "lucide-react";
-import {
-    AreaChart,
-    Area,
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
-} from "recharts";
-
-/* Mock Data */
-
-const monthlyRegistrations = [
-    { month: "Jan", users: 28 },
-    { month: "Feb", users: 34 },
-    { month: "Mar", users: 29 },
-    { month: "Apr", users: 38 },
-    { month: "May", users: 42 },
-    { month: "Jun", users: 47 },
-];
-
-const usersByRole = [
-    { name: "Regular Users", value: 232, color: "#0D47A1" },
-    { name: "Admins", value: 18, color: "#FFC107" },
-];
-
-const monthlyActive = [
-    { month: "Jan", active: 140 },
-    { month: "Feb", active: 155 },
-    { month: "Mar", active: 162 },
-    { month: "Apr", active: 170 },
-    { month: "May", active: 188 },
-    { month: "Jun", active: 210 },
-];
-
-const recentUsers = [
-    { id: "USR-001", name: "Takashi Yamamoto", email: "t.yamamoto@technosoft.ph", phone: "+63 917 123 4567", role: "user", status: "Verified", joined: "Jun 24, 2026" },
-    { id: "USR-002", name: "Maria Santos", email: "maria.santos@quantum.com", phone: "+63 918 234 5678", role: "user", status: "Unverified", joined: "Jun 23, 2026" },
-    { id: "USR-003", name: "James Reyes", email: "james.reyes@panislands.com", phone: "+63 919 345 6789", role: "admin", status: "Verified", joined: "Jun 23, 2026" },
-    { id: "USR-004", name: "Lovely Cruz", email: "lovely.cruz@bpo.com", phone: "+63 920 456 7890", role: "user", status: "Verified", joined: "Jun 22, 2026" },
-    { id: "USR-005", name: "Bethany Callora", email: "b.callora@starfield.com", phone: "+63 921 567 8901", role: "user", status: "Unverified", joined: "Jun 21, 2026" },
-    { id: "USR-006", name: "Kenji Nakamura", email: "k.nakamura@imo.ph", phone: "+63 922 678 9012", role: "admin", status: "Verified", joined: "Jun 20, 2026" },
-    { id: "USR-007", name: "Ana Gonzales", email: "ana.gonzales@lizlisa.ph", phone: "+63 923 789 0123", role: "user", status: "Verified", joined: "Jun 19, 2026" },
-];
-
-/* Drill-Down Data */
 
 type StatKey = "total" | "verified" | "unverified" | "admins";
+
+type Role = "admin" | "user";
+
+interface UserRecord {
+    id: string | number;
+    name?: string;
+    email?: string;
+    phone?: string;
+    role?: Role;
+    email_verified_at?: string | null;
+    created_at?: string;
+}
+
+/* Drill-Down Data */
 
 const drillDownData: Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }> = {
     total: {
@@ -116,8 +80,6 @@ const drillDownData: Record<StatKey, { title: string; items: { label: string; va
     },
 };
 
-/* Stat Card */
-
 type StatCardProps = {
     id: StatKey;
     icon: React.ElementType;
@@ -129,73 +91,71 @@ type StatCardProps = {
     onClick: (id: StatKey) => void;
 };
 
-function StatCard({ id, icon: Icon, label, value, trend, trendUp, color, onClick }: StatCardProps) {
-    const iconBg = color === "bg-[#FFC107]" ? "#FFF8E1" : "#EEF2FB";
-    const iconColor = color === "bg-[#FFC107]" ? "#F57F17" : "#0D47A1";
-
+function StatCard({
+    id,
+    icon: Icon,
+    label,
+    value,
+    trend,
+    trendUp,
+    color,
+    onClick,
+}: StatCardProps) {
     return (
         <button
             onClick={() => onClick(id)}
-            className="group bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC] relative overflow-hidden"
+            className="group relative overflow-hidden rounded-3xl bg-white border border-slate-200 hover:border-[#0D47A1]/30 shadow-sm hover:shadow-xl transition-all duration-300 p-6 text-left"
         >
-            <div className={`absolute top-0 left-0 w-1 h-full ${color}`} />
-            <div className="flex items-start justify-between mb-4">
-                <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: iconBg }}
-                >
-                    <Icon className="w-5 h-5" style={{ color: iconColor }} />
+            {/* Background Accent */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-br from-[#0D47A1]/5 via-transparent to-[#FFC107]/10" />
+
+            <div className="relative z-10">
+
+                {/* Header */}
+                <div className="flex items-center justify-between">
+
+                    <div
+                        className={`w-14 h-14 rounded-2xl flex items-center justify-center ${color === "bg-[#FFC107]"
+                                ? "bg-[#FFF8E1]"
+                                : "bg-[#EEF4FF]"
+                            }`}
+                    >
+                        <Icon
+                            className={`w-7 h-7 ${color === "bg-[#FFC107]"
+                                    ? "text-[#FFC107]"
+                                    : "text-[#0D47A1]"
+                                }`}
+                        />
+                    </div>
+
+                    <div
+                        className={`flex items-center gap-1 text-sm font-semibold ${trendUp ? "text-emerald-600" : "text-red-500"
+                            }`}
+                    >
+                        {trendUp ? (
+                            <TrendingUp className="w-4 h-4" />
+                        ) : (
+                            <TrendingDown className="w-4 h-4" />
+                        )}
+
+                        {trend}
+                    </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
-            </div>
-            <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
-            <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-            <div className={`flex items-center gap-1 text-xs font-semibold ${trendUp ? "text-green-600" : "text-red-500"}`}>
-                {trendUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                {trend}
+
+                {/* Value */}
+
+                <div className="mt-8">
+
+                    <p className="text-sm text-slate-500 mb-1">
+                        {label}
+                    </p>
+
+                    <h2 className="text-4xl font-bold text-slate-900">
+                        {value}
+                    </h2>
+                </div>
             </div>
         </button>
-    );
-}
-
-/* Drill-Down Modal */
-
-function DrillDownModal({ id, onClose }: { id: StatKey; onClose: () => void }) {
-    const data = drillDownData[id];
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-[#0D47A1]">
-                    <h3 className="text-base font-bold text-white">{data.title}</h3>
-                    <button
-                        onClick={onClose}
-                        className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                    >
-                        <X className="w-4 h-4 text-white" />
-                    </button>
-                </div>
-                <div className="p-5 space-y-3">
-                    {data.items.map((item, i) => (
-                        <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                            <div>
-                                <p className="text-sm font-medium text-gray-800">{item.label}</p>
-                                {item.sub && <p className="text-xs text-gray-400">{item.sub}</p>}
-                            </div>
-                            <span className="text-sm font-bold text-[#0D47A1]">{item.value}</span>
-                        </div>
-                    ))}
-                </div>
-                <div className="px-5 pb-5">
-                    <button
-                        onClick={onClose}
-                        className="w-full py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-                    >
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
     );
 }
 
@@ -214,122 +174,127 @@ const roleStyles: Record<string, string> = {
 export default function UsersPage() {
     const [activeCard, setActiveCard] = useState<StatKey | null>(null);
     const [search, setSearch] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [users, setUsers] = useState<UserRecord[]>([]);
+    const [stats, setStats] = useState({
+        total: 0,
+        verified: 0,
+        unverified: 0,
+        admins: 0,
+    });
 
-    const stats = [
-        { id: "total" as StatKey, icon: Users, label: "Total Users", value: "250", trend: "+12.5% vs last month", trendUp: true, color: "bg-[#0D47A1]" },
-        { id: "verified" as StatKey, icon: UserCheck, label: "Verified", value: "198", trend: "+8.7% vs last month", trendUp: true, color: "bg-[#0D47A1]" },
-        { id: "unverified" as StatKey, icon: UserX, label: "Unverified", value: "52", trend: "-3.7% vs last month", trendUp: false, color: "bg-[#0D47A1]" },
-        { id: "admins" as StatKey, icon: ShieldCheck, label: "Admins", value: "18", trend: "+2 this month", trendUp: true, color: "bg-[#FFC107]" },
+    // Fetch users data + derive stats
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const res = await fetch("/api/users");
+
+                if (!res.ok) {
+                    throw new Error(`Failed to load users (status ${res.status})`);
+                }
+
+                const data = await res.json();
+                const userList: UserRecord[] = data.data ?? data ?? [];
+
+                setUsers(Array.isArray(userList) ? userList : []);
+
+                const total = userList.length;
+                const verified = userList.filter((u) => !!u.email_verified_at).length;
+                const unverified = total - verified;
+                const admins = userList.filter((u) => u.role === "admin").length;
+
+                setStats({ total, verified, unverified, admins });
+            } catch (err) {
+                console.error("Error fetching users:", err);
+                setError(err instanceof Error ? err.message : "Failed to load users");
+                setUsers([]);
+                setStats({ total: 0, verified: 0, unverified: 0, admins: 0 });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUsers();
+    }, []);
+
+    const statCards = [
+        {
+            id: "total" as StatKey,
+            icon: Users,
+            label: "Total Users",
+            value: stats.total.toString(),
+            trend: `${stats.total} registered`,
+            trendUp: true,
+            color: "bg-[#0D47A1]",
+        },
+        {
+            id: "verified" as StatKey,
+            icon: UserCheck,
+            label: "Verified Users",
+            value: stats.verified.toString(),
+            trend: `${Math.round(
+                (stats.verified / Math.max(stats.total, 1)) * 100
+            )}% verified`,
+            trendUp: true,
+            color: "bg-[#0D47A1]",
+        },
+        {
+            id: "unverified" as StatKey,
+            icon: UserX,
+            label: "Pending Verification",
+            value: stats.unverified.toString(),
+            trend: "Needs attention",
+            trendUp: false,
+            color: "bg-[#0D47A1]",
+        },
+        {
+            id: "admins" as StatKey,
+            icon: ShieldCheck,
+            label: "Administrators",
+            value: stats.admins.toString(),
+            trend: "Access management",
+            trendUp: true,
+            color: "bg-[#FFC107]",
+        },
     ];
 
-    const filtered = recentUsers.filter(
+    const filtered = users.filter(
         (u) =>
-            u.name.toLowerCase().includes(search.toLowerCase()) ||
-            u.email.toLowerCase().includes(search.toLowerCase())
+            (u.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
+            (u.email?.toLowerCase() || "").includes(search.toLowerCase())
     );
 
     return (
         <>
             <section className="p-4 space-y-8">
 
+                {/* ── Error States ── */}
+                {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-sm font-semibold text-red-900">{error}</p>
+                            <p className="text-xs text-red-700 mt-1">Please check your connection and try again.</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* ── Stat Cards ── */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-                    {stats.map((s) => (
+                    {statCards.map((s) => (
                         <StatCard key={s.id} {...s} onClick={setActiveCard} />
                     ))}
                 </div>
 
-                {/* ── Charts Row ── */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
-                    {/* Registration trend */}
-                    <div className="lg:col-span-2 bg-white rounded-2xl shadow p-5">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-800">New Registrations</h3>
-                                <p className="text-xs text-gray-400">Jan – Jun 2026</p>
-                            </div>
-                            <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">↑ 11.9%</span>
-                        </div>
-                        <ResponsiveContainer width="100%" height={180}>
-                            <AreaChart data={monthlyRegistrations} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="regGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#0D47A1" stopOpacity={0.15} />
-                                        <stop offset="95%" stopColor="#0D47A1" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
-                                    labelStyle={{ fontWeight: 700, color: "#0D47A1" }}
-                                />
-                                <Area type="monotone" dataKey="users" stroke="#0D47A1" strokeWidth={2.5} fill="url(#regGrad)" dot={{ r: 3, fill: "#0D47A1" }} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    {/* Users by role pie */}
-                    <div className="bg-white rounded-2xl shadow p-5">
-                        <div className="mb-4">
-                            <h3 className="text-sm font-bold text-gray-800">Users by Role</h3>
-                            <p className="text-xs text-gray-400">Current distribution</p>
-                        </div>
-                        <ResponsiveContainer width="100%" height={140}>
-                            <PieChart>
-                                <Pie data={usersByRole} cx="50%" cy="50%" innerRadius={38} outerRadius={60} paddingAngle={3} dataKey="value">
-                                    {usersByRole.map((entry, i) => (
-                                        <Cell key={i} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 11 }} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        <div className="space-y-1.5 mt-2">
-                            {usersByRole.map((item) => (
-                                <div key={item.name} className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                                        <span className="text-xs text-gray-600">{item.name}</span>
-                                    </div>
-                                    <span className="text-xs font-bold text-gray-800">{item.value}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* ── Active Users Bar Chart ── */}
-                <div className="bg-white rounded-2xl shadow p-5">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h3 className="text-sm font-bold text-gray-800">Monthly Active Users</h3>
-                            <p className="text-xs text-gray-400">Jan – Jun 2026</p>
-                        </div>
-                        <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">↑ 11.7%</span>
-                    </div>
-                    <ResponsiveContainer width="100%" height={180}>
-                        <BarChart data={monthlyActive} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                            <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                            <Tooltip
-                                contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
-                                labelStyle={{ fontWeight: 700, color: "#0D47A1" }}
-                            />
-                            <Bar dataKey="active" fill="#0D47A1" radius={[6, 6, 0, 0]} maxBarSize={36} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-
-                {/* ── Recent Users Table ── */}
+                {/* ── User Overview Table ── */}
                 <div className="bg-white rounded-2xl shadow overflow-hidden">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-gray-100 gap-3">
                         <div>
-                            <h3 className="text-sm font-bold text-gray-800">Recent Users</h3>
-                            <p className="text-xs text-gray-400">Latest 7 registrations</p>
+                            <h3 className="text-sm font-bold text-gray-800">User Overview</h3>
+                            {/* User Count and Add a Pagination */}
                         </div>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
@@ -355,56 +320,70 @@ export default function UsersPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {filtered.map((user) => (
-                                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-5 py-3.5 text-xs font-mono text-gray-400">{user.id}</td>
-                                        <td className="px-5 py-3.5">
-                                            <p className="font-semibold text-gray-800 text-xs">{user.name}</p>
-                                            <span className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
-                                                <Mail className="w-3 h-3" />
-                                                {user.email}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <span className="flex items-center gap-1 text-xs text-gray-600">
-                                                <Phone className="w-3 h-3 text-[#0D47A1]" />
-                                                {user.phone}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${roleStyles[user.role]}`}>
-                                                {user.role === "admin" ? "Admin" : "User"}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <span className="flex items-center gap-1 text-xs text-gray-400">
-                                                <Clock className="w-3 h-3" />
-                                                {user.joined}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyles[user.status]}`}>
-                                                {user.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {filtered.length === 0 && (
+                                {loading ? (
                                     <tr>
                                         <td colSpan={6} className="px-5 py-8 text-center text-xs text-gray-400">
-                                            No users match your search.
+                                            <div className="flex items-center justify-center gap-2">
+                                                <div className="w-4 h-4 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
+                                                Loading users...
+                                            </div>
                                         </td>
                                     </tr>
+                                ) : filtered.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-5 py-8 text-center text-xs text-gray-400">
+                                            {search ? "No users match your search." : "No users found."}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filtered.map((user) => (
+                                        <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-5 py-3.5 text-xs font-mono text-gray-400">
+                                                {user.id ?? "—"}
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <p className="font-semibold text-gray-800 text-xs">{user.name || "Unknown"}</p>
+                                                <span className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                                                    <Mail className="w-3 h-3" />
+                                                    {user.email || "—"}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <span className="flex items-center gap-1 text-xs text-gray-600">
+                                                    <Phone className="w-3 h-3 text-[#0D47A1]" />
+                                                    {user.phone || "—"}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${roleStyles[user.role ?? "user"] || roleStyles.user}`}>
+                                                    {user.role === "admin" ? "Admin" : "User"}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                    <Clock className="w-3 h-3" />
+                                                    {user.created_at
+                                                        ? new Date(user.created_at).toLocaleDateString("en-US", {
+                                                            year: "numeric",
+                                                            month: "short",
+                                                            day: "numeric"
+                                                        })
+                                                        : "—"}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyles[user.email_verified_at ? "Verified" : "Unverified"]}`}>
+                                                    {user.email_verified_at ? "Verified" : "Unverified"}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))
                                 )}
                             </tbody>
                         </table>
                     </div>
                 </div>
-
             </section>
-
-            {/* ── Drill-Down Modal ── */}
-            {activeCard && <DrillDownModal id={activeCard} onClose={() => setActiveCard(null)} />}
         </>
     );
 }

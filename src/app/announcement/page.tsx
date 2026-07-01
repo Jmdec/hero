@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 import { ArrowRight, Calendar, X } from "lucide-react";
 
 interface Announcement {
@@ -241,6 +242,84 @@ export default function AnnouncementPage() {
                     </>
                 )}
             </AnimatePresence>
+
+            {/* CTA */}
+            <section className="py-20 bg-linear-to-r from-[#0D47A1] to-[#00ACC1]">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid lg:grid-cols-2 gap-16 items-center">
+
+                        <div>
+                            <span className="inline-flex items-center gap-2 text-blue-200 uppercase tracking-wider text-sm font-semibold">
+                                ✉ Newsletter
+                            </span>
+
+                            <h2 className="mt-4 text-2xl lg:text-5xl font-bold text-white leading-tight">
+                                Subscribe to the Hero monthly
+                            </h2>
+
+                            <p className="mt-5 text-md text-blue-100 leading-relaxed max-w-xl">
+                                One curated email per month with new spaces, member perks,
+                                exclusive promos, and Makati business insights.
+                                No spam — unsubscribe anytime.
+                            </p>
+
+                            <div className="mt-5 space-y-2">
+
+                                {[
+                                    "Early access to promotional rates",
+                                    "Invitations to member-only events",
+                                    "Tips for setting up your business in the Philippines",
+                                ].map((item) => (
+                                    <div
+                                        key={item}
+                                        className="flex items-center gap-3 text-blue-100"
+                                    >
+                                        <div className="w-6 h-6 rounded-full border border-blue-300 flex items-center justify-center">
+                                            ✓
+                                        </div>
+
+                                        <span>{item}</span>
+                                    </div>
+                                ))}
+
+                            </div>
+
+                        </div>
+
+                        <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-8 shadow-2xl">
+                            <form className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-semibold text-white mb-2">
+                                        Email address
+                                    </label>
+
+                                    <input
+                                        type="email"
+                                        placeholder="you@company.com"
+                                        className="w-full rounded-xl bg-white px-5 py-4 text-gray-800 placeholder:text-gray-400 outline-none focus:ring-4 focus:ring-white/20"
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className="w-full rounded-xl bg-white py-4 font-semibold text-[#0D47A1] hover:bg-gray-100 transition flex items-center justify-center gap-2"
+                                >
+                                    Subscribe
+                                    <ArrowRight className="w-4 h-4" />
+                                </button>
+
+                                <p className="text-md text-blue-100 leading-relaxed">
+                                    By subscribing you agree to receive marketing emails from
+                                    Hero Serviced Office.
+                                </p>
+
+                            </form>
+
+                        </div>
+
+                    </div>
+                </div>
+            </section>
         </div>
     );
 }

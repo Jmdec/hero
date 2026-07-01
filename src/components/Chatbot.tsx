@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, ChevronRight } from 'lucide-react';
-import Image from 'next/image';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { MessageCircle, X, Send, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
+import { chatApi } from '../lib/chatApi';
 
 interface Message {
     type: 'bot' | 'user';
@@ -10,7 +10,237 @@ interface Message {
     time: string;
 }
 
-// ── Validation helpers ────────────────────────────────────────────────────────
+const SESSION_STORAGE_KEY = 'hero_chat_session_id';
+
+// Modal component for Privacy Policy and Terms of Service
+
+interface ModalProps {
+    open: boolean;
+    onClose: () => void;
+    title: string;
+    children: React.ReactNode;
+}
+
+function Modal({ open, onClose, title, children }: ModalProps) {
+    // Close on Escape, and lock background scroll while open.
+    useEffect(() => {
+        if (!open) return;
+
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+
+        document.addEventListener('keydown', handleKey);
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.removeEventListener('keydown', handleKey);
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [open, onClose]);
+
+    if (!open) return null;
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/40"
+                onClick={onClose}
+                aria-hidden="true"
+            />
+
+            {/* Panel */}
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="modal-title"
+                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden"
+            >
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+                    <h2 id="modal-title" className="text-base font-bold text-gray-900">{title}</h2>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-1.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
+                        aria-label="Close"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+                <div className="overflow-y-auto px-5 py-4 text-sm text-gray-600 leading-relaxed">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ── Privacy Policy & Terms of Service content ───────────────────────────────
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <div className="mb-4 last:mb-0">
+            <h3 className="font-semibold text-gray-900 text-sm mb-1">{title}</h3>
+            <div className="text-sm text-gray-600 leading-relaxed space-y-1">{children}</div>
+        </div>
+    );
+}
+
+function PrivacyPolicyContent() {
+    return (
+        <>
+            <p className="mb-4">
+                Thank you very much for using the services provided by Hero PH INC. (hereinafter,
+                &quot;we/our/us&quot;).
+            </p>
+            <p className="mb-4">
+                The Privacy Policy (hereinafter, &quot;the Policy&quot;) sets forth our privacy information handling
+                principles. You or users are deemed to have agreed with the Policy if you use our services.
+            </p>
+
+            <Section title="(1) What is privacy information?">
+                Privacy information includes both personal information; and history information and
+                characteristic information. Personal information refers to the personal information
+                prescribed in the Act on the Protection of Personal Information or information relating to a
+                living individual, specifically the name, date of birth, address, telephone number and other
+                contact information, and any other described information that can identify individuals.
+                Information other than personal information corresponds to history and characteristic
+                information, such as services used, products purchased, history of pages/ads viewed, search
+                keywords used by users, time and date of use, methods of using, using environment, postal
+                code, gender, occupation, age, user&apos;s IP address, cookie information, location information,
+                and terminal identification information.
+            </Section>
+
+            <Section title="(2) How do you collect privacy information?">
+                We may collect personal information when a user makes a user registration or use any of our
+                services and/or history and characteristic information of a user when a user uses any of our
+                services or views any of the pages of our website. If a user performs settings in such a way
+                that the use of the services is linked with any external service, we will collect the ID to
+                be used by the user in the external service and/or the information that the user agrees to
+                disclose to the linked service under the external service&apos;s privacy settings.
+            </Section>
+
+            <Section title="(3) For what purpose do you use privacy information?">
+                <ul className="list-[upper-alpha] list-inside space-y-2 mt-1">
+                    <li>To present registered information so that users can view and/or correct their registered information and view the status of use.</li>
+                    <li>To use an e-mail address to notify or contact users, or to send products to users.</li>
+                    <li>To use information such as name, date of birth, and address for user identity verification.</li>
+                    <li>To use payment-related information in order to charge users.</li>
+                    <li>To display registered information on input screens so that users can enter data easily.</li>
+                    <li>To refuse the use of the Service by users who violate the Terms of Use.</li>
+                    <li>To answer inquiries from users.</li>
+                    <li>To prepare statistical data processed in a form that does not permit personal identification.</li>
+                    <li>To distribute or display advertisements of us or a third party.</li>
+                    <li>To use privacy information for marketing.</li>
+                    <li>Purposes incidental to the purposes of use above.</li>
+                </ul>
+            </Section>
+
+            <Section title="(4) Do you provide privacy information for a third party?">
+                We will not provide privacy information for a third party without prior approval of users
+                except where required under laws and regulations, where required for protecting human life or
+                property, or where necessary to help a national organization perform clerical work prescribed
+                by law.
+            </Section>
+
+            <Section title="(5) Can I check my privacy information or request correction?">
+                If a user requests disclosure of their own privacy information, we will disclose it without
+                delay unless doing so would harm the interests of the user or third party, significantly
+                hinder our operations, or violate laws and regulations. A fee of 1,000 yen applies per
+                disclosure instance. Incorrect personal information can be corrected or deleted upon request.
+            </Section>
+
+            <Section title="(6) Can I request discontinuation of use?">
+                Users may request discontinuation of use of their privacy information. We will conduct a
+                necessary investigation and take appropriate measures, informing the user without delay.
+            </Section>
+
+            <Section title="(7) Change of Privacy Policy">
+                This Privacy Policy is subject to changes without notice. Changes take effect when posted to
+                this website.
+            </Section>
+
+            <Section title="(8) Inquiry Contact">
+                <p>Contact person: Minoru Kobayashi</p>
+                <p>Company name: Hero Serviced Office Inc.</p>
+                <p>Address: 23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines</p>
+                <p>
+                    E-mail:{' '}
+                    <a href="mailto:salesofficer@heroph.net" className="text-[#1565C0] underline">
+                        salesofficer@heroph.net
+                    </a>
+                </p>
+            </Section>
+        </>
+    );
+}
+
+function TermsOfServiceContent() {
+    return (
+        <>
+            <p className="mb-4">
+                By accessing or using the services provided by Hero Serviced Office Inc., you agree to be
+                bound by these Terms of Service. Please read them carefully before using our services.
+            </p>
+
+            <Section title="1. Use of Services">
+                You agree to use our services only for lawful purposes and in accordance with these Terms.
+                You must not use our services in any way that violates applicable laws or regulations, or in
+                a manner that is harmful, fraudulent, or deceptive.
+            </Section>
+
+            <Section title="2. User Accounts">
+                You are responsible for maintaining the confidentiality of your account credentials and for
+                all activities that occur under your account. Please notify us immediately of any
+                unauthorized use of your account.
+            </Section>
+
+            <Section title="3. Payment and Charges">
+                All charges for services are due as specified in your service agreement. Failure to pay
+                charges may result in suspension or termination of services. All fees are non-refundable
+                unless otherwise stated.
+            </Section>
+
+            <Section title="4. Limitation of Liability">
+                Hero Serviced Office Inc. shall not be liable for any indirect, incidental, or consequential
+                damages arising from your use of our services. Our total liability shall not exceed the
+                amount paid by you for the services in the preceding month.
+            </Section>
+
+            <Section title="5. Termination">
+                We reserve the right to terminate or suspend access to our services immediately, without
+                prior notice, if you breach these Terms of Service or engage in conduct that we determine to
+                be harmful to other users or to us.
+            </Section>
+
+            <Section title="6. Changes to Terms">
+                We reserve the right to modify these Terms at any time. Changes will be effective upon
+                posting to our website. Continued use of our services after any such changes constitutes
+                your acceptance of the new Terms.
+            </Section>
+
+            <Section title="7. Governing Law">
+                These Terms shall be governed by and construed in accordance with the laws of the Republic
+                of the Philippines. Any disputes shall be subject to the exclusive jurisdiction of the courts
+                of Makati City.
+            </Section>
+
+            <Section title="8. Contact">
+                <p>For questions about these Terms, please contact us:</p>
+                <p>Hero Serviced Office Inc.</p>
+                <p>23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines</p>
+                <p>
+                    <a href="mailto:sales@heroph.net" className="text-[#1565C0] underline">
+                        sales@heroph.net
+                    </a>
+                </p>
+            </Section>
+        </>
+    );
+}
+
+// Validation helpers
 const validators = {
     name: (v: string) => {
         if (!v.trim()) return "Full name is required.";
@@ -30,10 +260,25 @@ const validators = {
         if (!/^[\d\s\+\-\(\)]+$/.test(v.trim())) return "Phone number contains invalid characters.";
         return "";
     },
-    company: (_: string) => "", // optional
+    company: (_: string) => "",
 };
 
 type LeadField = keyof typeof validators;
+
+type ConversationState = {
+    id: number;
+    session_id: string;
+    remoteConversationId?: number;
+};
+
+const formatTime = () =>
+    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+const WELCOME_MESSAGE: Message = {
+    type: 'bot',
+    text: "Hi there! 👋 I'm your HERO assistant. We deliver premium serviced offices and flexible workspace solutions in the Philippines. How can I help you today?",
+    time: formatTime(),
+};
 
 const Chatbot = () => {
     const [isStarted, setIsStarted] = useState(false);
@@ -43,15 +288,19 @@ const Chatbot = () => {
     const [touched, setTouched] = useState({ name: false, email: false, phone: false, company: false });
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [message, setMessage] = useState('');
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            type: 'bot',
-            text: "Hi there! 👋 I'm your HERO assistant. We deliver premium serviced offices and flexible workspace solutions in the Philippines. How can I help you today?",
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-    ]);
+    const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
     const [isTyping, setIsTyping] = useState(false);
+    const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+    const [leadError, setLeadError] = useState('');
+    const [isResumingSession, setIsResumingSession] = useState(true);
+    const [conversation, setConversation] = useState<ConversationState | null>(null);
+    const [sendError, setSendError] = useState('');
+    const [modal, setModal] = useState<'privacy' | 'terms' | null>(null);
+    const [agreedToPolicy, setAgreedToPolicy] = useState(false);
+    const [agreementTouched, setAgreementTouched] = useState(false);
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const quickReplies = [
         'Our Services',
@@ -70,15 +319,61 @@ const Chatbot = () => {
         scrollToBottom();
     }, [messages, isTyping]);
 
+    // Focus the input when the chat window opens on the message screen.
+    useEffect(() => {
+        if (isChatOpen && leadSubmitted) {
+            inputRef.current?.focus();
+        }
+    }, [isChatOpen, leadSubmitted]);
+
+    // On first mount, ensure the chat is ready. No backend resume endpoint exists,
+    // so we simply finish the loading state and let the user continue.
+    useEffect(() => {
+        setIsResumingSession(false);
+    }, []);
+
     // Random delay between 1.2s – 2.5s to feel more human
     const humanDelay = () =>
         new Promise(res => setTimeout(res, 1200 + Math.random() * 1300));
 
+    /** Return the existing conversation session if present. */
+    const ensureConversation = useCallback(async (): Promise<{ id: number; session_id: string } | null> => {
+        if (conversation) return conversation;
+
+        const newConversation = {
+            id: Date.now(),
+            session_id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+                ? crypto.randomUUID()
+                : `local-${Date.now()}`,
+        };
+
+        setConversation(newConversation);
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem(SESSION_STORAGE_KEY, newConversation.session_id);
+        }
+
+        return newConversation;
+    }, [conversation]);
+
+    /** Persist a message locally if a conversation exists. */
+    const persistMessage = useCallback(async (
+        activeConversation: { id: number; session_id: string } | null,
+        sender: 'user' | 'assistant',
+        text: string
+    ) => {
+        // No remote backend persistence is available in this environment.
+        return;
+    }, []);
+
     const handleQuickReply = async (reply: string) => {
-        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const time = formatTime();
 
         setMessages(prev => [...prev, { type: 'user', text: reply, time }]);
         setIsTyping(true);
+        setSendError('');
+
+        const activeConversation = await ensureConversation();
+        void persistMessage(activeConversation, 'user', reply);
 
         const predefinedReplies: Record<string, string> = {
             'Our Services':
@@ -99,7 +394,9 @@ const Chatbot = () => {
         setIsTyping(false);
 
         if (predefinedReplies[reply]) {
-            setMessages(prev => [...prev, { type: 'bot', text: predefinedReplies[reply], time }]);
+            const replyText = predefinedReplies[reply];
+            setMessages(prev => [...prev, { type: 'bot', text: replyText, time }]);
+            void persistMessage(activeConversation, 'assistant', replyText);
             return;
         }
 
@@ -110,7 +407,9 @@ const Chatbot = () => {
                 body: JSON.stringify({ message: reply })
             });
             const data = await res.json();
-            setMessages(prev => [...prev, { type: 'bot', text: data.reply || 'No response from assistant.', time }]);
+            const replyText = data.reply || 'No response from assistant.';
+            setMessages(prev => [...prev, { type: 'bot', text: replyText, time }]);
+            void persistMessage(activeConversation, 'assistant', replyText);
         } catch {
             setMessages(prev => [...prev, { type: 'bot', text: '⚠️ Sorry, something went wrong. Please try again.', time }]);
         }
@@ -119,12 +418,16 @@ const Chatbot = () => {
     const handleSendMessage = async () => {
         if (!message.trim()) return;
 
-        const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const time = formatTime();
         const userMessage: Message = { type: "user", text: message, time };
 
         setMessages(prev => [...prev, userMessage]);
         setMessage("");
         setIsTyping(true);
+        setSendError('');
+
+        const activeConversation = await ensureConversation();
+        void persistMessage(activeConversation, 'user', userMessage.text);
 
         await humanDelay();
 
@@ -134,17 +437,22 @@ const Chatbot = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ message: userMessage.text })
             });
+
+            if (!res.ok) {
+                const errBody = await res.json().catch(() => null);
+                throw new Error(errBody?.error || 'Assistant request failed.');
+            }
+
             const data = await res.json();
-            setMessages(prev => [...prev, {
-                type: "bot",
-                text: data.reply || "No response received.",
-                time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            }]);
+            const replyText = data.reply || "No response received.";
+            setMessages(prev => [...prev, { type: "bot", text: replyText, time: formatTime() }]);
+            void persistMessage(activeConversation, 'assistant', replyText);
         } catch {
+            setSendError("Your message couldn't be sent. Please try again.");
             setMessages(prev => [...prev, {
                 type: "bot",
                 text: "⚠️ Something went wrong. Please try again.",
-                time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                time: formatTime()
             }]);
         } finally {
             setIsTyping(false);
@@ -175,6 +483,50 @@ const Chatbot = () => {
         return !errors.name && !errors.email && !errors.phone;
     };
 
+    const handleContinue = async () => {
+        const fieldsValid = validateAll();
+        setAgreementTouched(true);
+
+        if (!fieldsValid || !agreedToPolicy || isSubmittingLead) return;
+
+        setIsSubmittingLead(true);
+        setLeadError('');
+
+        try {
+            const payload = {
+                full_name: leadInfo.name.trim(),
+                email_address: leadInfo.email.trim(),
+                phone_number: leadInfo.phone.trim(),
+                company_name: leadInfo.company.trim() || undefined,
+                privacy_policy_accepted: agreedToPolicy,
+            };
+
+            const startResponse = await chatApi.start(payload);
+
+            const newConversation: ConversationState = {
+                id: startResponse.conversation_id,
+                session_id: startResponse.session_id,
+                remoteConversationId: startResponse.conversation_id,
+            };
+
+            setConversation(newConversation);
+            if (typeof window !== 'undefined') {
+                window.localStorage.setItem(SESSION_STORAGE_KEY, newConversation.session_id);
+            }
+
+            const greeting = `Thanks, ${leadInfo.name.trim()}! Your details have been received. How can I help you today?`;
+            setMessages([{ type: "bot", text: greeting, time: formatTime() }]);
+            void persistMessage(newConversation, 'assistant', greeting);
+
+            setLeadSubmitted(true);
+        } catch (err) {
+            const detail = err instanceof Error ? err.message : undefined;
+            setLeadError(detail || "We couldn't save your details. Please try again.");
+        } finally {
+            setIsSubmittingLead(false);
+        }
+    };
+
     const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -188,21 +540,34 @@ const Chatbot = () => {
             {!isChatOpen && (
                 <button
                     onClick={() => setIsChatOpen(true)}
-                    className="fixed bottom-6 right-5 z-50 w-14 h-14 rounded-full bg-[#1B3A8C] hover:bg-[#16318a] flex items-center justify-center shadow-xl transition-all hover:scale-105 group"
+                    className="fixed bottom-6 right-5 z-50 w-14 h-14 rounded-full bg-[#1B3A8C] hover:bg-[#16318a] flex items-center justify-center shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 group"
                     aria-label="Open chat"
                 >
-                    <MessageCircle className="w-6 h-6 text-white" />
+                    <MessageCircle className="w-6 h-6 text-white transition-transform group-hover:scale-110" />
                 </button>
             )}
 
             {/* Chat window */}
             {isChatOpen && (
-                <div className="fixed bottom-6 right-5 z-50 w-[calc(100vw-40px)] md:w-[380px] h-[580px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-100">
+                <div
+                    role="dialog"
+                    aria-label="HERO Serviced Office chat"
+                    className="fixed bottom-6 right-5 z-50 w-[calc(100vw-40px)] md:w-95 h-145 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-100 animate-[chatIn_0.2s_ease-out]"
+                >
+                    <style>{`
+                        @keyframes chatIn {
+                            from { opacity: 0; transform: translateY(12px) scale(0.98); }
+                            to { opacity: 1; transform: translateY(0) scale(1); }
+                        }
+                        @media (prefers-reduced-motion: reduce) {
+                            * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+                        }
+                    `}</style>
 
                     {/* Header */}
-                    <div className="bg-[#1B3A8C] px-4 py-3 flex items-center justify-between flex-shrink-0">
+                    <div className="bg-[#1B3A8C] px-4 py-3 flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
                                 <span className="text-[#1B3A8C] text-base font-bold leading-none">H</span>
                             </div>
                             <div>
@@ -215,7 +580,7 @@ const Chatbot = () => {
                         </div>
                         <button
                             onClick={() => setIsChatOpen(false)}
-                            className="text-white/70 hover:text-white hover:bg-white/15 rounded-full p-1.5 transition-colors"
+                            className="text-white/70 hover:text-white hover:bg-white/15 rounded-full p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-white"
                             aria-label="Close chat"
                         >
                             <X className="w-4 h-4" />
@@ -225,8 +590,16 @@ const Chatbot = () => {
                     {/* Body */}
                     <div className="flex-1 overflow-y-auto bg-gray-50">
 
+                        {/* Resuming previous session */}
+                        {isResumingSession && (
+                            <div className="h-full flex flex-col items-center justify-center gap-3 text-gray-400">
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <p className="text-xs">Loading your conversation…</p>
+                            </div>
+                        )}
+
                         {/* Welcome screen */}
-                        {!isStarted && (
+                        {!isResumingSession && !isStarted && (
                             <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-5">
                                 <div className="w-16 h-16 rounded-2xl bg-[#1B3A8C] flex items-center justify-center shadow-lg">
                                     <span className="text-white text-2xl font-bold">H</span>
@@ -234,12 +607,12 @@ const Chatbot = () => {
                                 <div>
                                     <h2 className="text-lg font-bold text-gray-900">Welcome to HERO</h2>
                                     <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                                        I'm your HERO Assistant. Before we begin, we'll collect a few details so we can better serve you.
+                                        I&apos;m your HERO Assistant. Before we begin, we&apos;ll collect a few details so we can better serve you.
                                     </p>
                                 </div>
                                 <button
                                     onClick={() => setIsStarted(true)}
-                                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#1B3A8C] text-white text-sm font-medium hover:bg-[#16318a] transition-colors shadow-sm"
+                                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#1B3A8C] text-white text-sm font-medium hover:bg-[#16318a] active:scale-95 transition-all shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
                                 >
                                     Get started <ChevronRight className="w-4 h-4" />
                                 </button>
@@ -248,7 +621,7 @@ const Chatbot = () => {
                         )}
 
                         {/* Lead form */}
-                        {isStarted && !leadSubmitted && (
+                        {!isResumingSession && isStarted && !leadSubmitted && (
                             <div className="p-5 space-y-3">
                                 <div className="text-center mb-4">
                                     <h2 className="text-base font-bold text-gray-900">Your contact details</h2>
@@ -272,7 +645,10 @@ const Chatbot = () => {
                                                 value={leadInfo[field.key]}
                                                 onChange={(e) => handleFieldChange(field.key, e.target.value)}
                                                 onBlur={() => handleFieldBlur(field.key)}
-                                                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-white transition-colors ${hasError
+                                                aria-invalid={Boolean(hasError)}
+                                                aria-describedby={hasError ? `${field.key}-error` : undefined}
+                                                disabled={isSubmittingLead}
+                                                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${hasError
                                                         ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-200"
                                                         : touched[field.key] && !fieldErrors[field.key] && leadInfo[field.key]
                                                             ? "border-emerald-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100"
@@ -280,44 +656,79 @@ const Chatbot = () => {
                                                     }`}
                                             />
                                             {hasError && (
-                                                <p className="text-[11px] text-red-500 pl-1 flex items-center gap-1">
-                                                    <span>⚠</span> {fieldErrors[field.key]}
+                                                <p id={`${field.key}-error`} className="text-[11px] text-red-500 pl-1 flex items-center gap-1">
+                                                    <AlertCircle className="w-3 h-3 shrink-0" /> {fieldErrors[field.key]}
                                                 </p>
                                             )}
                                         </div>
                                     );
                                 })}
 
-                                <p className="text-[11px] text-gray-400 text-center pt-1">
-                                    Your information is used solely to assist with your inquiries.
-                                </p>
+                                <div className="space-y-1.5 pt-1">
+                                    <label className="flex items-start gap-2 text-[11px] text-gray-500 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={agreedToPolicy}
+                                            onChange={(e) => {
+                                                setAgreedToPolicy(e.target.checked);
+                                                setAgreementTouched(true);
+                                            }}
+                                            disabled={isSubmittingLead}
+                                            aria-invalid={agreementTouched && !agreedToPolicy}
+                                            className="mt-0.5 w-3.5 h-3.5 rounded border-gray-300 text-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/40 shrink-0"
+                                        />
+                                        <span>
+                                            I agree to the{' '}
+                                            <button
+                                                type="button"
+                                                onClick={() => setModal('privacy')}
+                                                className="text-[#1565C0] underline hover:text-[#1B3A8C] transition-colors"
+                                            >
+                                                Privacy Policy
+                                            </button>
+                                            {' '}and{' '}
+                                            <button
+                                                type="button"
+                                                onClick={() => setModal('terms')}
+                                                className="text-[#1565C0] underline hover:text-[#1B3A8C] transition-colors"
+                                            >
+                                                Terms of Service
+                                            </button>
+                                            .
+                                        </span>
+                                    </label>
+                                    {agreementTouched && !agreedToPolicy && (
+                                        <p className="text-[11px] text-red-500 pl-1 flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3 shrink-0" /> Please accept the Privacy Policy and Terms of Service to continue.
+                                        </p>
+                                    )}
+                                </div>
+
+                                {leadError && (
+                                    <p className="text-[11px] text-red-500 text-center flex items-center justify-center gap-1">
+                                        <AlertCircle className="w-3 h-3 shrink-0" /> {leadError}
+                                    </p>
+                                )}
 
                                 <button
-                                    className="w-full py-2.5 rounded-xl bg-[#1B3A8C] text-white text-sm font-medium hover:bg-[#16318a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    onClick={() => {
-                                        if (validateAll()) {
-                                            setLeadSubmitted(true);
-                                            setMessages([{
-                                                type: "bot",
-                                                text: `Thanks, ${leadInfo.name.trim()}! Your details have been received. How can I help you today?`,
-                                                time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                                            }]);
-                                        }
-                                    }}
+                                    className="w-full py-2.5 rounded-xl bg-[#1B3A8C] text-white text-sm font-medium hover:bg-[#16318a] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
+                                    onClick={handleContinue}
+                                    disabled={isSubmittingLead}
                                 >
-                                    Continue
+                                    {isSubmittingLead && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    {isSubmittingLead ? 'Submitting…' : 'Continue'}
                                 </button>
                                 <p className="text-[11px] text-gray-400 text-center">Powered by HERO Serviced Office</p>
                             </div>
                         )}
 
                         {/* Messages */}
-                        {leadSubmitted && (
+                        {!isResumingSession && leadSubmitted && (
                             <div className="p-4 space-y-3">
                                 {messages.map((msg, idx) => (
-                                    <div key={idx} className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}>
+                                    <div key={idx} className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"} animate-[msgIn_0.2s_ease-out]`}>
                                         {msg.type === "bot" && (
-                                            <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center flex-shrink-0 mr-2 mt-1">
+                                            <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0 mr-2 mt-1">
                                                 <span className="text-white text-xs font-bold">H</span>
                                             </div>
                                         )}
@@ -336,7 +747,7 @@ const Chatbot = () => {
                                 {/* Typing indicator */}
                                 {isTyping && (
                                     <div className="flex justify-start items-end gap-2">
-                                        <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center flex-shrink-0">
+                                        <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0">
                                             <span className="text-white text-xs font-bold">H</span>
                                         </div>
                                         <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
@@ -349,6 +760,13 @@ const Chatbot = () => {
                                     </div>
                                 )}
 
+                                {/* Send error */}
+                                {sendError && !isTyping && (
+                                    <p className="text-[11px] text-red-500 text-center flex items-center justify-center gap-1 pt-1">
+                                        <AlertCircle className="w-3 h-3 shrink-0" /> {sendError}
+                                    </p>
+                                )}
+
                                 {/* Quick replies */}
                                 {!isTyping && messages[messages.length - 1]?.type === "bot" && (
                                     <div className="pt-1">
@@ -358,7 +776,7 @@ const Chatbot = () => {
                                                 <button
                                                     key={idx}
                                                     onClick={() => handleQuickReply(reply)}
-                                                    className="px-3 py-1.5 text-xs border border-[#1B3A8C] text-[#1B3A8C] rounded-full hover:bg-[#1B3A8C] hover:text-white transition-colors font-medium"
+                                                    className="px-3 py-1.5 text-xs border border-[#1B3A8C] text-[#1B3A8C] rounded-full hover:bg-[#1B3A8C] hover:text-white active:scale-95 transition-all font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
                                                 >
                                                     {reply}
                                                 </button>
@@ -373,31 +791,72 @@ const Chatbot = () => {
                     </div>
 
                     {/* Input area */}
-                    {leadSubmitted && (
-                        <div className="px-4 py-3 bg-white border-t border-gray-100 flex-shrink-0">
+                    {!isResumingSession && leadSubmitted && (
+                        <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
                             <div className="flex items-center gap-2">
                                 <input
+                                    ref={inputRef}
                                     type="text"
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
                                     onKeyDown={handleKeyPress}
                                     placeholder="Type a message…"
+                                    aria-label="Type a message"
                                     className="flex-1 px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20 bg-gray-50 transition-colors"
                                 />
                                 <button
                                     onClick={handleSendMessage}
                                     disabled={!message.trim()}
-                                    className="w-9 h-9 rounded-full bg-[#1B3A8C] hover:bg-[#16318a] flex items-center justify-center transition-colors disabled:opacity-40 flex-shrink-0"
+                                    className="w-9 h-9 rounded-full bg-[#1B3A8C] hover:bg-[#16318a] active:scale-95 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
                                     aria-label="Send message"
                                 >
                                     <Send className="w-4 h-4 text-white" />
                                 </button>
                             </div>
-                            <p className="text-[10px] text-gray-300 text-center mt-2">Powered by HERO Serviced Office</p>
+                            <div className="flex items-center justify-center gap-4 text-[10px] text-gray-400 mt-2">
+                                <button
+                                    onClick={() => setModal('privacy')}
+                                    className="hover:text-[#1565C0] transition-colors cursor-pointer"
+                                >
+                                    Privacy Policy
+                                </button>
+                                <span className="text-gray-200">·</span>
+                                <button
+                                    onClick={() => setModal('terms')}
+                                    className="hover:text-[#1565C0] transition-colors cursor-pointer"
+                                >
+                                    Terms of Service
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-gray-300 text-center mt-1">Powered by HERO Serviced Office</p>
                         </div>
                     )}
                 </div>
             )}
+
+            {/* Modals */}
+            <Modal
+                open={modal === 'privacy'}
+                onClose={() => setModal(null)}
+                title="Privacy Policy"
+            >
+                <PrivacyPolicyContent />
+            </Modal>
+
+            <Modal
+                open={modal === 'terms'}
+                onClose={() => setModal(null)}
+                title="Terms of Service"
+            >
+                <TermsOfServiceContent />
+            </Modal>
+
+            <style jsx global>{`
+                @keyframes msgIn {
+                    from { opacity: 0; transform: translateY(6px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </>
     );
 };

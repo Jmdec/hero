@@ -12,7 +12,6 @@ import {
   ChevronRight,
   ChevronLeft,
   CheckCircle2,
-  ShieldCheck,
   X,
   CreditCard,
   Smartphone,
@@ -20,13 +19,12 @@ import {
   FileText,
   ExternalLink,
   Clock,
+  AlertCircle,
 } from "lucide-react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type ServiceId = "private-office" | "virtual-office" | "coworking" | "meeting-room" | "event-space";
 type PaymentMethod = "paymongo" | "gcash" | null;
-type ModalKey = "privacy" | null;
+type ModalKey = "privacy" | "success" | null;
 
 interface ContactFields {
   name: string;
@@ -70,8 +68,6 @@ interface EventSpaceFields {
   otherRequirements: string;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const SERVICES: { id: ServiceId; label: string; desc: string; icon: React.ElementType }[] = [
   { id: "private-office", label: "Private Office", desc: "Enclosed rooms, 1–17 seats", icon: Building2 },
   { id: "virtual-office", label: "Virtual Office", desc: "Address & mail services", icon: Wifi },
@@ -80,10 +76,29 @@ const SERVICES: { id: ServiceId; label: string; desc: string; icon: React.Elemen
   { id: "event-space", label: "Event Space", desc: "Venues for events & functions", icon: PartyPopper },
 ];
 
-// Steps varies by service; base steps for non-virtual-office
+// ─── API Config ───────────────────────────────────────────────────────────────
+
+// Goes through the Next.js API route (app/api/quotations/route.ts), which
+// proxies to the Laravel backend server-side. Avoids CORS and keeps the
+// Laravel URL out of the browser bundle.
+const API_BASE_URL = "/api";
+
+// Maps the frontend service slug to the real `services` table primary key.
+// Replace these with your actual service IDs (e.g. fetch /api/services and
+// match on a slug/name column instead of hardcoding).
+const SERVICE_IDS: Record<ServiceId, number> = {
+  "private-office": 1,
+  "virtual-office": 2,
+  "coworking": 3,
+  "meeting-room": 4,
+  "event-space": 5,
+};
+
+// Standard flow: Service → Requirements → Contact → Review → Submit → Success Modal
 const BASE_STEPS = ["Service", "Requirements", "Contact", "Review"];
-// Virtual office has an extra Payment step
-const VO_STEPS = ["Service", "Requirements", "Payment", "Contact", "Review"];
+
+// Virtual Office flow: Service → Requirements → Contact → Review → Payment → Success Modal
+const VO_STEPS = ["Service", "Requirements", "Contact", "Review", "Payment"];
 
 const LEASE_TERMS = ["6 Months", "12 Months", "More than 12 Months"];
 const PASS_TYPES = ["Daily", "Weekly", "Monthly"];
@@ -92,20 +107,40 @@ const TIME_SLOTS = [
   ["13:00", "1:00 PM"], ["14:00", "2:00 PM"], ["15:00", "3:00 PM"], ["16:00", "4:00 PM"],
 ];
 
-const REDIRECT_SECONDS = 10;
+// ─── Validation Helpers ───────────────────────────────────────────────────────
+
+const isValidEmail = (email: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+const isValidPhone = (phone: string) =>
+  /^(\+?63|0)[\s-]?9\d{2}[\s-]?\d{3}[\s-]?\d{4}$/.test(phone.replace(/\s/g, ""));
 
 // ─── Shared UI ────────────────────────────────────────────────────────────────
 
 const inputCls =
   "w-full px-4 py-3 bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl text-[#0B1F4A] text-sm placeholder:text-[#64748B]/60 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C] focus:bg-white transition-all duration-200";
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+const inputErrCls =
+  "w-full px-4 py-3 bg-[#FFF5F5] border border-red-300 rounded-xl text-[#0B1F4A] text-sm placeholder:text-[#64748B]/60 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 focus:bg-white transition-all duration-200";
+
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null;
+  return (
+    <div className="flex items-center gap-1.5 mt-1.5">
+      <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+      <p className="text-xs text-red-500">{msg}</p>
+    </div>
+  );
+}
+
+function Field({ label, required, children, error }: { label: string; required?: boolean; children: React.ReactNode; error?: string }) {
   return (
     <div>
       <label className="block text-xs font-semibold tracking-wide text-[#0B1F4A] mb-2 uppercase">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
       {children}
+      <FieldError msg={error} />
     </div>
   );
 }
@@ -131,22 +166,22 @@ function PillSelect({ options, value, onChange }: { options: string[]; value: st
   );
 }
 
-// ─── Modal ────────────────────────────────────────────────────────────────────
-
 function Modal({
   open,
   onClose,
   title,
   children,
+  hideClose,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  hideClose?: boolean;
 }) {
   const handleKey = useCallback(
-    (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); },
-    [onClose],
+    (e: KeyboardEvent) => { if (e.key === "Escape" && !hideClose) onClose(); },
+    [onClose, hideClose],
   );
 
   useEffect(() => {
@@ -168,17 +203,23 @@ function Modal({
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
-      <div className="relative z-10 w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl bg-white shadow-2xl">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={hideClose ? undefined : onClose}
+        aria-hidden="true"
+      />
+      <div className="relative z-10 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 id="modal-title" className="text-lg font-semibold text-[#0A1E3F]">{title}</h2>
-          <button
-            onClick={onClose}
-            className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]"
-            aria-label="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {!hideClose && (
+            <button
+              onClick={onClose}
+              className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <div className="overflow-y-auto px-6 py-5 text-sm text-gray-700 leading-relaxed space-y-4">
           {children}
@@ -188,7 +229,96 @@ function Modal({
   );
 }
 
-// ─── Step Rail ────────────────────────────────────────────────────────────────
+// Success Modal Content 
+function SuccessModalContent({
+  isVO,
+  paymentMethod,
+  onClose,
+}: {
+  isVO: boolean;
+  paymentMethod: PaymentMethod;
+  onClose: () => void;
+}) {
+  const isGCash = isVO && paymentMethod === "gcash";
+
+  return (
+    <div className="text-center py-4">
+      <div className="w-16 h-16 bg-[#EEF2FB] rounded-full flex items-center justify-center mx-auto mb-5">
+        <CheckCircle2 className="w-8 h-8 text-[#1B3A8C]" />
+      </div>
+
+      <p className="text-[10px] tracking-[0.25em] uppercase text-[#64748B] mb-2">
+        {isVO ? "Virtual Office Request" : "Quotation Received"}
+      </p>
+      <h3 className="text-2xl font-bold text-[#0B1F4A] mb-3">Thank You!</h3>
+
+      {isGCash ? (
+        <p className="text-[#64748B] text-sm leading-relaxed mb-6">
+          Your proof of payment has been received.<br/>A HERO Serviced Office representative will
+          verify your GCash payment and send your service contract to your email within{" "}
+          <strong>24 business hours</strong>.
+        </p>
+      ) : isVO ? (
+        <p className="text-[#64748B] text-sm leading-relaxed mb-6">
+          Payment confirmed. Your service contract has been auto-generated and will be sent to
+          your email for digital signing via DocHub. Your virtual office service will begin on
+          your selected start date.
+        </p>
+      ) : (
+        <p className="text-[#64748B] text-sm leading-relaxed mb-6">
+          Thank you for your inquiry! Your quotation request has been received. A HERO Serviced
+          Office representative will contact you within <strong>24 business hours</strong>.
+        </p>
+      )}
+
+      <div className="bg-[#F4F6FB] rounded-2xl p-5 text-left mb-6 space-y-3">
+        {(isGCash
+          ? [
+              "We'll verify your GCash payment within 24 business hours",
+              "Your service contract will be generated and emailed to you",
+              "Our team will reach out to confirm your virtual office activation",
+            ]
+          : isVO
+          ? [
+              "Your payment has been processed successfully",
+              "A contract PDF will be emailed to you for e-signature",
+              "Your virtual office service is now being set up",
+            ]
+          : [
+              "We'll review your service requirements and preferences",
+              "A customised quotation will be prepared for you",
+              "Our team will reach out via email or phone to discuss next steps",
+            ]
+        ).map((s, i) => (
+          <div key={i} className="flex items-start gap-3">
+            <span className="w-5 h-5 rounded-full bg-[#0B1F4A] text-white text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-bold">
+              {i + 1}
+            </span>
+            <p className="text-sm text-[#4A5568] leading-relaxed">{s}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-8 py-3 bg-[#0B1F4A] text-white rounded-full text-sm font-semibold hover:bg-[#1B3A8C] transition"
+        >
+          Submit another request
+        </button>
+        <a
+          href="/"
+          className="px-8 py-3 bg-[#F0EDE6] text-[#4A4740] rounded-full text-sm font-semibold hover:bg-[#E5E1D9] transition"
+        >
+          Back to home
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// Step Rail
 
 function StepRail({ step, steps }: { step: number; steps: string[] }) {
   return (
@@ -202,7 +332,7 @@ function StepRail({ step, steps }: { step: number; steps: string[] }) {
             <div className="flex flex-col items-center">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
                 done
-                  ? "bg-[#C9A84C] text-[#0B1F4A]"
+                  ? "bg-[#FFC107] text-[#0B1F4A]"
                   : active
                   ? "bg-[#0B1F4A] text-white shadow-[0_0_0_4px_rgba(27,58,140,0.15)]"
                   : "bg-white text-[#64748B] border border-[#D9E2F0]"
@@ -227,8 +357,7 @@ function StepRail({ step, steps }: { step: number; steps: string[] }) {
   );
 }
 
-// ─── Nav Row ─────────────────────────────────────────────────────────────────
-
+// Nav Row 
 function NavRow({
   onBack,
   onNext,
@@ -274,8 +403,7 @@ function NavRow({
   );
 }
 
-// ─── Step 1: Service ─────────────────────────────────────────────────────────
-
+// Step 1: Service
 function Step1({
   selectedService,
   setSelectedService,
@@ -285,10 +413,17 @@ function Step1({
   setSelectedService: (s: ServiceId) => void;
   onNext: () => void;
 }) {
+  const [touched, setTouched] = useState(false);
+
+  const handleNext = () => {
+    setTouched(true);
+    if (selectedService) onNext();
+  };
+
   return (
     <div>
-      <h2 className="text-2xl font-bold text-[#0B1F4A] mb-2">Select a Service</h2>
-      <p className="text-sm text-[#64748B] mb-7">Choose the workspace solution you're interested in.</p>
+      <h2 className="text-3xl font-bold text-[#0B1F4A] mb-2">Select a Service</h2>
+      <p className="text-md text-[#64748B] mb-7">Choose the workspace solution you're interested in.</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {SERVICES.map((s) => {
           const Icon = s.icon;
@@ -305,46 +440,87 @@ function Step1({
               }`}
             >
               <Icon className={`w-5 h-5 mb-2.5 transition-colors ${active ? "text-[#1B3A8C]" : "text-[#64748B] group-hover:text-[#1B3A8C]"}`} />
-              <p className={`font-semibold text-sm mb-0.5 ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A] group-hover:text-[#1B3A8C]"}`}>{s.label}</p>
-              <p className="text-xs text-[#64748B] leading-snug">{s.desc}</p>
+              <p className={`font-semibold text-md mb-0.5 ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A] group-hover:text-[#1B3A8C]"}`}>{s.label}</p>
+              <p className="text-sm text-[#64748B] leading-snug">{s.desc}</p>
             </button>
           );
         })}
       </div>
-      <NavRow onNext={onNext} nextDisabled={!selectedService} />
+      {touched && !selectedService && (
+        <div className="mt-4 flex items-center gap-2 text-sm text-red-500">
+          <AlertCircle className="w-4 h-4" />
+          Please select a service to continue.
+        </div>
+      )}
+      <NavRow onNext={handleNext} />
     </div>
   );
 }
 
-// ─── Step 2: Requirements ─────────────────────────────────────────────────────
-
-function Step2PrivateOffice({ data, onChange }: { data: PrivateOfficeFields; onChange: (d: Partial<PrivateOfficeFields>) => void }) {
+// Step 2: Requirements 
+function Step2PrivateOffice({
+  data,
+  onChange,
+  errors,
+}: {
+  data: PrivateOfficeFields;
+  onChange: (d: Partial<PrivateOfficeFields>) => void;
+  errors: Partial<Record<keyof PrivateOfficeFields, string>>;
+}) {
   const today = new Date().toISOString().split("T")[0];
   return (
     <div className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-5">
-        <Field label="Number of Seats" required>
-          <input type="number" min={1} max={17} value={data.seats} onChange={(e) => onChange({ seats: e.target.value })} className={inputCls} placeholder="e.g. 4" />
+        <Field label="Number of Seats" required error={errors.seats}>
+          <input
+            type="number"
+            min={1}
+            max={17}
+            value={data.seats}
+            onChange={(e) => onChange({ seats: e.target.value })}
+            className={errors.seats ? inputErrCls : inputCls}
+            placeholder="Maximum 17"
+          />
         </Field>
-        <Field label="Target Move-in Date" required>
-          <input type="date" min={today} value={data.moveInDate} onChange={(e) => onChange({ moveInDate: e.target.value })} className={inputCls} />
+        <Field label="Target Move-in Date" required error={errors.moveInDate}>
+          <input
+            type="date"
+            min={today}
+            value={data.moveInDate}
+            onChange={(e) => onChange({ moveInDate: e.target.value })}
+            className={errors.moveInDate ? inputErrCls : inputCls}
+          />
         </Field>
       </div>
-      <Field label="Lease Term" required>
+      <Field label="Lease Term" required error={errors.leaseTerm}>
         <PillSelect options={LEASE_TERMS} value={data.leaseTerm} onChange={(v) => onChange({ leaseTerm: v })} />
       </Field>
       <Field label="Other Requirements / Conditions">
-        <textarea rows={3} value={data.otherRequirements} onChange={(e) => onChange({ otherRequirements: e.target.value })} className={inputCls + " resize-none"} placeholder="Layout preferences, additional amenities, etc." />
+        <textarea
+          rows={3}
+          value={data.otherRequirements}
+          onChange={(e) => onChange({ otherRequirements: e.target.value })}
+          className={inputCls + " resize-none"}
+          placeholder="Layout preferences, additional amenities, etc."
+        />
       </Field>
     </div>
   );
 }
 
-function Step2VirtualOffice({ data, onChange }: { data: VirtualOfficeFields; onChange: (d: Partial<VirtualOfficeFields>) => void }) {
+function Step2VirtualOffice({
+  data,
+  onChange,
+  errors,
+}: {
+  data: VirtualOfficeFields;
+  onChange: (d: Partial<VirtualOfficeFields>) => void;
+  errors: Partial<Record<keyof VirtualOfficeFields, string>>;
+}) {
   const today = new Date().toISOString().split("T")[0];
   return (
     <div className="space-y-5">
-      <Field label="Package" required>
+      <Field label="Package" required error={errors.package}>
         <div className="grid sm:grid-cols-3 gap-3 mt-1">
           {[
             { id: "Basic", desc: "Business address registration", price: "₱8,000/mo" },
@@ -355,62 +531,110 @@ function Step2VirtualOffice({ data, onChange }: { data: VirtualOfficeFields; onC
             return (
               <button key={pkg.id} type="button" onClick={() => onChange({ package: pkg.id })}
                 className={`p-4 rounded-2xl border-[1.5px] text-left transition-all duration-200 group ${active ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C]" : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"}`}>
-                <p className={`font-bold text-sm mb-1 ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A]"}`}>{pkg.id}</p>
-                <p className="text-xs text-[#64748B] mb-2 leading-snug">{pkg.desc}</p>
+                <p className={`font-bold text-md mb-1 ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A]"}`}>{pkg.id}</p>
+                <p className="text-sm text-[#64748B] mb-2 leading-snug">{pkg.desc}</p>
                 <p className={`text-xs font-bold ${active ? "text-[#C9A84C]" : "text-[#64748B]"}`}>{pkg.price}</p>
               </button>
             );
           })}
         </div>
       </Field>
-      <Field label="Preferred Start Date" required>
-        <input type="date" min={today} value={data.startDate} onChange={(e) => onChange({ startDate: e.target.value })} className={inputCls} />
+      <Field label="Preferred Start Date" required error={errors.startDate}>
+        <input
+          type="date"
+          min={today}
+          value={data.startDate}
+          onChange={(e) => onChange({ startDate: e.target.value })}
+          className={errors.startDate ? inputErrCls : inputCls}
+        />
       </Field>
     </div>
   );
 }
 
-function Step2Coworking({ data, onChange }: { data: CoworkingFields; onChange: (d: Partial<CoworkingFields>) => void }) {
+function Step2Coworking({
+  data,
+  onChange,
+  errors,
+}: {
+  data: CoworkingFields;
+  onChange: (d: Partial<CoworkingFields>) => void;
+  errors: Partial<Record<keyof CoworkingFields, string>>;
+}) {
   const today = new Date().toISOString().split("T")[0];
   return (
     <div className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-5">
-        <Field label="Number of Seats" required>
-          <input type="number" min={1} value={data.seats} onChange={(e) => onChange({ seats: e.target.value })} className={inputCls} placeholder="e.g. 2" />
+        <Field label="Number of Seats" required error={errors.seats}>
+          <input
+            type="number"
+            min={1}
+            value={data.seats}
+            onChange={(e) => onChange({ seats: e.target.value })}
+            className={errors.seats ? inputErrCls : inputCls}
+            placeholder="e.g. 2"
+          />
         </Field>
-        <Field label="Preferred Start Date" required>
-          <input type="date" min={today} value={data.startDate} onChange={(e) => onChange({ startDate: e.target.value })} className={inputCls} />
+        <Field label="Preferred Start Date" required error={errors.startDate}>
+          <input
+            type="date"
+            min={today}
+            value={data.startDate}
+            onChange={(e) => onChange({ startDate: e.target.value })}
+            className={errors.startDate ? inputErrCls : inputCls}
+          />
         </Field>
       </div>
-      <Field label="Pass Type" required>
+      <Field label="Pass Type" required error={errors.passType}>
         <PillSelect options={PASS_TYPES} value={data.passType} onChange={(v) => onChange({ passType: v })} />
       </Field>
       <Field label="Other Requirements">
-        <textarea rows={3} value={data.otherRequirements} onChange={(e) => onChange({ otherRequirements: e.target.value })} className={inputCls + " resize-none"} placeholder="Specific equipment, accessibility needs, etc." />
+        <textarea
+          rows={3}
+          value={data.otherRequirements}
+          onChange={(e) => onChange({ otherRequirements: e.target.value })}
+          className={inputCls + " resize-none"}
+          placeholder="Specific equipment, accessibility needs, etc."
+        />
       </Field>
     </div>
   );
 }
 
-function Step2MeetingRoom({ data, onChange }: { data: MeetingRoomFields; onChange: (d: Partial<MeetingRoomFields>) => void }) {
+function Step2MeetingRoom({
+  data,
+  onChange,
+  errors,
+}: {
+  data: MeetingRoomFields;
+  onChange: (d: Partial<MeetingRoomFields>) => void;
+  errors: Partial<Record<keyof MeetingRoomFields, string>>;
+}) {
   const today = new Date().toISOString().split("T")[0];
   return (
     <div className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-5">
-        <Field label="Reservation Date" required>
-          <input type="date" min={today} value={data.date} onChange={(e) => onChange({ date: e.target.value })} className={inputCls} />
+        <Field label="Reservation Date" required error={errors.date}>
+          <input type="date" min={today} value={data.date} onChange={(e) => onChange({ date: e.target.value })} className={errors.date ? inputErrCls : inputCls} />
         </Field>
-        <Field label="Preferred Time" required>
-          <select value={data.time} onChange={(e) => onChange({ time: e.target.value })} className={inputCls}>
+        <Field label="Preferred Time" required error={errors.time}>
+          <select value={data.time} onChange={(e) => onChange({ time: e.target.value })} className={errors.time ? inputErrCls : inputCls}>
             <option value="">Select time</option>
             {TIME_SLOTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </Field>
-        <Field label="Number of Participants" required>
-          <input type="number" min={1} value={data.participants} onChange={(e) => onChange({ participants: e.target.value })} className={inputCls} placeholder="e.g. 8" />
+        <Field label="Number of Participants" required error={errors.participants}>
+          <input
+            type="number"
+            min={1}
+            value={data.participants}
+            onChange={(e) => onChange({ participants: e.target.value })}
+            className={errors.participants ? inputErrCls : inputCls}
+            placeholder="e.g. 8"
+          />
         </Field>
-        <Field label="Duration" required>
-          <select value={data.duration} onChange={(e) => onChange({ duration: e.target.value })} className={inputCls}>
+        <Field label="Duration" required error={errors.duration}>
+          <select value={data.duration} onChange={(e) => onChange({ duration: e.target.value })} className={errors.duration ? inputErrCls : inputCls}>
             <option value="">Select duration</option>
             {["1 hour", "2 hours", "3 hours", "4 hours", "Half day", "Full day"].map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
@@ -423,25 +647,33 @@ function Step2MeetingRoom({ data, onChange }: { data: MeetingRoomFields; onChang
   );
 }
 
-function Step2EventSpace({ data, onChange }: { data: EventSpaceFields; onChange: (d: Partial<EventSpaceFields>) => void }) {
+function Step2EventSpace({
+  data,
+  onChange,
+  errors,
+}: {
+  data: EventSpaceFields;
+  onChange: (d: Partial<EventSpaceFields>) => void;
+  errors: Partial<Record<keyof EventSpaceFields, string>>;
+}) {
   const today = new Date().toISOString().split("T")[0];
   return (
     <div className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-5">
-        <Field label="Event Date" required>
-          <input type="date" min={today} value={data.eventDate} onChange={(e) => onChange({ eventDate: e.target.value })} className={inputCls} />
+        <Field label="Event Date" required error={errors.eventDate}>
+          <input type="date" min={today} value={data.eventDate} onChange={(e) => onChange({ eventDate: e.target.value })} className={errors.eventDate ? inputErrCls : inputCls} />
         </Field>
-        <Field label="Estimated Attendees" required>
-          <input type="number" min={1} value={data.attendees} onChange={(e) => onChange({ attendees: e.target.value })} className={inputCls} placeholder="e.g. 50" />
+        <Field label="Estimated Attendees" required error={errors.attendees}>
+          <input type="number" min={1} value={data.attendees} onChange={(e) => onChange({ attendees: e.target.value })} className={errors.attendees ? inputErrCls : inputCls} placeholder="e.g. 50" />
         </Field>
-        <Field label="Event Duration" required>
-          <select value={data.duration} onChange={(e) => onChange({ duration: e.target.value })} className={inputCls}>
+        <Field label="Event Duration" required error={errors.duration}>
+          <select value={data.duration} onChange={(e) => onChange({ duration: e.target.value })} className={errors.duration ? inputErrCls : inputCls}>
             <option value="">Select duration</option>
             {["2 hours", "3 hours", "4 hours", "Half day", "Full day"].map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </Field>
-        <Field label="Event Type" required>
-          <select value={data.eventType} onChange={(e) => onChange({ eventType: e.target.value })} className={inputCls}>
+        <Field label="Event Type" required error={errors.eventType}>
+          <select value={data.eventType} onChange={(e) => onChange({ eventType: e.target.value })} className={errors.eventType ? inputErrCls : inputCls}>
             <option value="">Select type</option>
             {["Corporate Meeting", "Product Launch", "Training / Seminar", "Team Building", "Networking Event", "Other"].map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
@@ -454,7 +686,264 @@ function Step2EventSpace({ data, onChange }: { data: EventSpaceFields; onChange:
   );
 }
 
-// ─── Step 2.5: Virtual Office Payment ────────────────────────────────────────
+// Step 3: Contact
+function Step3({
+  contact,
+  notes,
+  setContact,
+  setNotes,
+  onBack,
+  onNext,
+}: {
+  contact: ContactFields;
+  notes: string;
+  setContact: React.Dispatch<React.SetStateAction<ContactFields>>;
+  setNotes: React.Dispatch<React.SetStateAction<string>>;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  const [errors, setErrors] = useState<Partial<Record<keyof ContactFields, string>>>({});
+  const [touched, setTouched] = useState(false);
+
+  const validate = () => {
+    const errs: Partial<Record<keyof ContactFields, string>> = {};
+    if (!contact.name.trim()) errs.name = "Full name is required.";
+    if (!contact.email.trim()) {
+      errs.email = "Email address is required.";
+    } else if (!isValidEmail(contact.email)) {
+      errs.email = "Please enter a valid email address (e.g. juan@company.com).";
+    }
+    if (!contact.phone.trim()) {
+      errs.phone = "Phone number is required.";
+    } else if (!isValidPhone(contact.phone)) {
+      errs.phone = "Please enter a valid PH mobile number (e.g. +63 917 123 4567 or 09171234567).";
+    }
+    return errs;
+  };
+
+  const handleNext = () => {
+    setTouched(true);
+    const errs = validate();
+    setErrors(errs);
+    if (Object.keys(errs).length === 0) onNext();
+  };
+
+  // Live validate after first submit attempt
+  useEffect(() => {
+    if (touched) setErrors(validate());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contact, touched]);
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold text-[#0B1F4A] mb-2">Your Contact Information</h2>
+      <p className="text-sm text-[#64748B] mb-7">We'll use these details to send you the quotation.</p>
+      <div className="grid sm:grid-cols-2 gap-5">
+        <Field label="Full Name" required error={errors.name}>
+          <input
+            type="text"
+            value={contact.name}
+            onChange={(e) => setContact((p) => ({ ...p, name: e.target.value }))}
+            className={errors.name ? inputErrCls : inputCls}
+            placeholder="Juan dela Cruz"
+          />
+        </Field>
+        <Field label="Company Name">
+          <input
+            type="text"
+            value={contact.company}
+            onChange={(e) => setContact((p) => ({ ...p, company: e.target.value }))}
+            className={inputCls}
+            placeholder="Your Company (optional)"
+          />
+        </Field>
+        <Field label="Email Address" required error={errors.email}>
+          <input
+            type="email"
+            value={contact.email}
+            onChange={(e) => setContact((p) => ({ ...p, email: e.target.value }))}
+            className={errors.email ? inputErrCls : inputCls}
+            placeholder="juan@company.com"
+          />
+        </Field>
+        <Field label="Phone Number" required error={errors.phone}>
+          <input
+            type="tel"
+            value={contact.phone}
+            onChange={(e) => setContact((p) => ({ ...p, phone: e.target.value }))}
+            className={errors.phone ? inputErrCls : inputCls}
+            placeholder="+63 9XX XXX XXXX"
+          />
+        </Field>
+      </div>
+      <div className="mt-5">
+        <Field label="Notes / Special Requests">
+          <textarea
+            rows={4}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className={inputCls + " resize-none"}
+            placeholder="Anything else you'd like us to know before preparing your quote…"
+          />
+        </Field>
+      </div>
+      <NavRow onBack={onBack} onNext={handleNext} />
+    </div>
+  );
+}
+
+// Step 4: Review & Submit
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  if (!value) return null;
+  return (
+    <div className="flex justify-between items-start gap-4 py-3 border-b border-[#F0F4FB] last:border-0">
+      <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">{label}</span>
+      <span className="text-sm text-[#0B1F4A] font-medium text-right">{value}</span>
+    </div>
+  );
+}
+
+function Step4({
+  selectedService,
+  privateOffice,
+  virtualOffice,
+  coworking,
+  meetingRoom,
+  eventSpace,
+  contact,
+  notes,
+  consent,
+  setConsent,
+  onBack,
+  onNext,
+  isSubmitting,
+  isVO,
+}: {
+  selectedService: ServiceId | null;
+  privateOffice: PrivateOfficeFields;
+  virtualOffice: VirtualOfficeFields;
+  coworking: CoworkingFields;
+  meetingRoom: MeetingRoomFields;
+  eventSpace: EventSpaceFields;
+  contact: ContactFields;
+  notes: string;
+  consent: boolean;
+  setConsent: (v: boolean) => void;
+  onBack: () => void;
+  onNext?: () => void;
+  isSubmitting: boolean;
+  isVO: boolean;
+}) {
+  const [modal, setModal] = useState<ModalKey>(null);
+  const serviceName = SERVICES.find((s) => s.id === selectedService)?.label ?? "";
+
+  const serviceRows = () => {
+    if (selectedService === "private-office") return [
+      { label: "Seats", value: privateOffice.seats },
+      { label: "Move-in Date", value: privateOffice.moveInDate },
+      { label: "Lease Term", value: privateOffice.leaseTerm },
+      { label: "Other Requirements", value: privateOffice.otherRequirements },
+    ];
+    if (selectedService === "virtual-office") return [
+      { label: "Package", value: virtualOffice.package },
+      { label: "Start Date", value: virtualOffice.startDate },
+    ];
+    if (selectedService === "coworking") return [
+      { label: "Seats", value: coworking.seats },
+      { label: "Start Date", value: coworking.startDate },
+      { label: "Pass Type", value: coworking.passType },
+      { label: "Other Requirements", value: coworking.otherRequirements },
+    ];
+    if (selectedService === "meeting-room") return [
+      { label: "Date", value: meetingRoom.date },
+      { label: "Time", value: meetingRoom.time },
+      { label: "Participants", value: meetingRoom.participants },
+      { label: "Duration", value: meetingRoom.duration },
+      { label: "Additional Requirements", value: meetingRoom.additionalRequirements },
+    ];
+    if (selectedService === "event-space") return [
+      { label: "Event Date", value: eventSpace.eventDate },
+      { label: "Attendees", value: eventSpace.attendees },
+      { label: "Duration", value: eventSpace.duration },
+      { label: "Event Type", value: eventSpace.eventType },
+      { label: "Other Requirements", value: eventSpace.otherRequirements },
+    ];
+    return [];
+  };
+
+  // For VO flow, "Review" submits the inquiry then goes to Payment step
+  const nextLabel = isVO ? "Proceed to Payment" : "Get a Quote";
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold text-[#0B1F4A] mb-2">Review Your Request</h2>
+      <p className="text-sm text-[#64748B] mb-7">Please confirm your details before submitting.</p>
+
+      <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5 mb-4">
+        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40 mb-3">Service</p>
+        <ReviewRow label="Selected Service" value={serviceName} />
+        {serviceRows().map((r) => <ReviewRow key={r.label} label={r.label} value={r.value} />)}
+      </div>
+
+      <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5 mb-6">
+        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40 mb-3">Contact</p>
+        <ReviewRow label="Name" value={contact.name} />
+        <ReviewRow label="Company" value={contact.company} />
+        <ReviewRow label="Email" value={contact.email} />
+        <ReviewRow label="Phone" value={contact.phone} />
+        <ReviewRow label="Notes" value={notes} />
+      </div>
+
+      {isVO && (
+        <div className="bg-[#EEF2FB] border border-[#C5D2EC] rounded-xl px-5 py-4 mb-6 flex items-start gap-3">
+          <CreditCard className="w-4 h-4 text-[#1B3A8C] shrink-0 mt-0.5" />
+          <p className="text-xs text-[#1B3A8C] leading-relaxed">
+            After confirming, you'll proceed to select your payment method and complete the transaction before your virtual office is activated.
+          </p>
+        </div>
+      )}
+
+      <label className="flex items-start gap-3 cursor-pointer group mb-2">
+        <div className="relative mt-0.5 shrink-0">
+          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="sr-only" />
+          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-150 ${consent ? "bg-[#0B1F4A] border-[#0B1F4A]" : "border-[#D9E2F0] bg-white group-hover:border-[#1B3A8C]"}`}>
+            {consent && (
+              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+        </div>
+        <span className="text-sm text-[#4A5568] leading-relaxed">
+          I agree to the collection and processing of my personal information in accordance with{" "}
+          <button
+            type="button"
+            onClick={() => setModal("privacy")}
+            className="text-[#1B3A8C] font-semibold hover:underline"
+          >
+            HERO Serviced Office's Privacy Policy
+          </button>.
+        </span>
+      </label>
+
+      <NavRow
+        onBack={onBack}
+        nextLabel={nextLabel}
+        nextDisabled={!consent}
+        isSubmit={!isVO}
+        isSubmitting={isSubmitting}
+        onNext={onNext}
+      />
+
+      <Modal open={modal === "privacy"} onClose={() => setModal(null)} title="Privacy Policy">
+        <PrivacyPolicyContent />
+      </Modal>
+    </div>
+  );
+}
+
+// Step 5 (Virtual Office only): Payment & Contract
 
 function StepVOPayment({
   virtualOffice,
@@ -465,7 +954,7 @@ function StepVOPayment({
   contractAction,
   setContractAction,
   onBack,
-  onNext,
+  isSubmitting,
 }: {
   virtualOffice: VirtualOfficeFields;
   paymentMethod: PaymentMethod;
@@ -475,11 +964,12 @@ function StepVOPayment({
   contractAction: "dochub" | "upload" | null;
   setContractAction: (a: "dochub" | "upload" | null) => void;
   onBack: () => void;
-  onNext: () => void;
+  isSubmitting: boolean;
 }) {
-  const [signedFile, setSignedFile] = useState<File | null>(null);
+  const [touched, setTouched] = useState(false);
   const gcashRef = useRef<HTMLInputElement>(null);
   const signRef = useRef<HTMLInputElement>(null);
+  const [signedFile, setSignedFile] = useState<File | null>(null);
 
   const packagePrices: Record<string, string> = {
     Basic: "₱8,000",
@@ -490,6 +980,8 @@ function StepVOPayment({
   const canProceed =
     (paymentMethod === "paymongo" && contractAction !== null) ||
     (paymentMethod === "gcash" && gcashProof !== null);
+
+  const handleSubmitAttempt = () => { setTouched(true); };
 
   return (
     <div>
@@ -502,27 +994,18 @@ function StepVOPayment({
           <p className="text-xs font-semibold text-[#1B3A8C] uppercase tracking-wide">Virtual Office — {virtualOffice.package}</p>
           <p className="text-xs text-[#64748B] mt-0.5">Starting {virtualOffice.startDate || "TBD"}</p>
         </div>
-        <p className="text-xl font-bold text-[#0B1F4A]">{packagePrices[virtualOffice.package] ?? "—"}<span className="text-xs text-[#64748B] font-normal">/mo</span></p>
+        <p className="text-xl font-bold text-[#0B1F4A]">
+          {packagePrices[virtualOffice.package] ?? "—"}
+          <span className="text-xs text-[#64748B] font-normal">/mo</span>
+        </p>
       </div>
 
       {/* Payment method selector */}
-      <Field label="Payment Method" required>
+      <Field label="Payment Method" required error={touched && !paymentMethod ? "Please select a payment method." : undefined}>
         <div className="grid sm:grid-cols-2 gap-3 mt-1">
           {[
-            {
-              id: "paymongo" as PaymentMethod,
-              icon: CreditCard,
-              label: "PayMongo",
-              sub: "Credit / Debit Card",
-              badge: "Instant",
-            },
-            {
-              id: "gcash" as PaymentMethod,
-              icon: Smartphone,
-              label: "GCash",
-              sub: "Mobile wallet",
-              badge: "Manual verify",
-            },
+            { id: "paymongo" as PaymentMethod, icon: CreditCard, label: "PayMongo", sub: "Credit / Debit Card", badge: "Instant" },
+            { id: "gcash" as PaymentMethod, icon: Smartphone, label: "GCash", sub: "Mobile wallet", badge: "Manual verify" },
           ].map((opt) => {
             const Icon = opt.icon;
             const active = paymentMethod === opt.id;
@@ -557,25 +1040,15 @@ function StepVOPayment({
             <ol className="text-xs text-[#64748B] space-y-1 list-decimal list-inside">
               <li>Pay securely via PayMongo (card, Maya, GCash via PayMongo)</li>
               <li>Your contract is auto-generated upon payment confirmation</li>
-              <li>Choose to sign digitally via DocHub or upload a signed copy</li>
+              <li>Sign digitally via DocHub or upload a signed copy</li>
             </ol>
           </div>
 
-          <Field label="After payment, I want to…" required>
+          <Field label="After payment, I want to…" required error={touched && !contractAction ? "Please select a contract signing method." : undefined}>
             <div className="grid sm:grid-cols-2 gap-3 mt-1">
               {[
-                {
-                  id: "dochub" as const,
-                  icon: ExternalLink,
-                  label: "Sign via DocHub",
-                  sub: "Opens contract in DocHub for e-signature",
-                },
-                {
-                  id: "upload" as const,
-                  icon: Upload,
-                  label: "Upload signed copy",
-                  sub: "Download, sign, and upload the PDF",
-                },
+                { id: "dochub" as const, icon: ExternalLink, label: "Sign via DocHub", sub: "Opens contract in DocHub for e-signature" },
+                { id: "upload" as const, icon: Upload, label: "Upload signed copy", sub: "Download, sign, and upload the PDF" },
               ].map((opt) => {
                 const Icon = opt.icon;
                 const active = contractAction === opt.id;
@@ -603,7 +1076,7 @@ function StepVOPayment({
               <div>
                 <p className="text-xs font-semibold text-[#7A5C00] mb-1">Upload Signed Contract</p>
                 <p className="text-xs text-[#A07A10] mb-3 leading-relaxed">
-                  After payment you'll receive a PDF contract via email. Print, sign, scan/photo, and upload it below (or email it to us).
+                  After payment you'll receive a PDF contract via email. Print, sign, scan/photo, and upload it below.
                 </p>
                 <button
                   type="button"
@@ -613,13 +1086,7 @@ function StepVOPayment({
                   <Upload className="w-3 h-3" />
                   {signedFile ? signedFile.name : "Choose file (PDF / JPG / PNG)"}
                 </button>
-                <input
-                  ref={signRef}
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="hidden"
-                  onChange={(e) => setSignedFile(e.target.files?.[0] ?? null)}
-                />
+                <input ref={signRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setSignedFile(e.target.files?.[0] ?? null)} />
               </div>
             </div>
           )}
@@ -641,7 +1108,6 @@ function StepVOPayment({
           <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-[#0B1F4A] mb-3">GCash Payment Details</p>
             <div className="flex items-center gap-4">
-              {/* Placeholder QR — replace src with actual QR */}
               <div className="w-24 h-24 bg-[#EEF2FB] rounded-xl flex items-center justify-center shrink-0 border border-[#C5D2EC]">
                 <Smartphone className="w-8 h-8 text-[#1B3A8C]" />
               </div>
@@ -662,7 +1128,7 @@ function StepVOPayment({
             </div>
           </div>
 
-          <Field label="Upload Proof of Payment" required>
+          <Field label="Upload Proof of Payment" required error={touched && !gcashProof ? "Please upload your GCash proof of payment." : undefined}>
             <button
               type="button"
               onClick={() => gcashRef.current?.click()}
@@ -675,297 +1141,22 @@ function StepVOPayment({
                 {gcashProof ? gcashProof.name : "Click to upload screenshot or PDF"}
               </span>
             </button>
-            <input
-              ref={gcashRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="hidden"
-              onChange={(e) => setGcashProof(e.target.files?.[0] ?? null)}
-            />
+            <input ref={gcashRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setGcashProof(e.target.files?.[0] ?? null)} />
             <p className="text-xs text-[#64748B] mt-2">Accepted: JPG, PNG, PDF · Max 10 MB</p>
           </Field>
         </div>
       )}
 
-      <NavRow onBack={onBack} onNext={onNext} nextDisabled={!canProceed} />
-    </div>
-  );
-}
-
-// ─── Step 3: Contact ──────────────────────────────────────────────────────────
-
-function Step3({
-  contact,
-  notes,
-  setContact,
-  setNotes,
-  onBack,
-  onNext,
-}: {
-  contact: ContactFields;
-  notes: string;
-  setContact: React.Dispatch<React.SetStateAction<ContactFields>>;
-  setNotes: React.Dispatch<React.SetStateAction<string>>;
-  onBack: () => void;
-  onNext: () => void;
-}) {
-  const valid = contact.name && contact.email && contact.phone;
-  return (
-    <div>
-      <h2 className="text-2xl font-bold text-[#0B1F4A] mb-2">Your Contact Information</h2>
-      <p className="text-sm text-[#64748B] mb-7">We'll use these details to send you the quotation.</p>
-      <div className="grid sm:grid-cols-2 gap-5">
-        <Field label="Full Name" required>
-          <input type="text" value={contact.name} onChange={(e) => setContact((p) => ({ ...p, name: e.target.value }))} className={inputCls} placeholder="Juan dela Cruz" />
-        </Field>
-        <Field label="Company Name">
-          <input type="text" value={contact.company} onChange={(e) => setContact((p) => ({ ...p, company: e.target.value }))} className={inputCls} placeholder="Your Company (optional)" />
-        </Field>
-        <Field label="Email Address" required>
-          <input type="email" value={contact.email} onChange={(e) => setContact((p) => ({ ...p, email: e.target.value }))} className={inputCls} placeholder="juan@company.com" />
-        </Field>
-        <Field label="Phone Number" required>
-          <input type="tel" value={contact.phone} onChange={(e) => setContact((p) => ({ ...p, phone: e.target.value }))} className={inputCls} placeholder="+63 9XX XXX XXXX" />
-        </Field>
-      </div>
-      <div className="mt-5">
-        <Field label="Notes / Special Requests">
-          <textarea rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} className={inputCls + " resize-none"} placeholder="Anything else you'd like us to know before preparing your quote…" />
-        </Field>
-      </div>
-      <NavRow onBack={onBack} onNext={onNext} nextDisabled={!valid} />
-    </div>
-  );
-}
-
-// ─── Step 4: Review & Submit ─────────────────────────────────────────────────
-
-function ReviewRow({ label, value }: { label: string; value: string }) {
-  if (!value) return null;
-  return (
-    <div className="flex justify-between items-start gap-4 py-3 border-b border-[#F0F4FB] last:border-0">
-      <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">{label}</span>
-      <span className="text-sm text-[#0B1F4A] font-medium text-right">{value}</span>
-    </div>
-  );
-}
-
-function Step4({
-  selectedService,
-  privateOffice,
-  virtualOffice,
-  coworking,
-  meetingRoom,
-  eventSpace,
-  paymentMethod,
-  gcashProof,
-  contractAction,
-  contact,
-  notes,
-  consent,
-  setConsent,
-  onBack,
-  isSubmitting,
-}: {
-  selectedService: ServiceId | null;
-  privateOffice: PrivateOfficeFields;
-  virtualOffice: VirtualOfficeFields;
-  coworking: CoworkingFields;
-  meetingRoom: MeetingRoomFields;
-  eventSpace: EventSpaceFields;
-  paymentMethod: PaymentMethod;
-  gcashProof: File | null;
-  contractAction: "dochub" | "upload" | null;
-  contact: ContactFields;
-  notes: string;
-  consent: boolean;
-  setConsent: (v: boolean) => void;
-  onBack: () => void;
-  isSubmitting: boolean;
-}) {
-  const [modal, setModal] = useState<ModalKey>(null);
-  const serviceName = SERVICES.find((s) => s.id === selectedService)?.label ?? "";
-
-  const serviceRows = () => {
-    if (selectedService === "private-office") return [
-      { label: "Seats", value: privateOffice.seats },
-      { label: "Move-in Date", value: privateOffice.moveInDate },
-      { label: "Lease Term", value: privateOffice.leaseTerm },
-      { label: "Other Requirements", value: privateOffice.otherRequirements },
-    ];
-    if (selectedService === "virtual-office") return [
-      { label: "Package", value: virtualOffice.package },
-      { label: "Start Date", value: virtualOffice.startDate },
-      { label: "Payment Method", value: paymentMethod === "paymongo" ? "PayMongo (Card)" : paymentMethod === "gcash" ? "GCash" : "" },
-      { label: "Contract Signing", value: contractAction === "dochub" ? "DocHub e-signature" : contractAction === "upload" ? "Upload signed copy" : gcashProof ? "Pending GCash verification" : "" },
-    ];
-    if (selectedService === "coworking") return [
-      { label: "Seats", value: coworking.seats },
-      { label: "Start Date", value: coworking.startDate },
-      { label: "Pass Type", value: coworking.passType },
-      { label: "Other Requirements", value: coworking.otherRequirements },
-    ];
-    if (selectedService === "meeting-room") return [
-      { label: "Date", value: meetingRoom.date },
-      { label: "Time", value: meetingRoom.time },
-      { label: "Participants", value: meetingRoom.participants },
-      { label: "Duration", value: meetingRoom.duration },
-      { label: "Additional Requirements", value: meetingRoom.additionalRequirements },
-    ];
-    if (selectedService === "event-space") return [
-      { label: "Event Date", value: eventSpace.eventDate },
-      { label: "Attendees", value: eventSpace.attendees },
-      { label: "Duration", value: eventSpace.duration },
-      { label: "Event Type", value: eventSpace.eventType },
-      { label: "Other Requirements", value: eventSpace.otherRequirements },
-    ];
-    return [];
-  };
-
-  return (
-    <div>
-      <h2 className="text-2xl font-bold text-[#0B1F4A] mb-2">Review Your Request</h2>
-      <p className="text-sm text-[#64748B] mb-7">Please confirm your details before submitting.</p>
-
-      <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5 mb-4">
-        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40 mb-3">Service</p>
-        <ReviewRow label="Selected Service" value={serviceName} />
-        {serviceRows().map((r) => <ReviewRow key={r.label} label={r.label} value={r.value} />)}
-      </div>
-
-      <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5 mb-6">
-        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40 mb-3">Contact</p>
-        <ReviewRow label="Name" value={contact.name} />
-        <ReviewRow label="Company" value={contact.company} />
-        <ReviewRow label="Email" value={contact.email} />
-        <ReviewRow label="Phone" value={contact.phone} />
-        <ReviewRow label="Notes" value={notes} />
-      </div>
-
-      {/* GCash upload reminder */}
-      {selectedService === "virtual-office" && paymentMethod === "gcash" && gcashProof && (
-        <div className="bg-[#FFFBF0] border border-[#F0D98A] rounded-xl px-5 py-4 mb-6 flex items-start gap-3">
-          <Clock className="w-4 h-4 text-[#C9A84C] shrink-0 mt-0.5" />
-          <p className="text-xs text-[#7A5C00] leading-relaxed">
-            <strong>GCash proof attached:</strong> {gcashProof.name}. Our sales officer will verify this within 24 business hours and email you the contract.
-          </p>
-        </div>
-      )}
-
-      <label className="flex items-start gap-3 cursor-pointer group mb-2">
-        <div className="relative mt-0.5 shrink-0">
-          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="sr-only" />
-          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-150 ${consent ? "bg-[#0B1F4A] border-[#0B1F4A]" : "border-[#D9E2F0] bg-white group-hover:border-[#1B3A8C]"}`}>
-            {consent && (
-              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-          </div>
-        </div>
-        <span className="text-sm text-[#4A5568] leading-relaxed">
-          I agree to the collection and processing of my personal information in accordance with{" "}
-          <button
-            type="button"
-            onClick={() => setModal("privacy")}
-            className="text-[#1B3A8C] font-semibold hover:underline"
-          >
-            HERO Serviced Office's Privacy Policy
-          </button>.
-        </span>
-      </label>
-
       <NavRow
         onBack={onBack}
-        nextLabel="Get a Quote"
-        nextDisabled={!consent}
-        isSubmit
+        nextLabel="Confirm & Submit"
+        nextDisabled={!canProceed}
+        isSubmit={true}
         isSubmitting={isSubmitting}
       />
-
-      <Modal open={modal === "privacy"} onClose={() => setModal(null)} title="Privacy Policy">
-        <PrivacyPolicyContent />
-      </Modal>
     </div>
   );
 }
-
-// ─── Success Screen (outside form) ───────────────────────────────────────────
-
-function SuccessScreen({ onReset }: { onReset: () => void }) {
-  const [countdown, setCountdown] = useState(REDIRECT_SECONDS);
-
-  useEffect(() => {
-    if (countdown <= 0) { onReset(); return; }
-    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [countdown, onReset]);
-
-  const pct = ((REDIRECT_SECONDS - countdown) / REDIRECT_SECONDS) * 100;
-
-  return (
-    <div className="flex items-center justify-center px-4 py-16">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4 }}
-        className="bg-white rounded-3xl p-10 md:p-14 max-w-lg w-full text-center shadow-[0_4px_24px_rgba(11,31,74,0.08)] border border-[#D9E2F0]"
-      >
-        <div className="w-16 h-16 bg-[#EEF2FB] rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle2 className="w-8 h-8 text-[#1B3A8C]" />
-        </div>
-        <p className="text-[10px] tracking-[0.25em] uppercase text-[#64748B] mb-2">Quotation Received</p>
-        <h1 className="text-3xl font-bold text-[#0B1F4A] mb-4">Thank You!</h1>
-        <p className="text-[#64748B] mb-8 leading-relaxed text-sm">
-          Your request has been received. A HERO Serviced Office representative will contact you within <strong>24 business hours</strong>.
-        </p>
-
-        <div className="bg-[#F4F6FB] rounded-2xl p-6 text-left mb-8 space-y-4">
-          {[
-            "We'll review your service requirements and preferences",
-            "A customised quotation will be prepared for you",
-            "Our team will reach out via email or phone to discuss next steps",
-          ].map((s, i) => (
-            <div key={i} className="flex items-start gap-3">
-              <span className="w-5 h-5 rounded-full bg-[#0B1F4A] text-white text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-bold">{i + 1}</span>
-              <p className="text-sm text-[#4A5568] leading-relaxed">{s}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Countdown bar */}
-        <div className="mb-6">
-          <div className="h-1.5 bg-[#D9E2F0] rounded-full overflow-hidden mb-2">
-            <motion.div
-              className="h-full bg-[#1B3A8C] rounded-full"
-              initial={{ width: "0%" }}
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 0.9, ease: "linear" }}
-            />
-          </div>
-          <p className="text-xs text-[#64748B]">
-            Returning to the form in <strong>{countdown}s</strong>…
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button
-            type="button"
-            onClick={onReset}
-            className="px-8 py-3 bg-[#0B1F4A] text-white rounded-full text-sm font-semibold hover:bg-[#1B3A8C] transition"
-          >
-            Submit another request
-          </button>
-          <a href="/" className="px-8 py-3 bg-[#F0EDE6] text-[#4A4740] rounded-full text-sm font-semibold hover:bg-[#E5E1D9] transition">
-            Back to home
-          </a>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function GetAQuotePage() {
   const [step, setStep] = useState(1);
@@ -982,24 +1173,53 @@ export default function GetAQuotePage() {
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [modal, setModal] = useState<ModalKey>(null);
+
+  // Step 2 validation errors (set on attempted advance)
+  const [step2Errors, setStep2Errors] = useState<Record<string, string>>({});
 
   const isVO = selectedService === "virtual-office";
+  // Standard: Service(1) → Requirements(2) → Contact(3) → Review(4)
+  // Virtual Office: Service(1) → Requirements(2) → Contact(3) → Review(4) → Payment(5)
   const steps = isVO ? VO_STEPS : BASE_STEPS;
 
-  // For VO: steps are 1=Service, 2=Requirements, 3=Payment, 4=Contact, 5=Review
-  // For others: 1=Service, 2=Requirements, 3=Contact, 4=Review
-  const contactStep = isVO ? 4 : 3;
-  const reviewStep = isVO ? 5 : 4;
+  // Step 2 validation per service
+  const validateStep2 = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (selectedService === "private-office") {
+      if (!privateOffice.seats || Number(privateOffice.seats) < 1) errs.seats = "Please enter a valid number of seats (min 1).";
+      if (Number(privateOffice.seats) > 17) errs.seats = "Maximum 17 seats available.";
+      if (!privateOffice.moveInDate) errs.moveInDate = "Please select a target move-in date.";
+      if (!privateOffice.leaseTerm) errs.leaseTerm = "Please select a lease term.";
+    }
+    if (selectedService === "virtual-office") {
+      if (!virtualOffice.package) errs.package = "Please select a package.";
+      if (!virtualOffice.startDate) errs.startDate = "Please select a preferred start date.";
+    }
+    if (selectedService === "coworking") {
+      if (!coworking.seats || Number(coworking.seats) < 1) errs.seats = "Please enter a valid number of seats.";
+      if (!coworking.startDate) errs.startDate = "Please select a preferred start date.";
+      if (!coworking.passType) errs.passType = "Please select a pass type.";
+    }
+    if (selectedService === "meeting-room") {
+      if (!meetingRoom.date) errs.date = "Please select a reservation date.";
+      if (!meetingRoom.time) errs.time = "Please select a preferred time.";
+      if (!meetingRoom.participants || Number(meetingRoom.participants) < 1) errs.participants = "Please enter a valid number of participants.";
+      if (!meetingRoom.duration) errs.duration = "Please select a duration.";
+    }
+    if (selectedService === "event-space") {
+      if (!eventSpace.eventDate) errs.eventDate = "Please select an event date.";
+      if (!eventSpace.attendees || Number(eventSpace.attendees) < 1) errs.attendees = "Please enter an estimated number of attendees.";
+      if (!eventSpace.duration) errs.duration = "Please select an event duration.";
+      if (!eventSpace.eventType) errs.eventType = "Please select an event type.";
+    }
+    return errs;
+  };
 
-  const isStep2Valid = () => {
-    if (!selectedService) return false;
-    if (selectedService === "private-office") return !!privateOffice.seats && !!privateOffice.moveInDate && !!privateOffice.leaseTerm;
-    if (selectedService === "virtual-office") return !!virtualOffice.package && !!virtualOffice.startDate;
-    if (selectedService === "coworking") return !!coworking.seats && !!coworking.startDate && !!coworking.passType;
-    if (selectedService === "meeting-room") return !!meetingRoom.date && !!meetingRoom.time && !!meetingRoom.participants && !!meetingRoom.duration;
-    if (selectedService === "event-space") return !!eventSpace.eventDate && !!eventSpace.attendees && !!eventSpace.duration && !!eventSpace.eventType;
-    return false;
+  const handleStep2Next = () => {
+    const errs = validateStep2();
+    setStep2Errors(errs);
+    if (Object.keys(errs).length === 0) setStep(3);
   };
 
   const handleReset = useCallback(() => {
@@ -1016,55 +1236,153 @@ export default function GetAQuotePage() {
     setContractAction(null);
     setNotes("");
     setConsent(false);
-    setIsSubmitted(false);
+    setStep2Errors({});
+    setModal(null);
+    setSubmitError(null);
   }, []);
+
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Builds the payload expected by App\Http\Controllers\Api\QuotationController::store
+  const buildPayload = () => {
+    const serviceLabel = SERVICES.find((s) => s.id === selectedService)?.label ?? "";
+
+    // Shared detail fields
+    const detail: Record<string, unknown> = {
+      full_name: contact.name,
+      company_name: contact.company || null,
+      email: contact.email,
+      phone: contact.phone,
+      request: notes || null,
+      payment_method: paymentMethod ?? "gcash", // backend requires this; defaults to gcash for non-VO flows
+      transaction_id: null,
+      receipt: gcashProof ? gcashProof.name : null,
+    };
+
+    let lease_term: string | null = null;
+    let pkg: string | null = null;
+    let event_type: string | null = null;
+    let total = 0;
+
+    if (selectedService === "private-office") {
+      detail.seats = Number(privateOffice.seats) || null;
+      detail.date = privateOffice.moveInDate;
+      detail.duration_type = privateOffice.leaseTerm;
+      detail.other_requirements = privateOffice.otherRequirements || null;
+      lease_term = privateOffice.leaseTerm;
+    } else if (selectedService === "virtual-office") {
+      detail.date = virtualOffice.startDate;
+      const packagePrices: Record<string, number> = { Basic: 8000, Standard: 12000, Premium: 15000 };
+      total = packagePrices[virtualOffice.package] ?? 0;
+      pkg = virtualOffice.package;
+    } else if (selectedService === "coworking") {
+      detail.seats = Number(coworking.seats) || null;
+      detail.date = coworking.startDate;
+      detail.duration_type = coworking.passType;
+      detail.other_requirements = coworking.otherRequirements || null;
+    } else if (selectedService === "meeting-room") {
+      detail.seats = Number(meetingRoom.participants) || null;
+      detail.date = meetingRoom.date;
+      detail.time = meetingRoom.time;
+      detail.duration_type = meetingRoom.duration;
+      detail.other_requirements = meetingRoom.additionalRequirements || null;
+    } else if (selectedService === "event-space") {
+      detail.seats = Number(eventSpace.attendees) || null;
+      detail.date = eventSpace.eventDate;
+      detail.duration_type = eventSpace.duration;
+      detail.other_requirements = eventSpace.otherRequirements || null;
+      event_type = eventSpace.eventType;
+    }
+
+    detail.total = total;
+
+    return {
+      service_id: selectedService ? SERVICE_IDS[selectedService] : null,
+      service_name: serviceLabel,
+      lease_term,
+      package: pkg,
+      event_type,
+      status: "pending",
+      detail,
+    };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
     setIsSubmitting(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setIsSubmitting(false);
-    setIsSubmitted(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/quotations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(buildPayload()),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        throw new Error(errBody?.message ?? `Request failed with status ${res.status}`);
+      }
+
+      setModal("success");
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSuccessClose = () => {
+    setModal(null);
+    handleReset();
   };
 
   const renderStep2 = () => {
-    if (selectedService === "private-office") return <Step2PrivateOffice data={privateOffice} onChange={(d) => setPrivateOffice((p) => ({ ...p, ...d }))} />;
-    if (selectedService === "virtual-office") return <Step2VirtualOffice data={virtualOffice} onChange={(d) => setVirtualOffice((p) => ({ ...p, ...d }))} />;
-    if (selectedService === "coworking") return <Step2Coworking data={coworking} onChange={(d) => setCoworking((p) => ({ ...p, ...d }))} />;
-    if (selectedService === "meeting-room") return <Step2MeetingRoom data={meetingRoom} onChange={(d) => setMeetingRoom((p) => ({ ...p, ...d }))} />;
-    if (selectedService === "event-space") return <Step2EventSpace data={eventSpace} onChange={(d) => setEventSpace((p) => ({ ...p, ...d }))} />;
+    if (selectedService === "private-office") return (
+      <Step2PrivateOffice
+        data={privateOffice}
+        onChange={(d) => { setPrivateOffice((p) => ({ ...p, ...d })); setStep2Errors({}); }}
+        errors={step2Errors}
+      />
+    );
+    if (selectedService === "virtual-office") return (
+      <Step2VirtualOffice
+        data={virtualOffice}
+        onChange={(d) => { setVirtualOffice((p) => ({ ...p, ...d })); setStep2Errors({}); }}
+        errors={step2Errors}
+      />
+    );
+    if (selectedService === "coworking") return (
+      <Step2Coworking
+        data={coworking}
+        onChange={(d) => { setCoworking((p) => ({ ...p, ...d })); setStep2Errors({}); }}
+        errors={step2Errors}
+      />
+    );
+    if (selectedService === "meeting-room") return (
+      <Step2MeetingRoom
+        data={meetingRoom}
+        onChange={(d) => { setMeetingRoom((p) => ({ ...p, ...d })); setStep2Errors({}); }}
+        errors={step2Errors}
+      />
+    );
+    if (selectedService === "event-space") return (
+      <Step2EventSpace
+        data={eventSpace}
+        onChange={(d) => { setEventSpace((p) => ({ ...p, ...d })); setStep2Errors({}); }}
+        errors={step2Errors}
+      />
+    );
     return null;
   };
-
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen bg-white">
-        <section className="relative text-white py-20 lg:py-32 overflow-hidden">
-          <div className="absolute inset-0">
-            <Image
-              src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80"
-              alt="Hero Serviced Office"
-              fill
-              className="object-cover"
-              unoptimized
-              priority
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0B1F4A]/90 to-[#1B3A8C]/60" />
-          </div>
-          <div className="px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-            <p className="text-[11px] tracking-[0.3em] uppercase text-[#C9A84C] font-semibold mb-4">Hero Serviced Office</p>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">Get a Quote</h1>
-          </div>
-        </section>
-        <SuccessScreen onReset={handleReset} />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-white">
 
-      {/* ── Hero ── */}
+      {/* Hero */}
       <section className="relative text-white py-20 lg:py-32 overflow-hidden">
         <div className="absolute inset-0">
           <Image
@@ -1075,11 +1393,10 @@ export default function GetAQuotePage() {
             unoptimized
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0B1F4A]/90 to-[#1B3A8C]/60" />
+          <div className="absolute inset-0 bg-linear-to-r from-[#0B1F4A]/90 to-[#1B3A8C]/60" />
         </div>
         <div className="px-4 sm:px-6 lg:px-8 relative z-10 text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <p className="text-[11px] tracking-[0.3em] uppercase text-[#C9A84C] font-semibold mb-4">Hero Serviced Office</p>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">Get a Quote</h1>
             <p className="text-lg text-gray-300 max-w-xl mx-auto leading-relaxed">
               Tell us about your workspace requirements and our team will prepare a customised quotation for you.
@@ -1088,11 +1405,17 @@ export default function GetAQuotePage() {
         </div>
       </section>
 
-      {/* ── Form ── */}
-      <section className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+      {/* Form */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
         <StepRail step={step} steps={steps} />
 
         <form onSubmit={handleSubmit}>
+          {submitError && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-300 bg-[#FFF5F5] px-4 py-3 text-sm text-red-600">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {submitError}
+            </div>
+          )}
           <div className="bg-white rounded-3xl p-8 md:p-10 shadow-[0_4px_24px_rgba(11,31,74,0.06)] border border-[#D9E2F0]">
             <AnimatePresence mode="wait">
               <motion.div
@@ -1102,14 +1425,16 @@ export default function GetAQuotePage() {
                 exit={{ opacity: 0, x: -24 }}
                 transition={{ duration: 0.22 }}
               >
+                {/* Step 1: Service Selection */}
                 {step === 1 && (
                   <Step1
                     selectedService={selectedService}
-                    setSelectedService={(s) => { setSelectedService(s); setStep(1); }}
+                    setSelectedService={(s) => { setSelectedService(s); setStep2Errors({}); }}
                     onNext={() => setStep(2)}
                   />
                 )}
 
+                {/* Step 2: Requirements */}
                 {step === 2 && (
                   <div>
                     <h2 className="text-2xl font-bold text-[#0B1F4A] mb-2">
@@ -1119,14 +1444,45 @@ export default function GetAQuotePage() {
                     {renderStep2()}
                     <NavRow
                       onBack={() => setStep(1)}
-                      onNext={() => setStep(3)}
-                      nextDisabled={!isStep2Valid()}
+                      onNext={handleStep2Next}
                     />
                   </div>
                 )}
 
-                {/* Payment step — only for Virtual Office */}
-                {step === 3 && isVO && (
+                {/* Step 3: Contact (both flows) */}
+                {step === 3 && (
+                  <Step3
+                    contact={contact}
+                    notes={notes}
+                    setContact={setContact}
+                    setNotes={setNotes}
+                    onBack={() => setStep(2)}
+                    onNext={() => setStep(4)}
+                  />
+                )}
+
+                {/* Step 4: Review — for all services */}
+                {step === 4 && (
+                  <Step4
+                    selectedService={selectedService}
+                    privateOffice={privateOffice}
+                    virtualOffice={virtualOffice}
+                    coworking={coworking}
+                    meetingRoom={meetingRoom}
+                    eventSpace={eventSpace}
+                    contact={contact}
+                    notes={notes}
+                    consent={consent}
+                    setConsent={setConsent}
+                    onBack={() => setStep(3)}
+                    onNext={() => setStep(5)}
+                    isSubmitting={isSubmitting}
+                    isVO={isVO}
+                  />
+                )}
+
+                {/* Step 5 (VO only): Payment — this is the final submit step for VO */}
+                {step === 5 && isVO && (
                   <StepVOPayment
                     virtualOffice={virtualOffice}
                     paymentMethod={paymentMethod}
@@ -1135,52 +1491,39 @@ export default function GetAQuotePage() {
                     setGcashProof={setGcashProof}
                     contractAction={contractAction}
                     setContractAction={setContractAction}
-                    onBack={() => setStep(2)}
-                    onNext={() => setStep(4)}
-                  />
-                )}
-
-                {step === contactStep && (
-                  <Step3
-                    contact={contact}
-                    notes={notes}
-                    setContact={setContact}
-                    setNotes={setNotes}
-                    onBack={() => setStep(step - 1)}
-                    onNext={() => setStep(reviewStep)}
-                  />
-                )}
-
-                {step === reviewStep && (
-                  <Step4
-                    selectedService={selectedService}
-                    privateOffice={privateOffice}
-                    virtualOffice={virtualOffice}
-                    coworking={coworking}
-                    meetingRoom={meetingRoom}
-                    eventSpace={eventSpace}
-                    paymentMethod={paymentMethod}
-                    gcashProof={gcashProof}
-                    contractAction={contractAction}
-                    contact={contact}
-                    notes={notes}
-                    consent={consent}
-                    setConsent={setConsent}
-                    onBack={() => setStep(contactStep)}
+                    onBack={() => setStep(4)}
                     isSubmitting={isSubmitting}
                   />
+                )}
+
+                {/* Hidden submit trigger for step 4 (non-VO): advances to Success */}
+                {step === 4 && !isVO && (
+                  <input type="submit" className="hidden" />
                 )}
               </motion.div>
             </AnimatePresence>
           </div>
         </form>
       </section>
+
+      {/* Success Modal */}
+      <Modal
+        open={modal === "success"}
+        onClose={handleSuccessClose}
+        title="Request Submitted"
+        hideClose={false}
+      >
+        <SuccessModalContent
+          isVO={isVO}
+          paymentMethod={paymentMethod}
+          onClose={handleSuccessClose}
+        />
+      </Modal>
     </div>
   );
 }
 
-// ─── Privacy Policy ───────────────────────────────────────────────────────────
-
+// Privacy Policy
 function PrivacyPolicyContent() {
   return (
     <>

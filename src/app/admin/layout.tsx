@@ -24,10 +24,10 @@ const menuItems = [
     {
         section: "Menu", items: [
             { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
+            { title: "Quotation", href: "/admin/quotation", icon: Users },
             { title: "Users", href: "/admin/users", icon: Users },
             { title: "Inquiries", href: "/admin/inquiries", icon: MessageSquare },
             { title: "Announcements", href: "/admin/announcements", icon: Megaphone },
-            { title: "Blogs", href: "/admin/blogs", icon: FileText },
         ]
     },
 ];
@@ -119,20 +119,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
 
                 {/* Nav — scrollable if items overflow */}
-                <nav className="flex-1 overflow-y-auto px-3 py-6 flex flex-col gap-0.5">
+                <nav className="flex-1 overflow-y-auto px-3 py-6 flex flex-col gap-3">
                     {menuItems.map(({ section, items }) => (
                         <div key={section}>
                             <p className="text-sm text-[#0A1E3F] tracking-widest uppercase font-medium px-2 mt-3 mb-1.5">
                                 {section}
                             </p>
-                            {items.map(({ title, href, icon: Icon }) => {
+                            {items.filter(item => item?.href?.trim()).map(({ title, href, icon: Icon }) => {
                                 const active = pathname === href;
                                 return (
                                     <Link
                                         key={href}
                                         href={href}
                                         onClick={() => setSidebarOpen(false)}
-                                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-md text-md border-l-2 transition-all ${
+                                        className={`flex items-center gap-2.5 px-3 py-2.5 my-2 rounded-md text-md border-l-2 transition-all ${
                                             active
                                                 ? "bg-[#0A1E3F]/10 text-[#0A1E3F] border-[#4F8EF7] font-bold"
                                                 : "text-[#0D47A1] border-transparent hover:bg-[#0A1E3F]/5 hover:text-[#1565C0]"

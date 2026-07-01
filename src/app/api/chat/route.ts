@@ -46,6 +46,14 @@ export async function POST(req: Request) {
 
         const { value: message } = validation;
 
+        if (!process.env.GROQ_API_KEY) {
+            console.error("GROQ_API_KEY is not set.");
+            return NextResponse.json(
+                { error: "Assistant is temporarily unavailable." },
+                { status: 503 }
+            );
+        }
+
         const [completion] = await Promise.all([
             client.chat.completions.create({
                 model: "llama3-8b-8192",
