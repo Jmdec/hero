@@ -1,66 +1,74 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const client = new OpenAI({
-    apiKey: process.env.GROQ_API_KEY,
-    baseURL: "https://api.groq.com/openai/v1",
-});
-
 // Random delay between 1s – 2s so responses feel human, not instant
 const humanDelay = () =>
-    new Promise(res => setTimeout(res, 1000 + Math.random() * 1000));
+  new Promise((res) => setTimeout(res, 1000 + Math.random() * 1000));
 
 // ── Server-side validation ────────────────────────────────────────────────────
 function sanitize(input: unknown): string {
-    if (typeof input !== "string") return "";
-    return input
-        .trim()
-        .slice(0, 1000)                     // hard cap — no prompt-stuffing
-        .replace(/<[^>]*>/g, "")            // strip HTML tags
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ""); // strip control chars
+  if (typeof input !== "string") return "";
+  return input
+    .trim()
+    .slice(0, 1000) // hard cap — no prompt-stuffing
+    .replace(/<[^>]*>/g, "") // strip HTML tags
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ""); // strip control chars
 }
 
-function validateMessage(raw: unknown): { ok: true; value: string } | { ok: false; error: string } {
-    const value = sanitize(raw);
-    if (!value) return { ok: false, error: "Message is required." };
-    if (value.length < 1) return { ok: false, error: "Message cannot be empty." };
-    if (value.length > 1000) return { ok: false, error: "Message is too long (max 1000 characters)." };
-    return { ok: true, value };
+function validateMessage(
+  raw: unknown,
+): { ok: true; value: string } | { ok: false; error: string } {
+  const value = sanitize(raw);
+  if (!value) return { ok: false, error: "Message is required." };
+  if (value.length < 1) return { ok: false, error: "Message cannot be empty." };
+  if (value.length > 1000)
+    return { ok: false, error: "Message is too long (max 1000 characters)." };
+  return { ok: true, value };
 }
 
 export async function POST(req: Request) {
+  try {
+    let body: unknown;
     try {
-        let body: unknown;
-        try {
-            body = await req.json();
-        } catch {
-            return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-        }
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body." },
+        { status: 400 },
+      );
+    }
 
-        const raw = (body as Record<string, unknown>)?.message;
-        const validation = validateMessage(raw);
+    const raw = (body as Record<string, unknown>)?.message;
+    const validation = validateMessage(raw);
 
-        if (!validation.ok) {
-            return NextResponse.json({ error: validation.error }, { status: 400 });
-        }
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
 
-        const { value: message } = validation;
+    const { value: message } = validation;
 
-        if (!process.env.GROQ_API_KEY) {
-            console.error("GROQ_API_KEY is not set.");
-            return NextResponse.json(
-                { error: "Assistant is temporarily unavailable." },
-                { status: 503 }
-            );
-        }
+    if (!process.env.GROQ_API_KEY) {
+      console.error("GROQ_API_KEY is not set.");
+      return NextResponse.json(
+        { error: "Assistant is temporarily unavailable." },
+        { status: 503 },
+      );
+    }
 
-        const [completion] = await Promise.all([
-            client.chat.completions.create({
-                model: "llama3-8b-8192",
-                messages: [
-                    {
-                        role: "system",
-                        content: `
+    // Client is created only after we've confirmed the key exists,
+    // and only when an actual request comes in — never at build time.
+    const client = new OpenAI({
+      apiKey: process.env.GROQ_API_KEY,
+      baseURL: "https://api.groq.com/openai/v1",
+    });
+
+    const [completion] = await Promise.all([
+      client.chat.completions.create({
+        model: "llama3-8b-8192",
+        messages: [
+          {
+            role: "system",
+            content: `
 You are the official AI assistant of HERO Serviced Office.
 
 Company Information:
@@ -92,28 +100,27 @@ Behavior Rules:
 
 Tone: Professional, warm, clear, and confident.
                         `,
-                    },
-                    {
-                        role: "user",
-                        content: message, // already sanitized above
-                    },
-                ],
-                temperature: 0.7,
-                max_tokens: 512,
-            }),
-            humanDelay(),
-        ]);
+          },
+          {
+            role: "user",
+            content: message, // already sanitized above
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 512,
+      }),
+      humanDelay(),
+    ]);
 
-        return NextResponse.json({
-            reply:
-                completion.choices?.[0]?.message?.content ||
-                "No response received.",
-        });
-    } catch (error) {
-        console.error("Groq API Error:", error);
-        return NextResponse.json(
-            { error: "Failed to fetch AI response" },
-            { status: 500 }
-        );
-    }
+    return NextResponse.json({
+      reply:
+        completion.choices?.[0]?.message?.content || "No response received.",
+    });
+  } catch (error) {
+    console.error("Groq API Error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch AI response" },
+      { status: 500 },
+    );
+  }
 }
