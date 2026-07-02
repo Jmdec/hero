@@ -1,7 +1,8 @@
 "use client";
 
+import Image from 'next/image';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageCircle, X, Send, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, ChevronRight, AlertCircle, Loader2, UserRound } from 'lucide-react';
 import { chatApi } from '../lib/chatApi';
 
 interface Message {
@@ -12,8 +13,6 @@ interface Message {
 
 const SESSION_STORAGE_KEY = 'hero_chat_session_id';
 
-// Modal component for Privacy Policy and Terms of Service
-
 interface ModalProps {
     open: boolean;
     onClose: () => void;
@@ -22,7 +21,6 @@ interface ModalProps {
 }
 
 function Modal({ open, onClose, title, children }: ModalProps) {
-    // Close on Escape, and lock background scroll while open.
     useEffect(() => {
         if (!open) return;
 
@@ -43,20 +41,17 @@ function Modal({ open, onClose, title, children }: ModalProps) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
-            {/* Backdrop */}
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 backdrop-blur-xs">
             <div
                 className="absolute inset-0 bg-black/40"
                 onClick={onClose}
                 aria-hidden="true"
             />
-
-            {/* Panel */}
             <div
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="modal-title"
-                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden"
+                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] flex flex-col overflow-hidden"
             >
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
                     <h2 id="modal-title" className="text-base font-bold text-gray-900">{title}</h2>
@@ -75,8 +70,6 @@ function Modal({ open, onClose, title, children }: ModalProps) {
         </div>
     );
 }
-
-// ── Privacy Policy & Terms of Service content ───────────────────────────────
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
@@ -240,7 +233,6 @@ function TermsOfServiceContent() {
     );
 }
 
-// Validation helpers
 const validators = {
     name: (v: string) => {
         if (!v.trim()) return "Full name is required.";
@@ -280,6 +272,10 @@ const WELCOME_MESSAGE: Message = {
     time: formatTime(),
 };
 
+// Text shown when a live agent ends the conversation and control returns to the AI assistant.
+const AGENT_ENDED_MESSAGE =
+    "🔴 The live agent ended the chat. You're back with our AI assistant — feel free to keep chatting or pick a quick reply below.";
+
 const Chatbot = () => {
     const [isStarted, setIsStarted] = useState(false);
     const [leadSubmitted, setLeadSubmitted] = useState(false);
@@ -298,9 +294,16 @@ const Chatbot = () => {
     const [modal, setModal] = useState<'privacy' | 'terms' | null>(null);
     const [agreedToPolicy, setAgreedToPolicy] = useState(false);
     const [agreementTouched, setAgreementTouched] = useState(false);
+    const [agentRequested, setAgentRequested] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Tracks the conversation's last known status between polls, so we can
+    // detect the transition "agent was handling this chat" -> "agent ended it".
+    // ADJUST THE FIELD NAME / VALUES below to match your actual chatApi contract
+    // (e.g. `status`, `agent_status`, a boolean `agent_active`, etc.)
+    const previousStatusRef = useRef<string | null>(null);
 
     const quickReplies = [
         'Our Services',
@@ -319,24 +322,86 @@ const Chatbot = () => {
         scrollToBottom();
     }, [messages, isTyping]);
 
-    // Focus the input when the chat window opens on the message screen.
     useEffect(() => {
         if (isChatOpen && leadSubmitted) {
             inputRef.current?.focus();
         }
     }, [isChatOpen, leadSubmitted]);
 
-    // On first mount, ensure the chat is ready. No backend resume endpoint exists,
-    // so we simply finish the loading state and let the user continue.
+    useEffect(() => {
+        if (!leadSubmitted || !conversation?.id) return;
+
+        const interval = window.setInterval(async () => {
+            try {
+                const latestConversation = await chatApi.getConversation(conversation.id);
+
+                const mappedMessages: Message[] = (latestConversation.messages ?? []).map((message) => ({
+                    type: message.sender === 'user' ? 'user' : 'bot',
+                    text: message.message,
+                    time: new Date(message.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                }));
+
+                // NOTE: this reads `status` (falling back to `agent_status`) off the
+                // conversation payload. Expected values: 'agent_requested' | 'agent_active'
+                // while a live agent owns the chat, and 'agent_closed' (or 'ai' / 'closed')
+                // once the admin ends it and control returns to the AI assistant.
+                // Update these strings to match whatever your backend actually sends.
+                const rawStatus: string | null =
+                    (latestConversation as any).status ??
+                    (latestConversation as any).agent_status ??
+                    null;
+
+                const previousStatus = previousStatusRef.current;
+                const agentJustEnded =
+                    (previousStatus === 'agent_active' || previousStatus === 'agent_requested') &&
+                    (rawStatus === 'agent_closed' || rawStatus === 'ai' || rawStatus === 'closed');
+
+                previousStatusRef.current = rawStatus;
+
+                setMessages((prev) => {
+                    const current = prev[0]?.type === 'bot' && prev[0]?.text === WELCOME_MESSAGE.text ? [] : prev;
+                    const previousText = current.map((m) => `${m.type}:${m.text}`).join('|');
+                    const nextText = mappedMessages.map((m) => `${m.type}:${m.text}`).join('|');
+
+                    const finalMessages = agentJustEnded
+                        ? [
+                            ...mappedMessages,
+                            {
+                                type: 'bot' as const,
+                                text: AGENT_ENDED_MESSAGE,
+                                time: formatTime(),
+                            },
+                        ]
+                        : mappedMessages;
+
+                    if (!agentJustEnded && previousText === nextText) {
+                        return prev;
+                    }
+
+                    return finalMessages;
+                });
+
+                if (agentJustEnded) {
+                    // Loop back to AI mode: re-enable the "Talk to an agent" button
+                    // and clear any stale error state so the assistant flow resumes cleanly.
+                    setAgentRequested(false);
+                    setSendError('');
+                }
+            } catch {
+                // Ignore transient polling errors so the chat stays responsive.
+            }
+        }, 3000);
+
+        return () => window.clearInterval(interval);
+    }, [conversation?.id, leadSubmitted]);
+
     useEffect(() => {
         setIsResumingSession(false);
     }, []);
 
-    // Random delay between 1.2s – 2.5s to feel more human
     const humanDelay = () =>
         new Promise(res => setTimeout(res, 1200 + Math.random() * 1300));
 
-    /** Return the existing conversation session if present. */
     const ensureConversation = useCallback(async (): Promise<{ id: number; session_id: string } | null> => {
         if (conversation) return conversation;
 
@@ -355,14 +420,18 @@ const Chatbot = () => {
         return newConversation;
     }, [conversation]);
 
-    /** Persist a message locally if a conversation exists. */
     const persistMessage = useCallback(async (
         activeConversation: { id: number; session_id: string } | null,
         sender: 'user' | 'assistant',
         text: string
     ) => {
-        // No remote backend persistence is available in this environment.
-        return;
+        if (!activeConversation?.id) return;
+
+        try {
+            await chatApi.sendMessage(activeConversation.id, sender, text);
+        } catch {
+            // Swallow persistence errors so the chat remains usable even if the backend is temporarily unavailable.
+        }
     }, []);
 
     const handleQuickReply = async (reply: string) => {
@@ -373,7 +442,7 @@ const Chatbot = () => {
         setSendError('');
 
         const activeConversation = await ensureConversation();
-        void persistMessage(activeConversation, 'user', reply);
+        await persistMessage(activeConversation, 'user', reply);
 
         const predefinedReplies: Record<string, string> = {
             'Our Services':
@@ -409,9 +478,45 @@ const Chatbot = () => {
             const data = await res.json();
             const replyText = data.reply || 'No response from assistant.';
             setMessages(prev => [...prev, { type: 'bot', text: replyText, time }]);
-            void persistMessage(activeConversation, 'assistant', replyText);
+            await persistMessage(activeConversation, 'assistant', replyText);
         } catch {
             setMessages(prev => [...prev, { type: 'bot', text: '⚠️ Sorry, something went wrong. Please try again.', time }]);
+        }
+    };
+
+    const handleTalkToAgent = async () => {
+        const time = formatTime();
+        const userText = "I'd like to talk to a live agent.";
+
+        setMessages(prev => [...prev, { type: 'user', text: userText, time }]);
+        setIsTyping(true);
+        setSendError('');
+        setAgentRequested(true);
+
+        try {
+            const activeConversation = await ensureConversation();
+            const targetId = conversation?.id ?? activeConversation?.id;
+
+            if (targetId) {
+                await chatApi.requestAgent(targetId, userText);
+                // Seed the status ref so the next poll can correctly detect
+                // the eventual "agent ended the chat" transition.
+                previousStatusRef.current = 'agent_requested';
+            }
+
+            void persistMessage(activeConversation, 'user', userText);
+
+            const agentReply =
+                "Sure thing! 🙋 One of our team members will be with you shortly.\n\nIn the meantime, you can also reach us directly:\n\n📧 info@heroph.net\n📞 Mon–Fri, 9AM–6PM (PHT)\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
+
+            setMessages(prev => [...prev, { type: 'bot', text: agentReply, time: formatTime() }]);
+            void persistMessage(activeConversation, 'assistant', agentReply);
+        } catch {
+            setSendError('We could not connect you to an agent right now. Please try again.');
+            setMessages(prev => [...prev, { type: 'bot', text: '⚠️ We could not connect you to an agent right now. Please try again.', time: formatTime() }]);
+            setAgentRequested(false);
+        } finally {
+            setIsTyping(false);
         }
     };
 
@@ -427,7 +532,7 @@ const Chatbot = () => {
         setSendError('');
 
         const activeConversation = await ensureConversation();
-        void persistMessage(activeConversation, 'user', userMessage.text);
+        await persistMessage(activeConversation, 'user', userMessage.text);
 
         await humanDelay();
 
@@ -446,7 +551,7 @@ const Chatbot = () => {
             const data = await res.json();
             const replyText = data.reply || "No response received.";
             setMessages(prev => [...prev, { type: "bot", text: replyText, time: formatTime() }]);
-            void persistMessage(activeConversation, 'assistant', replyText);
+            await persistMessage(activeConversation, 'assistant', replyText);
         } catch {
             setSendError("Your message couldn't be sent. Please try again.");
             setMessages(prev => [...prev, {
@@ -516,7 +621,7 @@ const Chatbot = () => {
 
             const greeting = `Thanks, ${leadInfo.name.trim()}! Your details have been received. How can I help you today?`;
             setMessages([{ type: "bot", text: greeting, time: formatTime() }]);
-            void persistMessage(newConversation, 'assistant', greeting);
+            await persistMessage(newConversation, 'assistant', greeting);
 
             setLeadSubmitted(true);
         } catch (err) {
@@ -568,23 +673,44 @@ const Chatbot = () => {
                     <div className="bg-[#1B3A8C] px-4 py-3 flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                                <span className="text-[#1B3A8C] text-base font-bold leading-none">H</span>
+                                <Image
+                                    src="/header_logo_icon.png"
+                                    alt="HERO Serviced Office Logo"
+                                    width={24}
+                                    height={24}
+                                    className="w-6 h-6 object-contain"
+                                />
                             </div>
+
                             <div>
-                                <p className="text-white font-semibold text-sm leading-tight">HERO Serviced Office</p>
-                                <p className="text-blue-200 text-xs flex items-center gap-1 mt-0.5">
-                                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                                    Online now
+                                <p className="text-white font-semibold text-md leading-tight">
+                                    HERO Serviced Office
                                 </p>
                             </div>
                         </div>
-                        <button
-                            onClick={() => setIsChatOpen(false)}
-                            className="text-white/70 hover:text-white hover:bg-white/15 rounded-full p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-white"
-                            aria-label="Close chat"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                            {leadSubmitted && (
+                                <button
+                                    onClick={handleTalkToAgent}
+                                    disabled={isTyping || agentRequested}
+                                    className="flex items-center gap-1.5 text-white/90 hover:text-white hover:bg-white/15 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-white"
+                                    aria-label="Talk to an agent"
+                                    title="Talk to an agent"
+                                >
+                                    <UserRound className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">
+                                        {agentRequested ? 'Agent requested' : 'Talk to an agent'}
+                                    </span>
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setIsChatOpen(false)}
+                                className="text-white/70 hover:text-white hover:bg-white/15 rounded-full p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-white"
+                                aria-label="Close chat"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Body */}
@@ -624,7 +750,7 @@ const Chatbot = () => {
                         {!isResumingSession && isStarted && !leadSubmitted && (
                             <div className="p-5 space-y-3">
                                 <div className="text-center mb-4">
-                                    <h2 className="text-base font-bold text-gray-900">Your contact details</h2>
+                                    <h2 className="text-lg font-bold text-gray-900">Your contact details</h2>
                                     <p className="text-xs text-gray-500 mt-1">
                                         Please fill in your details before continuing.
                                     </p>
@@ -649,10 +775,10 @@ const Chatbot = () => {
                                                 aria-describedby={hasError ? `${field.key}-error` : undefined}
                                                 disabled={isSubmittingLead}
                                                 className={`w-full border rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${hasError
-                                                        ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-200"
-                                                        : touched[field.key] && !fieldErrors[field.key] && leadInfo[field.key]
-                                                            ? "border-emerald-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100"
-                                                            : "border-gray-200 focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20"
+                                                    ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-200"
+                                                    : touched[field.key] && !fieldErrors[field.key] && leadInfo[field.key]
+                                                        ? "border-emerald-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100"
+                                                        : "border-gray-200 focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20"
                                                     }`}
                                             />
                                             {hasError && (
@@ -664,7 +790,7 @@ const Chatbot = () => {
                                     );
                                 })}
 
-                                <div className="space-y-1.5 pt-1">
+                                <div className="space-y-1.5 py-3">
                                     <label className="flex items-start gap-2 text-[11px] text-gray-500 cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -733,8 +859,8 @@ const Chatbot = () => {
                                             </div>
                                         )}
                                         <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${msg.type === "user"
-                                                ? "bg-[#1B3A8C] text-white rounded-br-sm"
-                                                : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
+                                            ? "bg-[#1B3A8C] text-white rounded-br-sm"
+                                            : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
                                             }`}>
                                             <p className="text-sm whitespace-pre-line leading-relaxed">{msg.text}</p>
                                             <p className={`text-[10px] mt-1 ${msg.type === "user" ? "text-blue-200 text-right" : "text-gray-400"}`}>

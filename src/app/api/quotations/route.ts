@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendQuotationNotifications, QuotationPayload } from "@/lib/nodemailer";
+
 const LARAVEL_API_URL = process.env.LARAVEL_API_URL ?? "http://localhost:8000/api";
 
 export async function GET(request: NextRequest) {
@@ -57,6 +59,14 @@ export async function POST(request: NextRequest) {
         }
 
         const data = await res.json().catch(() => null);
+        const quotationId = data?.data?.id ?? data?.id;
+
+        // Fire-and-forget — quotation is already saved, so a mail failure
+        // shouldn't block the user's response. Errors are logged internally.
+        sendQuotationNotifications(body as QuotationPayload, quotationId).catch((err) => {
+            console.error("Quotation email notification error:", err);
+        });
+
         return NextResponse.json(data, { status: 201 });
     } catch (error) {
         console.error("Quotations POST API error:", error);

@@ -9,14 +9,19 @@ import {
     Phone,
     Building2,
     Calendar,
+    Clock,
     Users,
     Banknote,
     Trash2,
+    Eye,
     AlertCircle,
     Inbox,
     ChevronDown,
     CheckCircle2,
     XCircle,
+    Receipt,
+    Hash,
+    Sparkles,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -83,12 +88,23 @@ const STATUS_STYLES: Record<Status, string> = {
     cancelled: "bg-red-50 text-red-600 border-red-200",
 };
 
+const STATUS_DOT: Record<Status, string> = {
+    pending: "bg-[#94A3B8]",
+    awaiting_payment: "bg-amber-500",
+    payment_verification: "bg-amber-500",
+    paid: "bg-green-500",
+    contract_sent: "bg-[#1B3A8C]",
+    completed: "bg-green-500",
+    cancelled: "bg-red-500",
+};
+
 function StatusBadge({ status }: { status: Status }) {
     const label = STATUSES.find((s) => s.value === status)?.label ?? status;
     return (
         <span
-            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border ${STATUS_STYLES[status]}`}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${STATUS_STYLES[status]}`}
         >
+            <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[status]}`} />
             {label}
         </span>
     );
@@ -107,7 +123,15 @@ function formatDate(value: string | null) {
     return d.toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
 }
 
-// ─── Toast ──────────────────────────────────────────────────────────────────
+function getInitials(name: string | null | undefined) {
+    if (!name) return "?";
+    const parts = name.trim().split(/\s+/);
+    const first = parts[0]?.[0] ?? "";
+    const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+    return (first + last).toUpperCase() || "?";
+}
+
+// Toast
 
 type ToastTone = "success" | "error";
 
@@ -148,7 +172,7 @@ function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id
     );
 }
 
-// ─── Stats ──────────────────────────────────────────────────────────────────
+// Stats
 
 type StatTone = "neutral" | "amber" | "green" | "red";
 
@@ -184,6 +208,60 @@ function StatCard({
     );
 }
 
+// Small reusable pieces for the detail drawer
+
+function SectionCard({
+    icon: Icon,
+    title,
+    children,
+}: {
+    icon: React.ComponentType<{ className?: string }>;
+    title: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="bg-white border border-[#D9E2F0] rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-[#F0F4FB] bg-[#F8FAFD]">
+                <Icon className="w-3.5 h-3.5 text-[#1B3A8C]" />
+                <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#0B1F4A]/50">{title}</p>
+            </div>
+            <div className="p-5 space-y-4">{children}</div>
+        </div>
+    );
+}
+
+function InfoRow({
+    icon: Icon,
+    label,
+    value,
+    href,
+}: {
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    value: React.ReactNode;
+    href?: string;
+}) {
+    const content = (
+        <div className="flex items-start gap-3">
+            <span className="w-8 h-8 rounded-lg bg-[#F0F4FB] flex items-center justify-center shrink-0 mt-0.5">
+                <Icon className="w-3.5 h-3.5 text-[#1B3A8C]" />
+            </span>
+            <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B]">{label}</p>
+                <p className="text-sm font-medium text-[#0B1F4A] break-words">{value}</p>
+            </div>
+        </div>
+    );
+    if (href) {
+        return (
+            <a href={href} className="block hover:opacity-70 transition">
+                {content}
+            </a>
+        );
+    }
+    return content;
+}
+
 // Page
 
 export default function AdminQuotationsPage() {
@@ -195,6 +273,9 @@ export default function AdminQuotationsPage() {
     const [selected, setSelected] = useState<Quotation | null>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<Quotation | null>(null);
+    const [deleting, setDeleting] = useState(false);
+    const [statusChangeTarget, setStatusChangeTarget] = useState<{ quote: Quotation; newStatus: Status } | null>(null);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
     const [toasts, setToasts] = useState<ToastItem[]>([]);
     const toastIdRef = useRef(0);
 
@@ -306,42 +387,42 @@ export default function AdminQuotationsPage() {
         }
     };
 
-    const handleDelete = async (quote: Quotation) => {
-        if (!confirm(`Delete quotation ${quote.quotation_id}? This can't be undone.`)) return;
+    const confirmStatusChange = async () => {
+        if (!statusChangeTarget) return;
+        const { quote, newStatus } = statusChangeTarget;
+        setUpdatingStatus(true);
+        try {
+            await handleStatusUpdate(quote, newStatus);
+        } finally {
+            setUpdatingStatus(false);
+            setStatusChangeTarget(null);
+        }
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        const quote = deleteTarget;
         const previous = quotations;
-        setQuotations((qs) => qs.filter((q) => q.id !== quote.id));
-        setSelected(null);
+        setDeleting(true);
         try {
             const res = await fetch(`/api/quotations/${quote.id}`, { method: "DELETE" });
             if (!res.ok) throw new Error("Failed to delete quotation.");
+            setQuotations((qs) => qs.filter((q) => q.id !== quote.id));
+            setSelected((s) => (s && s.id === quote.id ? null : s));
             pushToast(`${quote.quotation_id} deleted`, "success");
+            setDeleteTarget(null);
         } catch {
             setQuotations(previous);
             setError("Couldn't delete the quotation. Please try again.");
             pushToast(`Couldn't delete ${quote.quotation_id}`, "error");
+        } finally {
+            setDeleting(false);
         }
     };
 
     return (
         <>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                    <div>
-                        <h1 className="text-2xl font-bold text-[#0B1F4A]">
-                            {counts.all} request{counts.all === 1 ? "" : "s"} total
-                        </h1>
-                    </div>
-                    <button
-                        onClick={() => fetchQuotations(true)}
-                        disabled={refreshing}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#D9E2F0] rounded-xl text-sm font-semibold text-[#0B1F4A] hover:border-[#1B3A8C] hover:text-[#1B3A8C] transition disabled:opacity-50"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-                        Refresh
-                    </button>
-                </div>
-
                 {/* Stats */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <StatCard label="Total requests" value={String(counts.all)} icon={Inbox} tone="neutral" />
@@ -386,6 +467,15 @@ export default function AdminQuotationsPage() {
                         </select>
                         <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                     </div>
+
+                    <button
+                        onClick={() => fetchQuotations(true)}
+                        disabled={refreshing}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#D9E2F0] rounded-xl text-sm font-semibold text-[#0B1F4A] hover:border-[#1B3A8C] hover:text-[#1B3A8C] transition disabled:opacity-50"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                        Refresh
+                    </button>
                 </div>
 
                 {/* Table */}
@@ -410,10 +500,10 @@ export default function AdminQuotationsPage() {
                                         <th className="text-left font-semibold text-[#64748B] text-xs uppercase tracking-wide px-5 py-3">Date</th>
                                         <th className="text-left font-semibold text-[#64748B] text-xs uppercase tracking-wide px-5 py-3">Total</th>
                                         <th className="text-left font-semibold text-[#64748B] text-xs uppercase tracking-wide px-5 py-3">Status</th>
-                                        <th className="px-5 py-3" />
+                                        <th className="px-5 py-3 text-right font-semibold text-[#64748B] text-xs uppercase tracking-wide">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-[#F0F4FB]">
                                     {filtered.map((quote) => (
                                         <tr
                                             key={quote.id}
@@ -433,14 +523,25 @@ export default function AdminQuotationsPage() {
                                             <td className="px-5 py-4">
                                                 <StatusBadge status={quote.status} />
                                             </td>
-                                            <td className="px-5 py-4 text-right">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDelete(quote); }}
-                                                    className="p-2 rounded-lg text-[#64748B] hover:text-red-600 hover:bg-red-50 transition"
-                                                    aria-label={`Delete ${quote.quotation_id}`}
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                            <td className="px-5 py-4">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setSelected(quote); }}
+                                                        className="p-2 rounded-lg text-[#64748B] hover:text-[#1B3A8C] hover:bg-[#F0F4FB] transition"
+                                                        aria-label={`View ${quote.quotation_id}`}
+                                                        title="View"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(quote); }}
+                                                        className="p-2 rounded-lg text-[#64748B] hover:text-red-600 hover:bg-red-50 transition"
+                                                        aria-label={`Delete ${quote.quotation_id}`}
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -455,30 +556,49 @@ export default function AdminQuotationsPage() {
             {selected && (
                 <div className="fixed inset-0 z-50 flex justify-end">
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelected(null)} />
-                    <div className="relative w-full max-w-md bg-white h-full overflow-y-auto shadow-2xl">
-                        <div className="sticky top-0 bg-white border-b border-[#D9E2F0] px-6 py-4 flex items-center justify-between z-10">
-                            <div>
-                                <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">Quotation</p>
-                                <h2 className="text-lg font-bold text-[#0B1F4A]">{selected.quotation_id}</h2>
+                    <div className="relative w-full max-w-md bg-[#F8FAFD] h-full overflow-y-auto shadow-2xl flex flex-col">
+                        {/* Header */}
+                        <div className="sticky top-0 bg-white border-b border-[#D9E2F0] px-6 py-5 z-10">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <span className="w-11 h-11 rounded-xl bg-[#1B3A8C] text-white flex items-center justify-center font-bold text-sm shrink-0">
+                                        {getInitials(selected.detail?.full_name)}
+                                    </span>
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5 text-xs text-[#64748B] font-medium">
+                                            <Hash className="w-3 h-3" />
+                                            {selected.quotation_id}
+                                        </div>
+                                        <h2 className="text-lg font-bold text-[#0B1F4A] truncate">
+                                            {selected.detail?.full_name ?? "Unnamed request"}
+                                        </h2>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setSelected(null)}
+                                    className="p-2 rounded-full text-[#64748B] hover:bg-[#F0F4FB] transition shrink-0"
+                                    aria-label="Close"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setSelected(null)}
-                                className="p-2 rounded-full text-[#64748B] hover:bg-[#F0F4FB] transition"
-                                aria-label="Close"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
+                            <div className="mt-3">
+                                <StatusBadge status={selected.status} />
+                            </div>
                         </div>
 
-                        <div className="p-6 space-y-6">
+                        <div className="p-6 space-y-4 flex-1">
                             {/* Status control */}
-                            <div>
-                                <label className="block text-xs font-semibold tracking-wide text-[#0B1F4A] mb-2 uppercase">Status</label>
+                            <SectionCard icon={Sparkles} title="Update status">
                                 <div className="relative">
                                     <select
                                         value={selected.status}
-                                        onChange={(e) => handleStatusUpdate(selected, e.target.value as Status)}
-                                        className="w-full appearance-none px-4 py-3 pr-10 bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl text-sm text-[#0B1F4A] focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C] cursor-pointer"
+                                        onChange={(e) => {
+                                            const newStatus = e.target.value as Status;
+                                            if (newStatus === selected.status) return;
+                                            setStatusChangeTarget({ quote: selected, newStatus });
+                                        }}
+                                        className="w-full appearance-none px-4 py-3 pr-10 bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl text-sm font-medium text-[#0B1F4A] focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C] cursor-pointer"
                                     >
                                         {STATUSES.map((s) => (
                                             <option key={s.value} value={s.value}>{s.label}</option>
@@ -486,83 +606,108 @@ export default function AdminQuotationsPage() {
                                     </select>
                                     <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                                 </div>
-                            </div>
+                            </SectionCard>
 
                             {/* Customer */}
-                            <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5 space-y-3">
-                                <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40">Customer</p>
-                                <p className="font-semibold text-[rgb(11,31,74)]">NAME:{" "}
-                                    <span className="underline">{selected.detail?.full_name ?? "—"}</span></p>
+                            <SectionCard icon={Users} title="Customer">
                                 {selected.detail?.company_name && (
-                                    <div className="flex items-center gap-2 text-sm text-[#1B3A8C] font-semibold">
-                                        <Building2 className="w-3.5 h-3.5" /> {selected.detail.company_name}
-                                    </div>
+                                    <InfoRow icon={Building2} label="Company" value={selected.detail.company_name} />
                                 )}
                                 {selected.detail?.email && (
-                                    <a href={`mailto:${selected.detail.email}`} className="flex items-center gap-2 text-sm text-[#1B3A8C] hover:underline">
-                                        <Mail className="w-3.5 h-3.5" /> {selected.detail.email}
-                                    </a>
+                                    <InfoRow icon={Mail} label="Email" value={selected.detail.email} href={`mailto:${selected.detail.email}`} />
                                 )}
                                 {selected.detail?.phone && (
-                                    <a href={`tel:${selected.detail.phone}`} className="flex items-center gap-2 text-sm text-[#1B3A8C] hover:underline">
-                                        <Phone className="w-3.5 h-3.5" /> {selected.detail.phone}
-                                    </a>
+                                    <InfoRow icon={Phone} label="Phone" value={selected.detail.phone} href={`tel:${selected.detail.phone}`} />
                                 )}
-                            </div>
+                                {!selected.detail?.company_name && !selected.detail?.email && !selected.detail?.phone && (
+                                    <p className="text-sm text-[#64748B]">No contact details on file.</p>
+                                )}
+                            </SectionCard>
 
-                            {/* Service */}
-                            <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5 space-y-3">
-                                <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40">Service</p>
-                                <div className="flex items-center gap-2 text-sm text-[#0B1F4A] font-semibold">
-                                    <p className="font-semibold">{selected.service_name}:</p>
-                                    <span className="underline font-semibold">
-                                        {selected.lease_term && <p className="text-sm">{selected.lease_term}</p>}
-                                        {selected.package && <p className="text-sm">{selected.package}</p>}
-                                        {selected.event_type && <p className="text-sm">{selected.event_type}</p>}
-                                    </span>
-                                </div>
+                            {/* Service / booking */}
+                            <SectionCard icon={Calendar} title="Booking details">
+                                <InfoRow
+                                    icon={Building2}
+                                    label="Service"
+                                    value={
+                                        <>
+                                            {selected.service_name}
+                                            {(selected.lease_term || selected.package || selected.event_type) && (
+                                                <span className="block text-xs font-normal text-[#64748B] mt-0.5">
+                                                    {[selected.lease_term, selected.package, selected.event_type].filter(Boolean).join(" · ")}
+                                                </span>
+                                            )}
+                                        </>
+                                    }
+                                />
                                 {selected.detail?.date && (
-                                    <div className="flex items-center gap-2 text-sm text-[#64748B]">
-                                        <Calendar className="w-3.5 h-3.5" /> {formatDate(selected.detail.date)}
-                                        {selected.detail.time ? ` · ${selected.detail.time}` : ""}
-                                    </div>
+                                    <InfoRow
+                                        icon={Clock}
+                                        label="Date & time"
+                                        value={`${formatDate(selected.detail.date)}${selected.detail.time ? ` · ${selected.detail.time}` : ""}`}
+                                    />
                                 )}
                                 {selected.detail?.seats != null && (
-                                    <div className="flex items-center gap-2 text-sm text-[#64748B]">
-                                        <Users className="w-3.5 h-3.5" /> {selected.detail.seats} seat{selected.detail.seats === 1 ? "" : "s"}
-                                    </div>
+                                    <InfoRow
+                                        icon={Users}
+                                        label="Seats"
+                                        value={`${selected.detail.seats} seat${selected.detail.seats === 1 ? "" : "s"}`}
+                                    />
                                 )}
                                 {selected.detail?.duration_type && (
-                                    <p className="text-sm text-[#64748B]">{selected.detail.duration_type}</p>
+                                    <InfoRow
+                                        icon={Clock}
+                                        label="Duration"
+                                        value={
+                                            selected.detail.duration
+                                                ? `${selected.detail.duration} ${selected.detail.duration_type}`
+                                                : selected.detail.duration_type
+                                        }
+                                    />
                                 )}
-                                {selected.detail?.other_requirements && (
-                                    <p className="text-sm text-[#64748B] pt-1 border-t border-[#D9E2F0]">{selected.detail.other_requirements}</p>
-                                )}
-                                {selected.detail?.request && (
-                                    <p className="text-sm text-[#64748B] pt-1 border-t border-[#D9E2F0]">Notes: {selected.detail.request}</p>
-                                )}
-                            </div>
+                            </SectionCard>
 
-                            {/* Payment */}
-                            {selected.detail && (
-                                <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5 space-y-3">
-                                    <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40">Payment</p>
-                                    <div className="flex items-center gap-2 text-sm text-[#0B1F4A] font-semibold">
-                                        <Banknote className="w-3.5 h-3.5" /> {formatCurrency(selected.detail.total)}
-                                    </div>
-                                    <p className="text-sm text-[#64748B] capitalize">Method: {selected.detail.payment_method}</p>
-                                    {selected.detail.transaction_id && (
-                                        <p className="text-sm text-[#64748B]">Transaction ID: {selected.detail.transaction_id}</p>
+                            {/* Notes / requirements */}
+                            {(selected.detail?.other_requirements || selected.detail?.request) && (
+                                <SectionCard icon={AlertCircle} title="Notes & requirements">
+                                    {selected.detail?.request && (
+                                        <div>
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B] mb-1">Request</p>
+                                            <p className="text-sm text-[#0B1F4A] leading-relaxed">{selected.detail.request}</p>
+                                        </div>
                                     )}
-                                    {selected.detail.receipt && (
-                                        <p className="text-sm text-[#64748B]">Receipt: {selected.detail.receipt}</p>
+                                    {selected.detail?.other_requirements && (
+                                        <div>
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B] mb-1">Other requirements</p>
+                                            <p className="text-sm text-[#0B1F4A] leading-relaxed">{selected.detail.other_requirements}</p>
+                                        </div>
                                     )}
-                                    {selected.paid_at && (
-                                        <p className="text-sm text-[#64748B]">Paid at: {formatDate(selected.paid_at)}</p>
-                                    )}
-                                </div>
+                                </SectionCard>
                             )}
 
+                            {/* Payment — Virtual Office only */}
+                            {selected.detail && selected.service_name?.trim().toLowerCase() === "virtual office" && (
+                                <SectionCard icon={Receipt} title="Payment">
+                                    <div className="flex items-center justify-between bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl px-4 py-3">
+                                        <span className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">Total</span>
+                                        <span className="text-lg font-bold text-[#0B1F4A]">{formatCurrency(selected.detail.total)}</span>
+                                    </div>
+                                    <InfoRow icon={Banknote} label="Method" value={<span className="capitalize">{selected.detail.payment_method}</span>} />
+                                    {selected.detail.transaction_id && (
+                                        <InfoRow icon={Hash} label="Transaction ID" value={selected.detail.transaction_id} />
+                                    )}
+                                    {selected.detail.receipt && (
+                                        <InfoRow icon={Receipt} label="Receipt" value={selected.detail.receipt} />
+                                    )}
+                                    {selected.paid_at && (
+                                        <InfoRow icon={Calendar} label="Paid at" value={formatDate(selected.paid_at)} />
+                                    )}
+                                </SectionCard>
+                            )}
+                        </div>
+
+                        {/* Footer actions */}
+                        <div className="sticky bottom-0 bg-white border-t border-[#D9E2F0] p-4">
                             <button
                                 onClick={() => setDeleteTarget(selected)}
                                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition"
@@ -570,68 +715,122 @@ export default function AdminQuotationsPage() {
                                 <Trash2 className="w-4 h-4" />
                                 Delete Quotation
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-                            {deleteTarget && (
-                                <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+            {/* Status change confirmation modal */}
+            {statusChangeTarget && (
+                <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => !updatingStatus && setStatusChangeTarget(null)}
+                    />
 
-                                    {/* Backdrop */}
-                                    <div
-                                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                                        onClick={() => setDeleteTarget(null)}
-                                    />
+                    {/* Modal */}
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                        <div className="p-6">
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#EEF2FB]">
+                                <Sparkles className="w-7 h-7 text-[#1B3A8C]" />
+                            </div>
 
-                                    {/* Modal */}
-                                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                            <h2 className="mt-5 text-xl font-bold text-center text-[#0B1F4A]">
+                                Update Status?
+                            </h2>
 
-                                        <div className="p-6">
+                            <p className="mt-3 text-center text-sm text-[#64748B] leading-6">
+                                Change <span className="font-semibold text-[#0B1F4A]">{statusChangeTarget.quote.quotation_id}</span> from
+                            </p>
 
-                                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
-                                                <Trash2 className="w-7 h-7 text-red-600" />
-                                            </div>
+                            <div className="mt-3 flex items-center justify-center gap-2.5">
+                                <StatusBadge status={statusChangeTarget.quote.status} />
+                                <span className="text-[#64748B] text-sm">→</span>
+                                <StatusBadge status={statusChangeTarget.newStatus} />
+                            </div>
 
-                                            <h2 className="mt-5 text-xl font-bold text-center text-[#0B1F4A]">
-                                                Delete Quotation?
-                                            </h2>
+                            <div className="mt-8 flex gap-3">
+                                <button
+                                    onClick={() => setStatusChangeTarget(null)}
+                                    disabled={updatingStatus}
+                                    className="flex-1 rounded-xl border border-[#D9E2F0] py-3 font-medium hover:bg-gray-50 transition disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
 
-                                            <p className="mt-3 text-center text-sm text-[#64748B] leading-6">
-                                                Are you sure you want to delete
-                                                <span className="font-semibold text-[#0B1F4A]">
-                                                    {" "}
-                                                    {deleteTarget.quotation_id}
-                                                </span>
-                                                ?
-                                                <br />
-                                                This action cannot be undone.
-                                            </p>
+                                <button
+                                    onClick={confirmStatusChange}
+                                    disabled={updatingStatus}
+                                    className="flex-1 rounded-xl bg-[#1B3A8C] py-3 text-white font-semibold hover:bg-[#16316F] transition disabled:opacity-60 flex items-center justify-center gap-2"
+                                >
+                                    {updatingStatus ? (
+                                        <>
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                            Updating…
+                                        </>
+                                    ) : (
+                                        "Confirm"
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-                                            <div className="mt-8 flex gap-3">
+            {/* Delete confirmation modal - shared by table row and drawer */}
+            {deleteTarget && (
+                <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => !deleting && setDeleteTarget(null)}
+                    />
 
-                                                <button
-                                                    onClick={() => setDeleteTarget(null)}
-                                                    className="flex-1 rounded-xl border border-[#D9E2F0] py-3 font-medium hover:bg-gray-50 transition"
-                                                >
-                                                    Cancel
-                                                </button>
+                    {/* Modal */}
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                        <div className="p-6">
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
+                                <Trash2 className="w-7 h-7 text-red-600" />
+                            </div>
 
-                                                <button
-                                                    onClick={() => {
-                                                        handleDelete(deleteTarget);
-                                                        setDeleteTarget(null);
-                                                        setSelected(null);
-                                                    }}
-                                                    className="flex-1 rounded-xl bg-red-600 py-3 text-white font-semibold hover:bg-red-700 transition"
-                                                >
-                                                    Delete
-                                                </button>
+                            <h2 className="mt-5 text-xl font-bold text-center text-[#0B1F4A]">
+                                Delete Quotation?
+                            </h2>
 
-                                            </div>
+                            <p className="mt-3 text-center text-sm text-[#64748B] leading-6">
+                                Are you sure you want to delete{" "}
+                                <span className="font-semibold text-[#0B1F4A]">{deleteTarget.quotation_id}</span>
+                                {deleteTarget.detail?.full_name ? ` for ${deleteTarget.detail.full_name}` : ""}?
+                                <br />
+                                This action cannot be undone.
+                            </p>
 
-                                        </div>
+                            <div className="mt-8 flex gap-3">
+                                <button
+                                    onClick={() => setDeleteTarget(null)}
+                                    disabled={deleting}
+                                    className="flex-1 rounded-xl border border-[#D9E2F0] py-3 font-medium hover:bg-gray-50 transition disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
 
-                                    </div>
-
-                                </div>
-                            )}
+                                <button
+                                    onClick={confirmDelete}
+                                    disabled={deleting}
+                                    className="flex-1 rounded-xl bg-red-600 py-3 text-white font-semibold hover:bg-red-700 transition disabled:opacity-60 flex items-center justify-center gap-2"
+                                >
+                                    {deleting ? (
+                                        <>
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                            Deleting…
+                                        </>
+                                    ) : (
+                                        "Delete"
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

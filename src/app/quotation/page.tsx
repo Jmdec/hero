@@ -16,8 +16,6 @@ import {
   CreditCard,
   Smartphone,
   Upload,
-  FileText,
-  ExternalLink,
   Clock,
   AlertCircle,
 } from "lucide-react";
@@ -261,8 +259,7 @@ function SuccessModalContent({
       ) : isVO ? (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
           Payment confirmed. Your service contract has been auto-generated and will be sent to
-          your email for digital signing via DocHub. Your virtual office service will begin on
-          your selected start date.
+          your email. Your virtual office service will begin on your selected start date.
         </p>
       ) : (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
@@ -281,7 +278,7 @@ function SuccessModalContent({
           : isVO
           ? [
               "Your payment has been processed successfully",
-              "A contract PDF will be emailed to you for e-signature",
+              "A contract will be emailed to you for your records",
               "Your virtual office service is now being set up",
             ]
           : [
@@ -896,9 +893,9 @@ function Step4({
       </div>
 
       {isVO && (
-        <div className="bg-[#EEF2FB] border border-[#C5D2EC] rounded-xl px-5 py-4 mb-6 flex items-start gap-3">
-          <CreditCard className="w-4 h-4 text-[#1B3A8C] shrink-0 mt-0.5" />
-          <p className="text-xs text-[#1B3A8C] leading-relaxed">
+        <div className="bg-[#fffaec] border border-[#dbd4bd] rounded-xl px-5 py-4 mb-6 flex items-start gap-3">
+          <CreditCard className="w-4 h-4 text-[#FFC107]/50 shrink-0 mt-0.5" />
+          <p className="text-xs text-gray-800 leading-relaxed">
             After confirming, you'll proceed to select your payment method and complete the transaction before your virtual office is activated.
           </p>
         </div>
@@ -951,8 +948,6 @@ function StepVOPayment({
   setPaymentMethod,
   gcashProof,
   setGcashProof,
-  contractAction,
-  setContractAction,
   onBack,
   isSubmitting,
 }: {
@@ -961,15 +956,11 @@ function StepVOPayment({
   setPaymentMethod: (m: PaymentMethod) => void;
   gcashProof: File | null;
   setGcashProof: (f: File | null) => void;
-  contractAction: "dochub" | "upload" | null;
-  setContractAction: (a: "dochub" | "upload" | null) => void;
   onBack: () => void;
   isSubmitting: boolean;
 }) {
   const [touched, setTouched] = useState(false);
   const gcashRef = useRef<HTMLInputElement>(null);
-  const signRef = useRef<HTMLInputElement>(null);
-  const [signedFile, setSignedFile] = useState<File | null>(null);
 
   const packagePrices: Record<string, string> = {
     Basic: "₱8,000",
@@ -978,15 +969,13 @@ function StepVOPayment({
   };
 
   const canProceed =
-    (paymentMethod === "paymongo" && contractAction !== null) ||
+    paymentMethod === "paymongo" ||
     (paymentMethod === "gcash" && gcashProof !== null);
-
-  const handleSubmitAttempt = () => { setTouched(true); };
 
   return (
     <div>
       <h2 className="text-2xl font-bold text-[#0B1F4A] mb-2">Payment & Contract</h2>
-      <p className="text-sm text-[#64748B] mb-6">Choose how you'd like to pay and sign your service contract.</p>
+      <p className="text-sm text-[#64748B] mb-6">Choose how you'd like to pay for your virtual office service.</p>
 
       {/* Summary pill */}
       <div className="bg-[#EEF2FB] border border-[#C5D2EC] rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
@@ -1013,7 +1002,7 @@ function StepVOPayment({
               <button
                 key={opt.id!}
                 type="button"
-                onClick={() => { setPaymentMethod(opt.id); setContractAction(null); setGcashProof(null); }}
+                onClick={() => { setPaymentMethod(opt.id); setGcashProof(null); }}
                 className={`p-4 rounded-2xl border-[1.5px] text-left transition-all duration-200 ${
                   active ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C]" : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
                 }`}
@@ -1036,69 +1025,12 @@ function StepVOPayment({
       {paymentMethod === "paymongo" && (
         <div className="mt-6 space-y-4">
           <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#0B1F4A] mb-1">How it works</p>
-            <ol className="text-xs text-[#64748B] space-y-1 list-decimal list-inside">
-              <li>Pay securely via PayMongo (card, Maya, GCash via PayMongo)</li>
-              <li>Your contract is auto-generated upon payment confirmation</li>
-              <li>Sign digitally via DocHub or upload a signed copy</li>
+            <p className="text-sm font-semibold uppercase tracking-wide text-[#0B1F4A] mb-1">How it works</p>
+            <ol className="text-sm text-[#64748B] space-y-1 list-decimal list-inside">
+              <li>Pay securely via PayMongo</li>
+              <li>Your contract is auto-generated and emailed to you upon payment confirmation</li>
             </ol>
           </div>
-
-          <Field label="After payment, I want to…" required error={touched && !contractAction ? "Please select a contract signing method." : undefined}>
-            <div className="grid sm:grid-cols-2 gap-3 mt-1">
-              {[
-                { id: "dochub" as const, icon: ExternalLink, label: "Sign via DocHub", sub: "Opens contract in DocHub for e-signature" },
-                { id: "upload" as const, icon: Upload, label: "Upload signed copy", sub: "Download, sign, and upload the PDF" },
-              ].map((opt) => {
-                const Icon = opt.icon;
-                const active = contractAction === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setContractAction(opt.id)}
-                    className={`p-4 rounded-2xl border-[1.5px] text-left transition-all duration-200 ${
-                      active ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C]" : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 mb-2 ${active ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
-                    <p className={`font-bold text-sm ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A]"}`}>{opt.label}</p>
-                    <p className="text-xs text-[#64748B] leading-snug">{opt.sub}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-
-          {contractAction === "upload" && (
-            <div className="bg-[#FFFBF0] border border-[#F0D98A] rounded-xl px-5 py-4 flex items-start gap-3">
-              <FileText className="w-4 h-4 text-[#C9A84C] shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-semibold text-[#7A5C00] mb-1">Upload Signed Contract</p>
-                <p className="text-xs text-[#A07A10] mb-3 leading-relaxed">
-                  After payment you'll receive a PDF contract via email. Print, sign, scan/photo, and upload it below.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => signRef.current?.click()}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#C9A84C] text-white text-xs font-semibold rounded-full hover:bg-[#B8973B] transition"
-                >
-                  <Upload className="w-3 h-3" />
-                  {signedFile ? signedFile.name : "Choose file (PDF / JPG / PNG)"}
-                </button>
-                <input ref={signRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setSignedFile(e.target.files?.[0] ?? null)} />
-              </div>
-            </div>
-          )}
-
-          {contractAction === "dochub" && (
-            <div className="bg-[#EEF2FB] border border-[#C5D2EC] rounded-xl px-5 py-4 flex items-start gap-3">
-              <ExternalLink className="w-4 h-4 text-[#1B3A8C] shrink-0 mt-0.5" />
-              <p className="text-xs text-[#1B3A8C] leading-relaxed">
-                After payment, a DocHub link will be sent to your email so you can e-sign the contract online — no printing needed.
-              </p>
-            </div>
-          )}
         </div>
       )}
 
@@ -1106,25 +1038,17 @@ function StepVOPayment({
       {paymentMethod === "gcash" && (
         <div className="mt-6 space-y-4">
           <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#0B1F4A] mb-3">GCash Payment Details</p>
+            <p className="text-sm font-bold uppercase tracking-wide text-[#0B1F4A] mb-3">GCash Payment Details</p>
             <div className="flex items-center gap-4">
               <div className="w-24 h-24 bg-[#EEF2FB] rounded-xl flex items-center justify-center shrink-0 border border-[#C5D2EC]">
-                <Smartphone className="w-8 h-8 text-[#1B3A8C]" />
+                <Smartphone className="w-8 h-8 text-[#1B3A8C]" /> 
               </div>
-              <div className="text-xs text-[#64748B] space-y-1">
+              <div className="text-sm text-[#64748B] space-y-1">
                 <p><span className="font-semibold text-[#0B1F4A]">GCash Number:</span> 09XX XXX XXXX</p>
                 <p><span className="font-semibold text-[#0B1F4A]">Account Name:</span> HERO PH INC.</p>
                 <p><span className="font-semibold text-[#0B1F4A]">Amount:</span> {packagePrices[virtualOffice.package] ?? "—"}/mo</p>
                 <p className="mt-2 text-[#64748B]">Use your <strong>full name</strong> as the reference / note.</p>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-[#FFFBF0] border border-[#F0D98A] rounded-xl px-5 py-4 flex items-start gap-3">
-            <Clock className="w-4 h-4 text-[#C9A84C] shrink-0 mt-0.5" />
-            <div className="text-xs text-[#7A5C00] space-y-1 leading-relaxed">
-              <p className="font-semibold">Verification within 24 business hours</p>
-              <p>Our sales officer will verify your payment and send the service contract to your email within 24 business hours of receiving your proof of payment.</p>
             </div>
           </div>
 
@@ -1144,6 +1068,15 @@ function StepVOPayment({
             <input ref={gcashRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setGcashProof(e.target.files?.[0] ?? null)} />
             <p className="text-xs text-[#64748B] mt-2">Accepted: JPG, PNG, PDF · Max 10 MB</p>
           </Field>
+
+          <div className="bg-[#FFFBF0] border border-[#F0D98A] rounded-xl px-5 py-4 flex items-start gap-3">
+            <Clock className="w-4 h-4 text-[#C9A84C] shrink-0 mt-0.5" />
+            <div className="text-xs text-[#7A5C00] space-y-1 leading-relaxed">
+              <p className="font-semibold">Verification within 24 business hours</p>
+              <p>Our sales officer will verify your payment and send the service contract to your email within 24 business hours of receiving your proof of payment.</p>
+            </div>
+          </div>
+
         </div>
       )}
 
@@ -1169,7 +1102,6 @@ export default function GetAQuotePage() {
   const [eventSpace, setEventSpace] = useState<EventSpaceFields>({ eventDate: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [gcashProof, setGcashProof] = useState<File | null>(null);
-  const [contractAction, setContractAction] = useState<"dochub" | "upload" | null>(null);
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1233,7 +1165,6 @@ export default function GetAQuotePage() {
     setEventSpace({ eventDate: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
     setPaymentMethod(null);
     setGcashProof(null);
-    setContractAction(null);
     setNotes("");
     setConsent(false);
     setStep2Errors({});
@@ -1489,8 +1420,6 @@ export default function GetAQuotePage() {
                     setPaymentMethod={setPaymentMethod}
                     gcashProof={gcashProof}
                     setGcashProof={setGcashProof}
-                    contractAction={contractAction}
-                    setContractAction={setContractAction}
                     onBack={() => setStep(4)}
                     isSubmitting={isSubmitting}
                   />

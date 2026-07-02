@@ -27,6 +27,13 @@ export interface ChatConversation {
     ended_at: string | null;
     created_at: string;
     updated_at: string;
+    inquiry?: {
+        id: number;
+        full_name: string;
+        email_address: string;
+        phone_number: string;
+        company_name?: string | null;
+    };
 }
 
 export interface ChatMessage {
@@ -125,6 +132,13 @@ export const chatApi = {
                 }),
             }
         );
+    },
+
+    requestAgent(conversationId: number, message = "I'd like to talk to a live agent.") {
+        return request(`/chat/${conversationId}/agent-request`, {
+            method: "POST",
+            body: JSON.stringify({ message }),
+        });
     },
 
     /**

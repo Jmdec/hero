@@ -7,30 +7,67 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname, useRouter } from "next/navigation";
 import {
     LayoutDashboard,
+    FileSpreadsheet,
     Users,
-    MessageSquare,
-    FileText,
-    Settings,
-    LogOut,
+    MessagesSquare,
+    MailQuestion,
     Megaphone,
-    Bell,
+    MessageCircleHeart,
+    Newspaper,
     ArrowLeft,
+    Menu,
+    Bell,
     User,
     ChevronDown,
-    Menu,
+    Settings,
+    LogOut,
 } from "lucide-react";
 
 const menuItems = [
     {
-        section: "Menu", items: [
-            { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
-            { title: "Quotation", href: "/admin/quotation", icon: Users },
-            { title: "Users", href: "/admin/users", icon: Users },
-            { title: "Inquiries", href: "/admin/inquiries", icon: MessageSquare },
-            { title: "Announcements", href: "/admin/announcements", icon: Megaphone },
-            { title: "Testimonials", href: "/admin/testimonials", icon: MessageSquare },
-            { title: "Blogs", href: "/admin/blogs", icon: FileText },
-        ]
+        section: "Menu",
+        items: [
+            {
+                title: "Dashboard",
+                href: "/admin",
+                icon: LayoutDashboard,
+            },
+            {
+                title: "Quotation",
+                href: "/admin/quotation",
+                icon: FileSpreadsheet,
+            },
+            {
+                title: "Users",
+                href: "/admin/users",
+                icon: Users,
+            },
+            {
+                title: "Chats",
+                href: "/admin/chats",
+                icon: MessagesSquare,
+            },
+            {
+                title: "Inquiries",
+                href: "/admin/inquiries",
+                icon: MailQuestion,
+            },
+            {
+                title: "Announcements",
+                href: "/admin/announcements",
+                icon: Megaphone,
+            },
+            {
+                title: "Testimonials",
+                href: "/admin/testimonials",
+                icon: MessageCircleHeart,
+            },
+            {
+                title: "Blogs",
+                href: "/admin/blogs",
+                icon: Newspaper,
+            },
+        ],
     },
 ];
 
@@ -53,6 +90,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             const storedUser = localStorage.getItem("user");
 
             if (!storedUser) {
+                if (process.env.NODE_ENV !== "production") {
+                    setUser({ id: 0, name: "Admin Demo", email: "admin@demo.local", role: "admin" });
+                    setLoading(false);
+                    return;
+                }
+
                 router.replace("/login");
                 return;
             }
@@ -108,7 +151,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 `}
             >
                 {/* Logo */}
-                <div className="flex-col justify-center items-center px-5 py-3 border-b border-[#d1d4da] shrink-0">
+                <div className="flex-col justify-center items-center px-5 py-2 border-b border-[#d1d4da] shrink-0">
                     <Image
                         src="/header_logo_manila.png"
                         alt="HERO Serviced Office Logo"
@@ -121,12 +164,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
 
                 {/* Nav — scrollable if items overflow */}
-                <nav className="flex-1 overflow-y-auto px-3 py-6 flex flex-col gap-3">
+                <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-3">
                     {menuItems.map(({ section, items }) => (
                         <div key={section}>
-                            <p className="text-sm text-[#0A1E3F] tracking-widest uppercase font-medium px-2 mt-3 mb-1.5">
-                                {section}
-                            </p>
                             {items.filter(item => item?.href?.trim()).map(({ title, href, icon: Icon }) => {
                                 const active = pathname === href;
                                 return (
@@ -134,11 +174,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                         key={href}
                                         href={href}
                                         onClick={() => setSidebarOpen(false)}
-                                        className={`flex items-center gap-2.5 px-3 py-2.5 my-2 rounded-md text-md border-l-2 transition-all ${
-                                            active
+                                        className={`flex items-center gap-2.5 px-3 py-2.5 my-2 rounded-md text-md border-l-2 transition-all ${active
                                                 ? "bg-[#0A1E3F]/10 text-[#0A1E3F] border-[#4F8EF7] font-bold"
                                                 : "text-[#0D47A1] border-transparent hover:bg-[#0A1E3F]/5 hover:text-[#1565C0]"
-                                        }`}
+                                            }`}
                                     >
                                         <Icon className={`w-4 h-4 shrink-0 ${active ? "text-[#4F8EF7]" : ""}`} />
                                         {title}
