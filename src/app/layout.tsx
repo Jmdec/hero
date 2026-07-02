@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
 import { ToastProvider } from "../components/Toast";
@@ -18,13 +19,14 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
 });
 
-// Metadata 
+// Metadata
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://heroph.net"),
 
   title: {
-    default: "HERO Serviced Office | Premium Flexible Workspace in Makati, Philippines",
+    default:
+      "HERO Serviced Office | Premium Flexible Workspace in Makati, Philippines",
     template: "%s | HERO Serviced Office",
   },
   description:
@@ -62,14 +64,15 @@ export const metadata: Metadata = {
   category: "Business Services",
   classification: "Serviced Office and Business Center",
 
-  // Open Graph 
+  // Open Graph
   openGraph: {
     type: "website",
     locale: "en_PH",
     alternateLocale: ["en_US", "ja_JP"],
     url: "https://heroph.net",
     siteName: "HERO Serviced Office",
-    title: "HERO Serviced Office | Premium Flexible Workspace in Makati, Philippines",
+    title:
+      "HERO Serviced Office | Premium Flexible Workspace in Makati, Philippines",
     description:
       "Private offices, co-working, virtual offices, and meeting rooms on Ayala Avenue, Makati. Bilingual Japanese–English support. PEZA-certified. Move in within 24 hours.",
     images: [
@@ -84,7 +87,7 @@ export const metadata: Metadata = {
     countryName: "Philippines",
   },
 
-  // Twitter / X 
+  // Twitter / X
   twitter: {
     card: "summary_large_image",
     site: "@herophilippines",
@@ -100,7 +103,7 @@ export const metadata: Metadata = {
     ],
   },
 
-  // Robots 
+  // Robots
   robots: {
     index: true,
     follow: true,
@@ -115,7 +118,7 @@ export const metadata: Metadata = {
     },
   },
 
-  // Alternates / hreflang 
+  // Alternates / hreflang
   alternates: {
     canonical: "https://heroph.net",
     languages: {
@@ -155,7 +158,7 @@ export const metadata: Metadata = {
     // bing: "your-bing-verification-code",
   },
 
-  // Other 
+  // Other
   other: {
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-capable": "yes",
@@ -240,20 +243,54 @@ const localBusinessSchema = {
       "@type": "OpeningHoursSpecification",
       description: "24/7 access for registered tenants",
       dayOfWeek: [
-        "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
       ],
       opens: "00:00",
       closes: "23:59",
     },
   ],
   amenityFeature: [
-    { "@type": "LocationFeatureSpecification", name: "High-Speed Wi-Fi", value: true },
-    { "@type": "LocationFeatureSpecification", name: "Meeting Rooms", value: true },
-    { "@type": "LocationFeatureSpecification", name: "24/7 Access", value: true },
-    { "@type": "LocationFeatureSpecification", name: "PEZA Certified", value: true },
-    { "@type": "LocationFeatureSpecification", name: "Bilingual Japanese Support", value: true },
-    { "@type": "LocationFeatureSpecification", name: "Virtual Office", value: true },
-    { "@type": "LocationFeatureSpecification", name: "Reception Service", value: true },
+    {
+      "@type": "LocationFeatureSpecification",
+      name: "High-Speed Wi-Fi",
+      value: true,
+    },
+    {
+      "@type": "LocationFeatureSpecification",
+      name: "Meeting Rooms",
+      value: true,
+    },
+    {
+      "@type": "LocationFeatureSpecification",
+      name: "24/7 Access",
+      value: true,
+    },
+    {
+      "@type": "LocationFeatureSpecification",
+      name: "PEZA Certified",
+      value: true,
+    },
+    {
+      "@type": "LocationFeatureSpecification",
+      name: "Bilingual Japanese Support",
+      value: true,
+    },
+    {
+      "@type": "LocationFeatureSpecification",
+      name: "Virtual Office",
+      value: true,
+    },
+    {
+      "@type": "LocationFeatureSpecification",
+      name: "Reception Service",
+      value: true,
+    },
   ],
   aggregateRating: {
     "@type": "AggregateRating",
@@ -465,7 +502,8 @@ const serviceSchema = {
       item: {
         "@type": "Service",
         name: "Private Serviced Office",
-        description: "Dedicated private rooms for 1–35 people with furniture, internet, and 24/7 access included.",
+        description:
+          "Dedicated private rooms for 1–35 people with furniture, internet, and 24/7 access included.",
         provider: { "@id": "https://heroph.net/#organization" },
         areaServed: "Makati City, Philippines",
         url: "https://heroph.net/services/private-office",
@@ -477,7 +515,8 @@ const serviceSchema = {
       item: {
         "@type": "Service",
         name: "Shared / Co-Working Office",
-        description: "Affordable single-person booth desks and café co-working areas with Wi-Fi included.",
+        description:
+          "Affordable single-person booth desks and café co-working areas with Wi-Fi included.",
         provider: { "@id": "https://heroph.net/#organization" },
         areaServed: "Makati City, Philippines",
         url: "https://heroph.net/services/coworking",
@@ -489,7 +528,8 @@ const serviceSchema = {
       item: {
         "@type": "Service",
         name: "Virtual Office",
-        description: "Prestigious Makati CBD address for SEC and corporate registration with mail forwarding service.",
+        description:
+          "Prestigious Makati CBD address for SEC and corporate registration with mail forwarding service.",
         provider: { "@id": "https://heroph.net/#organization" },
         areaServed: "Philippines",
         url: "https://heroph.net/services/virtual-office",
@@ -501,7 +541,8 @@ const serviceSchema = {
       item: {
         "@type": "Service",
         name: "Conference Room Rental",
-        description: "Meeting rooms for up to 10 people available for hourly rental on weekdays 9:00–18:00.",
+        description:
+          "Meeting rooms for up to 10 people available for hourly rental on weekdays 9:00–18:00.",
         provider: { "@id": "https://heroph.net/#organization" },
         areaServed: "Makati City, Philippines",
         url: "https://heroph.net/services/conference-room",
@@ -521,14 +562,30 @@ export default function RootLayout({
       className={`${montserrat.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        {/* ── PWA install prompt early capture (must run before hydration) ── */}
+        <Script id="pwa-install-capture" strategy="beforeInteractive">
+          {`
+            window.deferredPWAInstallPrompt = null;
+            window.addEventListener('beforeinstallprompt', function (e) {
+              e.preventDefault();
+              window.deferredPWAInstallPrompt = e;
+              window.dispatchEvent(new Event('pwaInstallPromptReady'));
+            });
+          `}
+        </Script>
+
         {/* ── Structured Data (SEO + AEO) ── */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(localBusinessSchema),
+          }}
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationSchema),
+          }}
         />
         <script
           type="application/ld+json"
@@ -549,15 +606,24 @@ export default function RootLayout({
 
         {/* ── Open Graph image (redundant safety tags) ── */}
         <meta property="og:image" content="https://heroph.net/og-image.jpg" />
-        <meta property="og:image:secure_url" content="https://heroph.net/og-image.jpg" />
+        <meta
+          property="og:image:secure_url"
+          content="https://heroph.net/og-image.jpg"
+        />
         <meta property="og:image:type" content="image/jpeg" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="HERO Serviced Office — Premium Workspace on Ayala Avenue, Makati" />
+        <meta
+          property="og:image:alt"
+          content="HERO Serviced Office — Premium Workspace on Ayala Avenue, Makati"
+        />
 
         {/* ── Twitter image ── */}
         <meta name="twitter:image" content="https://heroph.net/og-image.jpg" />
-        <meta name="twitter:image:alt" content="HERO Serviced Office — Premium Workspace, Makati" />
+        <meta
+          name="twitter:image:alt"
+          content="HERO Serviced Office — Premium Workspace, Makati"
+        />
 
         {/* ── Japanese locale signal ── */}
         <meta name="DC.language" content="ja-JP" />
@@ -565,7 +631,11 @@ export default function RootLayout({
 
         {/* ── Performance: preconnect ── */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
         {/* ── PWA manifest ── */}
@@ -574,9 +644,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <AuthProvider>
           <ToastProvider>
-            <ClientLayout>
-              {children}
-            </ClientLayout>
+            <ClientLayout>{children}</ClientLayout>
           </ToastProvider>
         </AuthProvider>
       </body>

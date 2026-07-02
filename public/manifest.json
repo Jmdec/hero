@@ -1,6 +1,7 @@
 {
   "name": "HERO Serviced Office",
   "short_name": "hero-serviced-office",
+  "description": "Premium private offices, co-working, virtual offices, and meeting rooms in Makati, Philippines. Bilingual Japanese–English support.",
   "icons": [
     {
       "src": "icons/icon-48x48.png",
@@ -53,8 +54,38 @@
       "type": "image/png"
     }
   ],
+  "screenshots": [
+    {
+      "src": "screenshots/desktop-home.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "HERO Serviced Office homepage on desktop"
+    },
+    {
+      "src": "screenshots/desktop-services.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Browse office services on desktop"
+    },
+    {
+      "src": "screenshots/mobile-home.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "HERO Serviced Office homepage on mobile"
+    },
+    {
+      "src": "screenshots/mobile-services.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Browse office services on mobile"
+    }
+  ],
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#000000"
+  "theme_color": "#0f2d52"
 }
