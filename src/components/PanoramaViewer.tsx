@@ -5,17 +5,11 @@ import {
   Maximize2,
   Minimize2,
   Share2,
-  ChevronDown,
-  ChevronUp,
-  ChevronLeft,
-  ChevronRight,
   X,
   RotateCcw,
   Eye,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import * as THREE from "three"
-import Image from "next/image"
 
 interface RoomScene {
   id: string
@@ -49,16 +43,9 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
   const [showCarousel, setShowCarousel] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [carouselIndex, setCarouselIndex] = useState(0)
   const [isAutoRotating, setIsAutoRotating] = useState(true)
   const [showInfo, setShowInfo] = useState(false)
   const [showShareMenu, setShowShareMenu] = useState(false)
-
-  const visibleThumbnails = 5
-  const carouselRef = useRef<HTMLDivElement>(null)
-  const ITEM_WIDTH = 172
-
-  const maxIndex = Math.max(0, rooms.length - visibleThumbnails)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -209,12 +196,6 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     }
   }, [selectedRoom.panoramaUrl, isAutoRotating])
 
-  const handleRoomChange = useCallback((room: RoomScene) => {
-    setSelectedRoom(room)
-    lon.current = 0
-    lat.current = 0
-    setIsAutoRotating(true)
-  }, [])
 
   const handleResetView = () => {
     lon.current = 0
@@ -225,9 +206,6 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
       cameraRef.current.updateProjectionMatrix()
     }
   }
-
-  const handleCarouselNext = () => setCarouselIndex((prev) => Math.min(prev + 1, maxIndex))
-  const handleCarouselPrev = () => setCarouselIndex((prev) => Math.max(prev - 1, 0))
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -252,42 +230,50 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     }
   }
 
+  const dockButtonClass = (active?: boolean) =>
+    `w-10 h-10 flex items-center justify-center transition-colors ${
+      active ? "bg-[#C9A15D]/15 text-[#C9A15D]" : "text-white/70 hover:text-white hover:bg-white/5"
+    }`
+
   return (
-    <div className={`relative w-full ${isEmbedded ? "h-[560px]" : "h-screen"} bg-[#0f172a] overflow-hidden rounded-2xl`}>
+    <div className={`relative w-full ${isEmbedded ? "h-[560px]" : "h-screen"} bg-[#0A1420] overflow-hidden rounded-2xl ring-1 ring-white/10`}>
       <div ref={containerRef} className="absolute inset-0 cursor-grab" style={{ touchAction: "none" }} />
 
       {/* Loading overlay */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-30">
+        <div className="absolute inset-0 flex items-center justify-center bg-[#0A1420]/85 backdrop-blur-sm z-30">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-[3px] border-[#1B3A8C] border-t-transparent rounded-full animate-spin" />
-            <p className="text-white/70 text-sm tracking-wide">Loading 360° view…</p>
+            <div className="w-10 h-10 border-[3px] border-[#C9A15D] border-t-transparent rounded-full animate-spin" />
+            <p className="text-white/60 text-xs tracking-[0.15em] uppercase">Loading 360° view…</p>
           </div>
         </div>
       )}
 
       {/* Error overlay */}
       {loadError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-30">
+        <div className="absolute inset-0 flex items-center justify-center bg-[#0A1420]/85 backdrop-blur-sm z-30">
           <div className="flex flex-col items-center gap-2 text-center px-6">
-            <p className="text-white/80">Could not load this panorama</p>
-            <p className="text-white/40 text-xs">{selectedRoom.panoramaUrl}</p>
+            <p className="text-white/80 text-sm">Could not load this panorama</p>
+            <p className="text-white/35 text-xs">{selectedRoom.panoramaUrl}</p>
           </div>
         </div>
       )}
 
       {/* Room name badge — top left */}
-      <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/50 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-full border border-white/10">
-        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-        {selectedRoom.name}
+      <div className="absolute top-4 left-4 z-20 flex items-center gap-2.5 bg-[#0A1420]/80 backdrop-blur-md text-white pl-2.5 pr-4 py-1.5 rounded-full border border-[#C9A15D]/25 shadow-lg">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9A15D] opacity-60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C9A15D]" />
+        </span>
+        <span className="text-xs font-medium tracking-wide">{selectedRoom.name}</span>
       </div>
 
       {/* Info panel */}
       {showInfo && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-[#0f172a]/95 border border-white/10 rounded-xl shadow-2xl w-72 backdrop-blur-sm">
+        <div className="absolute top-16 left-4 z-20 bg-[#0A1B33]/95 border border-[#C9A15D]/20 rounded-xl shadow-2xl w-72 backdrop-blur-md">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-2 text-white text-sm font-medium">
-              <Eye className="w-4 h-4 text-cyan-400" />
+              <Eye className="w-4 h-4 text-[#C9A15D]" />
               Room info
             </div>
             <button onClick={() => setShowInfo(false)} className="text-white/40 hover:text-white transition-colors">
@@ -302,7 +288,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
             <ul className="space-y-1.5">
               {["Drag to look around", "Scroll to zoom in/out", "Click thumbnails to switch rooms"].map((tip) => (
                 <li key={tip} className="flex items-center gap-2 text-xs text-white/70">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#C9A15D] flex-shrink-0" />
                   {tip}
                 </li>
               ))}
@@ -314,125 +300,40 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
         </div>
       )}
 
-      {/* Right-side controls */}
-      <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-        <Button
-          size="icon"
-          className={`w-9 h-9 rounded-lg backdrop-blur-sm border border-white/10 text-white transition-all ${showInfo ? "bg-[#1B3A8C]" : "bg-black/50 hover:bg-black/70"}`}
-          onClick={() => setShowInfo(!showInfo)}
-          title="Room info"
-        >
+      {/* Right-side control dock */}
+      <div className="absolute top-4 right-4 z-20 flex flex-col bg-[#0A1420]/80 backdrop-blur-md rounded-xl border border-white/10 shadow-lg divide-y divide-white/10 overflow-hidden">
+        <button className={dockButtonClass(showInfo)} onClick={() => setShowInfo(!showInfo)} title="Room info">
           <Eye className="w-4 h-4" />
-        </Button>
+        </button>
 
         <div className="relative">
-          <Button
-            size="icon"
-            className="w-9 h-9 rounded-lg bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-white/10 text-white"
-            onClick={handleShare}
-            title="Share"
-          >
+          <button className={dockButtonClass()} onClick={handleShare} title="Share">
             <Share2 className="w-4 h-4" />
-          </Button>
+          </button>
           {showShareMenu && (
-            <div className="absolute right-full mr-2 top-0 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs whitespace-nowrap shadow-lg">
-              ✓ Link copied
+            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 bg-[#C9A15D] text-[#0A1420] px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shadow-lg">
+              Link copied
             </div>
           )}
         </div>
 
-        <Button
-          size="icon"
-          className="w-9 h-9 rounded-lg bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-white/10 text-white"
-          onClick={toggleFullscreen}
-          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-        >
+        <button className={dockButtonClass()} onClick={toggleFullscreen} title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
           {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-        </Button>
+        </button>
 
-        <Button
-          size="icon"
-          className="w-9 h-9 rounded-lg bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-white/10 text-white"
-          onClick={handleResetView}
-          title="Reset view"
-        >
+        <button className={dockButtonClass()} onClick={handleResetView} title="Reset view">
           <RotateCcw className="w-4 h-4" />
-        </Button>
+        </button>
       </div>
-
-      {/* Carousel toggle */}
-      <button
-        onClick={() => setShowCarousel(!showCarousel)}
-        className="absolute left-1/2 -translate-x-1/2 z-20 bg-black/50 hover:bg-black/70 text-white px-4 py-1 rounded-full backdrop-blur-sm border border-white/10 transition-all"
-        style={{ bottom: showCarousel ? "132px" : "16px" }}
-      >
-        {showCarousel ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-      </button>
-
-      {/* Thumbnail carousel */}
-      {showCarousel && (
-        <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 via-black/30 to-transparent pt-10 pb-4 px-4">
-          <div className="relative flex items-center">
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={handleCarouselPrev}
-              disabled={carouselIndex === 0}
-              className="absolute left-0 z-10 w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black/80 disabled:opacity-20 flex-shrink-0"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-
-            <div className="overflow-hidden mx-10">
-              <div
-                ref={carouselRef}
-                className="flex gap-2.5 transition-transform duration-500 ease-in-out"
-                style={{ transform: `translateX(-${carouselIndex * ITEM_WIDTH}px)` }}
-              >
-                {rooms.map((room) => (
-                  <button
-                    key={room.id}
-                    onClick={() => handleRoomChange(room)}
-                    className={`relative w-40 flex-shrink-0 overflow-hidden rounded-xl transition-all duration-200 ${
-                      selectedRoom.id === room.id
-                        ? "ring-2 ring-cyan-400 scale-[1.03]"
-                        : "opacity-60 hover:opacity-90 hover:scale-[1.02]"
-                    }`}
-                  >
-                    <div className="relative h-[72px] w-full">
-                      <Image src={room.thumbnail} alt={room.name} fill className="object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                    </div>
-                    <span className="absolute bottom-1.5 left-2 right-2 text-[11px] font-medium text-white line-clamp-1 text-left">
-                      {room.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={handleCarouselNext}
-              disabled={carouselIndex === maxIndex}
-              className="absolute right-0 z-10 w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black/80 disabled:opacity-20 flex-shrink-0"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Close button (modal mode) */}
       {onClose && (
-        <Button
-          size="icon"
-          className="absolute top-4 right-4 z-30 w-9 h-9 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm border border-white/10"
+        <button
+          className="absolute top-4 right-16 z-30 w-9 h-9 flex items-center justify-center bg-[#0A1420]/80 hover:bg-[#0A1420] text-white rounded-full backdrop-blur-md border border-white/10 transition-colors"
           onClick={onClose}
         >
           <X className="w-4 h-4" />
-        </Button>
+        </button>
       )}
     </div>
   )

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
   MapPin,
@@ -19,12 +19,12 @@ import {
   Coffee,
   Lock,
   Armchair,
-  MoveRight,
+  ArrowLeft,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const Immersive360Tour = dynamic(
   () => import("../../components/PanoramaViewer").then((mod) => ({ default: mod.Immersive360Tour })),
@@ -43,6 +43,8 @@ const Immersive360Tour = dynamic(
 
 export default function VirtualTourPage() {
   const [activeTab, setActiveTab] = useState("tower6789");
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const viewerSectionRef = useRef<HTMLDivElement>(null);
 
   const tourLocations = {
     tower6789: [
@@ -215,7 +217,7 @@ export default function VirtualTourPage() {
       {
         id: "meeting-space",
         name: "Meeting Room",
-        panoramaUrl: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
+        panoramaUrl: "/view.jpg",
         thumbnail: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=400&q=80",
       },
       {
@@ -266,13 +268,86 @@ export default function VirtualTourPage() {
     ],
   };
 
-  const instructions = [
+  /**
+   * Floor plans, one per building. Hotspot x/y are percentages of the image's
+   * width/height, so they stay correctly positioned at any render size.
+   * Each hotspot id must match an id in roomsByTab[building] and
+   * tourLocations[building] so it can open the right panorama.
+   *
+   * NOTE: hotspot coordinates below are eyeballed against the supplied floor
+   * plan images. Nudge the x/y values a couple of points if a marker doesn't
+   * land exactly on its room once you see it rendered at full size.
+   */
+  const floorPlans: Record<
+    string,
+    {
+      src: string;
+      alt: string;
+      width: number;
+      height: number;
+      hotspots: { id: string; label: string; x: number; y: number }[];
+    }
+  > = {
+    tower6789: {
+      src: "/tower6789-layout.png",
+      alt: "Tower 6789 floor layout",
+      width: 1254,
+      height: 1254,
+      hotspots: [
+        { id: "reception", label: "Reception", x: 50, y: 15 },
+        { id: "meeting-space", label: "Meeting room", x: 68, y: 8 },
+        { id: "mfp-space", label: "MFP space", x: 31, y: 21 },
+      ],
+    },
+    insularLife: {
+      src: "/insular-life-layout.png",
+      alt: "Insular Life floor layout",
+      width: 1631,
+      height: 964,
+      hotspots: [
+        { id: "reception", label: "Reception", x: 40, y: 51 },
+        { id: "meeting-space", label: "Meeting room", x: 53, y: 55 },
+        { id: "cafe", label: "Cafe area", x: 42, y: 66 },
+        { id: "lounge", label: "Business lounge", x: 46, y: 48 },
+        { id: "mailbox", label: "Mailbox", x: 40, y: 56 },
+        { id: "locker-room", label: "Locker room", x: 77, y: 17 },
+      ],
+    },
+  };
+
+  const floorPlanInstructions = [
+    { icon: MapPin, text: "Click a marker to enter that room" },
+    { icon: Building2, text: "Switch buildings using the tabs above" },
+    { icon: Play, text: "Every marker opens its own 360° view" },
+  ];
+
+  const viewerInstructions = [
     { icon: MousePointer2, text: "Drag to look around the room" },
     { icon: Rotate3D, text: "Scroll to zoom in or out" },
-    { icon: MapPin, text: "Click thumbnails to switch rooms" },
+    { icon: ArrowLeft, text: "Use back to return to the floor plan" },
   ];
 
   const activeRooms = roomsByTab[activeTab as keyof typeof roomsByTab];
+  const activeFloorPlan = floorPlans[activeTab as keyof typeof floorPlans];
+
+  // Put the selected room first so the viewer opens directly on it.
+  const orderedRooms = selectedRoomId
+    ? [...activeRooms].sort((a, b) => {
+        if (a.id === selectedRoomId) return -1;
+        if (b.id === selectedRoomId) return 1;
+        return 0;
+      })
+    : activeRooms;
+
+  const goToRoom = (roomId: string) => {
+    setSelectedRoomId(roomId);
+    viewerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const switchBuilding = (tabId: string) => {
+    setActiveTab(tabId);
+    setSelectedRoomId(null);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -307,8 +382,8 @@ export default function VirtualTourPage() {
         </div>
       </section>
 
-      {/* ── 360° Viewer ── */}
-      <section className="py-12 bg-gray-50">
+      {/* ── Floor plan → hotspot → 360° viewer ── */}
+      <section ref={viewerSectionRef} className="py-12 bg-gray-50 scroll-mt-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Location tabs */}
@@ -316,7 +391,7 @@ export default function VirtualTourPage() {
             {locationTabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => switchBuilding(tab.id)}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium border transition-all ${
                   activeTab === tab.id
                     ? "bg-[#1B3A8C] text-white border-[#1B3A8C] shadow-sm"
@@ -329,19 +404,67 @@ export default function VirtualTourPage() {
             ))}
           </div>
 
-          {/* Viewer */}
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-          >
-            <Immersive360Tour rooms={activeRooms} isEmbedded={true} />
-          </motion.div>
+          <AnimatePresence mode="wait">
+            {selectedRoomId === null ? (
+              /* ── Floor plan with clickable hotspots ── */
+              <motion.div
+                key={`floorplan-${activeTab}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                className="relative w-full rounded-2xl overflow-hidden border border-gray-200 bg-white"
+                style={{ aspectRatio: `${activeFloorPlan.width} / ${activeFloorPlan.height}` }}
+              >
+                <Image
+                  src={activeFloorPlan.src}
+                  alt={activeFloorPlan.alt}
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
+                {activeFloorPlan.hotspots.map((hotspot) => (
+                  <button
+                    key={hotspot.id}
+                    onClick={() => goToRoom(hotspot.id)}
+                    style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%` }}
+                    className="group/hotspot absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center focus:outline-none"
+                    aria-label={`View ${hotspot.label} in 360°`}
+                  >
+                    <span className="relative flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1B3A8C] opacity-60" />
+                      <span className="relative inline-flex h-4 w-4 rounded-full bg-[#1B3A8C] ring-2 ring-white shadow-md group-hover/hotspot:scale-110 transition-transform" />
+                    </span>
+                    <span className="mt-1.5 px-2 py-1 rounded-md bg-[#0f172a] text-white text-[11px] font-medium whitespace-nowrap opacity-0 group-hover/hotspot:opacity-100 group-focus/hotspot:opacity-100 transition-opacity shadow-lg pointer-events-none">
+                      {hotspot.label}
+                    </span>
+                  </button>
+                ))}
+              </motion.div>
+            ) : (
+              /* ── 360° viewer for the selected room ── */
+              <motion.div
+                key={`viewer-${activeTab}-${selectedRoomId}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+              >
+                <button
+                  onClick={() => setSelectedRoomId(null)}
+                  className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-lg text-sm font-medium text-[#1B3A8C] bg-white border border-gray-200 hover:border-gray-300 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to floor plan
+                </button>
+                <Immersive360Tour rooms={orderedRooms} isEmbedded={true} />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Hint strip */}
           <div className="mt-4 grid grid-cols-3 gap-3">
-            {instructions.map((item) => (
+            {(selectedRoomId === null ? floorPlanInstructions : viewerInstructions).map((item) => (
               <div
                 key={item.text}
                 className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-lg px-3 py-2.5"
@@ -364,18 +487,20 @@ export default function VirtualTourPage() {
             </p>
             <h2 className="text-3xl font-bold text-gray-900">Explore our spaces</h2>
             <p className="text-gray-500 mt-1 text-sm">
-              Every area is designed to support how you work best.
+              Every area is designed to support how you work best. Click a card to jump straight
+              into its 360° view.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {tourLocations[activeTab as keyof typeof tourLocations].map((location, index) => (
-              <motion.div
+              <motion.button
                 key={location.id}
+                onClick={() => goToRoom(location.id)}
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.07 }}
-                className="group flex flex-col bg-white border border-gray-150 rounded-2xl p-5 hover:border-gray-300 hover:shadow-sm transition-all"
+                className="group flex flex-col text-left bg-white border border-gray-150 rounded-2xl p-5 hover:border-gray-300 hover:shadow-sm transition-all"
               >
                 {/* Icon + title */}
                 <div className="flex items-center gap-3 mb-3">
@@ -395,7 +520,7 @@ export default function VirtualTourPage() {
                     </li>
                   ))}
                 </ul>
-              </motion.div>
+              </motion.button>
             ))}
           </div>
 
