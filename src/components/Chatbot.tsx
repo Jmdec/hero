@@ -343,15 +343,6 @@ const WELCOME_MESSAGE: Message = {
 const AGENT_ENDED_MESSAGE =
     "🔴 The live agent ended the chat. You're back with our AI assistant — feel free to keep chatting or pick a quick reply below.";
 
-/**
- * ---------------------------------------------------------------------------
- * LOCAL RULE-BASED BOT ENGINE (no external AI API / no OpenAI required)
- * ---------------------------------------------------------------------------
- * This replaces the previous fetch('/api/chat') call. It works purely with
- * keyword matching against whatever the visitor types. Add / edit rules
- * below to expand what the bot can answer. The rules are checked in order,
- * and the first matching rule wins — so put more specific rules first.
- */
 const PREDEFINED_REPLIES: Record<string, string> = {
     "Our Services":
         "We offer a range of workspace solutions:\n\n• Flexible Office Spaces\n• Meeting & Conference Rooms\n• Virtual Offices\n• Coworking Spaces\n• Business Support Services\n\nAll designed to help your business operate professionally and efficiently!",
@@ -859,345 +850,363 @@ const Chatbot = () => {
                 </button>
             )}
 
-            {/* Header */}
-            <div className="bg-[#1B3A8C] px-4 py-3 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                        <Image
-                            src="/header_logo_icon.png"
-                            alt="HERO Serviced Office Logo"
-                            width={24}
-                            height={24}
-                            className="w-6 h-6 object-contain"
-                        />
-                    </div>
+            {/* Chat window */}
+            {isChatOpen && (
+                <div
+                    role="dialog"
+                    aria-label="HERO Serviced Office chat"
+                    className="fixed bottom-6 right-5 z-1000 w-[calc(100vw-40px)] h-140 lg:h-145 md:w-100 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-100 animate-[chatIn_0.2s_ease-out]"                >
+                    <style>{`
+                        @keyframes chatIn {
+                            from { opacity: 0; transform: translateY(12px) scale(0.98); }
+                            to { opacity: 1; transform: translateY(0) scale(1); }
+                        }
+                        @media (prefers-reduced-motion: reduce) {
+                            * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+                        }
+                    `}</style>
 
-                    <div>
-                        <p className="text-white font-semibold text-md leading-tight">
-                            HERO Serviced Office
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-1">
-                    {leadSubmitted && (
-                        <button
-                            onClick={handleTalkToAgent}
-                            disabled={isTyping || agentRequested}
-                            className="flex items-center gap-1.5 text-white/90 hover:text-white hover:bg-white/15 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-white"
-                            aria-label="Talk to an agent"
-                            title="Talk to an agent"
-                        >
-                            <UserRound className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">
-                                {agentRequested ? "Agent requested" : "Talk to an agent"}
-                            </span>
-                        </button>
-                    )}
-                    <button
-                        onClick={() => setIsChatOpen(false)}
-                        className="text-white/70 hover:text-white hover:bg-white/15 rounded-full p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-white"
-                        aria-label="Close chat"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
-            </div>
+                    {/* Header */}
+                    <div className="bg-[#1B3A8C] px-4 py-3 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+                                <Image
+                                    src="/header_logo_icon.png"
+                                    alt="HERO Serviced Office Logo"
+                                    width={24}
+                                    height={24}
+                                    className="w-6 h-6 object-contain"
+                                />
+                            </div>
 
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto bg-gray-50">
-                {/* Resuming previous session */}
-                {isResumingSession && (
-                    <div className="h-full flex flex-col items-center justify-center gap-3 text-gray-400">
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <p className="text-xs">Loading your conversation…</p>
-                    </div>
-                )}
-
-                {/* Welcome screen */}
-                {!isResumingSession && !isStarted && (
-                    <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-5">
-                        <div className="w-16 h-16 rounded-2xl bg-[#1B3A8C] flex items-center justify-center shadow-lg">
-                            <span className="text-white text-2xl font-bold">H</span>
+                            <div>
+                                <p className="text-white font-semibold text-md leading-tight">
+                                    HERO Serviced Office
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-gray-900">
-                                Welcome to HERO
-                            </h2>
-                            <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                                I&apos;m your HERO Assistant. Before we begin, we&apos;ll
-                                collect a few details so we can better serve you.
-                            </p>
+                        <div className="flex items-center gap-1">
+                            {leadSubmitted && (
+                                <button
+                                    onClick={handleTalkToAgent}
+                                    disabled={isTyping || agentRequested}
+                                    className="flex items-center gap-1.5 text-white/90 hover:text-white hover:bg-white/15 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-white"
+                                    aria-label="Talk to an agent"
+                                    title="Talk to an agent"
+                                >
+                                    <UserRound className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">
+                                        {agentRequested ? "Agent requested" : "Talk to an agent"}
+                                    </span>
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setIsChatOpen(false)}
+                                className="text-white/70 hover:text-white hover:bg-white/15 rounded-full p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-white"
+                                aria-label="Close chat"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
-                        <button
-                            onClick={() => setIsStarted(true)}
-                            className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#1B3A8C] text-white text-sm font-medium hover:bg-[#16318a] active:scale-95 transition-all shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
-                        >
-                            Get started <ChevronRight className="w-4 h-4" />
-                        </button>
-                        <p className="text-xs text-gray-400">
-                            Powered by HERO Serviced Office
-                        </p>
                     </div>
-                )}
 
-                {/* Lead form */}
-                {!isResumingSession && isStarted && !leadSubmitted && (
-                    <div className="p-5 space-y-3">
-                        <div className="text-center mb-4">
-                            <h2 className="text-lg font-bold text-gray-900">
-                                Your contact details
-                            </h2>
-                            <p className="text-xs text-gray-500 mt-1">
-                                Please fill in your details before continuing.
-                            </p>
-                        </div>
+                    {/* Body */}
+                    <div className="flex-1 overflow-y-auto bg-gray-50">
+                        {/* Resuming previous session */}
+                        {isResumingSession && (
+                            <div className="h-full flex flex-col items-center justify-center gap-3 text-gray-400">
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <p className="text-xs">Loading your conversation…</p>
+                            </div>
+                        )}
 
-                        {(
-                            [
-                                { key: "name", placeholder: "Full name", type: "text" },
-                                {
-                                    key: "email",
-                                    placeholder: "Email address",
-                                    type: "email",
-                                },
-                                { key: "phone", placeholder: "Phone number", type: "tel" },
-                                {
-                                    key: "company",
-                                    placeholder: "Company name (optional)",
-                                    type: "text",
-                                },
-                            ] as { key: LeadField; placeholder: string; type: string }[]
-                        ).map((field) => {
-                            const hasError = touched[field.key] && fieldErrors[field.key];
-                            return (
-                                <div key={field.key} className="space-y-1">
-                                    <input
-                                        type={field.type}
-                                        placeholder={field.placeholder}
-                                        value={leadInfo[field.key]}
-                                        onChange={(e) =>
-                                            handleFieldChange(field.key, e.target.value)
-                                        }
-                                        onBlur={() => handleFieldBlur(field.key)}
-                                        aria-invalid={Boolean(hasError)}
-                                        aria-describedby={
-                                            hasError ? `${field.key}-error` : undefined
-                                        }
-                                        disabled={isSubmittingLead}
-                                        className={`w-full border rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${hasError
-                                            ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-200"
-                                            : touched[field.key] &&
-                                                !fieldErrors[field.key] &&
-                                                leadInfo[field.key]
-                                                ? "border-emerald-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100"
-                                                : "border-gray-200 focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20"
-                                            }`}
-                                    />
-                                    {hasError && (
-                                        <p
-                                            id={`${field.key}-error`}
-                                            className="text-[11px] text-red-500 pl-1 flex items-center gap-1"
-                                        >
-                                            <AlertCircle className="w-3 h-3 shrink-0" />{" "}
-                                            {fieldErrors[field.key]}
+                        {/* Welcome screen */}
+                        {!isResumingSession && !isStarted && (
+                            <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-5">
+                                <div className="w-16 h-16 rounded-2xl bg-[#1B3A8C] flex items-center justify-center shadow-lg">
+                                    <span className="text-white text-2xl font-bold">H</span>
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold text-gray-900">
+                                        Welcome to HERO
+                                    </h2>
+                                    <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                                        I&apos;m your HERO Assistant. Before we begin, we&apos;ll
+                                        collect a few details so we can better serve you.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setIsStarted(true)}
+                                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#1B3A8C] text-white text-sm font-medium hover:bg-[#16318a] active:scale-95 transition-all shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
+                                >
+                                    Get started <ChevronRight className="w-4 h-4" />
+                                </button>
+                                <p className="text-xs text-gray-400">
+                                    Powered by HERO Serviced Office
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Lead form */}
+                        {!isResumingSession && isStarted && !leadSubmitted && (
+                            <div className="p-5 space-y-3">
+                                <div className="text-center mb-4">
+                                    <h2 className="text-lg font-bold text-gray-900">
+                                        Your contact details
+                                    </h2>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Please fill in your details before continuing.
+                                    </p>
+                                </div>
+
+                                {(
+                                    [
+                                        { key: "name", placeholder: "Full name", type: "text" },
+                                        {
+                                            key: "email",
+                                            placeholder: "Email address",
+                                            type: "email",
+                                        },
+                                        { key: "phone", placeholder: "Phone number", type: "tel" },
+                                        {
+                                            key: "company",
+                                            placeholder: "Company name (optional)",
+                                            type: "text",
+                                        },
+                                    ] as { key: LeadField; placeholder: string; type: string }[]
+                                ).map((field) => {
+                                    const hasError = touched[field.key] && fieldErrors[field.key];
+                                    return (
+                                        <div key={field.key} className="space-y-1">
+                                            <input
+                                                type={field.type}
+                                                placeholder={field.placeholder}
+                                                value={leadInfo[field.key]}
+                                                onChange={(e) =>
+                                                    handleFieldChange(field.key, e.target.value)
+                                                }
+                                                onBlur={() => handleFieldBlur(field.key)}
+                                                aria-invalid={Boolean(hasError)}
+                                                aria-describedby={
+                                                    hasError ? `${field.key}-error` : undefined
+                                                }
+                                                disabled={isSubmittingLead}
+                                                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${hasError
+                                                    ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-200"
+                                                    : touched[field.key] &&
+                                                        !fieldErrors[field.key] &&
+                                                        leadInfo[field.key]
+                                                        ? "border-emerald-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100"
+                                                        : "border-gray-200 focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20"
+                                                    }`}
+                                            />
+                                            {hasError && (
+                                                <p
+                                                    id={`${field.key}-error`}
+                                                    className="text-[11px] text-red-500 pl-1 flex items-center gap-1"
+                                                >
+                                                    <AlertCircle className="w-3 h-3 shrink-0" />{" "}
+                                                    {fieldErrors[field.key]}
+                                                </p>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+
+                                <div className="space-y-1.5 py-3">
+                                    <label className="flex items-start gap-2 text-[11px] text-gray-500 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={agreedToPolicy}
+                                            onChange={(e) => {
+                                                setAgreedToPolicy(e.target.checked);
+                                                setAgreementTouched(true);
+                                            }}
+                                            disabled={isSubmittingLead}
+                                            aria-invalid={agreementTouched && !agreedToPolicy}
+                                            className="mt-0.5 w-3.5 h-3.5 rounded border-gray-300 text-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/40 shrink-0"
+                                        />
+                                        <span>
+                                            I agree to the{" "}
+                                            <button
+                                                type="button"
+                                                onClick={() => setModal("privacy")}
+                                                className="text-[#1565C0] underline hover:text-[#1B3A8C] transition-colors"
+                                            >
+                                                Privacy Policy
+                                            </button>{" "}
+                                            and{" "}
+                                            <button
+                                                type="button"
+                                                onClick={() => setModal("terms")}
+                                                className="text-[#1565C0] underline hover:text-[#1B3A8C] transition-colors"
+                                            >
+                                                Terms of Service
+                                            </button>
+                                            .
+                                        </span>
+                                    </label>
+                                    {agreementTouched && !agreedToPolicy && (
+                                        <p className="text-[11px] text-red-500 pl-1 flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3 shrink-0" /> Please accept
+                                            the Privacy Policy and Terms of Service to continue.
                                         </p>
                                     )}
                                 </div>
-                            );
-                        })}
 
-                        <div className="space-y-1.5 py-3">
-                            <label className="flex items-start gap-2 text-[11px] text-gray-500 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={agreedToPolicy}
-                                    onChange={(e) => {
-                                        setAgreedToPolicy(e.target.checked);
-                                        setAgreementTouched(true);
-                                    }}
+                                {leadError && (
+                                    <p className="text-[11px] text-red-500 text-center flex items-center justify-center gap-1">
+                                        <AlertCircle className="w-3 h-3 shrink-0" /> {leadError}
+                                    </p>
+                                )}
+
+                                <button
+                                    className="w-full py-2.5 rounded-xl bg-[#1B3A8C] text-white text-sm font-medium hover:bg-[#16318a] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
+                                    onClick={handleContinue}
                                     disabled={isSubmittingLead}
-                                    aria-invalid={agreementTouched && !agreedToPolicy}
-                                    className="mt-0.5 w-3.5 h-3.5 rounded border-gray-300 text-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/40 shrink-0"
-                                />
-                                <span>
-                                    I agree to the{" "}
-                                    <button
-                                        type="button"
-                                        onClick={() => setModal("privacy")}
-                                        className="text-[#1565C0] underline hover:text-[#1B3A8C] transition-colors"
-                                    >
-                                        Privacy Policy
-                                    </button>{" "}
-                                    and{" "}
-                                    <button
-                                        type="button"
-                                        onClick={() => setModal("terms")}
-                                        className="text-[#1565C0] underline hover:text-[#1B3A8C] transition-colors"
-                                    >
-                                        Terms of Service
-                                    </button>
-                                    .
-                                </span>
-                            </label>
-                            {agreementTouched && !agreedToPolicy && (
-                                <p className="text-[11px] text-red-500 pl-1 flex items-center gap-1">
-                                    <AlertCircle className="w-3 h-3 shrink-0" /> Please accept
-                                    the Privacy Policy and Terms of Service to continue.
+                                >
+                                    {isSubmittingLead && (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    )}
+                                    {isSubmittingLead ? "Submitting…" : "Continue"}
+                                </button>
+                                <p className="text-[11px] text-gray-400 text-center">
+                                    Powered by HERO Serviced Office
                                 </p>
-                            )}
-                        </div>
-
-                        {leadError && (
-                            <p className="text-[11px] text-red-500 text-center flex items-center justify-center gap-1">
-                                <AlertCircle className="w-3 h-3 shrink-0" /> {leadError}
-                            </p>
+                            </div>
                         )}
 
-                        <button
-                            className="w-full py-2.5 rounded-xl bg-[#1B3A8C] text-white text-sm font-medium hover:bg-[#16318a] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
-                            onClick={handleContinue}
-                            disabled={isSubmittingLead}
-                        >
-                            {isSubmittingLead && (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            )}
-                            {isSubmittingLead ? "Submitting…" : "Continue"}
-                        </button>
-                        <p className="text-[11px] text-gray-400 text-center">
-                            Powered by HERO Serviced Office
-                        </p>
-                    </div>
-                )}
+                        {/* Messages */}
+                        {!isResumingSession && leadSubmitted && (
+                            <div className="p-4 space-y-3">
+                                {messages.map((msg, idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"} animate-[msgIn_0.2s_ease-out]`}
+                                    >
+                                        {msg.type === "bot" && (
+                                            <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0 mr-2 mt-1">
+                                                <span className="text-white text-xs font-bold">H</span>
+                                            </div>
+                                        )}
+                                        <div
+                                            className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${msg.type === "user"
+                                                ? "bg-[#1B3A8C] text-white rounded-br-sm"
+                                                : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
+                                                }`}
+                                        >
+                                            <p className="text-sm whitespace-pre-line leading-relaxed">
+                                                {msg.text}
+                                            </p>
+                                            <p
+                                                className={`text-[10px] mt-1 ${msg.type === "user" ? "text-blue-200 text-right" : "text-gray-400"}`}
+                                            >
+                                                {msg.time}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
 
-                {/* Messages */}
-                {!isResumingSession && leadSubmitted && (
-                    <div className="p-4 space-y-3">
-                        {messages.map((msg, idx) => (
-                            <div
-                                key={idx}
-                                className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"} animate-[msgIn_0.2s_ease-out]`}
-                            >
-                                {msg.type === "bot" && (
-                                    <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0 mr-2 mt-1">
-                                        <span className="text-white text-xs font-bold">H</span>
+                                {/* Typing indicator */}
+                                {isTyping && (
+                                    <div className="flex justify-start items-end gap-2">
+                                        <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0">
+                                            <span className="text-white text-xs font-bold">H</span>
+                                        </div>
+                                        <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+                                            <div className="flex gap-1 items-center">
+                                                <span
+                                                    className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                                                    style={{ animationDelay: "0ms" }}
+                                                />
+                                                <span
+                                                    className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                                                    style={{ animationDelay: "150ms" }}
+                                                />
+                                                <span
+                                                    className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                                                    style={{ animationDelay: "300ms" }}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
-                                <div
-                                    className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${msg.type === "user"
-                                        ? "bg-[#1B3A8C] text-white rounded-br-sm"
-                                        : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
-                                        }`}
-                                >
-                                    <p className="text-sm whitespace-pre-line leading-relaxed">
-                                        {msg.text}
-                                    </p>
-                                    <p
-                                        className={`text-[10px] mt-1 ${msg.type === "user" ? "text-blue-200 text-right" : "text-gray-400"}`}
-                                    >
-                                        {msg.time}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
 
-                        {/* Typing indicator */}
-                        {isTyping && (
-                            <div className="flex justify-start items-end gap-2">
-                                <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0">
-                                    <span className="text-white text-xs font-bold">H</span>
-                                </div>
-                                <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                                    <div className="flex gap-1 items-center">
-                                        <span
-                                            className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                                            style={{ animationDelay: "0ms" }}
-                                        />
-                                        <span
-                                            className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                                            style={{ animationDelay: "150ms" }}
-                                        />
-                                        <span
-                                            className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                                            style={{ animationDelay: "300ms" }}
-                                        />
+                                {/* Send error */}
+                                {sendError && !isTyping && (
+                                    <p className="text-[11px] text-red-500 text-center flex items-center justify-center gap-1 pt-1">
+                                        <AlertCircle className="w-3 h-3 shrink-0" /> {sendError}
+                                    </p>
+                                )}
+
+                                {/* Quick replies */}
+                                {!isTyping && messages[messages.length - 1]?.type === "bot" && (
+                                    <div className="pt-1">
+                                        <p className="text-[11px] text-gray-400 mb-2 pl-9">
+                                            Quick replies
+                                        </p>
+                                        <div className="flex flex-wrap gap-1.5 pl-9">
+                                            {quickReplies.map((reply, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => handleQuickReply(reply)}
+                                                    className="px-3 py-1.5 text-xs border border-[#1B3A8C] text-[#1B3A8C] rounded-full hover:bg-[#1B3A8C] hover:text-white active:scale-95 transition-all font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
+                                                >
+                                                    {reply}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
+
+                                <div ref={messagesEndRef} />
                             </div>
                         )}
+                    </div>
 
-                        {/* Send error */}
-                        {sendError && !isTyping && (
-                            <p className="text-[11px] text-red-500 text-center flex items-center justify-center gap-1 pt-1">
-                                <AlertCircle className="w-3 h-3 shrink-0" /> {sendError}
+                    {/* Input area */}
+                    {!isResumingSession && leadSubmitted && (
+                        <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
+                            <div className="flex items-center gap-2">
+                                <input
+                                    ref={inputRef}
+                                    type="text"
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value)}
+                                    onKeyDown={handleKeyPress}
+                                    placeholder="Type a message…"
+                                    aria-label="Type a message"
+                                    className="flex-1 px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20 bg-gray-50 transition-colors"
+                                />
+                                <button
+                                    onClick={handleSendMessage}
+                                    disabled={!message.trim()}
+                                    className="w-9 h-9 rounded-full bg-[#1B3A8C] hover:bg-[#16318a] active:scale-95 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
+                                    aria-label="Send message"
+                                >
+                                    <Send className="w-4 h-4 text-white" />
+                                </button>
+                            </div>
+                            <div className="flex items-center justify-center gap-4 text-[10px] text-gray-400 mt-2">
+                                <button
+                                    onClick={() => setModal("privacy")}
+                                    className="hover:text-[#1565C0] transition-colors cursor-pointer"
+                                >
+                                    Privacy Policy
+                                </button>
+                                <span className="text-gray-200">·</span>
+                                <button
+                                    onClick={() => setModal("terms")}
+                                    className="hover:text-[#1565C0] transition-colors cursor-pointer"
+                                >
+                                    Terms of Service
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-gray-300 text-center mt-1">
+                                Powered by HERO Serviced Office
                             </p>
-                        )}
-
-                        {/* Quick replies */}
-                        {!isTyping && messages[messages.length - 1]?.type === "bot" && (
-                            <div className="pt-1">
-                                <p className="text-[11px] text-gray-400 mb-2 pl-9">
-                                    Quick replies
-                                </p>
-                                <div className="flex flex-wrap gap-1.5 pl-9">
-                                    {quickReplies.map((reply, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => handleQuickReply(reply)}
-                                            className="px-3 py-1.5 text-xs border border-[#1B3A8C] text-[#1B3A8C] rounded-full hover:bg-[#1B3A8C] hover:text-white active:scale-95 transition-all font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
-                                        >
-                                            {reply}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        <div ref={messagesEndRef} />
-                    </div>
-                )}
-            </div>
-
-            {/* Input area */}
-            {!isResumingSession && leadSubmitted && (
-                <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
-                    <div className="flex items-center gap-2">
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            onKeyDown={handleKeyPress}
-                            placeholder="Type a message…"
-                            aria-label="Type a message"
-                            className="flex-1 px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20 bg-gray-50 transition-colors"
-                        />
-                        <button
-                            onClick={handleSendMessage}
-                            disabled={!message.trim()}
-                            className="w-9 h-9 rounded-full bg-[#1B3A8C] hover:bg-[#16318a] active:scale-95 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
-                            aria-label="Send message"
-                        >
-                            <Send className="w-4 h-4 text-white" />
-                        </button>
-                    </div>
-                    <div className="flex items-center justify-center gap-4 text-[10px] text-gray-400 mt-2">
-                        <button
-                            onClick={() => setModal("privacy")}
-                            className="hover:text-[#1565C0] transition-colors cursor-pointer"
-                        >
-                            Privacy Policy
-                        </button>
-                        <span className="text-gray-200">·</span>
-                        <button
-                            onClick={() => setModal("terms")}
-                            className="hover:text-[#1565C0] transition-colors cursor-pointer"
-                        >
-                            Terms of Service
-                        </button>
-                    </div>
-                    <p className="text-[10px] text-gray-300 text-center mt-1">
-                        Powered by HERO Serviced Office
-                    </p>
+                        </div>
+                    )}
                 </div>
             )}
 

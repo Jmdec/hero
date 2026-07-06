@@ -88,11 +88,11 @@ const FloatingSocialMedia = () => {
         })}
       </div>
 
-      {/* Mobile + tablet */}
+      {/* Mobile + Tablet */}
       <div
-        className="lg:hidden fixed z-50 flex flex-col items-center
-                  right-4 bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+5.5rem))]"
+        className="lg:hidden fixed right-5 bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] z-50 flex flex-col items-center"
       >
+        {/* Backdrop */}
         {isOpen && (
           <div
             className="fixed inset-0 bg-black/20 z-40"
@@ -101,12 +101,21 @@ const FloatingSocialMedia = () => {
           />
         )}
 
+        {/* Social Menu */}
         <div
-          className={`relative z-50 flex flex-col-reverse gap-1.5 mb-3 transition-all duration-300 origin-bottom
-            ${isOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-0 translate-y-3 pointer-events-none"}`}
+          className={`relative z-50 mb-3 flex flex-col items-center
+                    bg-white/95 backdrop-blur-sm rounded-full
+                    shadow-lg border border-neutral-200/70
+                    py-4 px-2 gap-3
+                    transition-all duration-300 origin-bottom
+            ${isOpen
+              ? "opacity-100 scale-100 translate-y-0"
+              : "opacity-0 scale-75 translate-y-4 pointer-events-none"
+            }`}
         >
-          {socialLinks.map((social, index) => {
+          {socialLinks.map((social) => {
             const Icon = social.icon
+
             return (
               <a
                 key={social.name}
@@ -114,31 +123,44 @@ const FloatingSocialMedia = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Visit our ${social.name}`}
-                onClick={() => setIsOpen(false)}
-                className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white shadow-md
-                           transition-transform duration-200 active:scale-90 shrink-0 hover:scale-105"
-                style={{
-                  backgroundColor: social.color,
-                  transitionDelay: isOpen ? `${index * 40}ms` : "0ms",
-                }}
+                className="group relative w-10 h-10 rounded-full
+                          flex items-center justify-center
+                          text-neutral-500 hover:text-white
+                          transition-colors duration-200"
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = social.color)
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "transparent")
+                }
+                onTouchStart={(e) =>
+                  (e.currentTarget.style.backgroundColor = social.color)
+                }
+                onTouchEnd={(e) =>
+                  (e.currentTarget.style.backgroundColor = "transparent")
+                }
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-6 h-6" />
               </a>
             )
           })}
         </div>
 
+        {/* Floating Button */}
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
           aria-label={isOpen ? "Close social menu" : "Open social menu"}
           aria-expanded={isOpen}
-          className="relative z-50 w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white shadow-lg
-                     transition-transform duration-300 active:scale-90 bg-neutral-900 shrink-0"
+          className="relative z-50 w-14 h-14 rounded-full
+                    bg-neutral-900 text-white
+                    shadow-lg flex items-center justify-center
+                    transition-all duration-300 active:scale-95"
         >
-          <span className={`transition-transform duration-300 ${isOpen ? "rotate-45" : "rotate-0"}`}>
-            <Plus className="w-6 h-6" />
-          </span>
+          <Plus
+            className={`w-6 h-6 transition-transform duration-300 ${isOpen ? "rotate-45" : ""
+              }`}
+          />
         </button>
       </div>
     </>

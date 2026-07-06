@@ -15,7 +15,6 @@ interface RoomScene {
   id: string
   name: string
   panoramaUrl: string
-  thumbnail: string
 }
 
 interface Immersive360TourProps {
@@ -238,6 +237,16 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     <div className={`relative w-full ${isEmbedded ? "h-140" : "h-screen"} bg-[#0A1420] overflow-hidden rounded-2xl ring-1 ring-white/10`}>
       <div ref={containerRef} className="absolute inset-0 cursor-grab" style={{ touchAction: "none" }} />
 
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#0A1420]/85 backdrop-blur-sm z-30">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-[3px] border-[#C9A15D] border-t-transparent rounded-full animate-spin" />
+            <p className="text-white/60 text-xs tracking-[0.15em] uppercase">Loading 360° view…</p>
+          </div>
+        </div>
+      )}
+      
       {/* Error overlay */}
       {loadError && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#0A1420]/85 backdrop-blur-sm z-30">

@@ -4,16 +4,26 @@ import { useEffect, useState, useRef } from "react";
 import { AlertCircle, CheckCircle2, Clock3, MessageSquare, Send, User } from "lucide-react";
 import { chatApi, type ChatConversation, type ConversationResponse } from "@/lib/chatApi";
 
-function StatusBadge({ status }: { status: ChatConversation["status"] }) {
-    const styles: Record<ChatConversation["status"], string> = {
+function StatusBadge({ status }: { status: string }) {
+    const styles: Record<string, string> = {
         active: "bg-emerald-50 text-emerald-700",
         waiting_admin: "bg-amber-50 text-amber-700",
+        agent_requested: "bg-amber-50 text-amber-700",
+        agent_active: "bg-blue-50 text-blue-700",
+        agent_closed: "bg-slate-100 text-slate-600",
         closed: "bg-slate-100 text-slate-600",
     };
-
+    const labels: Record<string, string> = {
+        waiting_admin: "Awaiting admin",
+        agent_requested: "Awaiting admin",
+        agent_active: "Live agent",
+        agent_closed: "Closed",
+        closed: "Closed",
+        active: "Active",
+    };
     return (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>
-            {status === "waiting_admin" ? "Awaiting admin" : status === "closed" ? "Closed" : "Active"}
+        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${styles[status] ?? "bg-slate-100 text-slate-600"}`}>
+            {labels[status] ?? status}
         </span>
     );
 }
@@ -112,14 +122,23 @@ export default function AdminChatsPage() {
         }
     };
 
-    const handleSwitchMode = async () => {
+    const handleTakeOver = async () => {
         if (!selectedConversationId) return;
-
         try {
             await chatApi.switchMode(selectedConversationId, "admin");
             await refresh();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Unable to update chat mode.");
+        }
+    };
+
+    const handleReturnToAI = async () => {
+        if (!selectedConversationId) return;
+        try {
+            await chatApi.switchMode(selectedConversationId, "assistant");
+            await refresh();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Unable to return chat to AI.");
         }
     };
 
@@ -207,10 +226,13 @@ export default function AdminChatsPage() {
                                             </p>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
-                                            <button onClick={() => void handleSwitchMode()} className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                                                Switch to admin
+                                            <button onClick={() => void handleTakeOver()} className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                                                Take over chat
                                             </button>
-                                            <button onClick={() => void handleCloseConversation()} className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                                            <button onClick={() => void handleReturnToAI()} className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                                                Return to AI
+                                            </button>
+                                            <button onClick={() => void handleCloseConversation()} className="rounded-full border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-50">
                                                 Close chat
                                             </button>
                                         </div>

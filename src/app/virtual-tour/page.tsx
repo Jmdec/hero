@@ -52,12 +52,8 @@ const Immersive360Tour = dynamic(
 interface FloorPlanHotspot {
   id: string;
   label: string;
-  /** Center point, percentage of image width/height */
   x: number;
   y: number;
-  /** Highlighted region size, percentage of image width/height. Defaults applied if omitted. */
-  width?: number;
-  height?: number;
 }
 
 interface FloorPlanData {
@@ -72,7 +68,6 @@ interface TourRoom {
   id: string;
   name: string;
   panoramaUrl: string;
-  thumbnail: string;
 }
 
 // ── Floor plan viewer: zoom via buttons + drag to pan, SVG room highlighting, hover thumbnails, fullscreen ──
@@ -84,13 +79,10 @@ const MAX_SCALE = 4;
 
 function FloorPlanViewer({
   floorPlan,
-  thumbnails,
   activeRoomId,
   onSelectRoom,
 }: {
   floorPlan: FloorPlanData;
-  /** room id -> thumbnail image url, used for the hover preview */
-  thumbnails: Record<string, string>;
   activeRoomId: string | null;
   onSelectRoom: (id: string) => void;
 }) {
@@ -204,17 +196,13 @@ function FloorPlanViewer({
           className="absolute inset-0 w-full h-full"
         >
           {floorPlan.hotspots.map((h) => {
-            const w = h.width ?? DEFAULT_REGION_W;
-            const ht = h.height ?? DEFAULT_REGION_H;
             const isActive = activeRoomId === h.id;
             const isHovered = hoveredId === h.id;
             return (
               <rect
                 key={h.id}
-                x={h.x - w / 2}
-                y={h.y - ht / 2}
-                width={w}
-                height={ht}
+                x={h.x - DEFAULT_REGION_W / 2}
+                y={h.y - DEFAULT_REGION_H / 2}
                 rx={2}
                 vectorEffect="non-scaling-stroke"
                 style={{
@@ -252,20 +240,17 @@ function FloorPlanViewer({
             >
               <span className="relative flex h-4 w-4">
                 {isActive && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1B3A8C] opacity-60" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FFC107] opacity-60" />
                 )}
                 <span
                   className={`relative inline-flex h-4 w-4 rounded-full ring-2 ring-white shadow-md group-hover/hotspot:scale-110 transition-transform ${isActive ? "bg-[#C9A15D]" : "bg-[#1B3A8C]"
                     }`}
                 />
               </span>
-              <span className="mt-1.5 px-2 py-1 rounded-md bg-[#0f172a] text-white text-[11px] font-medium whitespace-nowrap opacity-0 group-hover/hotspot:opacity-100 group-focus/hotspot:opacity-100 transition-opacity shadow-lg pointer-events-none">
-                {h.label}
-              </span>
 
               {/* Hover thumbnail preview — counter-scaled so it stays a consistent size while zoomed */}
               <AnimatePresence>
-                {hoveredId === h.id && thumbnails[h.id] && (
+                {hoveredId === h.id && (
                   <motion.div
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -274,12 +259,7 @@ function FloorPlanViewer({
                     style={{ transform: `scale(${1 / scale})`, transformOrigin: "bottom center" }}
                     className="absolute bottom-full mb-2 w-32 rounded-lg overflow-hidden shadow-xl ring-1 ring-black/10 pointer-events-none"
                   >
-                    <img
-                      src={thumbnails[h.id]}
-                      alt={h.label}
-                      className="w-full h-20 object-cover"
-                    />
-                    <div className="bg-[#0f172a] text-white text-[10px] text-center py-1">
+                    <div className="bg-[#0f172a] text-white text-lg text-center py-1">
                       {h.label}
                     </div>
                   </motion.div>
@@ -342,10 +322,36 @@ export default function VirtualTourPage() {
         ],
       },
       {
-        id: "meeting-space",
-        title: "Meeting room",
+        id: "conference-room-a",
+        title: "Conference Room A",
         description:
-          "Modern meeting rooms designed for client presentations, interviews, seminars, and team discussions.",
+          "Modern conference rooms designed for client presentations, interviews, seminars, and team discussions.",
+        features: [
+          "High-speed Wi-Fi",
+          "Large presentation display",
+          "Video conferencing",
+          "Flexible seating layout",
+        ],
+      },
+      
+      {
+        id: "conference-room-b",
+        title: "Conference Room B",
+        description:
+          "Modern conference rooms designed for client presentations, interviews, seminars, and team discussions.",
+        features: [
+          "High-speed Wi-Fi",
+          "Large presentation display",
+          "Video conferencing",
+          "Flexible seating layout",
+        ],
+      },
+      
+      {
+        id: "conference-room-c",
+        title: "Conference Room C",
+        description:
+          "Modern conference rooms designed for client presentations, interviews, seminars, and team discussions.",
         features: [
           "High-speed Wi-Fi",
           "Large presentation display",
@@ -354,17 +360,41 @@ export default function VirtualTourPage() {
         ],
       },
       {
-        id: "mfp-space",
-        title: "MFP space",
+        id: "lounge",
+        title: "Lounge",
         description:
-          "Shared business center equipped with multifunction office equipment for your daily business needs.",
+          "Comfortable shared lounge for informal meetings, networking, or working outside your office.",
         features: [
-          "Printing",
-          "Scanning",
-          "Copying",
-          "Document support",
+          "Comfortable seating",
+          "Free Wi-Fi",
+          "Networking space",
+          "Quiet atmosphere",
         ],
       },
+      {
+        id: "brochure-lockers",
+        title: "Brochure & Locker Area",
+        description:
+          "Secure personal lockers for members to safely store belongings during the workday.",
+        features: [
+          "Secure lockers",
+          "Member access",
+          "Convenient storage",
+          "Clean facilities",
+        ],
+      },
+      {
+        id: "cafe-area",
+        title: "Cafe Area",
+        description:
+          "Relax and recharge in our shared café space with complimentary refreshments.",
+        features: [
+          "Coffee & tea",
+          "Casual seating",
+          "Networking space",
+          "Break area",
+        ],
+      }
     ],
 
     insularLife: [
@@ -381,8 +411,20 @@ export default function VirtualTourPage() {
         ],
       },
       {
+        id: "lounge",
+        title: "Lounge",
+        description:
+          "Comfortable shared lounge for informal meetings, networking, or working outside your office.",
+        features: [
+          "Comfortable seating",
+          "Free Wi-Fi",
+          "Networking space",
+          "Quiet atmosphere",
+        ],
+      },
+      {
         id: "meeting-space",
-        title: "Meeting room",
+        title: "Conference Room",
         description:
           "Fully equipped meeting rooms suitable for conferences, interviews, and client meetings.",
         features: [
@@ -394,7 +436,7 @@ export default function VirtualTourPage() {
       },
       {
         id: "cafe",
-        title: "Cafe area",
+        title: "Cafe Area",
         description:
           "Relax and recharge in our shared café space with complimentary refreshments.",
         features: [
@@ -402,18 +444,6 @@ export default function VirtualTourPage() {
           "Casual seating",
           "Networking space",
           "Break area",
-        ],
-      },
-      {
-        id: "lounge",
-        title: "Business lounge",
-        description:
-          "Comfortable shared lounge for informal meetings, networking, or working outside your office.",
-        features: [
-          "Comfortable seating",
-          "Free Wi-Fi",
-          "Networking space",
-          "Quiet atmosphere",
         ],
       },
       {
@@ -430,7 +460,7 @@ export default function VirtualTourPage() {
       },
       {
         id: "locker-room",
-        title: "Locker room",
+        title: "Locker Area",
         description:
           "Secure personal lockers for members to safely store belongings during the workday.",
         features: [
@@ -456,7 +486,7 @@ export default function VirtualTourPage() {
       "24/7 Access",
       "Reception Staff",
       "Printing & Scanning",
-      "Meeting Rooms",
+      "conference Rooms",
       "Mail Handling",
     ],
     insularLife: [
@@ -480,7 +510,7 @@ export default function VirtualTourPage() {
     "24/7 Access": <Clock className="w-3.5 h-3.5" />,
     "Reception Staff": <Users className="w-3.5 h-3.5" />,
     "Printing & Scanning": <Printer className="w-3.5 h-3.5" />,
-    "Meeting Rooms": <Video className="w-3.5 h-3.5" />,
+    "conference Rooms": <Video className="w-3.5 h-3.5" />,
     "Mail Handling": <Mail className="w-3.5 h-3.5" />,
     "Café & Pantry": <Coffee className="w-3.5 h-3.5" />,
     "Business Lounge": <Armchair className="w-3.5 h-3.5" />,
@@ -493,37 +523,41 @@ export default function VirtualTourPage() {
         id: "reception",
         name: "Reception",
         panoramaUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=2400&q=85",
-        thumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80",
+      },
+      {
+        id: "lounge",
+        name: "Lounge",
+        panoramaUrl: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&q=80",
       },
       {
         id: "hallway",
         name: "Hallway",
         panoramaUrl: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
-        thumbnail: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
       },
       {
-        id: "meeting-box",
-        name: "Meeting Box",
-        panoramaUrl: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
-        thumbnail: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
-      },
-      {
-        id: "meeting-space-1",
-        name: "Meeting Room",
+        id: "conference-room-a",
+        name: "Conference Room A",
         panoramaUrl: "/360 view/IMG_20210318_174813_00_060.jpg",
-        thumbnail: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=400&q=80",
       },
       {
-        id: "meeting-space-2",
-        name: "Meeting Room",
+        id: "conference-room-b",
+          name: "Conference Room B",
         panoramaUrl: "/360 view/IMG_20210318_173158_00_049.jpg",
-        thumbnail: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=400&q=80",
       },
       {
-        id: "cafe",
-        name: "Cafe Area",
+        id: "conference-room-c",
+          name: "Conference Room C",
+        panoramaUrl: "/360 view/IMG_20210318_173158_00_049.jpg",
+      },
+      {
+        id: "pantry",
+        name: "Pantry",
         panoramaUrl: "/360 view/IMG_20210318_183019_00_073.jpg",
-        thumbnail: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&q=80",
+      },
+      {
+        id: "brochure-lockers",
+        name: "Brochure & Locker Area",
+        panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
       },
     ],
 
@@ -532,49 +566,41 @@ export default function VirtualTourPage() {
         id: "reception",
         name: "Reception",
         panoramaUrl: "https://images.unsplash.com/photo-1486946255434-2466348c2166?w=2400&q=85",
-        thumbnail: "https://images.unsplash.com/photo-1486946255434-2466348c2166?w=400&q=80",
       },
       {
         id: "lounge",
         name: "Lounge",
         panoramaUrl: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&q=80",
-        thumbnail: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&q=80",
       },
       {
         id: "meeting-box",
         name: "Meeting Box",
-        panoramaUrl: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
-        thumbnail: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
+        panoramaUrl: "/360 view/IMG_20210318_154223_00_039.jpg",
       },
       {
         id: "hallway",
         name: "Hallway",
         panoramaUrl: "/360 view/IMG_20210318_133045_00_019.jpg",
-        thumbnail: "/360 view/IMG_20210318_133045_00_019.jpg",
       },
       {
-        id: "meeting-space",
-        name: "Meeting Room",
+        id: "conference-room-a",
+        name: "Conference Room A",
         panoramaUrl: "/360 view/IMG_20210318_134026_00_023.jpg",
-        thumbnail: "/360 view/IMG_20210318_134026_00_023.jpg",
       },
       {
-        id: "cafe",
-        name: "Cafe Area",
+        id: "pantry",
+        name: "Pantry",
         panoramaUrl: "/360 view/IMG_20210318_155931_00_043.jpg",
-        thumbnail: "/360 view/IMG_20210318_155931_00_043.jpg",
       },
       {
         id: "mailbox",
         name: "Mailbox",
         panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
-        thumbnail: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=400&q=80",
       },
       {
         id: "locker-room",
         name: "Locker Room",
         panoramaUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=2400&q=85",
-        thumbnail: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80",
       },
     ],
   };
@@ -592,16 +618,23 @@ export default function VirtualTourPage() {
    * marker or highlight doesn't land exactly on its room once rendered at
    * full size.
    */
+
   const floorPlans: Record<string, FloorPlanData> = {
     tower6789: {
-      src: "/tower6789-layout.png",
+      src: "/tower6789-layout.jpg",
       alt: "Tower 6789 floor layout",
-      width: 1254,
-      height: 1254,
+      width: 1054,
+      height: 1054,
       hotspots: [
-        { id: "reception", label: "Reception", x: 50, y: 15, width: 18, height: 12 },
-        { id: "meeting-space", label: "Meeting room", x: 68, y: 8, width: 16, height: 10 },
-        { id: "mfp-space", label: "MFP space", x: 31, y: 21, width: 14, height: 10 },
+        { id: "reception", label: "Reception", x: 50, y: 13.5},
+        { id: "conference-room-a", label: "Conference Room A", x: 69, y: 6},
+        { id: "conference-room-b", label: "Conference Room B", x: 31.5, y: 6},
+        { id: "conference-room-c", label: "Conference Room C", x: 21, y: 75},
+        { id: "pantry", label: "Pantry", x: 50, y: 54},
+        { id: "lounge", label: "Lounge", x: 39, y: 21},
+        { id: "brochure-lockers", label: "Brochure & Locker Area", x: 76, y: 21},
+        { id: "hallway-1", label: "Hallway", x: 15, y: 50},
+        { id: "hallway-2", label: "Hallway", x: 86, y: 50},
       ],
     },
     insularLife: {
@@ -610,12 +643,13 @@ export default function VirtualTourPage() {
       width: 1631,
       height: 964,
       hotspots: [
-        { id: "reception", label: "Reception", x: 40, y: 51, width: 14, height: 12 },
-        { id: "meeting-space", label: "Meeting room", x: 53, y: 55, width: 14, height: 12 },
-        { id: "cafe", label: "Cafe area", x: 42, y: 66, width: 14, height: 12 },
-        { id: "lounge", label: "Business lounge", x: 46, y: 48, width: 14, height: 10 },
-        { id: "mailbox", label: "Mailbox", x: 40, y: 56, width: 10, height: 8 },
-        { id: "locker-room", label: "Locker room", x: 77, y: 17, width: 14, height: 10 },
+        { id: "reception", label: "Reception", x: 41.5, y: 51},
+        { id: "lounge", label: "Lounge", x: 47.5, y: 46.5},
+        { id: "meeting-room", label: "Meeting Room", x: 54.5, y: 52.5},
+        { id: "cafe", label: "Cafe Area", x: 42.5, y: 63},
+        { id: "mailbox", label: "Mailbox", x: 41.5, y: 55},
+        { id: "locker-room", label: "Locker Area", x: 77.5, y: 18},
+        { id: "hallway", label: "Hallway", x: 60, y: 46.5},
       ],
     },
   };
@@ -629,12 +663,6 @@ export default function VirtualTourPage() {
 
   const activeRooms = roomsByTab[activeTab as keyof typeof roomsByTab];
   const activeFloorPlan = floorPlans[activeTab as keyof typeof floorPlans];
-
-  // Thumbnail lookup for the floor plan's hover previews.
-  const activeThumbnails = activeRooms.reduce<Record<string, string>>((acc, room) => {
-    acc[room.id] = room.thumbnail;
-    return acc;
-  }, {});
 
   // Put the selected room first so the viewer opens directly on it.
   const orderedRooms = selectedRoomId
@@ -723,7 +751,6 @@ export default function VirtualTourPage() {
             >
               <FloorPlanViewer
                 floorPlan={activeFloorPlan}
-                thumbnails={activeThumbnails}
                 activeRoomId={selectedRoomId}
                 onSelectRoom={goToRoom}
               />
