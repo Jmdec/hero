@@ -25,12 +25,11 @@ import {
   Plus,
   Minus,
   Compass,
-  Eye,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const Immersive360Tour = dynamic(
   () => import("../../components/PanoramaViewer").then((mod) => ({ default: mod.Immersive360Tour })),
@@ -98,11 +97,6 @@ function FloorPlanViewer({
   const lastPointer = useRef({ x: 0, y: 0 });
 
   // Reset zoom/pan whenever the building/floor plan changes.
-  useEffect(() => {
-    setScale(1);
-    setPan({ x: 0, y: 0 });
-    setHoveredId(null);
-  }, [floorPlan.src]);
 
   useEffect(() => {
     const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -184,7 +178,7 @@ function FloorPlanViewer({
         style={{
           transform: `scale(${scale}) translate(${pan.x}px, ${pan.y}px)`,
           transformOrigin: "center center",
-          transition: isPanning.current ? "none" : "transform 0.2s ease-out",
+          transition: "transform 0.2s ease-out",
         }}
       >
         <Image src={floorPlan.src} alt={floorPlan.alt} fill className="object-contain" unoptimized />
@@ -305,7 +299,6 @@ export default function VirtualTourPage() {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const viewerSectionRef = useRef<HTMLDivElement>(null);
   const panoramaRef = useRef<HTMLDivElement>(null);
-  const [isActive, setIsActive] = useState(false)
 
   const tourLocations = {
     tower6789: [
@@ -333,7 +326,7 @@ export default function VirtualTourPage() {
           "Flexible seating layout",
         ],
       },
-      
+
       {
         id: "conference-room-b",
         title: "Conference Room B",
@@ -346,7 +339,7 @@ export default function VirtualTourPage() {
           "Flexible seating layout",
         ],
       },
-      
+
       {
         id: "conference-room-c",
         title: "Conference Room C",
@@ -384,8 +377,8 @@ export default function VirtualTourPage() {
         ],
       },
       {
-        id: "cafe-area",
-        title: "Cafe Area",
+        id: "pantry",
+        title: "Pantry",
         description:
           "Relax and recharge in our shared café space with complimentary refreshments.",
         features: [
@@ -423,10 +416,22 @@ export default function VirtualTourPage() {
         ],
       },
       {
-        id: "meeting-space",
-        title: "Conference Room",
+        id: "meeting-box",
+        title: "Meeting Box",
         description:
           "Fully equipped meeting rooms suitable for conferences, interviews, and client meetings.",
+        features: [
+          "Presentation display",
+          "Video conferencing",
+          "High-speed Wi-Fi",
+          "Private environment",
+        ],
+      },
+      {
+        id: "meeting-room",
+        title: "Meeting Room",
+        description:
+        "Fully equipped meeting rooms suitable for conferences, interviews, and client meetings.",
         features: [
           "Presentation display",
           "Video conferencing",
@@ -460,7 +465,7 @@ export default function VirtualTourPage() {
       },
       {
         id: "locker-room",
-        title: "Locker Area",
+        title: "Locker Room",
         description:
           "Secure personal lockers for members to safely store belongings during the workday.",
         features: [
@@ -537,22 +542,22 @@ export default function VirtualTourPage() {
       {
         id: "conference-room-a",
         name: "Conference Room A",
-        panoramaUrl: "/360 view/IMG_20210318_174813_00_060.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_174813_00_060.jpg",
       },
       {
         id: "conference-room-b",
-          name: "Conference Room B",
-        panoramaUrl: "/360 view/IMG_20210318_173158_00_049.jpg",
+        name: "Conference Room B",
+        panoramaUrl: "/360-view/IMG_20210318_173158_00_049.jpg",
       },
       {
         id: "conference-room-c",
-          name: "Conference Room C",
-        panoramaUrl: "/360 view/IMG_20210318_173158_00_049.jpg",
+        name: "Conference Room C",
+        panoramaUrl: "/360-view/IMG_20210318_173158_00_049.jpg",
       },
       {
         id: "pantry",
         name: "Pantry",
-        panoramaUrl: "/360 view/IMG_20210318_183019_00_073.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_183019_00_073.jpg",
       },
       {
         id: "brochure-lockers",
@@ -575,22 +580,22 @@ export default function VirtualTourPage() {
       {
         id: "meeting-box",
         name: "Meeting Box",
-        panoramaUrl: "/360 view/IMG_20210318_154223_00_039.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_154223_00_039.jpg",
       },
       {
         id: "hallway",
         name: "Hallway",
-        panoramaUrl: "/360 view/IMG_20210318_133045_00_019.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_133045_00_019.jpg",
       },
       {
-        id: "conference-room-a",
-        name: "Conference Room A",
-        panoramaUrl: "/360 view/IMG_20210318_134026_00_023.jpg",
+        id: "meeting-room",
+        name: "Meeting Room",
+        panoramaUrl: "/360-view/IMG_20210318_134026_00_023.jpg",
       },
       {
-        id: "pantry",
-        name: "Pantry",
-        panoramaUrl: "/360 view/IMG_20210318_155931_00_043.jpg",
+        id: "cafe",
+        name: "Cafe Area",
+        panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
       },
       {
         id: "mailbox",
@@ -626,15 +631,15 @@ export default function VirtualTourPage() {
       width: 1054,
       height: 1054,
       hotspots: [
-        { id: "reception", label: "Reception", x: 50, y: 13.5},
-        { id: "conference-room-a", label: "Conference Room A", x: 69, y: 6},
-        { id: "conference-room-b", label: "Conference Room B", x: 31.5, y: 6},
-        { id: "conference-room-c", label: "Conference Room C", x: 21, y: 75},
-        { id: "pantry", label: "Pantry", x: 50, y: 54},
-        { id: "lounge", label: "Lounge", x: 39, y: 21},
-        { id: "brochure-lockers", label: "Brochure & Locker Area", x: 76, y: 21},
-        { id: "hallway-1", label: "Hallway", x: 15, y: 50},
-        { id: "hallway-2", label: "Hallway", x: 86, y: 50},
+        { id: "reception", label: "Reception", x: 50, y: 13.5 },
+        { id: "conference-room-a", label: "Conference Room A", x: 69, y: 6 },
+        { id: "conference-room-b", label: "Conference Room B", x: 31.5, y: 6 },
+        { id: "conference-room-c", label: "Conference Room C", x: 21, y: 75 },
+        { id: "pantry", label: "Pantry", x: 50, y: 54 },
+        { id: "lounge", label: "Lounge", x: 39, y: 21 },
+        { id: "brochure-lockers", label: "Brochure & Locker Area", x: 76, y: 21 },
+        { id: "hallway-1", label: "Hallway", x: 15, y: 50 },
+        { id: "hallway-2", label: "Hallway", x: 86, y: 50 },
       ],
     },
     insularLife: {
@@ -643,13 +648,13 @@ export default function VirtualTourPage() {
       width: 1631,
       height: 964,
       hotspots: [
-        { id: "reception", label: "Reception", x: 41.5, y: 51},
-        { id: "lounge", label: "Lounge", x: 47.5, y: 46.5},
-        { id: "meeting-room", label: "Meeting Room", x: 54.5, y: 52.5},
-        { id: "cafe", label: "Cafe Area", x: 42.5, y: 63},
-        { id: "mailbox", label: "Mailbox", x: 41.5, y: 55},
-        { id: "locker-room", label: "Locker Area", x: 77.5, y: 18},
-        { id: "hallway", label: "Hallway", x: 60, y: 46.5},
+        { id: "reception", label: "Reception", x: 41.5, y: 51 },
+        { id: "lounge", label: "Lounge", x: 47.5, y: 46.5 },
+        { id: "meeting-room", label: "Meeting Room", x: 54.5, y: 52.5 },
+        { id: "cafe", label: "Cafe Area", x: 42.5, y: 63 },
+        { id: "mailbox", label: "Mailbox", x: 41.5, y: 55 },
+        { id: "locker-room", label: "Locker Room", x: 77.5, y: 18 },
+        { id: "hallway", label: "Hallway", x: 60, y: 46.5 },
       ],
     },
   };
@@ -675,7 +680,6 @@ export default function VirtualTourPage() {
 
   const goToRoom = (roomId: string) => {
     setSelectedRoomId(roomId);
-    setIsActive(false); // show the activation overlay again for the new room
     requestAnimationFrame(() => {
       panoramaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -684,7 +688,6 @@ export default function VirtualTourPage() {
   const switchBuilding = (tabId: string) => {
     setActiveTab(tabId);
     setSelectedRoomId(null);
-    setIsActive(false);
   };
 
   return (
@@ -750,6 +753,7 @@ export default function VirtualTourPage() {
               transition={{ duration: 0.25 }}
             >
               <FloorPlanViewer
+                key={activeFloorPlan.src}
                 floorPlan={activeFloorPlan}
                 activeRoomId={selectedRoomId}
                 onSelectRoom={goToRoom}
@@ -782,7 +786,7 @@ export default function VirtualTourPage() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.25 }}
-                    className="h-80 sm:h-105 md:h-125 lg:h-140 rounded-2xl border border-dashed border-gray-300 bg-white flex flex-col items-center justify-center text-center px-6 sm:px-8"
+                    className="min-h-[20rem] sm:min-h-[24rem] md:min-h-[28rem] lg:min-h-[32rem] rounded-2xl border border-dashed border-gray-300 bg-white flex flex-col items-center justify-center text-center px-6 sm:px-8"
                   >
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-50 flex items-center justify-center mb-3 sm:mb-4">
                       <Rotate3D className="w-4 h-4 sm:w-5 sm:h-5 text-[#1B3A8C]" />

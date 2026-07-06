@@ -69,16 +69,16 @@ export default function Navigation() {
     };
   }, []);
 
-  const handleInstallClick = async () => {
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === "accepted") {
-      setIsInstalled(true);
-    }
-    setInstallPrompt(null);
-    (window as any).deferredPWAInstallPrompt = null;
-  };
+  // const handleInstallClick = async () => {
+  //   if (!installPrompt) return;
+  //   await installPrompt.prompt();
+  //   const { outcome } = await installPrompt.userChoice;
+  //   if (outcome === "accepted") {
+  //     setIsInstalled(true);
+  //   }
+  //   setInstallPrompt(null);
+  //   (window as any).deferredPWAInstallPrompt = null;
+  // };
 
   const showInstallButton = !!installPrompt && !isInstalled;
 
@@ -154,7 +154,7 @@ export default function Navigation() {
             >
               Get a Quote
             </Link>
-            {showInstallButton && (
+            {/* {showInstallButton && (
               <button
                 onClick={handleInstallClick}
                 className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-[#1B3A8C] border border-[#3B5EA6] rounded-full hover:bg-[#C5D2EC]/30 transition-colors whitespace-nowrap"
@@ -162,7 +162,7 @@ export default function Navigation() {
                 <Download className="w-4 h-4 shrink-0" />
                 Install App
               </button>
-            )}
+            )} */}
           </div>
 
           {/* Mobile Menu Button */}
@@ -226,7 +226,7 @@ export default function Navigation() {
                     );
                   })}
                 <div className="pt-4 border-t border-gray-100 space-y-2">
-                  {showInstallButton && (
+                  {/* {showInstallButton && (
                     <button
                       onClick={() => {
                         handleInstallClick();
@@ -237,7 +237,7 @@ export default function Navigation() {
                       <Download className="w-4 h-4 shrink-0" />
                       Install App
                     </button>
-                  )}
+                  )} */}
                   {/* {isAuthenticated ? (
                   <div className="px-4 py-3">
                     <UserProfileDropdown />
