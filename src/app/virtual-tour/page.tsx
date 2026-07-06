@@ -19,32 +19,313 @@ import {
   Coffee,
   Lock,
   Armchair,
-  ArrowLeft,
+  Maximize2,
+  Minimize2,
+  RotateCcw,
+  Plus,
+  Minus,
+  Compass,
+  Eye,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const Immersive360Tour = dynamic(
   () => import("../../components/PanoramaViewer").then((mod) => ({ default: mod.Immersive360Tour })),
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-140 bg-[#0f172a] rounded-2xl flex items-center justify-center">
+      <div className="w-full h-80 sm:h-105 md:h-125 lg:h-140 bg-[#0f172a] rounded-2xl flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-[#1B3A8C] border-t-transparent mx-auto mb-4" />
-          <p className="text-white/60 text-sm">Loading 360° viewer…</p>
+          <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-[3px] border-[#FFC107] border-t-transparent mx-auto mb-3 sm:mb-4" />
+          <p className="text-white/60 text-xs sm:text-sm">Loading 360° viewer…</p>
         </div>
       </div>
     ),
   }
 );
 
+// ── Floor plan hotspot / data types ──────────────────────────────────────
+
+interface FloorPlanHotspot {
+  id: string;
+  label: string;
+  /** Center point, percentage of image width/height */
+  x: number;
+  y: number;
+  /** Highlighted region size, percentage of image width/height. Defaults applied if omitted. */
+  width?: number;
+  height?: number;
+}
+
+interface FloorPlanData {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  hotspots: FloorPlanHotspot[];
+}
+
+interface TourRoom {
+  id: string;
+  name: string;
+  panoramaUrl: string;
+  thumbnail: string;
+}
+
+// ── Floor plan viewer: zoom via buttons + drag to pan, SVG room highlighting, hover thumbnails, fullscreen ──
+
+const DEFAULT_REGION_W = 16;
+const DEFAULT_REGION_H = 12;
+const MIN_SCALE = 1;
+const MAX_SCALE = 4;
+
+function FloorPlanViewer({
+  floorPlan,
+  thumbnails,
+  activeRoomId,
+  onSelectRoom,
+}: {
+  floorPlan: FloorPlanData;
+  /** room id -> thumbnail image url, used for the hover preview */
+  thumbnails: Record<string, string>;
+  activeRoomId: string | null;
+  onSelectRoom: (id: string) => void;
+}) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const [scale, setScale] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  const isPanning = useRef(false);
+  const didDrag = useRef(false);
+  const lastPointer = useRef({ x: 0, y: 0 });
+
+  // Reset zoom/pan whenever the building/floor plan changes.
+  useEffect(() => {
+    setScale(1);
+    setPan({ x: 0, y: 0 });
+    setHoveredId(null);
+  }, [floorPlan.src]);
+
+  useEffect(() => {
+    const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handleFsChange);
+    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+  }, []);
+
+  const clampScale = (value: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
+
+  const zoomBy = (delta: number) => {
+    setScale((prev) => {
+      const next = clampScale(prev + delta);
+      if (next === MIN_SCALE) setPan({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const resetView = () => {
+    setScale(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  // Note: intentionally no wheel/scroll zoom handler here. Zooming the floor
+  // plan is done exclusively via the +/- buttons so that scrolling the page
+  // while the cursor happens to be over the floor plan behaves like normal
+  // page scroll. Dragging still pans the plan once zoomed in.
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    isPanning.current = true;
+    didDrag.current = false;
+    lastPointer.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!isPanning.current) return;
+    const dx = e.clientX - lastPointer.current.x;
+    const dy = e.clientY - lastPointer.current.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag.current = true;
+    if (scale > 1) {
+      setPan((prev) => ({ x: prev.x + dx / scale, y: prev.y + dy / scale }));
+    }
+    lastPointer.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const onPointerUp = () => {
+    isPanning.current = false;
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      wrapperRef.current?.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  const handleHotspotClick = (id: string) => {
+    if (didDrag.current) return; // ignore clicks that were actually a drag/pan
+    onSelectRoom(id);
+  };
+
+  const controlButtonClass =
+    "w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg bg-white/90 border border-gray-200 text-gray-600 shadow-sm hover:bg-white hover:text-[#1B3A8C] hover:border-gray-300 transition-colors backdrop-blur-sm";
+
+  return (
+    <div
+      ref={wrapperRef}
+      className={`relative w-full rounded-2xl overflow-hidden border border-gray-200 bg-white ${isFullscreen ? "h-screen bg-white" : ""
+        }`}
+      style={!isFullscreen ? { aspectRatio: `${floorPlan.width} / ${floorPlan.height}` } : undefined}
+    >
+      {/* Pannable / zoomable layer */}
+      <div
+        className="absolute inset-0 touch-none cursor-grab active:cursor-grabbing"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerUp}
+        style={{
+          transform: `scale(${scale}) translate(${pan.x}px, ${pan.y}px)`,
+          transformOrigin: "center center",
+          transition: isPanning.current ? "none" : "transform 0.2s ease-out",
+        }}
+      >
+        <Image src={floorPlan.src} alt={floorPlan.alt} fill className="object-contain" unoptimized />
+
+        {/* Room region highlights */}
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full"
+        >
+          {floorPlan.hotspots.map((h) => {
+            const w = h.width ?? DEFAULT_REGION_W;
+            const ht = h.height ?? DEFAULT_REGION_H;
+            const isActive = activeRoomId === h.id;
+            const isHovered = hoveredId === h.id;
+            return (
+              <rect
+                key={h.id}
+                x={h.x - w / 2}
+                y={h.y - ht / 2}
+                width={w}
+                height={ht}
+                rx={2}
+                vectorEffect="non-scaling-stroke"
+                style={{
+                  cursor: "pointer",
+                  fill: isActive
+                    ? "rgba(27, 58, 140, 0.22)"
+                    : isHovered
+                      ? "rgba(27, 58, 140, 0.12)"
+                      : "rgba(27, 58, 140, 0)",
+                  stroke: isActive ? "#1B3A8C" : isHovered ? "#1B3A8C" : "rgba(27, 58, 140, 0.35)",
+                  strokeWidth: isActive ? 1.5 : 1,
+                  strokeDasharray: isActive ? "none" : "3 2",
+                  transition: "fill 0.15s ease, stroke 0.15s ease",
+                }}
+                onMouseEnter={() => setHoveredId(h.id)}
+                onMouseLeave={() => setHoveredId((cur) => (cur === h.id ? null : cur))}
+                onClick={() => handleHotspotClick(h.id)}
+              />
+            );
+          })}
+        </svg>
+
+        {/* Marker dots + labels (kept from the original design, now also active-aware) */}
+        {floorPlan.hotspots.map((h) => {
+          const isActive = activeRoomId === h.id;
+          return (
+            <button
+              key={h.id}
+              onClick={() => handleHotspotClick(h.id)}
+              onMouseEnter={() => setHoveredId(h.id)}
+              onMouseLeave={() => setHoveredId((cur) => (cur === h.id ? null : cur))}
+              style={{ left: `${h.x}%`, top: `${h.y}%` }}
+              className="group/hotspot absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center focus:outline-none p-2 -m-2"
+              aria-label={`View ${h.label} in 360°`}
+            >
+              <span className="relative flex h-4 w-4">
+                {isActive && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1B3A8C] opacity-60" />
+                )}
+                <span
+                  className={`relative inline-flex h-4 w-4 rounded-full ring-2 ring-white shadow-md group-hover/hotspot:scale-110 transition-transform ${isActive ? "bg-[#C9A15D]" : "bg-[#1B3A8C]"
+                    }`}
+                />
+              </span>
+              <span className="mt-1.5 px-2 py-1 rounded-md bg-[#0f172a] text-white text-[11px] font-medium whitespace-nowrap opacity-0 group-hover/hotspot:opacity-100 group-focus/hotspot:opacity-100 transition-opacity shadow-lg pointer-events-none">
+                {h.label}
+              </span>
+
+              {/* Hover thumbnail preview — counter-scaled so it stays a consistent size while zoomed */}
+              <AnimatePresence>
+                {hoveredId === h.id && thumbnails[h.id] && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 4 }}
+                    transition={{ duration: 0.15 }}
+                    style={{ transform: `scale(${1 / scale})`, transformOrigin: "bottom center" }}
+                    className="absolute bottom-full mb-2 w-32 rounded-lg overflow-hidden shadow-xl ring-1 ring-black/10 pointer-events-none"
+                  >
+                    <img
+                      src={thumbnails[h.id]}
+                      alt={h.label}
+                      className="w-full h-20 object-cover"
+                    />
+                    <div className="bg-[#0f172a] text-white text-[10px] text-center py-1">
+                      {h.label}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Zoom + fullscreen controls (unscaled, pinned to the outer frame) */}
+      <div className="absolute bottom-3 right-3 z-20 flex flex-col gap-1.5">
+        <button className={controlButtonClass} onClick={() => zoomBy(0.4)} title="Zoom in">
+          <Plus className="w-4 h-4" />
+        </button>
+        <button className={controlButtonClass} onClick={() => zoomBy(-0.4)} title="Zoom out">
+          <Minus className="w-4 h-4" />
+        </button>
+        <button className={controlButtonClass} onClick={resetView} title="Reset view">
+          <RotateCcw className="w-4 h-4" />
+        </button>
+      </div>
+
+      <button
+        className={`absolute top-3 right-3 z-20 ${controlButtonClass}`}
+        onClick={toggleFullscreen}
+        title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+      >
+        {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+      </button>
+
+      {scale > 1 && (
+        <div className="absolute bottom-3 left-3 z-20 px-2.5 py-1 rounded-md bg-white/90 border border-gray-200 text-[11px] font-medium text-gray-600 backdrop-blur-sm">
+          {Math.round(scale * 100)}%
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function VirtualTourPage() {
   const [activeTab, setActiveTab] = useState("tower6789");
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const viewerSectionRef = useRef<HTMLDivElement>(null);
+  const panoramaRef = useRef<HTMLDivElement>(null);
+  const [isActive, setIsActive] = useState(false)
 
   const tourLocations = {
     tower6789: [
@@ -206,7 +487,7 @@ export default function VirtualTourPage() {
     "Secure Lockers": <Lock className="w-3.5 h-3.5" />,
   };
 
-  const roomsByTab = {
+  const roomsByTab: Record<string, TourRoom[]> = {
     tower6789: [
       {
         id: "reception",
@@ -215,16 +496,34 @@ export default function VirtualTourPage() {
         thumbnail: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80",
       },
       {
-        id: "meeting-space",
+        id: "hallway",
+        name: "Hallway",
+        panoramaUrl: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
+        thumbnail: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
+      },
+      {
+        id: "meeting-box",
+        name: "Meeting Box",
+        panoramaUrl: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
+        thumbnail: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
+      },
+      {
+        id: "meeting-space-1",
         name: "Meeting Room",
-        panoramaUrl: "/view.jpg",
+        panoramaUrl: "/360 view/IMG_20210318_174813_00_060.jpg",
         thumbnail: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=400&q=80",
       },
       {
-        id: "mfp-space",
-        name: "MFP Space",
-        panoramaUrl: "https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=2400&q=85",
-        thumbnail: "https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=400&q=80",
+        id: "meeting-space-2",
+        name: "Meeting Room",
+        panoramaUrl: "/360 view/IMG_20210318_173158_00_049.jpg",
+        thumbnail: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=400&q=80",
+      },
+      {
+        id: "cafe",
+        name: "Cafe Area",
+        panoramaUrl: "/360 view/IMG_20210318_183019_00_073.jpg",
+        thumbnail: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&q=80",
       },
     ],
 
@@ -236,22 +535,34 @@ export default function VirtualTourPage() {
         thumbnail: "https://images.unsplash.com/photo-1486946255434-2466348c2166?w=400&q=80",
       },
       {
+        id: "lounge",
+        name: "Lounge",
+        panoramaUrl: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&q=80",
+        thumbnail: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&q=80",
+      },
+      {
+        id: "meeting-box",
+        name: "Meeting Box",
+        panoramaUrl: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
+        thumbnail: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
+      },
+      {
+        id: "hallway",
+        name: "Hallway",
+        panoramaUrl: "/360 view/IMG_20210318_133045_00_019.jpg",
+        thumbnail: "/360 view/IMG_20210318_133045_00_019.jpg",
+      },
+      {
         id: "meeting-space",
         name: "Meeting Room",
-        panoramaUrl: "https://images.unsplash.com/photo-1431540015161-0bf868a2d407?w=2400&q=85",
-        thumbnail: "https://images.unsplash.com/photo-1431540015161-0bf868a2d407?w=400&q=80",
+        panoramaUrl: "/360 view/IMG_20210318_134026_00_023.jpg",
+        thumbnail: "/360 view/IMG_20210318_134026_00_023.jpg",
       },
       {
         id: "cafe",
         name: "Cafe Area",
-        panoramaUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=2400&q=85",
-        thumbnail: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&q=80",
-      },
-      {
-        id: "lounge",
-        name: "Business Lounge",
-        panoramaUrl: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=2400&q=85",
-        thumbnail: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&q=80",
+        panoramaUrl: "/360 view/IMG_20210318_155931_00_043.jpg",
+        thumbnail: "/360 view/IMG_20210318_155931_00_043.jpg",
       },
       {
         id: "mailbox",
@@ -271,32 +582,26 @@ export default function VirtualTourPage() {
   /**
    * Floor plans, one per building. Hotspot x/y are percentages of the image's
    * width/height, so they stay correctly positioned at any render size.
-   * Each hotspot id must match an id in roomsByTab[building] and
-   * tourLocations[building] so it can open the right panorama.
+   * width/height (also percentages) describe the highlighted room region drawn
+   * around that center point. Each hotspot id must match an id in
+   * roomsByTab[building] and tourLocations[building] so it can open the right
+   * panorama.
    *
    * NOTE: hotspot coordinates below are eyeballed against the supplied floor
-   * plan images. Nudge the x/y values a couple of points if a marker doesn't
-   * land exactly on its room once you see it rendered at full size.
+   * plan images. Nudge the x/y/width/height values a couple of points if a
+   * marker or highlight doesn't land exactly on its room once rendered at
+   * full size.
    */
-  const floorPlans: Record<
-    string,
-    {
-      src: string;
-      alt: string;
-      width: number;
-      height: number;
-      hotspots: { id: string; label: string; x: number; y: number }[];
-    }
-  > = {
+  const floorPlans: Record<string, FloorPlanData> = {
     tower6789: {
       src: "/tower6789-layout.png",
       alt: "Tower 6789 floor layout",
       width: 1254,
       height: 1254,
       hotspots: [
-        { id: "reception", label: "Reception", x: 50, y: 15 },
-        { id: "meeting-space", label: "Meeting room", x: 68, y: 8 },
-        { id: "mfp-space", label: "MFP space", x: 31, y: 21 },
+        { id: "reception", label: "Reception", x: 50, y: 15, width: 18, height: 12 },
+        { id: "meeting-space", label: "Meeting room", x: 68, y: 8, width: 16, height: 10 },
+        { id: "mfp-space", label: "MFP space", x: 31, y: 21, width: 14, height: 10 },
       ],
     },
     insularLife: {
@@ -305,55 +610,60 @@ export default function VirtualTourPage() {
       width: 1631,
       height: 964,
       hotspots: [
-        { id: "reception", label: "Reception", x: 40, y: 51 },
-        { id: "meeting-space", label: "Meeting room", x: 53, y: 55 },
-        { id: "cafe", label: "Cafe area", x: 42, y: 66 },
-        { id: "lounge", label: "Business lounge", x: 46, y: 48 },
-        { id: "mailbox", label: "Mailbox", x: 40, y: 56 },
-        { id: "locker-room", label: "Locker room", x: 77, y: 17 },
+        { id: "reception", label: "Reception", x: 40, y: 51, width: 14, height: 12 },
+        { id: "meeting-space", label: "Meeting room", x: 53, y: 55, width: 14, height: 12 },
+        { id: "cafe", label: "Cafe area", x: 42, y: 66, width: 14, height: 12 },
+        { id: "lounge", label: "Business lounge", x: 46, y: 48, width: 14, height: 10 },
+        { id: "mailbox", label: "Mailbox", x: 40, y: 56, width: 10, height: 8 },
+        { id: "locker-room", label: "Locker room", x: 77, y: 17, width: 14, height: 10 },
       ],
     },
   };
 
-  const floorPlanInstructions = [
+  const instructions = [
     { icon: MapPin, text: "Click a marker to enter that room" },
-    { icon: Building2, text: "Switch buildings using the tabs above" },
-    { icon: Play, text: "Every marker opens its own 360° view" },
-  ];
-
-  const viewerInstructions = [
-    { icon: MousePointer2, text: "Drag to look around the room" },
-    { icon: Rotate3D, text: "Scroll to zoom in or out" },
-    { icon: ArrowLeft, text: "Use back to return to the floor plan" },
+    { icon: Compass, text: "Drag the floor plan to pan; use +/- to zoom it" },
+    { icon: MousePointer2, text: "Click into the 360° view, then drag to look around and scroll to zoom" },
+    { icon: Maximize2, text: "Use the fullscreen icon for an immersive view" },
   ];
 
   const activeRooms = roomsByTab[activeTab as keyof typeof roomsByTab];
   const activeFloorPlan = floorPlans[activeTab as keyof typeof floorPlans];
 
+  // Thumbnail lookup for the floor plan's hover previews.
+  const activeThumbnails = activeRooms.reduce<Record<string, string>>((acc, room) => {
+    acc[room.id] = room.thumbnail;
+    return acc;
+  }, {});
+
   // Put the selected room first so the viewer opens directly on it.
   const orderedRooms = selectedRoomId
     ? [...activeRooms].sort((a, b) => {
-        if (a.id === selectedRoomId) return -1;
-        if (b.id === selectedRoomId) return 1;
-        return 0;
-      })
+      if (a.id === selectedRoomId) return -1;
+      if (b.id === selectedRoomId) return 1;
+      return 0;
+    })
     : activeRooms;
 
   const goToRoom = (roomId: string) => {
     setSelectedRoomId(roomId);
-    viewerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setIsActive(false); // show the activation overlay again for the new room
+    requestAnimationFrame(() => {
+      panoramaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const switchBuilding = (tabId: string) => {
     setActiveTab(tabId);
     setSelectedRoomId(null);
+    setIsActive(false);
   };
 
   return (
     <div className="min-h-screen bg-white">
 
-      {/* ── Hero — unchanged ── */}
-      <section className="relative text-white py-20 lg:py-32 overflow-hidden">
+      {/* ── Hero ── */}
+      <section className="relative text-white py-14 sm:py-20 md:py-24 lg:py-32 overflow-hidden">
         <div className="absolute inset-0">
           <Image
             src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80"
@@ -372,105 +682,103 @@ export default function VirtualTourPage() {
             transition={{ duration: 0.5 }}
             className="text-center max-w-3xl mx-auto"
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6">
               Virtual Office tour
             </h1>
-            <p className="text-xl text-gray-300">
+            <p className="text-base sm:text-lg md:text-xl text-gray-300">
               Explore our state-of-the-art facilities from the comfort of your home.
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* ── Floor plan → hotspot → 360° viewer ── */}
-      <section ref={viewerSectionRef} className="py-12 bg-gray-50 scroll-mt-24">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* ── Floor plan + 360° viewer ── */}
+      <section ref={viewerSectionRef} className="py-8 sm:py-10 md:py-12 bg-gray-50 scroll-mt-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Location tabs */}
-          <div className="flex gap-2 mb-6">
+          <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
             {locationTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => switchBuilding(tab.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                  activeTab === tab.id
-                    ? "bg-[#1B3A8C] text-white border-[#1B3A8C] shadow-sm"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-gray-900"
-                }`}
+                className={`flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium border transition-all ${activeTab === tab.id
+                  ? "bg-[#1B3A8C] text-white border-[#1B3A8C] shadow-sm"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-gray-900"
+                  }`}
               >
-                <tab.icon className="w-4 h-4" />
+                <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 {tab.label}
               </button>
             ))}
           </div>
 
-          <AnimatePresence mode="wait">
-            {selectedRoomId === null ? (
-              /* ── Floor plan with clickable hotspots ── */
-              <motion.div
-                key={`floorplan-${activeTab}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
-                className="relative w-full rounded-2xl overflow-hidden border border-gray-200 bg-white"
-                style={{ aspectRatio: `${activeFloorPlan.width} / ${activeFloorPlan.height}` }}
-              >
-                <Image
-                  src={activeFloorPlan.src}
-                  alt={activeFloorPlan.alt}
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-                {activeFloorPlan.hotspots.map((hotspot) => (
-                  <button
-                    key={hotspot.id}
-                    onClick={() => goToRoom(hotspot.id)}
-                    style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%` }}
-                    className="group/hotspot absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center focus:outline-none"
-                    aria-label={`View ${hotspot.label} in 360°`}
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 items-start">
+            {/* Floor plan panel */}
+            <motion.div
+              key={`floorplan-${activeTab}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <FloorPlanViewer
+                floorPlan={activeFloorPlan}
+                thumbnails={activeThumbnails}
+                activeRoomId={selectedRoomId}
+                onSelectRoom={goToRoom}
+              />
+            </motion.div>
+
+            {/* 360° viewer panel */}
+            <div ref={panoramaRef} className="relative scroll-mt-24">
+              <AnimatePresence mode="wait">
+                {selectedRoomId ? (
+                  <>
+                    <motion.div
+                      key={`viewer-${activeTab}-${selectedRoomId}`}
+                      initial={{ opacity: 0, scale: 0.98 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <Immersive360Tour
+                        rooms={orderedRooms}
+                        initialRoomId={selectedRoomId}
+                        isEmbedded
+                      />
+                    </motion.div>
+                  </>
+                ) : (
+                  <motion.div
+                    key="viewer-placeholder"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="h-80 sm:h-105 md:h-125 lg:h-140 rounded-2xl border border-dashed border-gray-300 bg-white flex flex-col items-center justify-center text-center px-6 sm:px-8"
                   >
-                    <span className="relative flex h-4 w-4">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1B3A8C] opacity-60" />
-                      <span className="relative inline-flex h-4 w-4 rounded-full bg-[#1B3A8C] ring-2 ring-white shadow-md group-hover/hotspot:scale-110 transition-transform" />
-                    </span>
-                    <span className="mt-1.5 px-2 py-1 rounded-md bg-[#0f172a] text-white text-[11px] font-medium whitespace-nowrap opacity-0 group-hover/hotspot:opacity-100 group-focus/hotspot:opacity-100 transition-opacity shadow-lg pointer-events-none">
-                      {hotspot.label}
-                    </span>
-                  </button>
-                ))}
-              </motion.div>
-            ) : (
-              /* ── 360° viewer for the selected room ── */
-              <motion.div
-                key={`viewer-${activeTab}-${selectedRoomId}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
-              >
-                <button
-                  onClick={() => setSelectedRoomId(null)}
-                  className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-lg text-sm font-medium text-[#1B3A8C] bg-white border border-gray-200 hover:border-gray-300 transition-colors"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to floor plan
-                </button>
-                <Immersive360Tour rooms={orderedRooms} isEmbedded={true} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-50 flex items-center justify-center mb-3 sm:mb-4">
+                      <Rotate3D className="w-4 h-4 sm:w-5 sm:h-5 text-[#1B3A8C]" />
+                    </div>
+                    <p className="text-gray-900 font-semibold mb-1 text-sm sm:text-base">Select a room to begin</p>
+                    <p className="text-xs sm:text-sm text-gray-500 max-w-xs">
+                      Click any marker on the <b>floor plan</b> or a <b>room card</b> below to open its 360° view here.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
 
           {/* Hint strip */}
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            {(selectedRoomId === null ? floorPlanInstructions : viewerInstructions).map((item) => (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
+            {instructions.map((item) => (
               <div
                 key={item.text}
                 className="flex items-center gap-2.5 bg-white border border-gray-100 rounded-lg px-3 py-2.5"
               >
                 <item.icon className="w-4 h-4 text-[#1B3A8C] shrink-0" />
-                <span className="text-md text-gray-500">{item.text}</span>
+                <span className="text-xs sm:text-sm text-gray-500">{item.text}</span>
               </div>
             ))}
           </div>
@@ -478,62 +786,78 @@ export default function VirtualTourPage() {
       </section>
 
       {/* Tour locations */}
-      <section className="py-16 bg-white">
+      <section className="py-10 sm:py-14 md:py-16 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          <div className="mb-10">
-            <p className="text-sm font-semibold tracking-widest text-[#1B3A8C] uppercase mb-2">
+          <div className="mb-6 sm:mb-8 md:mb-10">
+            <p className="text-xs sm:text-sm font-semibold tracking-widest text-[#1B3A8C] uppercase mb-2">
               {locationTabs.find((t) => t.id === activeTab)?.label}
             </p>
-            <h2 className="text-3xl font-bold text-gray-900">Explore our spaces</h2>
-            <p className="text-gray-500 mt-1 text-sm">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Explore our spaces</h2>
+            <p className="text-gray-500 mt-1 text-xs sm:text-sm">
               Every area is designed to support how you work best. Click a card to jump straight
               into its 360° view.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tourLocations[activeTab as keyof typeof tourLocations].map((location, index) => (
-              <motion.button
-                key={location.id}
-                onClick={() => goToRoom(location.id)}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.07 }}
-                className="group flex flex-col text-left bg-white border border-gray-150 rounded-2xl p-5 hover:border-gray-300 hover:shadow-sm transition-all"
-              >
-                {/* Icon + title */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                    <Play className="w-3.5 h-3.5 text-[#1B3A8C]" />
+            {tourLocations[activeTab as keyof typeof tourLocations].map((location, index) => {
+              const isActive = selectedRoomId === location.id;
+              return (
+                <motion.button
+                  key={location.id}
+                  onClick={() => goToRoom(location.id)}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.07 }}
+                  className={`group flex flex-col text-left bg-white border rounded-2xl p-4 sm:p-5 transition-all ${isActive
+                    ? "border-[#1B3A8C] ring-2 ring-[#1B3A8C]/20 shadow-sm"
+                    : "border-gray-150 hover:border-gray-300 hover:shadow-sm"
+                    }`}
+                >
+                  {/* Icon + title */}
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                      <div
+                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-[#1B3A8C]" : "bg-blue-50"
+                          }`}
+                      >
+                        <Play className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isActive ? "text-white" : "text-[#1B3A8C]"}`} />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 text-lg sm:text-xl truncate">{location.title}</h3>
+                    </div>
+                    {isActive && (
+                      <span className="text-[10px] font-semibold tracking-wide uppercase text-[#1B3A8C] bg-[#1B3A8C]/10 px-2 py-1 rounded-full shrink-0">
+                        Viewing
+                      </span>
+                    )}
                   </div>
-                  <h3 className="font-semibold text-gray-900 text-xl">{location.title}</h3>
-                </div>
 
-                <p className="text-md text-gray-500 leading-relaxed mb-4">{location.description}</p>
+                  <p className="text-sm sm:text-md text-gray-500 leading-relaxed mb-4">{location.description}</p>
 
-                <ul className="mt-auto space-y-2">
-                  {location.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-sm text-gray-500">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </motion.button>
-            ))}
+                  <ul className="mt-auto space-y-2">
+                    {location.features.map((feature) => (
+                      <li key={feature} className="flex items-center gap-2 text-sm text-gray-500">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </motion.button>
+              );
+            })}
           </div>
 
           {/* Services */}
-          <div className="mt-8 border border-gray-100 rounded-2xl p-6">
-            <p className="text-[14px] font-semibold tracking-widest text-gray-400 uppercase mb-4">
+          <div className="mt-6 sm:mt-8 border border-gray-100 rounded-2xl p-4 sm:p-6">
+            <p className="text-xs sm:text-[14px] font-semibold tracking-widest text-gray-400 uppercase mb-3 sm:mb-4">
               Available services
             </p>
             <div className="flex flex-wrap gap-2">
               {buildingServices[activeTab as keyof typeof buildingServices].map((service) => (
                 <span
                   key={service}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 bg-gray-50 text-xs text-gray-700"
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border border-gray-200 bg-gray-50 text-[11px] sm:text-xs text-gray-700"
                 >
                   <span className="text-gray-400">{serviceIconMap[service]}</span>
                   {service}
@@ -545,24 +869,24 @@ export default function VirtualTourPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 bg-linear-to-r from-[#0D47A1] to-[#00ACC1]">
+      <section className="py-14 sm:py-16 md:py-20 bg-linear-to-r from-[#0D47A1] to-[#00ACC1]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 sm:mb-6">
             Ready to See It in person?
           </h2>
-          <p className="text-xl text-gray-100 mb-8">
+          <p className="text-base sm:text-lg md:text-xl text-gray-100 mb-6 sm:mb-8">
             Book a tour or contact us for more information about our services and amenities.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <Link
               href="/reservation"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-semibold hover:bg-gray-100 transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-white text-[#1B3A8C] rounded-full font-semibold text-sm sm:text-base hover:bg-gray-100 transition-colors"
             >
               Book a Tour
             </Link>
             <Link
               href="/contact"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-semibold hover:bg-white/10 transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-transparent border-2 border-white text-white rounded-full font-semibold text-sm sm:text-base hover:bg-white/10 transition-colors"
             >
               Contact Us
             </Link>

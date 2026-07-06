@@ -41,7 +41,7 @@ function Modal({ open, onClose, title, children }: ModalProps) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
             <div
                 className="absolute inset-0 bg-black/40"
                 onClick={onClose}
@@ -51,7 +51,7 @@ function Modal({ open, onClose, title, children }: ModalProps) {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="modal-title"
-                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] flex flex-col overflow-hidden"
+                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[calc(100vw-1.5rem)] sm:max-w-3xl max-h-[85vh] sm:max-h-[80vh] flex flex-col overflow-hidden"
             >
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
                     <h2 id="modal-title" className="text-base font-bold text-gray-900">{title}</h2>
@@ -645,10 +645,10 @@ const Chatbot = () => {
             {!isChatOpen && (
                 <button
                     onClick={() => setIsChatOpen(true)}
-                    className="fixed bottom-6 right-5 z-50 w-14 h-14 rounded-full bg-[#1B3A8C] hover:bg-[#16318a] flex items-center justify-center shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 group"
+                    className="fixed z-999 flex items-center justify-center rounded-full bg-[#1B3A8C] hover:bg-[#16318a] shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 group bottom-4 right-4 w-13 h-13 sm:bottom-6 sm:right-5 sm:w-14 sm:h-14"
                     aria-label="Open chat"
                 >
-                    <MessageCircle className="w-6 h-6 text-white transition-transform group-hover:scale-110" />
+                    <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white transition-transform group-hover:scale-110" />
                 </button>
             )}
 
@@ -657,7 +657,7 @@ const Chatbot = () => {
                 <div
                     role="dialog"
                     aria-label="HERO Serviced Office chat"
-                    className="fixed bottom-6 right-5 z-50 w-[calc(100vw-40px)] md:w-95 h-145 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-100 animate-[chatIn_0.2s_ease-out]"
+                    className="fixed bottom-6 right-5 z-1000 w-[calc(100vw-40px)] h-140 lg:h-145 md:w-100 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-100 animate-[chatIn_0.2s_ease-out]"
                 >
                     <style>{`
                         @keyframes chatIn {
@@ -670,35 +670,34 @@ const Chatbot = () => {
                     `}</style>
 
                     {/* Header */}
-                    <div className="bg-[#1B3A8C] px-4 py-3 flex items-center justify-between shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+                    <div className="bg-[#1B3A8C] px-3 sm:px-4 py-3 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
                                 <Image
                                     src="/header_logo_icon.png"
                                     alt="HERO Serviced Office Logo"
                                     width={24}
                                     height={24}
-                                    className="w-6 h-6 object-contain"
+                                    className="w-5 h-5 sm:w-6 sm:h-6 object-contain"
                                 />
                             </div>
-
-                            <div>
-                                <p className="text-white font-semibold text-md leading-tight">
+                            <div className="min-w-0">
+                                <p className="text-white font-semibold text-sm sm:text-md leading-tight truncate">
                                     HERO Serviced Office
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 shrink-0">
                             {leadSubmitted && (
                                 <button
                                     onClick={handleTalkToAgent}
                                     disabled={isTyping || agentRequested}
-                                    className="flex items-center gap-1.5 text-white/90 hover:text-white hover:bg-white/15 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-white"
+                                    className="flex items-center gap-1.5 text-white/90 hover:text-white hover:bg-white/15 rounded-full px-2 sm:px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-white"
                                     aria-label="Talk to an agent"
                                     title="Talk to an agent"
                                 >
-                                    <UserRound className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline">
+                                    <UserRound className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="hidden md:inline">
                                         {agentRequested ? 'Agent requested' : 'Talk to an agent'}
                                     </span>
                                 </button>
@@ -748,7 +747,7 @@ const Chatbot = () => {
 
                         {/* Lead form */}
                         {!isResumingSession && isStarted && !leadSubmitted && (
-                            <div className="p-5 space-y-3">
+                            <div className="p-5 space-y-1 lg:space-y-2">
                                 <div className="text-center mb-4">
                                     <h2 className="text-lg font-bold text-gray-900">Your contact details</h2>
                                     <p className="text-xs text-gray-500 mt-1">
@@ -774,12 +773,7 @@ const Chatbot = () => {
                                                 aria-invalid={Boolean(hasError)}
                                                 aria-describedby={hasError ? `${field.key}-error` : undefined}
                                                 disabled={isSubmittingLead}
-                                                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${hasError
-                                                    ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-200"
-                                                    : touched[field.key] && !fieldErrors[field.key] && leadInfo[field.key]
-                                                        ? "border-emerald-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100"
-                                                        : "border-gray-200 focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20"
-                                                    }`}
+                                                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${hasError ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-200" : touched[field.key] && !fieldErrors[field.key] && leadInfo[field.key] ? "border-emerald-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100" : "border-gray-200 focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20"}`}
                                             />
                                             {hasError && (
                                                 <p id={`${field.key}-error`} className="text-[11px] text-red-500 pl-1 flex items-center gap-1">
@@ -858,10 +852,7 @@ const Chatbot = () => {
                                                 <span className="text-white text-xs font-bold">H</span>
                                             </div>
                                         )}
-                                        <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${msg.type === "user"
-                                            ? "bg-[#1B3A8C] text-white rounded-br-sm"
-                                            : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
-                                            }`}>
+                                        <div className={`max-w-[82%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${msg.type === "user" ? "bg-[#1B3A8C] text-white rounded-br-sm" : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"}`}>
                                             <p className="text-sm whitespace-pre-line leading-relaxed">{msg.text}</p>
                                             <p className={`text-[10px] mt-1 ${msg.type === "user" ? "text-blue-200 text-right" : "text-gray-400"}`}>
                                                 {msg.time}

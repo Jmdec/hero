@@ -245,7 +245,7 @@ function ColumnHeading({ children }: { children: React.ReactNode }) {
   return (
     <h3 className="relative inline-block text-[13px] tracking-[0.2em] uppercase text-white/90 mb-5 pb-3">
       {children}
-      <span className="absolute left-0 bottom-0 h-[2px] w-8 bg-[#FFC107]" />
+      <span className="absolute left-0 bottom-0 h-0.5 w-8 bg-[#FFC107]" />
     </h3>
   );
 }

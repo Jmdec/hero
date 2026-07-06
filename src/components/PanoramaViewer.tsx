@@ -40,7 +40,6 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
 
   const [selectedRoom, setSelectedRoom] = useState<RoomScene>(rooms.find((r) => r.id === initialRoomId) || rooms[0])
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [showCarousel, setShowCarousel] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [isAutoRotating, setIsAutoRotating] = useState(true)
@@ -236,18 +235,8 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     }`
 
   return (
-    <div className={`relative w-full ${isEmbedded ? "h-[560px]" : "h-screen"} bg-[#0A1420] overflow-hidden rounded-2xl ring-1 ring-white/10`}>
+    <div className={`relative w-full ${isEmbedded ? "h-140" : "h-screen"} bg-[#0A1420] overflow-hidden rounded-2xl ring-1 ring-white/10`}>
       <div ref={containerRef} className="absolute inset-0 cursor-grab" style={{ touchAction: "none" }} />
-
-      {/* Loading overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#0A1420]/85 backdrop-blur-sm z-30">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-[3px] border-[#C9A15D] border-t-transparent rounded-full animate-spin" />
-            <p className="text-white/60 text-xs tracking-[0.15em] uppercase">Loading 360° view…</p>
-          </div>
-        </div>
-      )}
 
       {/* Error overlay */}
       {loadError && (
@@ -263,7 +252,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
       <div className="absolute top-4 left-4 z-20 flex items-center gap-2.5 bg-[#0A1420]/80 backdrop-blur-md text-white pl-2.5 pr-4 py-1.5 rounded-full border border-[#C9A15D]/25 shadow-lg">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9A15D] opacity-60" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C9A15D]" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FFC107]" />
         </span>
         <span className="text-xs font-medium tracking-wide">{selectedRoom.name}</span>
       </div>
@@ -283,19 +272,15 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
           <div className="p-4 space-y-3">
             <div>
               <p className="text-white font-medium mb-0.5">{selectedRoom.name}</p>
-              <p className="text-white/50 text-xs">360° interactive view</p>
             </div>
             <ul className="space-y-1.5">
               {["Drag to look around", "Scroll to zoom in/out", "Click thumbnails to switch rooms"].map((tip) => (
                 <li key={tip} className="flex items-center gap-2 text-xs text-white/70">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#C9A15D] flex-shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#C9A15D] shrink-0" />
                   {tip}
                 </li>
               ))}
             </ul>
-            <p className="text-white/30 text-xs pt-2 border-t border-white/10">
-              Auto-rotation is {isAutoRotating ? "active" : "paused"}
-            </p>
           </div>
         </div>
       )}

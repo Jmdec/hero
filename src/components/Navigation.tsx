@@ -85,22 +85,31 @@ export default function Navigation() {
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? "hidden" : "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   return (
-    <nav className="sticky top-0 z-50 bg-white backdrop-blur-md shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="sticky top-0 z-1000 bg-white/95 backdrop-blur-md shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/header_logo_manila.png"
               alt="HERO Serviced Office"
-              width={150}
-              height={50}
+              width={170}
+              height={55}
+              className="w-32 sm:w-36 md:w-40 lg:w-44 h-auto"
             />
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden xl:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-0.5">
             {navLinks
               .filter((link) => link.href?.trim())
               .map((link) => {
@@ -109,11 +118,10 @@ export default function Navigation() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`relative p-2 text-[14px] font-medium rounded-lg transition-all duration-200 ${
-                      active
-                        ? "text-[#1B3A8C] bg-[#C5D2EC]/30"
-                        : "text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30"
-                    }`}
+                    className={`relative px-2 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${active
+                      ? "text-[#1B3A8C] bg-[#C5D2EC]/30"
+                      : "text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30"
+                      }`}
                   >
                     {link.label}
                     {active && (
@@ -128,7 +136,7 @@ export default function Navigation() {
           </div>
 
           {/* Right side: Language switcher + CTA + Install */}
-          <div className="hidden xl:flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2">
             <LanguageSwitcher />
             {/* {isAuthenticated ?
               <UserProfileDropdown /> :
@@ -160,9 +168,9 @@ export default function Navigation() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="xl:hidden p-2 text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30 rounded-lg transition-colors"
+            className="lg:hidden p-2 text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30 rounded-lg transition-colors"
           >
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            <Menu className="w-6 h-6" />
           </button>
         </div>
       </div>
@@ -170,50 +178,67 @@ export default function Navigation() {
       {/* Mobile Menu */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="xl:hidden bg-white border-t border-gray-100"
-          >
-            <div className="px-4 py-4 space-y-1">
-              {navLinks
-                .filter((link) => link?.href?.trim())
-                .map((link) => {
-                  const active = isActive(link.href);
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      onClick={() => setIsOpen(false)}
-                      className={`flex items-center justify-between px-4 py-3 text-base font-medium rounded-lg transition-colors ${
-                        active
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-black/40 z-998 lg:hidden"
+            />
+
+            <motion.div
+              initial={{ opacity: 15, y: 0 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.25 }}
+              className="fixed top-0 left-0 right-0 z-999 bg-white shadow-xl border-t border-gray-100 lg:hidden overflow-y-auto">
+
+              <div className="flex items-center justify-end h-16 md:h-20 mx-6">
+                <button
+                  onClick={() => setIsOpen(!isOpen)}
+                  className="lg:hidden p-2 text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-1">
+                {navLinks
+                  .filter((link) => link?.href?.trim())
+                  .map((link) => {
+                    const active = isActive(link.href);
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setIsOpen(false)}
+                        className={`flex items-center justify-between px-4 py-3 text-base font-medium rounded-lg transition-colors ${active
                           ? "text-[#1B3A8C] bg-[#C5D2EC]/30"
                           : "text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30"
-                      }`}
+                          }`}
+                      >
+                        {link.label}
+                        {active && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#1B3A8C] shrink-0" />
+                        )}
+                      </Link>
+                    );
+                  })}
+                <div className="pt-4 border-t border-gray-100 space-y-2">
+                  {showInstallButton && (
+                    <button
+                      onClick={() => {
+                        handleInstallClick();
+                        setIsOpen(false);
+                      }}
+                      className="flex items-center justify-center gap-1.5 w-full px-4 py-3 text-base font-medium text-[#1B3A8C] border border-[#3B5EA6] rounded-full hover:bg-[#C5D2EC]/30 transition-colors"
                     >
-                      {link.label}
-                      {active && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#1B3A8C] shrink-0" />
-                      )}
-                    </Link>
-                  );
-                })}
-              <div className="pt-4 border-t border-gray-100 space-y-2">
-                {showInstallButton && (
-                  <button
-                    onClick={() => {
-                      handleInstallClick();
-                      setIsOpen(false);
-                    }}
-                    className="flex items-center justify-center gap-1.5 w-full px-4 py-3 text-base font-medium text-[#1B3A8C] border border-[#3B5EA6] rounded-full hover:bg-[#C5D2EC]/30 transition-colors"
-                  >
-                    <Download className="w-4 h-4 shrink-0" />
-                    Install App
-                  </button>
-                )}
-                {/* {isAuthenticated ? (
+                      <Download className="w-4 h-4 shrink-0" />
+                      Install App
+                    </button>
+                  )}
+                  {/* {isAuthenticated ? (
                   <div className="px-4 py-3">
                     <UserProfileDropdown />
                   </div>
@@ -226,16 +251,17 @@ export default function Navigation() {
                     Login
                   </Link>
                 )} */}
-                <Link
-                  href="/quotation"
-                  onClick={() => setIsOpen(false)}
-                  className="block w-full text-center px-5 py-3 bg-[#1B3A8C] text-white font-medium rounded-full hover:bg-[#3B5EA6] transition-colors"
-                >
-                  Get a Quote
-                </Link>
+                  <Link
+                    href="/quotation"
+                    onClick={() => setIsOpen(false)}
+                    className="block w-full text-center px-5 py-3 bg-[#1B3A8C] text-white font-medium rounded-full hover:bg-[#3B5EA6] transition-colors"
+                  >
+                    Get a Quote
+                  </Link>
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </nav>

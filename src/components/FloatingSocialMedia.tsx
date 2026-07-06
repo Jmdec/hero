@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Mail, Plus, X, MessageCircle } from "lucide-react"
+import { Plus, X, MessageCircle } from "lucide-react"
 
 const FacebookIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -40,7 +40,6 @@ const ViberIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
-// Single source of truth — brand color lives on the icon, container stays neutral.
 const socialLinks = [
   { name: "Facebook", icon: FacebookIcon, href: "https://www.facebook.com/heroservicedoffice", color: "#1877F2" },
   { name: "Instagram", icon: InstagramIcon, href: "https://www.instagram.com/heroso.ph", color: "#DD2A7B" },
@@ -56,20 +55,19 @@ const FloatingSocialMedia = () => {
 
   return (
     <>
-      {/* Desktop only (lg+) — hover-based pill rail requires a mouse, so tablets/touch devices skip this */}
       <div
-        className="hidden md:flex fixed right-5 top-1/2 -translate-y-1/2 z-50 flex-col items-center
+        className="hidden lg:flex fixed right-5 top-1/2 -translate-y-1/2 z-50 flex-col items-center
                   bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-neutral-200/70
-                  py-4 px-2 gap-3 transition-shadow hover:shadow-lg"
+                  py-4 px-2 gap-3 transition-shadow hover:shadow-xl"
       >
         {socialLinks.map((social) => {
           const Icon = social.icon
           return (
             <a
               key={social.name}
-              href={social.href || undefined}
-              target={social.name !== "Email" ? "_blank" : undefined}
-              rel={social.name !== "Email" ? "noopener noreferrer" : undefined}
+              href={social.href}
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label={`Visit our ${social.name}`}
               className="group/item relative w-10 h-10 rounded-full flex items-center justify-center
                         text-neutral-500 transition-colors duration-200 hover:text-white"
@@ -77,7 +75,6 @@ const FloatingSocialMedia = () => {
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             >
               <Icon className="w-6 h-6" />
-              {/* Tooltip */}
               <span
                 className="pointer-events-none absolute right-full mr-3 top-1/2 -translate-y-1/2
                           whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs text-white
@@ -91,14 +88,21 @@ const FloatingSocialMedia = () => {
         })}
       </div>
 
-      {/* Mobile + tablet (below lg) — tap-to-expand FAB, sized up slightly on tablet, safe-area aware */}
+      {/* Mobile + tablet */}
       <div
         className="lg:hidden fixed z-50 flex flex-col items-center
-                   right-4 sm:right-6
-                   bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+5.5rem))]"
+                  right-4 bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+5.5rem))]"
       >
+        {isOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-40"
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         <div
-          className={`flex flex-col-reverse gap-2.5 sm:gap-3 mb-3 transition-all duration-300 origin-bottom
+          className={`relative z-50 flex flex-col-reverse gap-1.5 mb-3 transition-all duration-300 origin-bottom
             ${isOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-0 translate-y-3 pointer-events-none"}`}
         >
           {socialLinks.map((social, index) => {
@@ -106,17 +110,16 @@ const FloatingSocialMedia = () => {
             return (
               <a
                 key={social.name}
-                href={social.href || undefined}
-                target={social.name !== "Email" ? "_blank" : undefined}
-                rel={social.name !== "Email" ? "noopener noreferrer" : undefined}
+                href={social.href}
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label={`Visit our ${social.name}`}
                 onClick={() => setIsOpen(false)}
                 className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white shadow-md
-                           transition-transform active:scale-90 shrink-0"
+                           transition-transform duration-200 active:scale-90 shrink-0 hover:scale-105"
                 style={{
                   backgroundColor: social.color,
-                  animationDelay: `${index * 40}ms`,
-                  animationFillMode: "backwards",
+                  transitionDelay: isOpen ? `${index * 40}ms` : "0ms",
                 }}
               >
                 <Icon className="w-5 h-5" />
@@ -126,17 +129,17 @@ const FloatingSocialMedia = () => {
         </div>
 
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          type="button"
+          onClick={() => setIsOpen((prev) => !prev)}
           aria-label={isOpen ? "Close social menu" : "Open social menu"}
-          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white shadow-lg
+          aria-expanded={isOpen}
+          className="relative z-50 w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white shadow-lg
                      transition-transform duration-300 active:scale-90 bg-neutral-900 shrink-0"
         >
-          {isOpen ? <X className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
+          <span className={`transition-transform duration-300 ${isOpen ? "rotate-45" : "rotate-0"}`}>
+            <Plus className="w-6 h-6" />
+          </span>
         </button>
-
-        {isOpen && (
-          <div className="fixed inset-0 bg-black/20 -z-10" onClick={() => setIsOpen(false)} />
-        )}
       </div>
     </>
   )
