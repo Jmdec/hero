@@ -31,7 +31,10 @@ function Label({
   required?: boolean;
 }) {
   return (
-    <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700 mb-2">
+    <label
+      htmlFor={htmlFor}
+      className="block text-sm font-medium text-gray-700 mb-2"
+    >
       {children} {required && <span className="text-[#1B3A8C]">*</span>}
     </label>
   );
@@ -46,7 +49,7 @@ function SelectWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Dynamic Fields (Step 2) 
+// Dynamic Fields (Step 2)
 
 const SERVICES_WITH_FIELDS = [
   "private-office",
@@ -79,7 +82,10 @@ function DynamicFields({
     />
   );
 
-  const select = (name: string, options: { value: string; label: string }[]) => (
+  const select = (
+    name: string,
+    options: { value: string; label: string }[],
+  ) => (
     <SelectWrapper>
       <select
         id={name}
@@ -112,8 +118,16 @@ function DynamicFields({
     case "private-office":
       return (
         <div className="space-y-6">
-          {field("seats", "Number of Seats", input("seats", "number", "e.g. 50"))}
-          {field("moveInDate", "Target Move-in Date", input("moveInDate", "date"))}
+          {field(
+            "seats",
+            "Number of Seats",
+            input("seats", "number", "e.g. 50"),
+          )}
+          {field(
+            "moveInDate",
+            "Target Move-in Date",
+            input("moveInDate", "date"),
+          )}
           {field(
             "leaseTerm",
             "Lease Term",
@@ -123,7 +137,7 @@ function DynamicFields({
               { value: "6-months", label: "6 months" },
               { value: "12-months", label: "12 months" },
               { value: "12-months-plus", label: "12+ months" },
-            ])
+            ]),
           )}
         </div>
       );
@@ -141,17 +155,29 @@ function DynamicFields({
                 value: "address-reception-phone",
                 label: "Address + Reception + Phone Answering",
               },
-            ])
+            ]),
           )}
-          {field("startDate", "Preferred Start Date", input("startDate", "date"))}
+          {field(
+            "startDate",
+            "Preferred Start Date",
+            input("startDate", "date"),
+          )}
         </div>
       );
 
     case "co-working-space":
       return (
         <div className="space-y-6">
-          {field("seats", "Number of Seats", input("seats", "number", "e.g. 50"))}
-          {field("startDate", "Preferred Start Date", input("startDate", "date"))}
+          {field(
+            "seats",
+            "Number of Seats",
+            input("seats", "number", "e.g. 50"),
+          )}
+          {field(
+            "startDate",
+            "Preferred Start Date",
+            input("startDate", "date"),
+          )}
           {field(
             "durationType",
             "Duration",
@@ -159,7 +185,7 @@ function DynamicFields({
               { value: "daily", label: "Daily" },
               { value: "weekly", label: "Weekly" },
               { value: "monthly", label: "Monthly" },
-            ])
+            ]),
           )}
         </div>
       );
@@ -167,15 +193,27 @@ function DynamicFields({
     case "meeting-room":
       return (
         <div className="space-y-6">
-          {field("participants", "Number of Participants", input("participants", "number", "e.g. 50"))}
-          {field("reservationDate", "Reservation Date", input("reservationDate", "date"))}
+          {field(
+            "participants",
+            "Number of Participants",
+            input("participants", "number", "e.g. 50"),
+          )}
+          {field(
+            "reservationDate",
+            "Reservation Date",
+            input("reservationDate", "date"),
+          )}
         </div>
       );
 
     case "event-space":
       return (
         <div className="space-y-6">
-          {field("attendees", "Number of Attendees", input("attendees", "number", "e.g. 50"))}
+          {field(
+            "attendees",
+            "Number of Attendees",
+            input("attendees", "number", "e.g. 50"),
+          )}
           {field("eventDate", "Event Date", input("eventDate", "date"))}
           {field(
             "eventDuration",
@@ -184,7 +222,7 @@ function DynamicFields({
               { value: "half-day", label: "Half day (up to 4 hrs)" },
               { value: "full-day", label: "Full day (up to 8 hrs)" },
               { value: "multi-day", label: "Multi-day" },
-            ])
+            ]),
           )}
         </div>
       );
@@ -192,7 +230,11 @@ function DynamicFields({
     case "ocular-visit":
       return (
         <div className="space-y-6">
-          {field("visitDate", "Preferred Visit Date", input("visitDate", "date"))}
+          {field(
+            "visitDate",
+            "Preferred Visit Date",
+            input("visitDate", "date"),
+          )}
           {field(
             "serviceOfInterest",
             "Service of Interest",
@@ -202,7 +244,7 @@ function DynamicFields({
               { value: "co-working-space", label: "Co-Working Space" },
               { value: "meeting-room", label: "Meeting Room" },
               { value: "event-space", label: "Event Space" },
-            ])
+            ]),
           )}
         </div>
       );
@@ -241,18 +283,23 @@ function MultiStepForm() {
   });
   const [dynamicData, setDynamicData] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
+  const [submitStatus, setSubmitStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
 
   const hasDynamicFields = SERVICES_WITH_FIELDS.includes(formData.inquiryType);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value, type } = e.target;
     if (name === "inquiryType") setDynamicData({});
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+      [name]:
+        type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }));
   };
 
@@ -271,57 +318,48 @@ function MultiStepForm() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  setIsSubmitting(true);
-  setSubmitStatus("idle");
+    setIsSubmitting(true);
+    setSubmitStatus("idle");
 
-  try {
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          dynamicData,
+        }),
+      });
 
-    const res = await fetch("/api/contact", {
-      method: "POST",
-      headers:{
-        "Content-Type":"application/json",
-        Accept:"application/json",
-      },
-      body: JSON.stringify({
-        ...formData,
-        dynamicData,
-      }),
-    });
+      if (!res.ok) {
+        throw new Error("Failed");
+      }
 
+      setSubmitStatus("success");
 
-    if(!res.ok){
-      throw new Error("Failed");
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        company: "",
+        inquiryType: "",
+        message: "",
+        policy: false,
+      });
+
+      setDynamicData({});
+      setStep(1);
+    } catch (error) {
+      setSubmitStatus("error");
+    } finally {
+      setIsSubmitting(false);
     }
-
-
-    setSubmitStatus("success");
-
-    setFormData({
-      name:"",
-      email:"",
-      phone:"",
-      company:"",
-      inquiryType:"",
-      message:"",
-      policy:false
-    });
-
-    setDynamicData({});
-    setStep(1);
-
-
-  } catch(error){
-
-    setSubmitStatus("error");
-
-  } finally {
-
-    setIsSubmitting(false);
-
-  }
-};
+  };
 
   const variants = {
     enter: (dir: number) => ({ opacity: 0, x: dir > 0 ? 40 : -40 }),
@@ -329,11 +367,15 @@ function MultiStepForm() {
     exit: (dir: number) => ({ opacity: 0, x: dir > 0 ? -40 : 40 }),
   };
 
-  const selectedLabel = inquiryTypes.find((t) => t.value === formData.inquiryType)?.label;
+  const selectedLabel = inquiryTypes.find(
+    (t) => t.value === formData.inquiryType,
+  )?.label;
 
   return (
     <div>
-      <h2 className="text-3xl font-bold text-gray-900 mb-2">Send Us a Message</h2>
+      <h2 className="text-3xl font-bold text-gray-900 mb-2">
+        Send Us a Message
+      </h2>
       <p className="text-gray-600 mb-8">
         Fill out the form below and we'll get back to you within 24 hours
       </p>
@@ -392,7 +434,9 @@ function MultiStepForm() {
               <div className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="name" required>Name</Label>
+                    <Label htmlFor="name" required>
+                      Name
+                    </Label>
                     <input
                       type="text"
                       id="name"
@@ -405,7 +449,9 @@ function MultiStepForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email" required>Email</Label>
+                    <Label htmlFor="email" required>
+                      Email
+                    </Label>
                     <input
                       type="email"
                       id="email"
@@ -421,7 +467,9 @@ function MultiStepForm() {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="phone" required>Phone Number</Label>
+                    <Label htmlFor="phone" required>
+                      Phone Number
+                    </Label>
                     <input
                       type="tel"
                       id="phone"
@@ -448,7 +496,9 @@ function MultiStepForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="inquiryType" required>Inquiry Type</Label>
+                  <Label htmlFor="inquiryType" required>
+                    Inquiry Type
+                  </Label>
                   <SelectWrapper>
                     <select
                       id="inquiryType"
@@ -470,7 +520,9 @@ function MultiStepForm() {
                 {/* Message (shown in step 1 if no dynamic fields needed) */}
                 {!hasDynamicFields && formData.inquiryType && (
                   <div>
-                    <Label htmlFor="message" required>Message</Label>
+                    <Label htmlFor="message" required>
+                      Message
+                    </Label>
                     <textarea
                       id="message"
                       name="message"
@@ -490,7 +542,12 @@ function MultiStepForm() {
                     <button
                       type="button"
                       onClick={goNext}
-                      disabled={!formData.name || !formData.email || !formData.phone || !formData.inquiryType}
+                      disabled={
+                        !formData.name ||
+                        !formData.email ||
+                        !formData.phone ||
+                        !formData.inquiryType
+                      }
                       className="w-full md:w-auto px-8 py-4 bg-[#1B3A8C] text-white rounded-full font-semibold hover:bg-[#3B5EA6] transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                       Next: {selectedLabel} Details
@@ -553,7 +610,9 @@ function MultiStepForm() {
                 />
 
                 <div>
-                  <Label htmlFor="message" required>Message</Label>
+                  <Label htmlFor="message" required>
+                    Message
+                  </Label>
                   <textarea
                     id="message"
                     name="message"
@@ -611,48 +670,120 @@ const faqTabs = [
     id: "service",
     label: "About HERO Serviced Office",
     faqs: [
-      { q: "What are the advantages of serviced offices?", a: "HERO Serviced Office is equipped with the facilities and services necessary to start a business, so the initial cost of opening an office can be reduced and business can be started immediately. You can also flexibly choose the size of the room and the period of use according to your purpose." },
-      { q: "Where is the office located?", a: "HERO Serviced Office is conveniently located near Ayala Triangle Park along Ayala Avenue, the main street in Makati City, Metro Manila, Philippines." },
-      { q: "What is the surrounding environment like?", a: "Our offices are located in Makati City — the economic center of the Philippines, often called the Wall Street of the Philippines. Many Japanese and foreign companies have offices nearby. Access from the airport takes about 20 minutes, and there are restaurants from various countries and large shopping malls in the area." },
-      { q: "Do you have Japanese-speaking staff?", a: "Yes. Japanese expatriates and staff who can speak Japanese are stationed at our offices." },
-      { q: "Can a serviced office be used as a business registration (SEC) address?", a: "Yes, it is possible. If you need address registration for corporate registration (SEC registration), please let us know and we will provide the necessary documents." },
-      { q: "What is the contract period?", a: "The contract period can start from 1 month. The contract form is a service use contract." },
-      { q: "What is the smoking policy?", a: "Smoking is prohibited in all office buildings." },
+      {
+        q: "What are the advantages of serviced offices?",
+        a: "HERO Serviced Office is equipped with the facilities and services necessary to start a business, so the initial cost of opening an office can be reduced and business can be started immediately. You can also flexibly choose the size of the room and the period of use according to your purpose.",
+      },
+      {
+        q: "Where is the office located?",
+        a: "HERO Serviced Office is conveniently located near Ayala Triangle Park along Ayala Avenue, the main street in Makati City, Metro Manila, Philippines.",
+      },
+      {
+        q: "What is the surrounding environment like?",
+        a: "Our offices are located in Makati City — the economic center of the Philippines, often called the Wall Street of the Philippines. Many Japanese and foreign companies have offices nearby. Access from the airport takes about 20 minutes, and there are restaurants from various countries and large shopping malls in the area.",
+      },
+      {
+        q: "Do you have Japanese-speaking staff?",
+        a: "Yes. Japanese expatriates and staff who can speak Japanese are stationed at our offices.",
+      },
+      {
+        q: "Can a serviced office be used as a business registration (SEC) address?",
+        a: "Yes, it is possible. If you need address registration for corporate registration (SEC registration), please let us know and we will provide the necessary documents.",
+      },
+      {
+        q: "What is the contract period?",
+        a: "The contract period can start from 1 month. The contract form is a service use contract.",
+      },
+      {
+        q: "What is the smoking policy?",
+        a: "Smoking is prohibited in all office buildings.",
+      },
     ],
   },
   {
     id: "payment",
     label: "Contract & Payment",
     faqs: [
-      { q: "What documents are required for a service office contract?", a: "A review is required before signing. For corporate contracts: examination application form, SEC registration certificate (or Japan company registration for pre-establishment), and a copy of the representative's passport. For personal contracts: examination application form, business description, and photo ID of all users." },
-      { q: "What currency is used for payment?", a: "Payment is made in Philippine Pesos (PHP). You can also pay in Japanese Yen or US Dollars." },
-      { q: "How do I pay monthly?", a: "We send an invoice every month. You can pay by cash, check, or bank transfer — whichever is convenient for you." },
-      { q: "Will the contract fee be refunded when I move out?", a: "No. The contract fee includes the basic setup fee for the office and is non-refundable." },
-      { q: "Are electricity and internet usage charged separately?", a: "No. The monthly usage fee (rent and common service fee) includes electricity and internet usage (shared line). There are no additional charges for these." },
+      {
+        q: "What documents are required for a service office contract?",
+        a: "A review is required before signing. For corporate contracts: examination application form, SEC registration certificate (or Japan company registration for pre-establishment), and a copy of the representative's passport. For personal contracts: examination application form, business description, and photo ID of all users.",
+      },
+      {
+        q: "What currency is used for payment?",
+        a: "Payment is made in Philippine Pesos (PHP). You can also pay in Japanese Yen or US Dollars.",
+      },
+      {
+        q: "How do I pay monthly?",
+        a: "We send an invoice every month. You can pay by cash, check, or bank transfer — whichever is convenient for you.",
+      },
+      {
+        q: "Will the contract fee be refunded when I move out?",
+        a: "No. The contract fee includes the basic setup fee for the office and is non-refundable.",
+      },
+      {
+        q: "Are electricity and internet usage charged separately?",
+        a: "No. The monthly usage fee (rent and common service fee) includes electricity and internet usage (shared line). There are no additional charges for these.",
+      },
     ],
   },
   {
     id: "rooms",
     label: "Private Rooms",
     faqs: [
-      { q: "What types of private rooms are available?", a: "TOWER6789 MAKATI offers rooms for 1 to a maximum of 12 people. INSULAR LIFE BUILDING MAKATI offers rooms for 3 to a maximum of 35 people. Please see each floor layout for details." },
-      { q: "What facilities are in the private rooms?", a: "All private rooms are equipped with desks, cabinets, and wireless and wired internet access." },
-      { q: "Are there spaces other than private rooms?", a: "Yes. There is a shared office with booth-type desks for individual use. Shared spaces include a reception area, cafe area, lounge area, and meeting space." },
-      { q: "What services come with a private room contract?", a: "Private room tenants can use the reception service, cafe area, lounge area, and wireless/wired internet access at no extra charge. Optional services include telephone lines, telephone answering service, parking, cloud services, and multifunction device usage." },
+      {
+        q: "What types of private rooms are available?",
+        a: "TOWER6789 MAKATI offers rooms for 1 to a maximum of 12 people. INSULAR LIFE BUILDING MAKATI offers rooms for 3 to a maximum of 35 people. Please see each floor layout for details.",
+      },
+      {
+        q: "What facilities are in the private rooms?",
+        a: "All private rooms are equipped with desks, cabinets, and wireless and wired internet access.",
+      },
+      {
+        q: "Are there spaces other than private rooms?",
+        a: "Yes. There is a shared office with booth-type desks for individual use. Shared spaces include a reception area, cafe area, lounge area, and meeting space.",
+      },
+      {
+        q: "What services come with a private room contract?",
+        a: "Private room tenants can use the reception service, cafe area, lounge area, and wireless/wired internet access at no extra charge. Optional services include telephone lines, telephone answering service, parking, cloud services, and multifunction device usage.",
+      },
     ],
   },
   {
     id: "facilities",
     label: "Services & Facilities",
     faqs: [
-      { q: "Can I get a dedicated phone number?", a: "Yes. A landline phone is available as an optional service for PHP 2,400/month (excl. VAT). Call charges are billed at actual cost." },
-      { q: "Can staff answer calls on my behalf?", a: "Yes. A telephone answering service is available for PHP 2,000/month (excl. VAT). The phone number acquisition fee is charged separately." },
-      { q: "Is the office available 24 hours a day?", a: "Yes. You can enter and leave the office anytime, 24 hours a day, 365 days a year. However, staff and receptionists are available Monday–Friday during Philippine business hours, and are closed on weekends, Philippine holidays, and year-end/New Year holidays." },
-      { q: "Can I use the meeting space?", a: "Yes. Meeting spaces are available in hourly increments for a fee." },
-      { q: "Is there a rest area with free drinks?", a: "Yes. Coffee and mineral water are available free of charge in the shared cafe and lounge areas. A paid vending machine is also available." },
-      { q: "Is parking available?", a: "Yes. Please contact us as there are vehicle restrictions and subject to availability." },
-      { q: "Can I use a printer or scanner?", a: "Yes. You can use a multifunction machine that supports copying, scanning, and printing." },
-      { q: "Can mail be forwarded for Virtual Office users?", a: "Yes. Mail arriving at the service office can be forwarded to a pre-designated address. A fixed monthly fee plus actual postage costs apply." },
+      {
+        q: "Can I get a dedicated phone number?",
+        a: "Yes. A landline phone is available as an optional service for PHP 2,400/month (excl. VAT). Call charges are billed at actual cost.",
+      },
+      {
+        q: "Can staff answer calls on my behalf?",
+        a: "Yes. A telephone answering service is available for PHP 2,000/month (excl. VAT). The phone number acquisition fee is charged separately.",
+      },
+      {
+        q: "Is the office available 24 hours a day?",
+        a: "Yes. You can enter and leave the office anytime, 24 hours a day, 365 days a year. However, staff and receptionists are available Monday–Friday during Philippine business hours, and are closed on weekends, Philippine holidays, and year-end/New Year holidays.",
+      },
+      {
+        q: "Can I use the meeting space?",
+        a: "Yes. Meeting spaces are available in hourly increments for a fee.",
+      },
+      {
+        q: "Is there a rest area with free drinks?",
+        a: "Yes. Coffee and mineral water are available free of charge in the shared cafe and lounge areas. A paid vending machine is also available.",
+      },
+      {
+        q: "Is parking available?",
+        a: "Yes. Please contact us as there are vehicle restrictions and subject to availability.",
+      },
+      {
+        q: "Can I use a printer or scanner?",
+        a: "Yes. You can use a multifunction machine that supports copying, scanning, and printing.",
+      },
+      {
+        q: "Can mail be forwarded for Virtual Office users?",
+        a: "Yes. Mail arriving at the service office can be forwarded to a pre-designated address. A fixed monthly fee plus actual postage costs apply.",
+      },
     ],
   },
 ];
@@ -666,7 +797,9 @@ function FaqItem({ faq }: { faq: { q: string; a: string } }) {
         className="w-full flex items-center justify-between px-6 py-4 text-left bg-white hover:bg-gray-50 transition-colors"
       >
         <span className="font-medium text-gray-900 pr-4">{faq.q}</span>
-        <ChevronDown className={`w-5 h-5 text-[#1B3A8C] shrink-0 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`w-5 h-5 text-[#1B3A8C] shrink-0 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+        />
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -677,7 +810,9 @@ function FaqItem({ faq }: { faq: { q: string; a: string } }) {
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <p className="px-6 py-4 text-md text-gray-600 bg-gray-50 border-t border-gray-200">{faq.a}</p>
+            <p className="px-6 py-4 text-md text-gray-600 bg-gray-50 border-t border-gray-200">
+              {faq.a}
+            </p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -695,10 +830,11 @@ function FaqTabs() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${activeTab === tab.id
+            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
+              activeTab === tab.id
                 ? "bg-[#1B3A8C] text-white shadow-md"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+            }`}
           >
             {tab.label}
           </button>
@@ -747,7 +883,9 @@ export default function ContactPage() {
             transition={{ duration: 0.5 }}
             className="w-full text-center mx-auto"
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">Contact Us</h1>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+              Contact Us
+            </h1>
             <p className="text-xl text-gray-300">
               Reach out to us for inquiries, reservations, or support.
             </p>
@@ -797,8 +935,12 @@ export default function ContactPage() {
                       <p className="text-xs uppercase tracking-widest text-gray-500 font-medium">
                         Office Location
                       </p>
-                      <h3 className="font-semibold text-gray-900">HERO Serviced Office</h3>
-                      <p className="text-sm text-gray-600">Makati City, Philippines</p>
+                      <h3 className="font-semibold text-gray-900">
+                        HERO Serviced Office
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Makati City, Philippines
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -812,7 +954,9 @@ export default function ContactPage() {
       <section className="py-20 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Frequently Asked Questions
+            </h2>
           </div>
           <FaqTabs />
         </div>
