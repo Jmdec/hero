@@ -985,12 +985,12 @@ const Chatbot = () => {
                                         }
                                         disabled={isSubmittingLead}
                                         className={`w-full border rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${hasError
-                                                ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-200"
-                                                : touched[field.key] &&
-                                                    !fieldErrors[field.key] &&
-                                                    leadInfo[field.key]
-                                                    ? "border-emerald-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100"
-                                                    : "border-gray-200 focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20"
+                                            ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-200"
+                                            : touched[field.key] &&
+                                                !fieldErrors[field.key] &&
+                                                leadInfo[field.key]
+                                                ? "border-emerald-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100"
+                                                : "border-gray-200 focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20"
                                             }`}
                                     />
                                     {hasError && (
@@ -1084,8 +1084,8 @@ const Chatbot = () => {
                                 )}
                                 <div
                                     className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${msg.type === "user"
-                                            ? "bg-[#1B3A8C] text-white rounded-br-sm"
-                                            : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
+                                        ? "bg-[#1B3A8C] text-white rounded-br-sm"
+                                        : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
                                         }`}
                                 >
                                     <p className="text-sm whitespace-pre-line leading-relaxed">
