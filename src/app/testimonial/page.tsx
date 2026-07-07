@@ -1,10 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Quote, X, Send, ArrowRight, Loader2 } from "lucide-react";
+import {
+  Star,
+  Quote,
+  X,
+  Send,
+  ArrowRight,
+  Loader2,
+  Search,
+  SlidersHorizontal,
+  RefreshCw,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Inbox,
+} from "lucide-react";
 
 interface Testimonial {
   id: number;
@@ -43,10 +58,21 @@ const empty: FormData = {
   quote: "",
 };
 
+const PAGE_SIZE = 6;
+
+type RatingFilter = 0 | 1 | 2 | 3 | 4 | 5;
+
 export default function TestimonialPage() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Search / filter / pagination
+  const [query, setQuery] = useState("");
+  const [ratingFilter, setRatingFilter] = useState<RatingFilter>(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<FormData>(empty);
@@ -77,7 +103,9 @@ export default function TestimonialPage() {
       } catch (err) {
         console.error("Testimonials fetch failed:", err);
         if (!cancelled) {
-          setLoadError("Could not load testimonials right now.");
+          setLoadError(
+            "We couldn't load testimonials right now. Check your connection and try again.",
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -89,7 +117,40 @@ export default function TestimonialPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryCount]);
+
+  // Reset to page 1 whenever the result set changes shape
+  useEffect(() => {
+    setPage(1);
+  }, [query, ratingFilter]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return testimonials.filter((t) => {
+      const matchesRating = ratingFilter === 0 || t.rating === ratingFilter;
+      const matchesQuery =
+        q.length === 0 ||
+        t.name.toLowerCase().includes(q) ||
+        t.company?.toLowerCase().includes(q) ||
+        t.title?.toLowerCase().includes(q) ||
+        t.quote.toLowerCase().includes(q);
+      return matchesRating && matchesQuery;
+    });
+  }, [testimonials, query, ratingFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+
+  const hasActiveFilters = query.trim().length > 0 || ratingFilter !== 0;
+
+  const clearFilters = () => {
+    setQuery("");
+    setRatingFilter(0);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,72 +243,312 @@ export default function TestimonialPage() {
       {/* Testimonials Grid */}
       <section className="py-20 bg-[#F5F5F3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {loading && (
-            <p className="text-center text-sm text-gray-400">
-              Loading testimonials...
-            </p>
-          )}
-
-          {!loading && loadError && (
-            <p className="text-center text-sm text-red-500">{loadError}</p>
-          )}
-
-          {!loading && !loadError && testimonials.length === 0 && (
-            <p className="text-center text-sm text-gray-400">
-              No testimonials yet. Be the first to share your experience.
-            </p>
-          )}
-
-          {!loading && !loadError && testimonials.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {testimonials.map((t, i) => (
-                <motion.div
-                  key={t.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: i * 0.07 }}
-                  className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col"
+          {/* Search + Filters */}
+          <div className="mb-10 flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by name, company, or keyword…"
+                  className="w-full rounded-full border border-gray-200 bg-white pl-11 pr-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                />
+              </div>
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => setFiltersOpen((v) => !v)}
+                  className={`inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-medium transition-colors w-full sm:w-auto ${
+                    filtersOpen || ratingFilter !== 0
+                      ? "border-[#1B3A8C] bg-[#1B3A8C] text-white"
+                      : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
-                  {/* Stars + quote icon */}
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {ratingFilter === 0 ? (
+                    "Filter by rating"
+                  ) : (
+                    <span className="inline-flex items-center gap-1">
+                      {ratingFilter}
+                      <Star className="h-3 w-3 fill-white text-white" />
+                      only
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      filtersOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {filtersOpen && (
+                    <>
+                      {/* Click-outside catcher */}
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setFiltersOpen(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 z-20 mt-2 w-48 rounded-2xl border border-gray-100 bg-white p-1.5 shadow-lg"
+                      >
+                        <button
+                          onClick={() => {
+                            setRatingFilter(0);
+                            setFiltersOpen(false);
+                          }}
+                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${
+                            ratingFilter === 0
+                              ? "bg-[#1B3A8C]/5 text-[#1B3A8C] font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                          }`}
+                        >
+                          All ratings
+                        </button>
+                        {[5, 4, 3, 2, 1].map((r) => (
+                          <button
+                            key={r}
+                            onClick={() => {
+                              setRatingFilter(r as RatingFilter);
+                              setFiltersOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${
+                              ratingFilter === r
+                                ? "bg-[#1B3A8C]/5 text-[#1B3A8C] font-medium"
+                                : "text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            <span className="inline-flex items-center gap-1.5">
+                              {r} {r === 1 ? "star" : "stars"}
+                            </span>
+                            <Star
+                              className={`h-3.5 w-3.5 ${
+                                ratingFilter === r
+                                  ? "fill-[#1B3A8C] text-[#1B3A8C]"
+                                  : "fill-[#FFC107] text-[#FFC107]"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Results summary */}
+            {!loading && !loadError && (
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span>
+                  {filtered.length}{" "}
+                  {filtered.length === 1 ? "testimonial" : "testimonials"}
+                  {hasActiveFilters ? " match your filters" : ""}
+                </span>
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="font-medium text-[#1B3A8C] hover:underline"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Loading state — skeleton cards */}
+          {loading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl border border-gray-100 p-6 animate-pulse"
+                >
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex gap-0.5">
-                      {Array.from({ length: t.rating }).map((_, j) => (
-                        <Star
+                    <div className="flex gap-1">
+                      {Array.from({ length: 5 }).map((_, j) => (
+                        <div
                           key={j}
-                          className="h-5 w-5 fill-[#1B3A8C] text-[#1B3A8C]"
+                          className="h-5 w-5 rounded-full bg-gray-100"
                         />
                       ))}
                     </div>
-                    <Quote className="h-8 w-8 text-gray-100 fill-gray-100" />
+                    <div className="h-8 w-8 rounded bg-gray-100" />
                   </div>
-
-                  {/* Quote */}
-                  <p className="text-sm text-gray-700 leading-relaxed flex-1 mb-6">
-                    &ldquo;{t.quote}&rdquo;
-                  </p>
-
-                  {/* Divider */}
-                  <div className="border-t border-gray-100 pt-5">
-                    <div className="flex items-center gap-3">
-                      <div className="h-11 w-11 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0">
-                        <span className="text-xs font-semibold text-white">
-                          {getInitials(t.name)}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {t.name}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {t.title}
-                          {t.company ? ` · ${t.company}` : ""}
-                        </p>
-                      </div>
+                  <div className="space-y-2 mb-6">
+                    <div className="h-3 rounded bg-gray-100 w-full" />
+                    <div className="h-3 rounded bg-gray-100 w-full" />
+                    <div className="h-3 rounded bg-gray-100 w-2/3" />
+                  </div>
+                  <div className="border-t border-gray-100 pt-5 flex items-center gap-3">
+                    <div className="h-11 w-11 rounded-full bg-gray-100 shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <div className="h-3 w-1/2 rounded bg-gray-100" />
+                      <div className="h-2.5 w-1/3 rounded bg-gray-100" />
                     </div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
+          )}
+
+          {/* Error state */}
+          {!loading && loadError && (
+            <div className="flex flex-col items-center justify-center text-center py-16 px-4">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 border border-red-100">
+                <AlertCircle className="h-6 w-6 text-red-500" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1.5">
+                Something went wrong
+              </h3>
+              <p className="text-sm text-gray-500 max-w-sm mb-6">
+                {loadError}
+              </p>
+              <button
+                onClick={() => setRetryCount((c) => c + 1)}
+                className="inline-flex items-center gap-2 rounded-full bg-[#1B3A8C] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#2a4fa8] transition-colors"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Try again
+              </button>
+            </div>
+          )}
+
+          {/* Empty state (no testimonials at all, or none match filters) */}
+          {!loading && !loadError && filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center text-center py-16 px-4">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 border border-gray-200">
+                <Inbox className="h-6 w-6 text-gray-400" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1.5">
+                {testimonials.length === 0
+                  ? "No testimonials yet"
+                  : "No matches found"}
+              </h3>
+              <p className="text-sm text-gray-500 max-w-sm mb-6">
+                {testimonials.length === 0
+                  ? "Be the first to share your experience at Hero Serviced Office."
+                  : "Try a different search term or clear your filters."}
+              </p>
+              {testimonials.length === 0 ? (
+                <button
+                  onClick={() => setModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-[#1B3A8C] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#2a4fa8] transition-colors"
+                >
+                  Share your experience
+                </button>
+              ) : (
+                <button
+                  onClick={clearFilters}
+                  className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Results */}
+          {!loading && !loadError && paginated.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paginated.map((t, i) => (
+                  <motion.div
+                    key={t.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: i * 0.05 }}
+                    className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col"
+                  >
+                    {/* Stars + quote icon */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: t.rating }).map((_, j) => (
+                          <Star
+                            key={j}
+                            className="h-5 w-5 fill-[#1B3A8C] text-[#1B3A8C]"
+                          />
+                        ))}
+                      </div>
+                      <Quote className="h-8 w-8 text-gray-100 fill-gray-100" />
+                    </div>
+
+                    {/* Quote */}
+                    <p className="text-sm text-gray-700 leading-relaxed flex-1 mb-6">
+                      &ldquo;{t.quote}&rdquo;
+                    </p>
+
+                    {/* Divider */}
+                    <div className="border-t border-gray-100 pt-5">
+                      <div className="flex items-center gap-3">
+                        <div className="h-11 w-11 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0">
+                          <span className="text-xs font-semibold text-white">
+                            {getInitials(t.name)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {t.name}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {t.title}
+                            {t.company ? ` · ${t.company}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-12 flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+
+                  {Array.from({ length: totalPages }).map((_, idx) => {
+                    const pageNum = idx + 1;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className={`h-9 w-9 rounded-full text-sm font-medium transition-colors ${
+                          currentPage === pageNum
+                            ? "bg-[#1B3A8C] text-white"
+                            : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    aria-label="Next page"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
@@ -300,13 +601,13 @@ export default function TestimonialPage() {
               key="modal"
               initial={{ opacity: 0, y: 24, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 16, scale: 0.97 }}
+              exit={{ opacity: 0, y: 20, scale: 0.97 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 pointer-events-none"
+              className="fixed inset-0 z-999 flex items-center justify-center px-4 py-3 pointer-events-none"
             >
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg bg-white rounded-2xl border border-gray-100 shadow-2xl pointer-events-auto flex flex-col max-h-[90vh]"
+                className="w-full max-w-2xl bg-white rounded-2xl border border-gray-100 shadow-2xl pointer-events-auto flex flex-col max-h-[80vh]"
               >
                 {/* Header */}
                 <div className="flex items-center justify-between px-7 pt-6 pb-4 shrink-0">
@@ -363,7 +664,7 @@ export default function TestimonialPage() {
 
                         {/* Rating */}
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-2">
+                          <label className="block text-xs font-semibold text-gray-700 mb-2">
                             Overall rating
                           </label>
                           <div className="flex gap-1">
@@ -376,20 +677,20 @@ export default function TestimonialPage() {
                                 onClick={() => set("rating", s)}
                               >
                                 <Star
-                                  className={`h-7 w-7 transition-colors ${
-                                    s <= (hoveredStar || form.rating)
-                                      ? "fill-[#1B3A8C] text-[#1B3A8C]"
+                                  className={`h-7 w-7 transition-colors ${s <= (hoveredStar || form.rating)
+                                      ? "fill-[#FFC107] text-[#FFC107]"
                                       : "fill-gray-100 text-gray-200"
-                                  }`}
+                                    }`}
                                 />
                               </button>
                             ))}
                           </div>
                         </div>
 
+                        <div className="grid grid-cols-2 gap-3">
                         {/* Name */}
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                             Full name <span className="text-red-400">*</span>
                           </label>
                           <input
@@ -402,10 +703,27 @@ export default function TestimonialPage() {
                           />
                         </div>
 
+                        {/* Email */}
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                            Email address{" "}
+                            <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            required
+                            type="email"
+                            value={form.email}
+                            onChange={(e) => set("email", e.target.value)}
+                            placeholder="you@company.com"
+                            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                          />
+                        </div>
+                        </div>
+
                         {/* Job title + Company */}
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                               Job title <span className="text-red-400">*</span>
                             </label>
                             <input
@@ -418,7 +736,7 @@ export default function TestimonialPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                               Company <span className="text-red-400">*</span>
                             </label>
                             <input
@@ -432,25 +750,9 @@ export default function TestimonialPage() {
                           </div>
                         </div>
 
-                        {/* Email */}
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                            Email address{" "}
-                            <span className="text-red-400">*</span>
-                          </label>
-                          <input
-                            required
-                            type="email"
-                            value={form.email}
-                            onChange={(e) => set("email", e.target.value)}
-                            placeholder="you@company.com"
-                            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
-                          />
-                        </div>
-
                         {/* quote */}
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                             Your testimonial{" "}
                             <span className="text-red-400">*</span>
                           </label>
@@ -460,11 +762,11 @@ export default function TestimonialPage() {
                             value={form.quote}
                             onChange={(e) => set("quote", e.target.value)}
                             placeholder="Tell us about your experience working at Hero Serviced Office…"
-                            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all resize-none"
+                            className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all resize-none"
                           />
                         </div>
 
-                        <p className="text-[11px] text-gray-400 pb-1">
+                        <p className="text-[11px] text-gray-400">
                           Your testimonial may be published on our website after
                           review. We'll never share your email address.
                         </p>
