@@ -8,16 +8,18 @@ function isValidId(id: string) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!isValidId(params.id)) {
+  const { id } = await params;
+
+  if (!isValidId(id)) {
     return NextResponse.json(
       { message: "Invalid inquiry id." },
       { status: 400 },
     );
   }
 
-  const res = await fetch(`${API_URL}/api/admin/contact/${params.id}`, {
+  const res = await fetch(`${API_URL}/api/admin/contact/${id}`, {
     headers: {
       Accept: "application/json",
       Authorization: request.headers.get("authorization") ?? "",
@@ -30,9 +32,11 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!isValidId(params.id)) {
+  const { id } = await params;
+
+  if (!isValidId(id)) {
     return NextResponse.json(
       { message: "Invalid inquiry id." },
       { status: 400 },
@@ -41,7 +45,7 @@ export async function PATCH(
 
   const body = await request.json();
 
-  const res = await fetch(`${API_URL}/api/admin/contact/${params.id}`, {
+  const res = await fetch(`${API_URL}/api/admin/contact/${id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -56,16 +60,18 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!isValidId(params.id)) {
+  const { id } = await params;
+
+  if (!isValidId(id)) {
     return NextResponse.json(
       { message: "Invalid inquiry id." },
       { status: 400 },
     );
   }
 
-  const res = await fetch(`${API_URL}/api/admin/contact/${params.id}`, {
+  const res = await fetch(`${API_URL}/api/admin/contact/${id}`, {
     method: "DELETE",
     headers: {
       Accept: "application/json",
