@@ -1,53 +1,55 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import Image from "next/image"
-import { ArrowRight, Calendar, X } from "lucide-react"
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
+import { ArrowRight, Calendar, X } from "lucide-react";
 
 interface Announcement {
-  id: number
-  tag: string
-  date: string
-  title: string
-  excerpt: string
-  content: string
+  id: number;
+  tag: string;
+  date: string;
+  title: string;
+  excerpt: string;
+  content: string;
 }
 
-const TAG_STYLE = "bg-blue-50 text-blue-600"
-const FALLBACK_TAG_STYLE = "bg-gray-100 text-gray-600"
+const TAG_STYLE = "bg-blue-50 text-blue-600";
+const FALLBACK_TAG_STYLE = "bg-gray-100 text-gray-600";
 
 function tagClass(tag: string) {
-  return tag ? TAG_STYLE : FALLBACK_TAG_STYLE
+  return tag ? TAG_STYLE : FALLBACK_TAG_STYLE;
 }
 
 function formatDate(value: string) {
-  const d = new Date(value)
-  if (isNaN(d.getTime())) return value
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
   return d.toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
-  })
+  });
 }
 
 async function getAnnouncements(): Promise<Announcement[]> {
-  const res = await fetch("/api/announcements", { cache: "no-store" })
+  const res = await fetch("/api/announcements", { cache: "no-store" });
 
   if (!res.ok) {
-    throw new Error(`Status ${res.status}`)
+    throw new Error(`Status ${res.status}`);
   }
 
-  const data = await res.json()
+  const data = await res.json();
 
   // index() returns a plain array, not a paginated { data: [...] } shape
-  return Array.isArray(data) ? data : (data.data ?? [])
+  return Array.isArray(data) ? data : (data.data ?? []);
 }
 
 function TagDateRow({ tag, date }: { tag: string; date: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className={`text-xs font-medium px-3 py-1 rounded-full ${tagClass(tag)}`}>
+      <span
+        className={`text-xs font-medium px-3 py-1 rounded-full ${tagClass(tag)}`}
+      >
         {tag}
       </span>
       <div className="flex items-center gap-1.5 text-xs text-gray-400">
@@ -55,7 +57,7 @@ function TagDateRow({ tag, date }: { tag: string; date: string }) {
         {formatDate(date)}
       </div>
     </div>
-  )
+  );
 }
 
 function AnnouncementCard({
@@ -63,9 +65,9 @@ function AnnouncementCard({
   index,
   onSelect,
 }: {
-  item: Announcement
-  index: number
-  onSelect: (item: Announcement) => void
+  item: Announcement;
+  index: number;
+  onSelect: (item: Announcement) => void;
 }) {
   return (
     <motion.div
@@ -92,15 +94,15 @@ function AnnouncementCard({
         <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
       </div>
     </motion.div>
-  )
+  );
 }
 
 function AnnouncementModal({
   item,
   onClose,
 }: {
-  item: Announcement
-  onClose: () => void
+  item: Announcement;
+  onClose: () => void;
 }) {
   return (
     <>
@@ -111,7 +113,7 @@ function AnnouncementModal({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
         onClick={onClose}
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+        className="fixed inset-0 z-100 bg-black/40 backdrop-blur-sm"
       />
 
       <motion.div
@@ -120,7 +122,7 @@ function AnnouncementModal({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 16, scale: 0.97 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
-        className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 pointer-events-none"
+        className="fixed inset-0 z-100 flex items-center justify-center px-4 py-8 pointer-events-none"
       >
         <div
           onClick={(e) => e.stopPropagation()}
@@ -152,41 +154,41 @@ function AnnouncementModal({
         </div>
       </motion.div>
     </>
-  )
+  );
 }
 
 export default function AnnouncementPage() {
-  const [selected, setSelected] = useState<Announcement | null>(null)
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Announcement | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     async function load() {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
       try {
-        const data = await getAnnouncements()
-        if (!cancelled) setAnnouncements(data)
+        const data = await getAnnouncements();
+        if (!cancelled) setAnnouncements(data);
       } catch (err) {
-        console.error("Announcement fetch failed:", err)
+        console.error("Announcement fetch failed:", err);
         if (!cancelled) {
-          setError("Could not load announcements. Please try again later.")
+          setError("Could not load announcements. Please try again later.");
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) setLoading(false);
       }
     }
 
-    load()
+    load();
 
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -257,12 +259,10 @@ export default function AnnouncementPage() {
         </div>
       </section>
 
-
       {/* CTA */}
       <section className="py-20 bg-linear-to-r from-[#0D47A1] to-[#00ACC1]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-
             <div>
               <span className="inline-flex items-center gap-2 text-blue-200 uppercase tracking-wider text-sm font-semibold">
                 ✉ Newsletter
@@ -274,12 +274,11 @@ export default function AnnouncementPage() {
 
               <p className="mt-5 text-md text-blue-100 leading-relaxed max-w-xl">
                 One curated email per month with new spaces, member perks,
-                exclusive promos, and Makati business insights.
-                No spam — unsubscribe anytime.
+                exclusive promos, and Makati business insights. No spam —
+                unsubscribe anytime.
               </p>
 
               <div className="mt-5 space-y-2">
-
                 {[
                   "Early access to promotional rates",
                   "Invitations to member-only events",
@@ -296,9 +295,7 @@ export default function AnnouncementPage() {
                     <span>{item}</span>
                   </div>
                 ))}
-
               </div>
-
             </div>
 
             <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-8 shadow-2xl">
@@ -324,14 +321,11 @@ export default function AnnouncementPage() {
                 </button>
 
                 <p className="text-md text-blue-100 leading-relaxed">
-                  By subscribing you agree to receive marketing emails from
-                  Hero Serviced Office.
+                  By subscribing you agree to receive marketing emails from Hero
+                  Serviced Office.
                 </p>
-
               </form>
-
             </div>
-
           </div>
         </div>
       </section>
@@ -339,9 +333,12 @@ export default function AnnouncementPage() {
       {/* Modal */}
       <AnimatePresence>
         {selected && (
-          <AnnouncementModal item={selected} onClose={() => setSelected(null)} />
+          <AnnouncementModal
+            item={selected}
+            onClose={() => setSelected(null)}
+          />
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }
