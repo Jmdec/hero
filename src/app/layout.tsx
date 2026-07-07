@@ -305,7 +305,7 @@ const localBusinessSchema = {
       name: "Reserve an Office",
       target: {
         "@type": "EntryPoint",
-        urlTemplate: "https://heroph.net/reservation",
+        urlTemplate: "https://heroph.net/quotation",
         actionPlatform: [
           "http://schema.org/DesktopWebPlatform",
           "http://schema.org/MobileWebPlatform",
