@@ -4,12 +4,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export async function GET(request: NextRequest) {
   const query = new URL(request.url).search;
-  const auth = request.headers.get("Authorization");
 
   const res = await fetch(`${API_URL}/api/admin/announcements${query}`, {
     headers: {
       Accept: "application/json",
-      Authorization: auth ?? "",
+      Authorization: request.headers.get("authorization") ?? "",
     },
     cache: "no-store",
   });
@@ -20,7 +19,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = request.headers.get("Authorization");
   const body = await request.json();
 
   const res = await fetch(`${API_URL}/api/admin/announcements`, {
@@ -28,7 +26,7 @@ export async function POST(request: NextRequest) {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      Authorization: auth ?? "",
+      Authorization: request.headers.get("authorization") ?? "",
     },
     body: JSON.stringify(body),
   });

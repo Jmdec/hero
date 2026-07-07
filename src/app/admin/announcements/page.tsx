@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 import {
   Search,
   Pencil,
@@ -13,18 +13,18 @@ import {
   AlertTriangle,
   Calendar,
   Tag,
-} from "lucide-react"
+} from "lucide-react";
 
 interface Announcement {
-  id: number
-  tag: string
-  date: string
-  title: string
-  excerpt: string
-  content: string
-  status: "draft" | "published" | "archived"
-  created_at: string
-  updated_at?: string
+  id: number;
+  tag: string;
+  date: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  status: "draft" | "published" | "archived";
+  created_at: string;
+  updated_at?: string;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -32,141 +32,139 @@ const STATUS_STYLES: Record<string, string> = {
   published:
     "bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-200",
   archived: "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200",
-}
+};
 
 const EMPTY_FORM = {
   tag: "",
   date: "",
   title: "",
-  excerpt: "",
   content: "",
   status: "draft" as Announcement["status"],
-}
+};
 
 function formatDate(value: string) {
-  const d = new Date(value)
-  if (isNaN(d.getTime())) return value
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
   return d.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
-  })
+  });
 }
 
 function authHeaders(json = false) {
   const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   return {
     Authorization: `Bearer ${token}`,
     ...(json ? { "Content-Type": "application/json" } : {}),
-  }
+  };
 }
 
 export default function AnnouncementsAdmin() {
-  const [items, setItems] = useState<Announcement[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [items, setItems] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [search, setSearch] = useState("")
-  const [status, setStatus] = useState("")
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
 
-  const [page, setPage] = useState(1)
-  const [lastPage, setLastPage] = useState(1)
-  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   // Create / Edit dialog
-  const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<Announcement | null>(null)
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
-  const [saving, setSaving] = useState(false)
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Announcement | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
   // Delete dialog
-  const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function fetchAnnouncements() {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const params = new URLSearchParams({
         page: String(page),
         per_page: "10",
-      })
+      });
 
-      if (search) params.append("search", search)
-      if (status) params.append("status", status)
+      if (search) params.append("search", search);
+      if (status) params.append("status", status);
 
       const res = await fetch(`/api/admin/announcements?${params}`, {
         headers: authHeaders(),
-      })
+      });
 
-      if (!res.ok) throw new Error(`Request failed (${res.status})`)
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
 
-      const data = await res.json()
+      const data = await res.json();
 
-      setItems(data.data ?? [])
-      setLastPage(data.last_page ?? 1)
-      setTotal(data.total ?? (data.data ?? []).length)
+      setItems(data.data ?? []);
+      setLastPage(data.last_page ?? 1);
+      setTotal(data.total ?? (data.data ?? []).length);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
           : "Could not load announcements. Please try again.",
-      )
-      setItems([])
+      );
+      setItems([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-    fetchAnnouncements()
+    fetchAnnouncements();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, status])
+  }, [page, search, status]);
 
   function openCreate() {
-    setEditing(null)
-    setForm(EMPTY_FORM)
-    setFormErrors({})
-    setFormOpen(true)
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setFormErrors({});
+    setFormOpen(true);
   }
 
   function openEdit(a: Announcement) {
-    setEditing(a)
+    setEditing(a);
     setForm({
       tag: a.tag,
       date: a.date?.slice(0, 10) ?? "",
       title: a.title,
-      excerpt: a.excerpt,
       content: a.content,
       status: a.status,
-    })
-    setFormErrors({})
-    setFormOpen(true)
+    });
+    setFormErrors({});
+    setFormOpen(true);
   }
 
   async function submitForm() {
-    setSaving(true)
-    setFormErrors({})
+    setSaving(true);
+    setFormErrors({});
 
-    const isEdit = Boolean(editing)
+    const isEdit = Boolean(editing);
     const url = isEdit
       ? `/api/admin/announcements/${editing!.id}`
-      : `/api/admin/announcements`
+      : `/api/admin/announcements`;
 
     try {
       const res = await fetch(url, {
         method: isEdit ? "PUT" : "POST",
         headers: authHeaders(true),
         body: JSON.stringify(form),
-      })
+      });
 
       if (res.status === 422) {
-        const data = await res.json()
+        const data = await res.json();
         setFormErrors(
           Object.fromEntries(
             Object.entries(data.errors ?? {}).map(([k, v]) => [
@@ -174,56 +172,56 @@ export default function AnnouncementsAdmin() {
               Array.isArray(v) ? (v[0] as string) : String(v),
             ]),
           ),
-        )
-        return
+        );
+        return;
       }
 
-      if (!res.ok) throw new Error(`Request failed (${res.status})`)
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
 
-      const saved: Announcement = await res.json()
+      const saved: Announcement = await res.json();
 
       setItems((prev) =>
         isEdit
           ? prev.map((a) => (a.id === saved.id ? saved : a))
           : [saved, ...prev],
-      )
+      );
 
-      setFormOpen(false)
-      setEditing(null)
-      setForm(EMPTY_FORM)
+      setFormOpen(false);
+      setEditing(null);
+      setForm(EMPTY_FORM);
 
-      if (!isEdit) fetchAnnouncements()
+      if (!isEdit) fetchAnnouncements();
     } catch {
-      setFormErrors({ general: "Something went wrong. Please try again." })
+      setFormErrors({ general: "Something went wrong. Please try again." });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
   function openDeleteDialog(a: Announcement) {
-    setDeleteTarget(a)
-    setDeleteOpen(true)
+    setDeleteTarget(a);
+    setDeleteOpen(true);
   }
 
   async function confirmDelete() {
-    if (!deleteTarget) return
-    setDeleting(true)
+    if (!deleteTarget) return;
+    setDeleting(true);
 
     try {
       const res = await fetch(`/api/admin/announcements/${deleteTarget.id}`, {
         method: "DELETE",
         headers: authHeaders(),
-      })
+      });
 
-      if (!res.ok) throw new Error(`Request failed (${res.status})`)
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
 
-      setItems((prev) => prev.filter((a) => a.id !== deleteTarget.id))
-      setDeleteOpen(false)
-      setDeleteTarget(null)
+      setItems((prev) => prev.filter((a) => a.id !== deleteTarget.id));
+      setDeleteOpen(false);
+      setDeleteTarget(null);
     } catch {
       // keep dialog open so the admin can retry
     } finally {
-      setDeleting(false)
+      setDeleting(false);
     }
   }
 
@@ -231,7 +229,7 @@ export default function AnnouncementsAdmin() {
     key: K,
     value: (typeof form)[K],
   ) {
-    setForm((prev) => ({ ...prev, [key]: value }))
+    setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   return (
@@ -266,8 +264,8 @@ export default function AnnouncementsAdmin() {
                 placeholder="Search title, tag, excerpt..."
                 value={search}
                 onChange={(e) => {
-                  setSearch(e.target.value)
-                  setPage(1)
+                  setSearch(e.target.value);
+                  setPage(1);
                 }}
               />
             </div>
@@ -276,8 +274,8 @@ export default function AnnouncementsAdmin() {
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 md:w-48"
               value={status}
               onChange={(e) => {
-                setStatus(e.target.value)
-                setPage(1)
+                setStatus(e.target.value);
+                setPage(1);
               }}
             >
               <option value="">All Status</option>
@@ -521,33 +519,19 @@ export default function AnnouncementsAdmin() {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Excerpt
-                </label>
-                <textarea
-                  value={form.excerpt}
-                  onChange={(e) => updateField("excerpt", e.target.value)}
-                  rows={2}
-                  placeholder="Short summary shown in listings"
-                  className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                />
-                {formErrors.excerpt && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {formErrors.excerpt}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">
                   Content
                 </label>
                 <textarea
                   value={form.content}
                   onChange={(e) => updateField("content", e.target.value)}
-                  rows={6}
+                  rows={8}
                   placeholder="Full announcement content"
                   className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
+                <p className="mt-1 text-xs text-slate-400">
+                  The listing excerpt is generated automatically from this
+                  content.
+                </p>
                 {formErrors.content && (
                   <p className="mt-1 text-xs text-red-600">
                     {formErrors.content}
@@ -641,5 +625,5 @@ export default function AnnouncementsAdmin() {
         </div>
       )}
     </div>
-  )
+  );
 }

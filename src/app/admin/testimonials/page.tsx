@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 import {
   Search,
   Pencil,
@@ -12,259 +12,220 @@ import {
   X,
   AlertTriangle,
   Star,
-  Quote,
-} from "lucide-react"
+  Mail,
+} from "lucide-react";
 
 interface Testimonial {
-  id: number
-  name: string
-  title: string
-  company: string
-  rating: number
-  quote: string
-  status: "pending" | "approved" | "rejected"
-  created_at: string
-  updated_at?: string
+  id: number;
+  name: string;
+  title: string;
+  company: string | null;
+  email: string;
+  rating: number;
+  quote: string;
+  status: "pending" | "approved" | "rejected";
+  created_at?: string;
+  updated_at?: string;
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200",
+  pending: "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200",
   approved:
     "bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-200",
   rejected: "bg-red-100 text-red-700 ring-1 ring-inset ring-red-200",
-}
+};
 
 const EMPTY_FORM = {
   name: "",
   title: "",
   company: "",
+  email: "",
   rating: 5,
   quote: "",
   status: "pending" as Testimonial["status"],
-}
-
-function getInitials(name: string) {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("")
-}
+};
 
 function authHeaders(json = false) {
   const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   return {
     Authorization: `Bearer ${token}`,
     ...(json ? { "Content-Type": "application/json" } : {}),
-  }
-}
-
-function StarRating({
-  value,
-  onChange,
-  readOnly = false,
-}: {
-  value: number
-  onChange?: (n: number) => void
-  readOnly?: boolean
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          disabled={readOnly}
-          onClick={() => onChange?.(n)}
-          className={readOnly ? "cursor-default" : "cursor-pointer"}
-        >
-          <Star
-            className={`h-5 w-5 ${
-              n <= value
-                ? "fill-amber-400 text-amber-400"
-                : "fill-transparent text-slate-300"
-            }`}
-          />
-        </button>
-      ))}
-    </div>
-  )
+  };
 }
 
 export default function TestimonialsAdmin() {
-  const [items, setItems] = useState<Testimonial[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [items, setItems] = useState<Testimonial[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [search, setSearch] = useState("")
-  const [status, setStatus] = useState("")
-  const [rating, setRating] = useState("")
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
 
-  const [page, setPage] = useState(1)
-  const [lastPage, setLastPage] = useState(1)
-  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   // Create / Edit dialog
-  const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<Testimonial | null>(null)
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
-  const [saving, setSaving] = useState(false)
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Testimonial | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [hoveredStar, setHoveredStar] = useState(0);
 
   // Delete dialog
-  const [deleteTarget, setDeleteTarget] = useState<Testimonial | null>(null)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Testimonial | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function fetchTestimonials() {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const params = new URLSearchParams({
         page: String(page),
         per_page: "10",
-      })
+      });
 
-      if (search) params.append("search", search)
-      if (status) params.append("status", status)
-      if (rating) params.append("rating", rating)
+      if (search) params.append("search", search);
+      if (status) params.append("status", status);
 
       const res = await fetch(`/api/admin/testimonials?${params}`, {
         headers: authHeaders(),
-      })
+      });
 
-      if (!res.ok) throw new Error(`Request failed (${res.status})`)
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
 
-      const data = await res.json()
+      const data = await res.json();
 
-      setItems(data.data ?? [])
-      setLastPage(data.last_page ?? 1)
-      setTotal(data.total ?? (data.data ?? []).length)
+      setItems(data.data ?? []);
+      setLastPage(data.last_page ?? 1);
+      setTotal(data.total ?? (data.data ?? []).length);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Could not load testimonials. Please try again."
-      )
-      setItems([])
+          : "Could not load testimonials. Please try again.",
+      );
+      setItems([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-    fetchTestimonials()
+    fetchTestimonials();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, status, rating])
+  }, [page, search, status]);
 
   function openCreate() {
-    setEditing(null)
-    setForm(EMPTY_FORM)
-    setFormErrors({})
-    setFormOpen(true)
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setFormErrors({});
+    setFormOpen(true);
   }
 
   function openEdit(t: Testimonial) {
-    setEditing(t)
+    setEditing(t);
     setForm({
       name: t.name,
       title: t.title,
-      company: t.company,
+      company: t.company ?? "",
+      email: t.email,
       rating: t.rating,
       quote: t.quote,
       status: t.status,
-    })
-    setFormErrors({})
-    setFormOpen(true)
+    });
+    setFormErrors({});
+    setFormOpen(true);
   }
 
   async function submitForm() {
-    setSaving(true)
-    setFormErrors({})
+    setSaving(true);
+    setFormErrors({});
 
-    const isEdit = Boolean(editing)
+    const isEdit = Boolean(editing);
     const url = isEdit
       ? `/api/admin/testimonials/${editing!.id}`
-      : `/api/admin/testimonials`
+      : `/api/admin/testimonials`;
 
     try {
       const res = await fetch(url, {
         method: isEdit ? "PUT" : "POST",
         headers: authHeaders(true),
         body: JSON.stringify(form),
-      })
+      });
 
       if (res.status === 422) {
-        const data = await res.json()
+        const data = await res.json();
         setFormErrors(
           Object.fromEntries(
             Object.entries(data.errors ?? {}).map(([k, v]) => [
               k,
               Array.isArray(v) ? (v[0] as string) : String(v),
-            ])
-          )
-        )
-        return
+            ]),
+          ),
+        );
+        return;
       }
 
-      if (!res.ok) throw new Error(`Request failed (${res.status})`)
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
 
-      const saved: Testimonial = await res.json()
+      const saved: Testimonial = await res.json();
 
       setItems((prev) =>
         isEdit
           ? prev.map((t) => (t.id === saved.id ? saved : t))
-          : [saved, ...prev]
-      )
+          : [saved, ...prev],
+      );
 
-      setFormOpen(false)
-      setEditing(null)
-      setForm(EMPTY_FORM)
+      setFormOpen(false);
+      setEditing(null);
+      setForm(EMPTY_FORM);
 
-      if (!isEdit) fetchTestimonials()
+      if (!isEdit) fetchTestimonials();
     } catch {
-      setFormErrors({ general: "Something went wrong. Please try again." })
+      setFormErrors({ general: "Something went wrong. Please try again." });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
   function openDeleteDialog(t: Testimonial) {
-    setDeleteTarget(t)
-    setDeleteOpen(true)
+    setDeleteTarget(t);
+    setDeleteOpen(true);
   }
 
   async function confirmDelete() {
-    if (!deleteTarget) return
-    setDeleting(true)
+    if (!deleteTarget) return;
+    setDeleting(true);
 
     try {
       const res = await fetch(`/api/admin/testimonials/${deleteTarget.id}`, {
         method: "DELETE",
         headers: authHeaders(),
-      })
+      });
 
-      if (!res.ok) throw new Error(`Request failed (${res.status})`)
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
 
-      setItems((prev) => prev.filter((t) => t.id !== deleteTarget.id))
-      setDeleteOpen(false)
-      setDeleteTarget(null)
+      setItems((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+      setDeleteOpen(false);
+      setDeleteTarget(null);
     } catch {
       // keep dialog open so the admin can retry
     } finally {
-      setDeleting(false)
+      setDeleting(false);
     }
   }
 
   function updateField<K extends keyof typeof form>(
     key: K,
-    value: (typeof form)[K]
+    value: (typeof form)[K],
   ) {
-    setForm((prev) => ({ ...prev, [key]: value }))
+    setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   return (
@@ -276,7 +237,7 @@ export default function TestimonialsAdmin() {
               Testimonials
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              Manage customer testimonials
+              Review, edit, and manage client testimonials
             </p>
           </div>
 
@@ -296,43 +257,27 @@ export default function TestimonialsAdmin() {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="Search name, title, quote..."
+                placeholder="Search name, company, quote..."
                 value={search}
                 onChange={(e) => {
-                  setSearch(e.target.value)
-                  setPage(1)
+                  setSearch(e.target.value);
+                  setPage(1);
                 }}
               />
             </div>
 
             <select
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 md:w-44"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 md:w-48"
               value={status}
               onChange={(e) => {
-                setStatus(e.target.value)
-                setPage(1)
+                setStatus(e.target.value);
+                setPage(1);
               }}
             >
               <option value="">All Status</option>
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
-            </select>
-
-            <select
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 md:w-40"
-              value={rating}
-              onChange={(e) => {
-                setRating(e.target.value)
-                setPage(1)
-              }}
-            >
-              <option value="">All Ratings</option>
-              {[5, 4, 3, 2, 1].map((r) => (
-                <option key={r} value={r}>
-                  {r} Star{r > 1 ? "s" : ""}
-                </option>
-              ))}
             </select>
           </div>
         </div>
@@ -343,10 +288,10 @@ export default function TestimonialsAdmin() {
             <table className="w-full text-sm">
               <thead className="bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
                 <tr>
-                  <th className="px-5 py-3 text-left">Author</th>
-                  <th className="px-5 py-3 text-left">Quote</th>
+                  <th className="px-5 py-3 text-left">Name</th>
                   <th className="px-5 py-3 text-left">Rating</th>
                   <th className="px-5 py-3 text-left">Status</th>
+                  <th className="px-5 py-3 text-left">Email</th>
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -357,9 +302,7 @@ export default function TestimonialsAdmin() {
                     <td colSpan={5} className="px-5 py-12 text-center">
                       <div className="flex flex-col items-center gap-2 text-slate-400">
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        <span className="text-sm">
-                          Loading testimonials...
-                        </span>
+                        <span className="text-sm">Loading testimonials...</span>
                       </div>
                     </td>
                   </tr>
@@ -399,30 +342,26 @@ export default function TestimonialsAdmin() {
                   items.map((t) => (
                     <tr key={t.id} className="hover:bg-blue-50/40">
                       <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
-                            {getInitials(t.name)}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-900">
-                              {t.name}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {t.title}
-                              {t.company ? ` · ${t.company}` : ""}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="max-w-xs px-5 py-4">
-                        <p className="line-clamp-2 text-slate-600">
-                          {t.quote}
+                        <p className="font-semibold text-slate-900">{t.name}</p>
+                        <p className="line-clamp-1 text-xs text-slate-500">
+                          {t.title}
+                          {t.company ? ` · ${t.company}` : ""}
                         </p>
                       </td>
 
                       <td className="px-5 py-4">
-                        <StarRating value={t.rating} readOnly />
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-3.5 w-3.5 ${
+                                i < t.rating
+                                  ? "fill-[#1B3A8C] text-[#1B3A8C]"
+                                  : "fill-slate-100 text-slate-200"
+                              }`}
+                            />
+                          ))}
+                        </div>
                       </td>
 
                       <td className="px-5 py-4">
@@ -434,6 +373,13 @@ export default function TestimonialsAdmin() {
                         >
                           {t.status}
                         </span>
+                      </td>
+
+                      <td className="px-5 py-4 text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                          <Mail className="h-3.5 w-3.5 text-slate-400" />
+                          {t.email}
+                        </div>
                       </td>
 
                       <td className="px-5 py-4">
@@ -499,7 +445,7 @@ export default function TestimonialsAdmin() {
       {/* Create / Edit Dialog */}
       {formOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
+          <div className="w-full max-w-xl rounded-xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-900">
                 {editing ? "Edit Testimonial" : "New Testimonial"}
@@ -519,20 +465,65 @@ export default function TestimonialsAdmin() {
                 </p>
               )}
 
+              <div>
+                <label className="mb-2 block text-xs font-medium text-slate-600">
+                  Rating
+                </label>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onMouseEnter={() => setHoveredStar(s)}
+                      onMouseLeave={() => setHoveredStar(0)}
+                      onClick={() => updateField("rating", s)}
+                    >
+                      <Star
+                        className={`h-6 w-6 transition-colors ${
+                          s <= (hoveredStar || form.rating)
+                            ? "fill-[#1B3A8C] text-[#1B3A8C]"
+                            : "fill-slate-100 text-slate-200"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                {formErrors.rating && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {formErrors.rating}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Full name
+                </label>
+                <input
+                  value={form.name}
+                  onChange={(e) => updateField("name", e.target.value)}
+                  placeholder="e.g. Maria Santos"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                />
+                {formErrors.name && (
+                  <p className="mt-1 text-xs text-red-600">{formErrors.name}</p>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-600">
-                    Name
+                    Job title
                   </label>
                   <input
-                    value={form.name}
-                    onChange={(e) => updateField("name", e.target.value)}
-                    placeholder="Full name"
+                    value={form.title}
+                    onChange={(e) => updateField("title", e.target.value)}
+                    placeholder="e.g. CEO"
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
-                  {formErrors.name && (
+                  {formErrors.title && (
                     <p className="mt-1 text-xs text-red-600">
-                      {formErrors.name}
+                      {formErrors.title}
                     </p>
                   )}
                 </div>
@@ -544,7 +535,7 @@ export default function TestimonialsAdmin() {
                   <input
                     value={form.company}
                     onChange={(e) => updateField("company", e.target.value)}
-                    placeholder="e.g. Acme Inc."
+                    placeholder="e.g. Bayanihan Digital"
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                   {formErrors.company && (
@@ -557,50 +548,33 @@ export default function TestimonialsAdmin() {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Title
+                  Email address
                 </label>
                 <input
-                  value={form.title}
-                  onChange={(e) => updateField("title", e.target.value)}
-                  placeholder="e.g. CEO"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => updateField("email", e.target.value)}
+                  placeholder="you@company.com"
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
-                {formErrors.title && (
+                {formErrors.email && (
                   <p className="mt-1 text-xs text-red-600">
-                    {formErrors.title}
+                    {formErrors.email}
                   </p>
                 )}
               </div>
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Rating
+                  Testimonial
                 </label>
-                <StarRating
-                  value={form.rating}
-                  onChange={(n) => updateField("rating", n)}
+                <textarea
+                  value={form.quote}
+                  onChange={(e) => updateField("quote", e.target.value)}
+                  rows={4}
+                  placeholder="What did they say about their experience?"
+                  className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
-                {formErrors.rating && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {formErrors.rating}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Quote
-                </label>
-                <div className="relative">
-                  <Quote className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-300" />
-                  <textarea
-                    value={form.quote}
-                    onChange={(e) => updateField("quote", e.target.value)}
-                    rows={4}
-                    placeholder="What the customer said"
-                    className="w-full resize-none rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
                 {formErrors.quote && (
                   <p className="mt-1 text-xs text-red-600">
                     {formErrors.quote}
@@ -613,22 +587,20 @@ export default function TestimonialsAdmin() {
                   Status
                 </label>
                 <div className="flex gap-2">
-                  {(["pending", "approved", "rejected"] as const).map(
-                    (opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => updateField("status", opt)}
-                        className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium capitalize transition ${
-                          form.status === opt
-                            ? "border-blue-400 bg-blue-50 text-blue-700"
-                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                        }`}
-                      >
-                        {opt}
-                      </button>
-                    )
-                  )}
+                  {(["pending", "approved", "rejected"] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => updateField("status", opt)}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium capitalize transition ${
+                        form.status === opt
+                          ? "border-blue-400 bg-blue-50 text-blue-700"
+                          : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
                 </div>
                 {formErrors.status && (
                   <p className="mt-1 text-xs text-red-600">
@@ -664,7 +636,7 @@ export default function TestimonialsAdmin() {
           <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
             <div className="px-6 py-5">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
                   <AlertTriangle className="h-5 w-5 text-red-600" />
                 </div>
                 <div>
@@ -672,12 +644,10 @@ export default function TestimonialsAdmin() {
                     Delete this testimonial?
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    The testimonial from{" "}
                     <span className="font-medium text-slate-700">
                       {deleteTarget.name}
                     </span>{" "}
-                    will be permanently removed. This action cannot be
-                    undone.
+                    will be permanently removed. This action cannot be undone.
                   </p>
                 </div>
               </div>
@@ -703,5 +673,5 @@ export default function TestimonialsAdmin() {
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -1,19 +1,19 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { motion, AnimatePresence } from "framer-motion"
-import { Star, Quote, X, Send, ArrowRight, Loader2 } from "lucide-react"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import { Star, Quote, X, Send, ArrowRight, Loader2 } from "lucide-react";
 
 interface Testimonial {
-  id: number
-  name: string
-  title: string
-  company: string
-  rating: number
-  quote: string
-  status: "pending" | "approved" | "rejected"
+  id: number;
+  name: string;
+  title: string;
+  company: string;
+  rating: number;
+  quote: string;
+  status: "pending" | "approved" | "rejected";
 }
 
 function getInitials(name: string) {
@@ -22,16 +22,16 @@ function getInitials(name: string) {
     .split(/\s+/)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("")
+    .join("");
 }
 
 interface FormData {
-  name: string
-  title: string
-  company: string
-  email: string
-  rating: number
-  quote: string
+  name: string;
+  title: string;
+  company: string;
+  email: string;
+  rating: number;
+  quote: string;
 }
 
 const empty: FormData = {
@@ -41,60 +41,60 @@ const empty: FormData = {
   email: "",
   rating: 5,
   quote: "",
-}
+};
 
 export default function TestimonialPage() {
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState<FormData>(empty)
-  const [hoveredStar, setHoveredStar] = useState(0)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState<FormData>(empty);
+  const [hoveredStar, setHoveredStar] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const set = (field: keyof FormData, value: string | number) =>
-    setForm((f) => ({ ...f, [field]: value }))
+    setForm((f) => ({ ...f, [field]: value }));
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     async function loadTestimonials() {
-      setLoading(true)
-      setLoadError(null)
+      setLoading(true);
+      setLoadError(null);
 
       try {
-        const res = await fetch("/api/testimonials", { cache: "no-store" })
+        const res = await fetch("/api/testimonials", { cache: "no-store" });
 
-        if (!res.ok) throw new Error(`Status ${res.status}`)
+        if (!res.ok) throw new Error(`Status ${res.status}`);
 
-        const data = await res.json()
-        const list = Array.isArray(data) ? data : (data.data ?? [])
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.data ?? []);
 
-        if (!cancelled) setTestimonials(list)
+        if (!cancelled) setTestimonials(list);
       } catch (err) {
-        console.error("Testimonials fetch failed:", err)
+        console.error("Testimonials fetch failed:", err);
         if (!cancelled) {
-          setLoadError("Could not load testimonials right now.")
+          setLoadError("Could not load testimonials right now.");
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) setLoading(false);
       }
     }
 
-    loadTestimonials()
+    loadTestimonials();
 
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setSubmitError(null)
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
       const res = await fetch("/api/testimonials", {
@@ -108,42 +108,42 @@ export default function TestimonialPage() {
           quote: form.quote,
           email: form.email,
         }),
-      })
+      });
 
       if (!res.ok) {
         if (res.status === 422) {
-          const data = await res.json()
-          const firstError = Object.values(data.errors ?? {})[0]
+          const data = await res.json();
+          const firstError = Object.values(data.errors ?? {})[0];
           throw new Error(
             Array.isArray(firstError)
               ? (firstError[0] as string)
               : "Please check your details and try again.",
-          )
+          );
         }
-        throw new Error(`Status ${res.status}`)
+        throw new Error(`Status ${res.status}`);
       }
 
-      setSubmitted(true)
+      setSubmitted(true);
     } catch (err) {
-      console.error("Testimonial submit failed:", err)
+      console.error("Testimonial submit failed:", err);
       setSubmitError(
         err instanceof Error
           ? err.message
           : "Something went wrong. Please try again.",
-      )
+      );
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleClose = () => {
-    setModalOpen(false)
+    setModalOpen(false);
     setTimeout(() => {
-      setForm(empty)
-      setSubmitted(false)
-      setSubmitError(null)
-    }, 300)
-  }
+      setForm(empty);
+      setSubmitted(false);
+      setSubmitError(null);
+    }, 300);
+  };
 
   return (
     <div className="min-h-screen">
@@ -345,8 +345,7 @@ export default function TestimonialPage() {
                           Thank you, {form.name.split(" ")[0]}!
                         </h3>
                         <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">
-                          Your testimonial has been submitted and will be
-                          reviewed by our team before it goes live.
+                          Your testimonial has been submitted!
                         </p>
                       </motion.div>
                     ) : (
@@ -510,5 +509,5 @@ export default function TestimonialPage() {
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }
