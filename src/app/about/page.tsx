@@ -219,7 +219,7 @@ export default function AboutPage() {
               The principles that guide everything we do
             </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-8">
             {values.map((value, index) => (
               <motion.div
                 key={value.title}
@@ -232,10 +232,10 @@ export default function AboutPage() {
                 <div className="w-14 h-14 bg-[#C5D2EC] rounded-xl flex items-center justify-center mx-auto mb-4">
                   <value.icon className="w-7 h-7 text-[#1B3A8C]" />
                 </div>
-                <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">
+                <h3 className="text-md md:text-xl font-semibold text-gray-900 mb-2">
                   {value.title}
                 </h3>
-                <p className="text-gray-600 text-sm">{value.description}</p>
+                <p className="text-gray-600 text-sm md:text-md">{value.description}</p>
               </motion.div>
             ))}
           </div>

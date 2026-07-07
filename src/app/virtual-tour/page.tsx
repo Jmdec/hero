@@ -552,7 +552,7 @@ export default function VirtualTourPage() {
       {
         id: "conference-room-c",
         name: "Conference Room C",
-        panoramaUrl: "/360-view/IMG_20210318_173158_00_049.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_171813_00_046.jpg",
       },
       {
         id: "pantry",
@@ -786,7 +786,7 @@ export default function VirtualTourPage() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.25 }}
-                    className="min-h-[20rem] sm:min-h-[24rem] md:min-h-[28rem] lg:min-h-[32rem] rounded-2xl border border-dashed border-gray-300 bg-white flex flex-col items-center justify-center text-center px-6 sm:px-8"
+                    className="min-h-80 sm:min-h-96 md:min-h-112 lg:min-h-128 rounded-2xl border border-dashed border-gray-300 bg-white flex flex-col items-center justify-center text-center px-6 sm:px-8"
                   >
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-50 flex items-center justify-center mb-3 sm:mb-4">
                       <Rotate3D className="w-4 h-4 sm:w-5 sm:h-5 text-[#1B3A8C]" />

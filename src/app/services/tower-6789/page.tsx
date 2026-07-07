@@ -147,7 +147,7 @@ export default function Tower6789Page() {
 
       {/* Base Overview */}
       <section className="py-20 bg-gray-50 border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -243,63 +243,100 @@ export default function Tower6789Page() {
         </div>
       </section>
 
-      {/* Office Types */}
-      <section className="py-20 bg-gray-50">
+      {/* Floor Layout & Office Types */}
+      <section className="py-24 bg-linear-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <div className="text-center max-w-3xl mx-auto">
+            <h2 className="text-4xl font-bold text-gray-900">
               Floor Layout & Office Types
             </h2>
-            <p className="text-lg text-gray-600">
-              Choose the perfect workspace solution for your business needs
+            <p className="mt-5 text-lg text-gray-600">
+              Discover flexible office solutions designed to accommodate businesses
+              of every size.
             </p>
+          </div>
 
-            <div className="p-4 my-4 bg-yellow-50 rounded-xl">
-              <p className="text-sm text-yellow-800">
-                <strong>Note: </strong>
-                Initial costs include contract fee, security deposit, first month usage fee, common service fee, security card fee, and tax.
+          {/* Note */}
+          <div className="mt-8 max-w-4xl mx-auto rounded-xl border border-yellow-300 bg-yellow-50 p-5">
+            <div className="flex gap-3">
+              <InfoIcon className="w-5 h-5 text-yellow-600 shrink-0 mt-1" />
+
+              <p className="text-sm text-yellow-800 leading-relaxed">
+                <strong>Initial Costs Include:</strong> Contract fee, security
+                deposit, first month's usage fee, common service fee,
+                security card fee, and applicable taxes.
               </p>
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {officeTypes.map((type, index) => (
-              <motion.div
-                key={type.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition-shadow relative"
-              >
-                <div className="absolute top-6 right-6">
-                  <div className="relative group">
-                    <InfoIcon className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
-                    <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      Please contact us for details.
-                      <div className="absolute top-full right-0 border-4 border-transparent border-t-gray-900" />
+          {/* Floor Plan & Office Cards */}
+          <div className="py-6 grid grid-cols-1 gap-12 items-start">
+            {/* Floor Plan */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: .6 }}
+            >
+              <div className="bg-white rounded-3xl shadow-lg overflow-hidden border">
+                <div className="relative aspect-4/3">
+                  <Image
+                    src="/tower6789-layout.png"
+                    alt="Floor Layout"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Office Cards */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: .6 }}
+              className="space-y-5"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {officeTypes.map((type, index) => (
+                  <motion.div key={type.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition-shadow relative" >
+                    <div className="absolute top-6 right-6">
+                      <div className="relative group">
+                        <InfoIcon className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
+                        <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg 
+                            whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          Please contact us for details.
+                          <div className="absolute top-full right-0 border-4 border-transparent border-t-gray-900" />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-14 h-14 bg-[#C5D2EC]/50 rounded-xl flex items-center justify-center">
-                    <type.icon className="w-7 h-7 text-[#1B3A8C]" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900">{type.name}</h3>
-                    <p className="text-gray-600">{type.description}</p>
-                  </div>
-                </div>
-                <ul className="space-y-3">
-                  {type.details.map((detail, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                      <span className="text-gray-700">{detail}</span>
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            ))}
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="hidden lg:flex w-14 h-14 bg-[#8FA8D6]/30 rounded-xl items-center justify-center p-3">
+                        <type.icon className="w-7 h-7 text-[#3B5EA6]" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">{type.name}</h3>
+                        <p className="text-gray-600 text-sm md:text-md">{type.description}</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-3">
+                      {type.details.map((detail, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                          <span className="text-gray-700">{detail}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+
           </div>
         </div>
       </section>
@@ -369,7 +406,7 @@ export default function Tower6789Page() {
       </section>
 
       {/* CTA Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#0A1E3F] via-[#0D47A1] to-[#1565C0] py-12">
+      <section className="relative overflow-hidden bg-linear-to-br from-[#0A1E3F] via-[#0D47A1] to-[#1565C0] py-12">
         {/* Background Decoration */}
         <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
         <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-[#FFC107]/10 blur-3xl" />
@@ -391,30 +428,26 @@ export default function Tower6789Page() {
           </div>
 
           {/* Contact Cards */}
-          <div className="mt-12 grid gap-6 md:grid-cols-2">
-
+          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2 mx-auto md:max-w-4xl">
             {/* Phone */}
-            <div className="flex items-center gap-5 rounded-2xl border border-white/10 bg-white/5 p-6 transition-all hover:border-[#FFC107]/40 hover:bg-white/10">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FFC107] text-[#0A1E3F]">
-                <Phone className="h-6 w-6" />
+            <div className="flex flex-row sm:items-start gap-5 rounded-2xl border border-white/10 bg-white/5 p-6 transition-all hover:border-[#FFC107]/40 hover:bg-white/10">
+              <div className="flex h-10 w-10 lg:h-14 lg:w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FFC107] text-[#0A1E3F]">
+                <Phone className="h-4 w-4 lg:h-6 lg:w-6" />
               </div>
-
-              <div className="flex flex-col gap-5">
+              <div className="flex-1 space-y-5">
                 <div>
-                  <p className="text-md uppercase tracking-wider text-blue-200 font-bold">
+                  <p className="text-sm font-bold uppercase tracking-wider text-blue-200">
                     Main Contact
                   </p>
-
-                  <p className="text-blue-100">
+                  <p className="mt-1 wrap-break-word text-sm lg:text-base text-blue-100">
                     +63 942 639 4128
                   </p>
                 </div>
-
                 <div>
-                  <p className="text-md uppercase tracking-wider text-blue-200 font-bold">
+                  <p className="text-sm font-bold uppercase tracking-wider text-blue-200">
                     Tower 6789 Contact
                   </p>
-                  <p className="text-blue-100">
+                  <p className="mt-1 wrap-break-word text-sm lg:text-base text-blue-100">
                     +63 285 283 100
                   </p>
                 </div>
@@ -422,28 +455,27 @@ export default function Tower6789Page() {
             </div>
 
             {/* Email */}
-            <div className="flex items-center gap-5 rounded-2xl border border-white/10 bg-white/5 p-6 transition-all hover:border-[#FFC107]/40 hover:bg-white/10">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FFC107] text-[#0A1E3F]">
-                <Mail className="h-6 w-6" />
+            <div className="flex flex-row sm:items-start gap-5 rounded-2xl border border-white/10 bg-white/5 p-6 transition-all hover:border-[#FFC107]/40 hover:bg-white/10">
+              <div className="flex h-10 w-10 lg:h-14 lg:w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FFC107] text-[#0A1E3F]">
+                <Mail className="h-4 w-4 lg:h-6 lg:w-6" />
               </div>
-              <div className="flex flex-col gap-5">
+              <div className="flex-1 space-y-5">
                 <div>
-                  <p className="text-md uppercase tracking-wider text-blue-200 font-bold">
+                  <p className="text-sm font-bold uppercase tracking-wider text-blue-200">
                     Sales Email
                   </p>
-                  <p className="text-blue-100">
+                  <p className="mt-1 wrap-break-word text-sm lg:text-base text-blue-100">
                     salesofficer@heroph.net
                   </p>
-                  <p className="text-blue-100">
+                  <p className="wrap-break-word text-sm lg:text-base text-blue-100">
                     digitalsalesmarketing@heroph.net
                   </p>
                 </div>
-
                 <div>
-                  <p className="text-md uppercase tracking-wider text-blue-200 font-bold">
+                  <p className="text-sm font-bold uppercase tracking-wider text-blue-200">
                     Admin Email
                   </p>
-                  <p className="text-blue-100">
+                  <p className="mt-1 wrap-break-word text-sm lg:text-base text-blue-100">
                     admin@heroph.net
                   </p>
                 </div>

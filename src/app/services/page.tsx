@@ -334,7 +334,7 @@ function SpaceModal({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 z-1000 flex items-center justify-center p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -759,7 +759,7 @@ export default function ServicesPage() {
                       <p className="text-gray-600">{item.description}</p>
                     </div>
                   </div>
-                  <div className="w-16 h-16 bg-[#0D47A1] rounded-full flex items-center justify-center text-white text-2xl font-bold z-10 shadow-lg shrink-0">
+                  <div className="w-16 h-16 bg-[#0D47A1] rounded-full hidden lg:flex items-center justify-center text-white text-2xl font-bold z-10 shadow-lg shrink-0">
                     {item.step}
                   </div>
                   <div className="flex-1 hidden lg:block" />
@@ -826,6 +826,31 @@ export default function ServicesPage() {
         </div>
       </section>
 
+      {/* CTA Section */}
+      <section className="py-20 bg-linear-to-r from-[#0D47A1] to-[#00ACC1]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-2xl md:text-4xl font-bold text-white mb-6">
+            Ready to Start Your Business in the Philippines?
+          </h2>
+          <p className="text-md text-white/90 mb-8">
+            Contact us today for a personalized tour and discover the perfect office solution for your business.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/quotation"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-semibold hover:bg-gray-100 transition-colors"
+            >
+              Get a Quote →
+            </Link>
+            <Link
+              href="/contact"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-semibold hover:bg-white/10 transition-colors"
+            >
+              Contact Us
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
