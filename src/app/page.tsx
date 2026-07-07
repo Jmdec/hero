@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import Image from 'next/image'
-import { useState, useEffect } from 'react'
+import Image from "next/image";
+import { useState, useEffect } from "react";
 import {
   MapPin,
   Building2,
@@ -14,6 +14,7 @@ import {
   Play,
   Star,
 } from "lucide-react";
+import AnnouncementPopup from "@/components/AnnouncementPopup";
 
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -40,50 +41,64 @@ export default function Home() {
     {
       icon: MapPin,
       title: "Excellent Location",
-      description: "Conveniently located along Ayala Avenue, the central business district of Makati City.",
+      description:
+        "Conveniently located along Ayala Avenue, the central business district of Makati City.",
     },
     {
       icon: Users,
       title: "Full Support System",
-      description: "We provide comprehensive support to ensure your business runs smoothly.",
+      description:
+        "We provide comprehensive support to ensure your business runs smoothly.",
     },
     {
       icon: Building2,
       title: "Comfortable Office Space",
-      description: "Spacious and well-equipped office spaces designed to enhance your productivity.",
+      description:
+        "Spacious and well-equipped office spaces designed to enhance your productivity.",
     },
     {
       icon: Headset,
       title: "Professional Support",
-      description: "Professional assistance available to support your business needs.",
+      description:
+        "Professional assistance available to support your business needs.",
     },
   ];
 
   const services = [
     {
       title: "Private Offices",
-      description: "Private offices designed for individual professionals and small teams.",
-      image: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80",
+      description:
+        "Private offices designed for individual professionals and small teams.",
+      image:
+        "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80",
     },
     {
       title: "Virtual Offices",
-      description: "Remote office solutions for businesses that need flexibility and scalability.",
-      image: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=80",
+      description:
+        "Remote office solutions for businesses that need flexibility and scalability.",
+      image:
+        "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=80",
     },
     {
       title: "Co-working Spaces",
-      description: "Flexible workspaces designed for freelancers and entrepreneurs.",
-      image: "https://images.unsplash.com/photo-1543269664-7eef42226a21?w=800&q=80",
+      description:
+        "Flexible workspaces designed for freelancers and entrepreneurs.",
+      image:
+        "https://images.unsplash.com/photo-1543269664-7eef42226a21?w=800&q=80",
     },
     {
       title: "Meeting Rooms",
-      description: "Professional meeting spaces equipped with the latest technology.",
-      image: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&q=80",
+      description:
+        "Professional meeting spaces equipped with the latest technology.",
+      image:
+        "https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&q=80",
     },
     {
       title: "Event Space",
-      description: "Versatile event spaces ideal for seminars, workshops, networking events, and corporate gatherings.",
-      image: "https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&q=80",
+      description:
+        "Versatile event spaces ideal for seminars, workshops, networking events, and corporate gatherings.",
+      image:
+        "https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&q=80",
     },
   ];
 
@@ -95,12 +110,12 @@ export default function Home() {
     "Cafe and lounge areas",
     "Japanese-speaking support staff",
     "Printing and copying facilities",
-    "Cleaning and maintenance services"
+    "Cleaning and maintenance services",
   ];
 
   return (
     <div className="min-h-screen">
-      
+      <AnnouncementPopup />
       {/* Hero Section */}
       <section className="relative text-white overflow-hidden ">
         {/* Background Image Carousel */}
@@ -111,8 +126,9 @@ export default function Home() {
               src={slide.image}
               alt={slide.location}
               fill
-              className={`absolute inset-0 object-cover transition-opacity duration-1000 ${currentSlide === index ? "opacity-100" : "opacity-0"
-                }`}
+              className={`absolute inset-0 object-cover transition-opacity duration-1000 ${
+                currentSlide === index ? "opacity-100" : "opacity-0"
+              }`}
               priority={index === 0}
             />
           ))}
@@ -132,7 +148,8 @@ export default function Home() {
             </h1>
             <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl">
               Premium serviced offices in the heart of Makati City. <br />
-              Perfect for Japanese companies expanding into the Philippines market.
+              Perfect for Japanese companies expanding into the Philippines
+              market.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
@@ -178,8 +195,9 @@ export default function Home() {
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}
-              className={`w-2 h-2 rounded-full transition-all ${currentSlide === index ? "bg-white w-6" : "bg-white/50"
-                }`}
+              className={`w-2 h-2 rounded-full transition-all ${
+                currentSlide === index ? "bg-white w-6" : "bg-white/50"
+              }`}
             />
           ))}
         </div>
@@ -220,7 +238,8 @@ export default function Home() {
                 Our Services
               </h2>
               <p className="text-lg text-gray-600">
-                We offer a range of flexible office solutions to meet the unique needs of your business.
+                We offer a range of flexible office solutions to meet the unique
+                needs of your business.
               </p>
             </div>
             <Link
@@ -280,10 +299,12 @@ export default function Home() {
                 Everything You Need to Succeed
               </h2>
               <p className="text-lg text-gray-600 mb-8">
-                Our offices come fully equipped with modern facilities and amenities to ensure your business operates smoothly from day one.
+                Our offices come fully equipped with modern facilities and
+                amenities to ensure your business operates smoothly from day
+                one.
               </p>
               <ul className="space-y-4">
-                {(benefits).map((benefit) => (
+                {benefits.map((benefit) => (
                   <li key={benefit} className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-[#1B3A8C] shrink-0" />
                     <span className="text-gray-700">{benefit}</span>
@@ -308,8 +329,12 @@ export default function Home() {
                     <CheckCircle2 className="w-6 h-6 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-900">Ready to Use</div>
-                    <div className="text-sm text-gray-600">Move in immediately with all amenities provided.</div>
+                    <div className="font-semibold text-gray-900">
+                      Ready to Use
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Move in immediately with all amenities provided.
+                    </div>
                   </div>
                 </div>
               </div>
@@ -319,9 +344,7 @@ export default function Home() {
       </section>
 
       {/* Testimonials Section */}
-      <section>
-
-      </section>
+      <section></section>
 
       {/* CTA Section */}
       <section className="py-20 bg-linear-to-r from-[#0D47A1] to-[#00ACC1]">
@@ -330,7 +353,8 @@ export default function Home() {
             Ready to Start Your Business in the Philippines?
           </h2>
           <p className="text-md text-white/90 mb-8">
-            Contact us today for a personalized tour and discover the perfect office solution for your business.
+            Contact us today for a personalized tour and discover the perfect
+            office solution for your business.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
