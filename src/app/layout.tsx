@@ -305,7 +305,7 @@ const localBusinessSchema = {
       name: "Reserve an Office",
       target: {
         "@type": "EntryPoint",
-        urlTemplate: "https://heroph.net/reservation",
+        urlTemplate: "https://heroph.net/quotation",
         actionPlatform: [
           "http://schema.org/DesktopWebPlatform",
           "http://schema.org/MobileWebPlatform",
@@ -323,8 +323,8 @@ const localBusinessSchema = {
     },
   ],
   sameAs: [
-    "https://www.facebook.com/herophilippines",
-    "https://www.instagram.com/herophilippines",
+    "https://www.facebook.com/heroservicedoffice",
+    "https://www.instagram.com/heroso.ph",
   ],
 };
 
@@ -378,8 +378,8 @@ const organizationSchema = {
     },
   ],
   sameAs: [
-    "https://www.facebook.com/herophilippines",
-    "https://www.instagram.com/herophilippines",
+    "https://www.facebook.com/heroservicedoffice",
+    "https://www.instagram.com/heroso.ph",
   ],
 };
 
@@ -506,7 +506,7 @@ const serviceSchema = {
           "Dedicated private rooms for 1–35 people with furniture, internet, and 24/7 access included.",
         provider: { "@id": "https://heroph.net/#organization" },
         areaServed: "Makati City, Philippines",
-        url: "https://heroph.net/services/private-office",
+        url: "https://heroph.net/services",
       },
     },
     {
@@ -519,7 +519,7 @@ const serviceSchema = {
           "Affordable single-person booth desks and café co-working areas with Wi-Fi included.",
         provider: { "@id": "https://heroph.net/#organization" },
         areaServed: "Makati City, Philippines",
-        url: "https://heroph.net/services/coworking",
+        url: "https://heroph.net/services",
       },
     },
     {
@@ -545,7 +545,7 @@ const serviceSchema = {
           "Meeting rooms for up to 10 people available for hourly rental on weekdays 9:00–18:00.",
         provider: { "@id": "https://heroph.net/#organization" },
         areaServed: "Makati City, Philippines",
-        url: "https://heroph.net/services/conference-room",
+        url: "https://heroph.net/services",
       },
     },
   ],
