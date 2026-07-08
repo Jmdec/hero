@@ -5,6 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { ArrowRight, Calendar, X } from "lucide-react";
 
+interface SocialMediaEntry {
+  platform: string;
+  link: string | null;
+}
+
 interface Announcement {
   id: number;
   tag: string;
@@ -12,10 +17,23 @@ interface Announcement {
   title: string;
   excerpt: string;
   content: string;
+  social_media?: Array<SocialMediaEntry | string> | string | null;
+  social_platforms?: string[] | null;
+  social_links?: Array<string | null> | null;
+  link?: string | null;
 }
 
 const TAG_STYLE = "bg-blue-50 text-blue-600";
 const FALLBACK_TAG_STYLE = "bg-gray-100 text-gray-600";
+
+const SOCIAL_MEDIA_OPTIONS = [
+  { value: "facebook", label: "Facebook" },
+  { value: "x", label: "X (Twitter)" },
+  { value: "instagram", label: "Instagram" },
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "youtube", label: "YouTube" },
+  { value: "tiktok", label: "TikTok" },
+];
 
 function tagClass(tag: string) {
   return tag ? TAG_STYLE : FALLBACK_TAG_STYLE;
@@ -29,6 +47,69 @@ function formatDate(value: string) {
     month: "long",
     day: "numeric",
   });
+}
+
+function normalizeSocialMedia(
+  value: Announcement["social_media"],
+  platforms?: string[] | null,
+  links?: Array<string | null> | null,
+) {
+  const normalizedPlatforms = Array.isArray(platforms) ? platforms : [];
+  const normalizedLinks = Array.isArray(links) ? links : [];
+
+  if (normalizedPlatforms.length > 0 || normalizedLinks.length > 0) {
+    const count = Math.max(normalizedPlatforms.length, normalizedLinks.length);
+    return Array.from({ length: count }, (_, index) => {
+      const platform = normalizedPlatforms[index]?.trim();
+      if (!platform) return null;
+      return { platform, link: normalizedLinks[index]?.trim() ?? null };
+    }).filter((item): item is SocialMediaEntry => item !== null);
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item): SocialMediaEntry | null => {
+        if (item && typeof item === "object" && "platform" in item) {
+          const entry = item as Partial<SocialMediaEntry>;
+          return entry.platform
+            ? { platform: entry.platform, link: entry.link ?? null }
+            : null;
+        }
+
+        if (typeof item === "string" && item.trim()) {
+          return { platform: item.trim(), link: null };
+        }
+
+        return null;
+      })
+      .filter((item): item is SocialMediaEntry => item !== null);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return normalizeSocialMedia(parsed);
+      }
+    } catch {
+      // fall back to comma-separated parsing below
+    }
+
+    return trimmed
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((platform) => ({ platform, link: null }));
+  }
+
+  return [];
+}
+
+function formatSocialPlatform(value: string) {
+  return SOCIAL_MEDIA_OPTIONS.find((opt) => opt.value === value)?.label ?? value;
 }
 
 async function getAnnouncements(): Promise<Announcement[]> {
@@ -69,6 +150,12 @@ function AnnouncementCard({
   index: number;
   onSelect: (item: Announcement) => void;
 }) {
+  const socialPlatforms = normalizeSocialMedia(
+    item.social_media,
+    item.social_platforms,
+    item.social_links,
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -89,6 +176,32 @@ function AnnouncementCard({
         {item.excerpt}
       </p>
 
+      {socialPlatforms.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {socialPlatforms.map((entry) => (
+            <span
+              key={entry.platform}
+              className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600"
+            >
+              {formatSocialPlatform(entry.platform)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {item.link && (
+        <a
+          href={item.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 inline-flex items-center text-sm font-medium text-[#1B3A8C] hover:underline"
+          onClick={(event) => event.stopPropagation()}
+        >
+          Open post
+          <ArrowRight className="ml-1 h-4 w-4" />
+        </a>
+      )}
+
       <div className="inline-flex items-center gap-1.5 mt-6 text-sm font-medium text-[#1B3A8C] transition-colors">
         Read more
         <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
@@ -104,6 +217,12 @@ function AnnouncementModal({
   item: Announcement;
   onClose: () => void;
 }) {
+  const socialPlatforms = normalizeSocialMedia(
+    item.social_media,
+    item.social_platforms,
+    item.social_links,
+  );
+
   return (
     <>
       <motion.div
@@ -143,6 +262,32 @@ function AnnouncementModal({
             <h2 className="text-xl font-bold text-gray-900 leading-snug mb-4">
               {item.title}
             </h2>
+
+            {socialPlatforms.length > 0 && (
+              <div className="mb-4 flex flex-wrap gap-2">
+                {socialPlatforms.map((entry) => (
+                  <span
+                    key={entry.platform}
+                    className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600"
+                  >
+                    {formatSocialPlatform(entry.platform)}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {item.link && (
+              <a
+                href={item.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mb-5 inline-flex items-center text-sm font-medium text-[#1B3A8C] hover:underline"
+              >
+                Open original post
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </a>
+            )}
+
             <div className="space-y-4">
               {item.content.split("\n\n").map((para, i) => (
                 <p key={i} className="text-sm text-gray-600 leading-relaxed">

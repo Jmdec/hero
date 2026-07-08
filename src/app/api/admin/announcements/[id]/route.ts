@@ -24,6 +24,28 @@ export async function PUT(
   });
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const body = await request.json();
+
+  const res = await fetch(`${API_URL}/api/admin/announcements/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: request.headers.get("authorization") ?? "",
+    },
+    body: JSON.stringify(body),
+  });
+
+  return NextResponse.json(await res.json(), {
+    status: res.status,
+  });
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

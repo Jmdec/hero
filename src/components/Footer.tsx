@@ -37,7 +37,7 @@ function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-1000 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -52,7 +52,7 @@ function Modal({
         <div className="flex items-center justify-between px-6 py-5 border-b border-[#0A1B33]/10">
           <h2
             id="modal-title"
-            className="text-xl tracking-wide text-[#0A1B33]"
+            className="text-xl tracking-wide text-[#0A1B33] font-semibold"
           >
             {title}
           </h2>
@@ -155,7 +155,7 @@ function PrivacyPolicyContent() {
         <p>Address: 23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines</p>
         <p>
           E-mail:{' '}
-          <a href="mailto:salesofficer@heroph.net" className="text-[#8A7040] underline underline-offset-2">
+          <a href="mailto:salesofficer@heroph.net" className="text-[#1565C0] underline underline-offset-2">
             salesofficer@heroph.net
           </a>
         </p>
@@ -221,7 +221,7 @@ function TermsOfServiceContent() {
         <p>Hero Serviced Office Inc.</p>
         <p>23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines</p>
         <p>
-          <a href="mailto:sales@heroph.net" className="text-[#8A7040] underline underline-offset-2">
+          <a href="mailto:sales@heroph.net" className="text-[#1565C0] underline underline-offset-2">
             sales@heroph.net
           </a>
         </p>
@@ -243,7 +243,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function ColumnHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="relative inline-block text-[13px] tracking-[0.2em] uppercase text-white/90 mb-5 pb-3">
+    <h3 className="relative inline-block text-[15px] tracking-wide uppercase text-white/90 mb-5 pb-3">
       {children}
       <span className="absolute left-0 bottom-0 h-0.5 w-8 bg-[#FFC107]" />
     </h3>
@@ -288,7 +288,7 @@ export default function Footer() {
     { href: '/about', label: 'About Us' },
     { href: '/services', label: 'Our Services' },
     { href: '/virtual-tour', label: 'Virtual Tour' },
-    { href: '/reservation', label: 'Reservation' },
+    { href: '/quotation', label: 'Get a Quote' },
     { href: '/contact', label: 'Contact Us' },
   ];
 
@@ -319,7 +319,7 @@ export default function Footer() {
                 </div>
                 <div>
                   <span className="text-xl tracking-wide text-white font-bold">HERO</span>
-                  <span className="text-[11px] tracking-[0.25em] uppercase text-[#FFC107] block -mt-0.5 font-semibold">
+                  <span className="text-md text-white block -mt-0.5 font-semibold">
                     Serviced Office
                   </span>
                 </div>

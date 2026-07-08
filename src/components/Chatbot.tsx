@@ -330,6 +330,16 @@ type ConversationState = {
     remoteConversationId?: number;
 };
 
+type ConversationWithStatus = ConversationState & {
+    status?: string;
+    agent_status?: string;
+    messages?: Array<{
+        sender: string;
+        message: string;
+        sent_at: string;
+    }>;
+};
+
 const formatTime = () =>
     new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -483,7 +493,7 @@ const Chatbot = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [isSubmittingLead, setIsSubmittingLead] = useState(false);
     const [leadError, setLeadError] = useState("");
-    const [isResumingSession, setIsResumingSession] = useState(true);
+    const [isResumingSession] = useState(false);
     const [conversation, setConversation] = useState<ConversationState | null>(
         null,
     );
@@ -492,6 +502,8 @@ const Chatbot = () => {
     const [agreedToPolicy, setAgreedToPolicy] = useState(false);
     const [agreementTouched, setAgreementTouched] = useState(false);
     const [agentRequested, setAgentRequested] = useState(false);
+    const [chatEnabled, setChatEnabled] = useState(false);
+    const [conversationClosed, setConversationClosed] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -550,9 +562,12 @@ const Chatbot = () => {
                 // while a live agent owns the chat, and 'agent_closed' (or 'ai' / 'closed')
                 // once the admin ends it and control returns to the AI assistant.
                 // Update these strings to match whatever your backend actually sends.
+                const latestConversationWithStatus =
+                    latestConversation as ConversationWithStatus;
+
                 const rawStatus: string | null =
-                    (latestConversation as any).status ??
-                    (latestConversation as any).agent_status ??
+                    latestConversationWithStatus.status ??
+                    latestConversationWithStatus.agent_status ??
                     null;
 
                 const previousStatus = previousStatusRef.current;
@@ -599,6 +614,7 @@ const Chatbot = () => {
                     // Loop back to AI mode: re-enable the "Talk to an agent" button
                     // and clear any stale error state so the assistant flow resumes cleanly.
                     setAgentRequested(false);
+                    setChatEnabled(false);
                     setSendError("");
                 }
             } catch {
@@ -609,12 +625,30 @@ const Chatbot = () => {
         return () => window.clearInterval(interval);
     }, [conversation?.id, leadSubmitted]);
 
-    useEffect(() => {
-        setIsResumingSession(false);
-    }, []);
-
     const humanDelay = () =>
         new Promise((res) => setTimeout(res, 1200 + Math.random() * 1300));
+
+    const handleCloseChat = async () => {
+        if (leadSubmitted && conversation?.id && !conversationClosed) {
+            try {
+                await chatApi.closeConversation(conversation.id);
+            } catch {
+                // Ignore close failures and still mark the conversation ended locally.
+            }
+
+            setConversationClosed(true);
+            setMessages((prev) => [
+                ...prev,
+                {
+                    type: "bot",
+                    text: "This conversation has ended.",
+                    time: formatTime(),
+                },
+            ]);
+        }
+
+        setIsChatOpen(false);
+    };
 
     const ensureConversation = useCallback(async (): Promise<{
         id: number;
@@ -659,6 +693,8 @@ const Chatbot = () => {
     );
 
     const handleQuickReply = async (reply: string) => {
+        if (conversationClosed || !chatEnabled) return;
+
         const time = formatTime();
 
         setMessages((prev) => [...prev, { type: "user", text: reply, time }]);
@@ -681,6 +717,9 @@ const Chatbot = () => {
     };
 
     const handleTalkToAgent = async () => {
+        if (conversationClosed) return;
+
+        setChatEnabled(true);
         const time = formatTime();
         const userText = "I'd like to talk to a live agent.";
 
@@ -729,6 +768,7 @@ const Chatbot = () => {
     };
 
     const handleSendMessage = async () => {
+        if (conversationClosed || !chatEnabled) return;
         if (!message.trim()) return;
 
         const time = formatTime();
@@ -886,7 +926,7 @@ const Chatbot = () => {
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
-                            {leadSubmitted && (
+                            {leadSubmitted && !conversationClosed && (
                                 <button
                                     onClick={handleTalkToAgent}
                                     disabled={isTyping || agentRequested}
@@ -901,7 +941,7 @@ const Chatbot = () => {
                                 </button>
                             )}
                             <button
-                                onClick={() => setIsChatOpen(false)}
+                                onClick={handleCloseChat}
                                 className="text-white/70 hover:text-white hover:bg-white/15 rounded-full p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-white"
                                 aria-label="Close chat"
                             >
@@ -1139,8 +1179,14 @@ const Chatbot = () => {
                                     </p>
                                 )}
 
+                                {!chatEnabled && !conversationClosed && (
+                                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                                        Please click "Talk to an agent" above to enable the live chat.
+                                    </div>
+                                )}
+
                                 {/* Quick replies */}
-                                {!isTyping && messages[messages.length - 1]?.type === "bot" && (
+                                {chatEnabled && !conversationClosed && !isTyping && messages[messages.length - 1]?.type === "bot" && (
                                     <div className="pt-1">
                                         <p className="text-[11px] text-gray-400 mb-2 pl-9">
                                             Quick replies
@@ -1165,7 +1211,7 @@ const Chatbot = () => {
                     </div>
 
                     {/* Input area */}
-                    {!isResumingSession && leadSubmitted && (
+                    {!isResumingSession && leadSubmitted && chatEnabled && !conversationClosed && (
                         <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
                             <div className="flex items-center gap-2">
                                 <input

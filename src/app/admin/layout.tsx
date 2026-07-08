@@ -48,7 +48,7 @@ const menuItems = [
         icon: MessagesSquare,
       },
       {
-        title: "Inquiries",
+        title: "Contact",
         href: "/admin/contact",
         icon: MailQuestion,
       },
@@ -62,11 +62,11 @@ const menuItems = [
         href: "/admin/testimonials",
         icon: MessageCircleHeart,
       },
-      {
-        title: "Blogs",
-        href: "/admin/blogs",
-        icon: Newspaper,
-      },
+      // {
+      //   title: "Blogs",
+      //   href: "/admin/blogs",
+      //   icon: Newspaper,
+      // },
     ],
   },
 ];

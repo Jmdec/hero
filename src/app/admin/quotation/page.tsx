@@ -479,7 +479,7 @@ export default function AdminQuotationsPage() {
                 </div>
 
                 {/* Table */}
-                <div className="bg-white border border-[#D9E2F0] rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(11,31,74,0.04)]">
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                     {loading ? (
                         <div className="p-16 text-center text-sm text-[#64748B]">Loading quotations…</div>
                     ) : filtered.length === 0 ? (
@@ -492,15 +492,14 @@ export default function AdminQuotationsPage() {
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-[#D9E2F0] bg-[#F8FAFD]">
-                                        <th className="text-left font-semibold text-[#64748B] text-xs uppercase tracking-wide px-5 py-3">Quotation</th>
-                                        <th className="text-left font-semibold text-[#64748B] text-xs uppercase tracking-wide px-5 py-3">Customer</th>
-                                        <th className="text-left font-semibold text-[#64748B] text-xs uppercase tracking-wide px-5 py-3">Service</th>
-                                        <th className="text-left font-semibold text-[#64748B] text-xs uppercase tracking-wide px-5 py-3">Date</th>
-                                        <th className="text-left font-semibold text-[#64748B] text-xs uppercase tracking-wide px-5 py-3">Total</th>
-                                        <th className="text-left font-semibold text-[#64748B] text-xs uppercase tracking-wide px-5 py-3">Status</th>
-                                        <th className="px-5 py-3 text-right font-semibold text-[#64748B] text-xs uppercase tracking-wide">Actions</th>
+                                <thead className="bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                                    <tr>
+                                        <th className="px-5 py-3 text-left">Quotation</th>
+                                        <th className="px-5 py-3 text-left">Customer</th>
+                                        <th className="px-5 py-3 text-left">Service</th>
+                                        <th className="px-5 py-3 text-left">Date</th>
+                                        <th className="px-5 py-3 text-left">Status</th>
+                                        <th className="px-5 py-3 text-left">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[#F0F4FB]">
@@ -512,14 +511,11 @@ export default function AdminQuotationsPage() {
                                         >
                                             <td className="px-5 py-4 font-semibold text-[#0B1F4A] whitespace-nowrap">{quote.quotation_id}</td>
                                             <td className="px-5 py-4">
-                                                <p className="font-medium text-[#0B1F4A]">{quote.detail?.full_name ?? "—"}</p>
+                                                <p className="font-semibold text-[#0B1F4A]">{quote.detail?.full_name ?? "—"}</p>
                                                 <p className="text-xs text-[#64748B]">{quote.detail?.email ?? "—"}</p>
                                             </td>
                                             <td className="px-5 py-4 text-[#0B1F4A]">{quote.service_name}</td>
                                             <td className="px-5 py-4 text-[#64748B] whitespace-nowrap">{formatDate(quote.created_at)}</td>
-                                            <td className="px-5 py-4 font-semibold text-[#0B1F4A] whitespace-nowrap">
-                                                {quote.detail ? formatCurrency(quote.detail.total) : "—"}
-                                            </td>
                                             <td className="px-5 py-4">
                                                 <StatusBadge status={quote.status} />
                                             </td>
