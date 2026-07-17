@@ -59,7 +59,7 @@ function StepProgress({ step }: { step: 1 | 2 }) {
     { n: 2, label: "Requirements" },
   ];
   return (
-    <div className="flex items-center gap-3 mb-8">
+    <div className="flex items-center justify-center gap-3 mb-8">
       {steps.map((s, i) => {
         const isDone = step > s.n;
         const isActive = step === s.n;
@@ -928,7 +928,7 @@ function MapCard({
   const [loaded, setLoaded] = useState(false);
   return (
     <div className="relative rounded-2xl overflow-hidden border border-gray-300 shadow-lg group">
-      <div className="relative h-56 overflow-hidden">
+      <div className="relative h-60 overflow-hidden">
         {!loaded && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-gray-100 animate-pulse">
             <Loader2 className="w-5 h-5 text-[#1B3A8C] animate-spin" />
@@ -1021,10 +1021,6 @@ export default function ContactPage() {
               viewport={{ once: true }}
               className="space-y-5"
             >
-              <div>
-                <h3 className="text-xl md:text-2xl font-bold text-gray-900">Our Locations</h3>
-              </div>
-
               <MapCard
                 title="Tower 6789"
                 titleAttr="Tower 6789 map"
@@ -1054,7 +1050,7 @@ export default function ContactPage() {
           </div>
         </div>
 
-        {/* Quick contact strip, anchored to the bottom edge of the hero */}
+        {/* Quick contact strip, anchored to the bottom edge of the hero
         <div className="pt-10">
           <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-4">
             {contactChannels.map((c) => (
@@ -1074,7 +1070,7 @@ export default function ContactPage() {
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
       </section>
 
       {/* FAQ */}

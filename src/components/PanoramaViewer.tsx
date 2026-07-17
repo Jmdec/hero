@@ -8,6 +8,7 @@ import {
   X,
   RotateCcw,
   Eye,
+  MousePointerClick,
 } from "lucide-react"
 import * as THREE from "three"
 
@@ -26,6 +27,7 @@ interface Immersive360TourProps {
 
 export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = false }: Immersive360TourProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
@@ -44,6 +46,15 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
   const [isAutoRotating, setIsAutoRotating] = useState(true)
   const [showInfo, setShowInfo] = useState(false)
   const [showShareMenu, setShowShareMenu] = useState(false)
+
+  // Viewer must be explicitly "activated" (clicked/tapped) before it captures
+  // drag/scroll input. This lets the page scroll normally over the viewer
+  // until the user opts in, and prevents accidental zoom-on-scroll.
+  const [isActive, setIsActive] = useState(false)
+  const isActiveRef = useRef(false)
+  useEffect(() => {
+    isActiveRef.current = isActive
+  }, [isActive])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -106,6 +117,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     }
 
     const onPointerDown = (event: PointerEvent) => {
+      if (!isActiveRef.current) return
       isDragging.current = true
       setIsAutoRotating(false)
       previousMousePosition.current = { x: event.clientX, y: event.clientY }
@@ -113,7 +125,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     }
 
     const onPointerMove = (event: PointerEvent) => {
-      if (!isDragging.current) return
+      if (!isDragging.current || !isActiveRef.current) return
       lon.current -= (event.clientX - previousMousePosition.current.x) * 0.2
       lat.current += (event.clientY - previousMousePosition.current.y) * 0.2
       lat.current = Math.max(-85, Math.min(85, lat.current))
@@ -126,12 +138,14 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     }
 
     const onWheel = (event: WheelEvent) => {
+      if (!isActiveRef.current) return // let the page scroll normally
       event.preventDefault()
       camera.fov = THREE.MathUtils.clamp(camera.fov + event.deltaY * 0.05, 30, 100)
       camera.updateProjectionMatrix()
     }
 
     const onTouchStart = (event: TouchEvent) => {
+      if (!isActiveRef.current) return // let the page scroll normally
       if (event.touches.length === 1) {
         isDragging.current = true
         previousMousePosition.current = { x: event.touches[0].clientX, y: event.touches[0].clientY }
@@ -139,7 +153,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     }
 
     const onTouchMove = (event: TouchEvent) => {
-      if (!isDragging.current || event.touches.length !== 1) return
+      if (!isDragging.current || !isActiveRef.current || event.touches.length !== 1) return
       event.preventDefault()
       lon.current -= (event.touches[0].clientX - previousMousePosition.current.x) * 0.2
       lat.current += (event.touches[0].clientY - previousMousePosition.current.y) * 0.2
@@ -160,6 +174,8 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
 
     const animate = () => {
       animationFrameRef.current = requestAnimationFrame(animate)
+      // Keep it "static but moving": auto-rotate continues regardless of
+      // activation state, but stops while the user is actively dragging.
       if (isAutoRotating && !isDragging.current) lon.current += 0.1
       updateCameraTarget()
       renderer.render(scene, camera)
@@ -194,6 +210,35 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
     }
   }, [selectedRoom.panoramaUrl, isAutoRotating])
 
+  // Deactivate the viewer (release scroll/drag capture) whenever the user
+  // clicks/taps outside of it, and always deactivate on room change.
+  useEffect(() => {
+    setIsActive(false)
+  }, [selectedRoom.id])
+
+  useEffect(() => {
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      if (!wrapperRef.current) return
+      if (!wrapperRef.current.contains(event.target as Node)) {
+        setIsActive(false)
+      }
+    }
+    document.addEventListener("pointerdown", handleOutsidePointerDown)
+    return () => document.removeEventListener("pointerdown", handleOutsidePointerDown)
+  }, [])
+
+  // Escape also releases the viewer, handy on desktop.
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsActive(false)
+    }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [])
+
+  const activateViewer = () => {
+    setIsActive(true)
+  }
 
   const handleResetView = () => {
     lon.current = 0
@@ -207,13 +252,23 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      containerRef.current?.parentElement?.requestFullscreen()
+      wrapperRef.current?.requestFullscreen()
       setIsFullscreen(true)
     } else {
       document.exitFullscreen()
       setIsFullscreen(false)
     }
   }
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      const fsActive = !!document.fullscreenElement
+      setIsFullscreen(fsActive)
+      if (!fsActive) setIsActive(false)
+    }
+    document.addEventListener("fullscreenchange", handleFsChange)
+    return () => document.removeEventListener("fullscreenchange", handleFsChange)
+  }, [])
 
   const handleShare = async () => {
     const url = window.location.href
@@ -229,13 +284,46 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
   }
 
   const dockButtonClass = (active?: boolean) =>
-    `w-10 h-10 flex items-center justify-center transition-colors ${
+    `w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center transition-colors ${
       active ? "bg-[#C9A15D]/15 text-[#C9A15D]" : "text-white/70 hover:text-white hover:bg-white/5"
     }`
 
   return (
-    <div className={`relative w-full ${isEmbedded ? "h-140" : "h-screen"} bg-[#0A1420] overflow-hidden rounded-2xl ring-1 ring-white/10`}>
-      <div ref={containerRef} className="absolute inset-0 cursor-grab" style={{ touchAction: "none" }} />
+    <div
+      ref={wrapperRef}
+      className={`relative w-full ${isEmbedded ? "h-80 sm:h-105 md:h-125 lg:h-140" : "h-screen"} ${
+        isFullscreen ? "h-screen" : ""
+      } bg-[#0A1420] overflow-hidden rounded-2xl ring-1 ring-white/10`}
+    >
+      <div
+        ref={containerRef}
+        className="absolute inset-0"
+        style={{ touchAction: isActive ? "none" : "pan-y" }}
+      />
+
+      {/* Activation overlay: shown until the user clicks/taps to engage the viewer.
+          This keeps the panorama "static but moving" (auto-rotate still plays)
+          while letting normal page scroll pass through underneath. */}
+      {!isActive && !isLoading && !loadError && (
+        <button
+          type="button"
+          onClick={activateViewer}
+          className="absolute inset-0 z-10 flex items-end sm:items-center justify-center bg-black/0 hover:bg-black/10 transition-colors group cursor-pointer"
+          aria-label="Click to interact with 360° view"
+        >
+          <span className="mb-6 sm:mb-0 flex items-center gap-2 bg-[#0A1420]/85 text-white text-xs sm:text-sm font-medium px-4 py-2.5 rounded-full border border-[#C9A15D]/30 shadow-lg backdrop-blur-md group-hover:border-[#C9A15D]/60 transition-colors">
+            <MousePointerClick className="w-4 h-4 text-[#C9A15D]" />
+            Click to look around
+          </span>
+        </button>
+      )}
+
+      {/* Active-state hint so users know how to get back to scrolling the page */}
+      {isActive && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-[#0A1420]/80 text-white/80 text-[11px] sm:text-xs px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-md pointer-events-none">
+          Drag to look around • Click outside to release
+        </div>
+      )}
 
       {/* Loading overlay */}
       {isLoading && (
@@ -246,7 +334,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
           </div>
         </div>
       )}
-      
+
       {/* Error overlay */}
       {loadError && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#0A1420]/85 backdrop-blur-sm z-30">
@@ -258,17 +346,17 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
       )}
 
       {/* Room name badge — top left */}
-      <div className="absolute top-4 left-4 z-20 flex items-center gap-2.5 bg-[#0A1420]/80 backdrop-blur-md text-white pl-2.5 pr-4 py-1.5 rounded-full border border-[#C9A15D]/25 shadow-lg">
-        <span className="relative flex h-2 w-2">
+      <div className="absolute top-3 sm:top-4 left-3 sm:left-4 z-20 flex items-center gap-2 sm:gap-2.5 bg-[#0A1420]/80 backdrop-blur-md text-white pl-2 sm:pl-2.5 pr-3 sm:pr-4 py-1.5 rounded-full border border-[#C9A15D]/25 shadow-lg max-w-[55%] sm:max-w-none">
+        <span className="relative flex h-2 w-2 shrink-0">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9A15D] opacity-60" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FFC107]" />
         </span>
-        <span className="text-xs font-medium tracking-wide">{selectedRoom.name}</span>
+        <span className="text-[11px] sm:text-xs font-medium tracking-wide truncate">{selectedRoom.name}</span>
       </div>
 
       {/* Info panel */}
       {showInfo && (
-        <div className="absolute top-16 left-4 z-20 bg-[#0A1B33]/95 border border-[#C9A15D]/20 rounded-xl shadow-2xl w-72 backdrop-blur-md">
+        <div className="absolute top-14 sm:top-16 left-3 sm:left-4 right-3 sm:right-auto z-20 bg-[#0A1B33]/95 border border-[#C9A15D]/20 rounded-xl shadow-2xl sm:w-72 backdrop-blur-md">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-2 text-white text-sm font-medium">
               <Eye className="w-4 h-4 text-[#C9A15D]" />
@@ -283,7 +371,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
               <p className="text-white font-medium mb-0.5">{selectedRoom.name}</p>
             </div>
             <ul className="space-y-1.5">
-              {["Drag to look around", "Scroll to zoom in/out", "Click thumbnails to switch rooms"].map((tip) => (
+              {["Click the view to activate", "Drag to look around", "Click outside to release", "Click thumbnails to switch rooms"].map((tip) => (
                 <li key={tip} className="flex items-center gap-2 text-xs text-white/70">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#C9A15D] shrink-0" />
                   {tip}
@@ -295,7 +383,7 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
       )}
 
       {/* Right-side control dock */}
-      <div className="absolute top-4 right-4 z-20 flex flex-col bg-[#0A1420]/80 backdrop-blur-md rounded-xl border border-white/10 shadow-lg divide-y divide-white/10 overflow-hidden">
+      <div className="absolute top-3 sm:top-4 right-3 sm:right-4 z-20 flex flex-col bg-[#0A1420]/80 backdrop-blur-md rounded-xl border border-white/10 shadow-lg divide-y divide-white/10 overflow-hidden">
         <button className={dockButtonClass(showInfo)} onClick={() => setShowInfo(!showInfo)} title="Room info">
           <Eye className="w-4 h-4" />
         </button>
@@ -320,10 +408,24 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
         </button>
       </div>
 
+      {/* Explicit exit-fullscreen button, always visible while in fullscreen,
+          positioned clear of the control dock and safe-area aware on mobile. */}
+      {isFullscreen && (
+        <button
+          className="absolute z-30 flex items-center gap-1.5 bg-[#0A1420]/90 hover:bg-[#0A1420] text-white px-3 sm:px-4 py-2 rounded-full backdrop-blur-md border border-white/15 shadow-lg transition-colors"
+          style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
+          onClick={toggleFullscreen}
+          title="Exit fullscreen"
+        >
+          <X className="w-4 h-4" />
+          <span className="text-xs font-medium hidden sm:inline">Exit fullscreen</span>
+        </button>
+      )}
+
       {/* Close button (modal mode) */}
       {onClose && (
         <button
-          className="absolute top-4 right-16 z-30 w-9 h-9 flex items-center justify-center bg-[#0A1420]/80 hover:bg-[#0A1420] text-white rounded-full backdrop-blur-md border border-white/10 transition-colors"
+          className="absolute top-3 sm:top-4 right-14 sm:right-16 z-30 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-[#0A1420]/80 hover:bg-[#0A1420] text-white rounded-full backdrop-blur-md border border-white/10 transition-colors"
           onClick={onClose}
         >
           <X className="w-4 h-4" />
