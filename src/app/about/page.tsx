@@ -148,7 +148,7 @@ export default function AboutPage() {
             >
               <div className="relative aspect-4/3 rounded-2xl overflow-hidden">
                 <Image
-                  src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80"
+                  src="_ARM7945.jpeg"
                   alt="Our office"
                   fill
                   className="object-cover"

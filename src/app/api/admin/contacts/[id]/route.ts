@@ -19,7 +19,7 @@ export async function GET(
     );
   }
 
-  const res = await fetch(`${API_URL}/api/admin/contact/${id}`, {
+  const res = await fetch(`${API_URL}/api/admin/contacts/${id}`, {
     headers: {
       Accept: "application/json",
       Authorization: request.headers.get("authorization") ?? "",
@@ -45,7 +45,7 @@ export async function PATCH(
 
   const body = await request.json();
 
-  const res = await fetch(`${API_URL}/api/admin/contact/${id}`, {
+  const res = await fetch(`${API_URL}/api/admin/contacts/${id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -71,7 +71,7 @@ export async function DELETE(
     );
   }
 
-  const res = await fetch(`${API_URL}/api/admin/contact/${id}`, {
+  const res = await fetch(`${API_URL}/api/admin/contacts/${id}`, {
     method: "DELETE",
     headers: {
       Accept: "application/json",

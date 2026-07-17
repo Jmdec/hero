@@ -1,9 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { ArrowRight, Calendar, X } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  Calendar,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Inbox,
+  Newspaper,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 
 interface SocialMediaEntry {
   platform: string;
@@ -14,14 +28,15 @@ interface Announcement {
   id: number;
   tag: string;
   date: string;
+  image?: string | null;
   title: string;
   excerpt: string;
   content: string;
-  social_media?: Array<SocialMediaEntry | string> | string | null;
   social_platforms?: string[] | null;
   social_links?: Array<string | null> | null;
-  link?: string | null;
 }
+
+const PAGE_SIZE = 6;
 
 const TAG_STYLE = "bg-blue-50 text-blue-600";
 const FALLBACK_TAG_STYLE = "bg-gray-100 text-gray-600";
@@ -39,6 +54,21 @@ function tagClass(tag: string) {
   return tag ? TAG_STYLE : FALLBACK_TAG_STYLE;
 }
 
+function getAnnouncementImageUrl(image?: string | null) {
+  if (!image) return null;
+
+  const configured =
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.LARAVEL_API_URL ||
+    "http://localhost:8000";
+  const normalized = configured.replace(/\/+$/g, "");
+  const base = normalized.endsWith("/api")
+    ? normalized.replace(/\/api$/, "")
+    : normalized;
+
+  return `${base}/storage/${image.replace(/^\/+/, "")}`;
+}
+
 function formatDate(value: string) {
   const d = new Date(value);
   if (isNaN(d.getTime())) return value;
@@ -50,62 +80,18 @@ function formatDate(value: string) {
 }
 
 function normalizeSocialMedia(
-  value: Announcement["social_media"],
   platforms?: string[] | null,
   links?: Array<string | null> | null,
-) {
+): SocialMediaEntry[] {
   const normalizedPlatforms = Array.isArray(platforms) ? platforms : [];
   const normalizedLinks = Array.isArray(links) ? links : [];
 
-  if (normalizedPlatforms.length > 0 || normalizedLinks.length > 0) {
-    const count = Math.max(normalizedPlatforms.length, normalizedLinks.length);
-    return Array.from({ length: count }, (_, index) => {
-      const platform = normalizedPlatforms[index]?.trim();
-      if (!platform) return null;
-      return { platform, link: normalizedLinks[index]?.trim() ?? null };
-    }).filter((item): item is SocialMediaEntry => item !== null);
-  }
-
-  if (Array.isArray(value)) {
-    return value
-      .map((item): SocialMediaEntry | null => {
-        if (item && typeof item === "object" && "platform" in item) {
-          const entry = item as Partial<SocialMediaEntry>;
-          return entry.platform
-            ? { platform: entry.platform, link: entry.link ?? null }
-            : null;
-        }
-
-        if (typeof item === "string" && item.trim()) {
-          return { platform: item.trim(), link: null };
-        }
-
-        return null;
-      })
-      .filter((item): item is SocialMediaEntry => item !== null);
-  }
-
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return [];
-
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed)) {
-        return normalizeSocialMedia(parsed);
-      }
-    } catch {
-      // fall back to comma-separated parsing below
-    }
-
-    return trimmed
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .map((platform) => ({ platform, link: null }));
-  }
-
-  return [];
+  const count = Math.max(normalizedPlatforms.length, normalizedLinks.length);
+  return Array.from({ length: count }, (_, index) => {
+    const platform = normalizedPlatforms[index]?.trim();
+    if (!platform) return null;
+    return { platform, link: normalizedLinks[index]?.trim() ?? null };
+  }).filter((item): item is SocialMediaEntry => item !== null);
 }
 
 function formatSocialPlatform(value: string) {
@@ -125,15 +111,42 @@ async function getAnnouncements(): Promise<Announcement[]> {
   return Array.isArray(data) ? data : (data.data ?? []);
 }
 
+// Builds a compact page-number sequence with ellipses, e.g. [1, "…", 4, 5, 6, "…", 12]
+function getPageNumbers(current: number, total: number): Array<number | "…"> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const pages: Array<number | "…"> = [1];
+  if (current > 4) pages.push("…");
+
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) pages.push(i);
+
+  if (current < total - 3) pages.push("…");
+  pages.push(total);
+
+  return pages;
+}
+
+function ImageFallback({ className }: { className?: string }) {
+  return (
+    <div
+      className={`flex items-center justify-center bg-linear-to-br from-[#1B3A8C]/10 to-[#00ACC1]/10 ${className ?? ""}`}
+    >
+      <Newspaper className="h-10 w-10 text-[#1B3A8C]/30" />
+    </div>
+  );
+}
+
 function TagDateRow({ tag, date }: { tag: string; date: string }) {
   return (
     <div className="flex items-center gap-3">
       <span
-        className={`text-xs font-medium px-3 py-1 rounded-full ${tagClass(tag)}`}
+        className={`text-sm font-medium px-3 py-1 rounded-full ${tagClass(tag)}`}
       >
         {tag}
       </span>
-      <div className="flex items-center gap-1.5 text-xs text-gray-400">
+      <div className="flex items-center gap-1.5 text-sm text-gray-400">
         <Calendar className="h-3.5 w-3.5" />
         {formatDate(date)}
       </div>
@@ -151,10 +164,11 @@ function AnnouncementCard({
   onSelect: (item: Announcement) => void;
 }) {
   const socialPlatforms = normalizeSocialMedia(
-    item.social_media,
     item.social_platforms,
     item.social_links,
   );
+  const imageUrl = getAnnouncementImageUrl(item.image);
+  const [imageFailed, setImageFailed] = useState(false);
 
   return (
     <motion.div
@@ -164,11 +178,24 @@ function AnnouncementCard({
       onClick={() => onSelect(item)}
       className="group bg-white rounded-2xl border border-gray-100 p-6 flex flex-col cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
     >
+      <div className="mb-4 overflow-hidden rounded-xl border border-gray-100">
+        {imageUrl && !imageFailed ? (
+          <img
+            src={imageUrl}
+            alt={item.title}
+            className="h-40 w-full object-cover"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <ImageFallback className="h-40 w-full" />
+        )}
+      </div>
+
       <div className="flex items-center justify-between mb-4">
         <TagDateRow tag={item.tag} date={item.date} />
       </div>
 
-      <h2 className="text-[17px] font-bold text-gray-900 leading-snug mb-3">
+      <h2 className="text-lg font-bold text-gray-900 leading-snug mb-3">
         {item.title}
       </h2>
 
@@ -176,35 +203,35 @@ function AnnouncementCard({
         {item.excerpt}
       </p>
 
-      {socialPlatforms.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {socialPlatforms.map((entry) => (
-            <span
-              key={entry.platform}
-              className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600"
-            >
-              {formatSocialPlatform(entry.platform)}
-            </span>
-          ))}
+      <div className="flex items-center justify-between gap-2 pt-4">
+        {socialPlatforms.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {socialPlatforms.map((entry) =>
+              entry.link ? (
+                <a
+                  key={entry.platform}
+                  href={entry.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(event) => event.stopPropagation()}
+                  className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-[#0A1E3F] hover:bg-blue-100"
+                >
+                  <span className="flex items-center gap-1 uppercase tracking-wide">
+                    {formatSocialPlatform(entry.platform)}{" "}
+                    <ExternalLink className="h-3 w-3" />
+                  </span>
+                </a>
+              ) : null,
+            )}
+          </div>
+        ) : (
+          <span />
+        )}
+
+        <div className="inline-flex items-center gap-1.5 text-sm font-medium text-[#FFC107] transition-colors">
+          Read more
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
         </div>
-      )}
-
-      {item.link && (
-        <a
-          href={item.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-4 inline-flex items-center text-sm font-medium text-[#1B3A8C] hover:underline"
-          onClick={(event) => event.stopPropagation()}
-        >
-          Open post
-          <ArrowRight className="ml-1 h-4 w-4" />
-        </a>
-      )}
-
-      <div className="inline-flex items-center gap-1.5 mt-6 text-sm font-medium text-[#1B3A8C] transition-colors">
-        Read more
-        <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
       </div>
     </motion.div>
   );
@@ -218,10 +245,11 @@ function AnnouncementModal({
   onClose: () => void;
 }) {
   const socialPlatforms = normalizeSocialMedia(
-    item.social_media,
     item.social_platforms,
     item.social_links,
   );
+  const imageUrl = getAnnouncementImageUrl(item.image);
+  const [imageFailed, setImageFailed] = useState(false);
 
   return (
     <>
@@ -259,42 +287,51 @@ function AnnouncementModal({
           </div>
 
           <div className="overflow-y-auto px-7 pb-8">
+            <div className="mb-5 overflow-hidden rounded-xl border border-gray-100">
+              {imageUrl && !imageFailed ? (
+                <img
+                  src={imageUrl}
+                  alt={item.title}
+                  className="max-h-64 w-full object-cover"
+                  onError={() => setImageFailed(true)}
+                />
+              ) : (
+                <ImageFallback className="h-40 w-full" />
+              )}
+            </div>
+
             <h2 className="text-xl font-bold text-gray-900 leading-snug mb-4">
               {item.title}
             </h2>
 
-            {socialPlatforms.length > 0 && (
-              <div className="mb-4 flex flex-wrap gap-2">
-                {socialPlatforms.map((entry) => (
-                  <span
-                    key={entry.platform}
-                    className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600"
-                  >
-                    {formatSocialPlatform(entry.platform)}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {item.link && (
-              <a
-                href={item.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mb-5 inline-flex items-center text-sm font-medium text-[#1B3A8C] hover:underline"
-              >
-                Open original post
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </a>
-            )}
-
-            <div className="space-y-4">
+            <div className="space-y-4 mb-4">
               {item.content.split("\n\n").map((para, i) => (
                 <p key={i} className="text-sm text-gray-600 leading-relaxed">
                   {para}
                 </p>
               ))}
             </div>
+
+            {socialPlatforms.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {socialPlatforms.map((entry) =>
+                  entry.link ? (
+                    <a
+                      key={entry.platform}
+                      href={entry.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+                    >
+                      <span className="flex items-center gap-1 rounded-full p-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                        {formatSocialPlatform(entry.platform)}{" "}
+                        <ExternalLink className="h-3 w-3" />
+                      </span>
+                    </a>
+                  ) : null,
+                )}
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
@@ -307,6 +344,13 @@ export default function AnnouncementPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Search / filter / pagination
+  const [query, setQuery] = useState("");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -333,7 +377,55 @@ export default function AnnouncementPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryCount]);
+
+  const availableTags = useMemo(
+    () =>
+      Array.from(
+        new Set(announcements.map((a) => a.tag).filter(Boolean)),
+      ).sort(),
+    [announcements],
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return announcements.filter((a) => {
+      const matchesQuery =
+        q.length === 0 ||
+        a.title?.toLowerCase().includes(q) ||
+        a.content?.toLowerCase().includes(q) ||
+        a.tag?.toLowerCase().includes(q) ||
+        a.social_platforms?.some((p) => p.toLowerCase().includes(q)) ||
+        a.date?.toLowerCase().includes(q);
+
+      const matchesTag = !tagFilter || a.tag === tagFilter;
+
+      return matchesQuery && matchesTag;
+    });
+  }, [announcements, query, tagFilter]);
+
+  // Reset to page 1 whenever the active filters change
+  useEffect(() => {
+    setPage(1);
+  }, [query, tagFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+  const pageNumbers = useMemo(
+    () => getPageNumbers(currentPage, totalPages),
+    [currentPage, totalPages],
+  );
+
+  const hasActiveFilters = query.trim().length > 0 || tagFilter !== null;
+
+  const clearFilters = () => {
+    setQuery("");
+    setTagFilter(null);
+  };
 
   return (
     <div className="min-h-screen">
@@ -373,33 +465,228 @@ export default function AnnouncementPage() {
       {/* Announcements Grid */}
       <section className="py-20 bg-[#F5F5F3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {loading && (
-            <p className="text-center text-sm text-gray-400">
-              Loading announcements...
-            </p>
-          )}
-
-          {!loading && error && (
-            <p className="text-center text-sm text-red-500">{error}</p>
-          )}
-
-          {!loading && !error && announcements.length === 0 && (
-            <p className="text-center text-sm text-gray-400">
-              No announcements yet. Check back soon.
-            </p>
-          )}
-
-          {!loading && !error && announcements.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {announcements.map((item, i) => (
-                <AnnouncementCard
-                  key={item.id}
-                  item={item}
-                  index={i}
-                  onSelect={setSelected}
+          {/* Search + Filters */}
+          <div className="mb-10 flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by title, keyword, or tag…"
+                  className="w-full rounded-full border border-gray-200 bg-white pl-11 pr-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                 />
+              </div>
+
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => setFiltersOpen((v) => !v)}
+                  className={`inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-medium transition-colors w-full sm:w-auto ${filtersOpen || tagFilter
+                    ? "border-[#1B3A8C] bg-[#1B3A8C] text-white"
+                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    }`}
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {tagFilter ? `Tag: ${tagFilter}` : "Filter by tag"}
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${filtersOpen ? "rotate-180" : ""
+                      }`}
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {filtersOpen && (
+                    <>
+                      {/* Click-outside catcher */}
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setFiltersOpen(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 z-20 mt-2 w-48 rounded-2xl border border-gray-100 bg-white p-1.5 shadow-lg max-h-64 overflow-y-auto"
+                      >
+                        <button
+                          onClick={() => {
+                            setTagFilter(null);
+                            setFiltersOpen(false);
+                          }}
+                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${!tagFilter
+                            ? "bg-[#1B3A8C]/5 text-[#1B3A8C] font-medium"
+                            : "text-gray-600 hover:bg-gray-50"
+                            }`}
+                        >
+                          All tags
+                        </button>
+                        {availableTags.map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => {
+                              setTagFilter(t);
+                              setFiltersOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${tagFilter === t
+                              ? "bg-[#1B3A8C]/5 text-[#1B3A8C] font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                              }`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+
+          {/* Loading state — skeleton cards */}
+          {loading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl border border-gray-100 p-6 animate-pulse"
+                >
+                  <div className="mb-4 h-40 w-full rounded-xl bg-gray-100" />
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-6 w-16 rounded-full bg-gray-100" />
+                    <div className="h-4 w-24 rounded bg-gray-100" />
+                  </div>
+                  <div className="h-4 w-3/4 rounded bg-gray-100 mb-3" />
+                  <div className="space-y-2">
+                    <div className="h-3 rounded bg-gray-100 w-full" />
+                    <div className="h-3 rounded bg-gray-100 w-full" />
+                    <div className="h-3 rounded bg-gray-100 w-2/3" />
+                  </div>
+                </div>
               ))}
             </div>
+          )}
+
+          {/* Error state */}
+          {!loading && error && (
+            <div className="flex flex-col items-center justify-center text-center py-16 px-4">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 border border-red-100">
+                <AlertCircle className="h-6 w-6 text-red-500" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1.5">
+                Something went wrong
+              </h3>
+              <p className="text-sm text-gray-500 max-w-sm mb-6">{error}</p>
+              <button
+                onClick={() => setRetryCount((c) => c + 1)}
+                className="inline-flex items-center gap-2 rounded-full bg-[#1B3A8C] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#2a4fa8] transition-colors"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Try again
+              </button>
+            </div>
+          )}
+
+          {/* Empty state (no announcements at all, or none match filters) */}
+          {!loading && !error && filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center text-center py-16 px-4">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 border border-gray-200">
+                <Inbox className="h-6 w-6 text-gray-400" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1.5">
+                {announcements.length === 0
+                  ? "No announcements yet"
+                  : "No matches found"}
+              </h3>
+              <p className="text-sm text-gray-500 max-w-sm mb-6">
+                {announcements.length === 0
+                  ? "Check back soon for news and updates from Hero Serviced Office."
+                  : "Try a different search term or clear your filters."}
+              </p>
+              {announcements.length > 0 && (
+                <button
+                  onClick={clearFilters}
+                  className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {!loading && !error && paginated.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paginated.map((item, i) => (
+                  <AnnouncementCard
+                    key={item.id}
+                    item={item}
+                    index={i}
+                    onSelect={setSelected}
+                  />
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-10 flex flex-col items-center justify-between gap-3 md:flex-row">
+                  <p className="text-sm text-gray-400">
+                    {filtered.length} total{" "}
+                    {filtered.length === 1 ? "announcement" : "announcements"}
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={currentPage === 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Prev
+                    </button>
+
+                    <div className="hidden items-center gap-1 sm:flex">
+                      {pageNumbers.map((p, i) =>
+                        p === "…" ? (
+                          <span
+                            key={`ellipsis-${i}`}
+                            className="px-2 text-sm text-gray-400"
+                          >
+                            …
+                          </span>
+                        ) : (
+                          <button
+                            key={p}
+                            onClick={() => setPage(p)}
+                            className={`h-9 w-9 rounded-lg text-sm font-medium transition-colors ${currentPage === p
+                              ? "bg-[#1B3A8C] text-white"
+                              : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                              }`}
+                          >
+                            {p}
+                          </button>
+                        ),
+                      )}
+                    </div>
+
+                    <span className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 sm:hidden">
+                      Page {currentPage} of {totalPages}
+                    </span>
+
+                    <button
+                      disabled={currentPage === totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
@@ -444,7 +731,13 @@ export default function AnnouncementPage() {
             </div>
 
             <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-8 shadow-2xl">
-              <form className="space-y-5">
+              <form
+                className="space-y-5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  // TODO: wire up newsletter subscription endpoint
+                }}
+              >
                 <div>
                   <label className="block text-sm font-semibold text-white mb-2">
                     Email address

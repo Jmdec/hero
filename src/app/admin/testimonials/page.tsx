@@ -5,7 +5,6 @@ import {
   Search,
   Pencil,
   Trash2,
-  Plus,
   Loader2,
   ChevronLeft,
   ChevronRight,
@@ -212,7 +211,7 @@ export default function TestimonialsAdmin() {
 
     try {
       const res = await fetch(`/api/admin/testimonials/${viewTarget.id}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: authHeaders(true),
         // Only the status field is sent — nothing else about the
         // testimonial can change through this flow.

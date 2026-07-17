@@ -22,9 +22,9 @@ import {
     Receipt,
     Hash,
     Sparkles,
+    Pencil,
+    Copy,
 } from "lucide-react";
-
-// ─── Types ──────────────────────────────────────────────────────────────────
 
 type Status =
     | "pending"
@@ -208,7 +208,7 @@ function StatCard({
     );
 }
 
-// Small reusable pieces for the detail drawer
+// Small reusable pieces for the detail modal
 
 function SectionCard({
     icon: Icon,
@@ -248,7 +248,7 @@ function InfoRow({
             </span>
             <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B]">{label}</p>
-                <p className="text-sm font-medium text-[#0B1F4A] break-words">{value}</p>
+                <p className="text-sm font-medium text-[#0B1F4A] wrap-break-word">{value}</p>
             </div>
         </div>
     );
@@ -276,6 +276,8 @@ export default function AdminQuotationsPage() {
     const [deleting, setDeleting] = useState(false);
     const [statusChangeTarget, setStatusChangeTarget] = useState<{ quote: Quotation; newStatus: Status } | null>(null);
     const [updatingStatus, setUpdatingStatus] = useState(false);
+    const [statusEditTarget, setStatusEditTarget] = useState<Quotation | null>(null);
+    const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
     const [toasts, setToasts] = useState<ToastItem[]>([]);
     const toastIdRef = useRef(0);
 
@@ -290,6 +292,18 @@ export default function AdminQuotationsPage() {
     const dismissToast = (id: number) => {
         setToasts((t) => t.filter((toast) => toast.id !== id));
     };
+
+    const copyToClipboard = useCallback(
+        async (text: string, label: string) => {
+            try {
+                await navigator.clipboard.writeText(text);
+                pushToast(`${label} copied to clipboard`, "success");
+            } catch {
+                pushToast(`Couldn't copy ${label.toLowerCase()}`, "error");
+            }
+        },
+        [pushToast]
+    );
 
     const fetchQuotations = useCallback(async (background = false) => {
         background ? setRefreshing(true) : setLoading(true);
@@ -420,6 +434,24 @@ export default function AdminQuotationsPage() {
         }
     };
 
+    const openStatusEdit = (quote: Quotation) => {
+        setStatusEditTarget(quote);
+        setPendingStatus(quote.status);
+    };
+
+    const closeStatusEdit = () => {
+        setStatusEditTarget(null);
+        setPendingStatus(null);
+    };
+
+    const submitStatusEdit = () => {
+        if (!statusEditTarget || !pendingStatus) return;
+        if (pendingStatus !== statusEditTarget.status) {
+            setStatusChangeTarget({ quote: statusEditTarget, newStatus: pendingStatus });
+        }
+        closeStatusEdit();
+    };
+
     return (
         <>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4">
@@ -517,7 +549,18 @@ export default function AdminQuotationsPage() {
                                             <td className="px-5 py-4 text-[#0B1F4A]">{quote.service_name}</td>
                                             <td className="px-5 py-4 text-[#64748B] whitespace-nowrap">{formatDate(quote.created_at)}</td>
                                             <td className="px-5 py-4">
-                                                <StatusBadge status={quote.status} />
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openStatusEdit(quote);
+                                                    }}
+                                                    className="group inline-flex items-center gap-1.5 rounded-full transition hover:opacity-80"
+                                                    aria-label={`Edit status for ${quote.quotation_id}`}
+                                                    title="Edit status"
+                                                >
+                                                    <StatusBadge status={quote.status} />
+                                                    <Pencil className="w-3 h-3 text-[#94A3B8] opacity-0 group-hover:opacity-100 transition" />
+                                                </button>
                                             </td>
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center justify-end gap-1.5">
@@ -548,45 +591,58 @@ export default function AdminQuotationsPage() {
                 </div>
             </div>
 
-            {/* Detail drawer - Redesign */}
+            {/* Detail modal */}
             {selected && (
-                <div className="fixed inset-0 z-50 flex justify-end">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelected(null)} />
-                    <div className="relative w-full max-w-md bg-[#F8FAFD] h-full overflow-y-auto shadow-2xl flex flex-col">
+                    <div className="relative w-full max-w-xl bg-[#F8FAFD] rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[88vh]">
                         {/* Header */}
-                        <div className="sticky top-0 bg-white border-b border-[#D9E2F0] px-6 py-5 z-10">
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <span className="w-11 h-11 rounded-xl bg-[#1B3A8C] text-white flex items-center justify-center font-bold text-sm shrink-0">
-                                        {getInitials(selected.detail?.full_name)}
-                                    </span>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-1.5 text-xs text-[#64748B] font-medium">
-                                            <Hash className="w-3 h-3" />
-                                            {selected.quotation_id}
-                                        </div>
-                                        <h2 className="text-lg font-bold text-[#0B1F4A] truncate">
-                                            {selected.detail?.full_name ?? "Unnamed request"}
-                                        </h2>
-                                    </div>
-                                </div>
+                        <div className="relative shrink-0 bg-gradient-to-br from-[#1B3A8C] to-[#0B1F4A] px-6 pt-6 pb-14 overflow-hidden">
+                            <div className="absolute -right-10 -top-14 w-48 h-48 rounded-full bg-white/5" />
+                            <div className="absolute -right-2 top-16 w-24 h-24 rounded-full bg-white/5" />
+
+                            <div className="relative flex items-start justify-between">
+                                <button
+                                    onClick={() => copyToClipboard(selected.quotation_id, "Quotation ID")}
+                                    className="inline-flex items-center gap-1.5 text-[11px] font-medium text-white/60 hover:text-white/90 tracking-wide transition"
+                                    title="Copy quotation ID"
+                                >
+                                    <Hash className="w-3 h-3" />
+                                    {selected.quotation_id}
+                                    <Copy className="w-3 h-3" />
+                                </button>
                                 <button
                                     onClick={() => setSelected(null)}
-                                    className="p-2 rounded-full text-[#64748B] hover:bg-[#F0F4FB] transition shrink-0"
+                                    className="p-2 -m-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition"
                                     aria-label="Close"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
                             </div>
-                            <div className="mt-3">
-                                <StatusBadge status={selected.status} />
+
+                            <div className="relative mt-4 flex items-center gap-4">
+                                <span className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 text-white flex items-center justify-center font-bold text-lg shrink-0 backdrop-blur-sm">
+                                    {getInitials(selected.detail?.full_name)}
+                                </span>
+                                <div className="min-w-0">
+                                    <h2 className="text-xl font-bold text-white truncate">
+                                        {selected.detail?.full_name ?? "Unnamed request"}
+                                    </h2>
+                                    <p className="text-sm text-white/60 truncate">
+                                        {selected.detail?.company_name ?? "Submitted"} · {formatDate(selected.created_at)}
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="p-6 space-y-4 flex-1">
-                            {/* Status control */}
-                            <SectionCard icon={Sparkles} title="Update status">
-                                <div className="relative">
+                        {/* Status card, overlapping the header */}
+                        <div className="relative z-10 px-6 -mt-8">
+                            <div className="bg-white border border-[#D9E2F0] rounded-2xl shadow-[0_8px_24px_rgba(11,31,74,0.08)] px-5 py-4 flex items-center justify-between gap-4">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B] mb-1.5">Status</p>
+                                    <StatusBadge status={selected.status} />
+                                </div>
+                                <div className="relative w-44 shrink-0">
                                     <select
                                         value={selected.status}
                                         onChange={(e) => {
@@ -594,18 +650,44 @@ export default function AdminQuotationsPage() {
                                             if (newStatus === selected.status) return;
                                             setStatusChangeTarget({ quote: selected, newStatus });
                                         }}
-                                        className="w-full appearance-none px-4 py-3 pr-10 bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl text-sm font-medium text-[#0B1F4A] focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C] cursor-pointer"
+                                        className="w-full appearance-none px-3.5 py-2.5 pr-9 bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl text-xs font-semibold text-[#0B1F4A] focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C] cursor-pointer"
                                     >
                                         {STATUSES.map((s) => (
                                             <option key={s.value} value={s.value}>{s.label}</option>
                                         ))}
                                     </select>
-                                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#64748B] pointer-events-none" />
                                 </div>
-                            </SectionCard>
+                            </div>
+                        </div>
 
-                            {/* Customer */}
-                            <SectionCard icon={Users} title="Customer">
+                        <div className="overflow-y-auto px-6 pt-5 pb-6 space-y-4 flex-1">
+                            {/* Quick contact actions */}
+                            {(selected.detail?.email || selected.detail?.phone) && (
+                                <div className="flex gap-2.5">
+                                    {selected.detail?.email && (
+                                        <a
+                                            href={`mailto:${selected.detail.email}`}
+                                            className="flex-1 flex items-center gap-2 justify-center px-3 py-2.5 rounded-xl border border-[#D9E2F0] bg-white text-xs font-semibold text-[#1B3A8C] hover:border-[#1B3A8C] hover:bg-[#F0F4FB] transition"
+                                        >
+                                            <Mail className="w-3.5 h-3.5" />
+                                            Email
+                                        </a>
+                                    )}
+                                    {selected.detail?.phone && (
+                                        <a
+                                            href={`tel:${selected.detail.phone}`}
+                                            className="flex-1 flex items-center gap-2 justify-center px-3 py-2.5 rounded-xl border border-[#D9E2F0] bg-white text-xs font-semibold text-[#1B3A8C] hover:border-[#1B3A8C] hover:bg-[#F0F4FB] transition"
+                                        >
+                                            <Phone className="w-3.5 h-3.5" />
+                                            Call
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Contact */}
+                            <SectionCard icon={Users} title="Contact">
                                 {selected.detail?.company_name && (
                                     <InfoRow icon={Building2} label="Company" value={selected.detail.company_name} />
                                 )}
@@ -620,47 +702,51 @@ export default function AdminQuotationsPage() {
                                 )}
                             </SectionCard>
 
-                            {/* Service / booking */}
+                            {/* Booking details */}
                             <SectionCard icon={Calendar} title="Booking details">
-                                <InfoRow
-                                    icon={Building2}
-                                    label="Service"
-                                    value={
-                                        <>
-                                            {selected.service_name}
-                                            {(selected.lease_term || selected.package || selected.event_type) && (
-                                                <span className="block text-xs font-normal text-[#64748B] mt-0.5">
-                                                    {[selected.lease_term, selected.package, selected.event_type].filter(Boolean).join(" · ")}
-                                                </span>
-                                            )}
-                                        </>
-                                    }
-                                />
-                                {selected.detail?.date && (
-                                    <InfoRow
-                                        icon={Clock}
-                                        label="Date & time"
-                                        value={`${formatDate(selected.detail.date)}${selected.detail.time ? ` · ${selected.detail.time}` : ""}`}
-                                    />
-                                )}
-                                {selected.detail?.seats != null && (
-                                    <InfoRow
-                                        icon={Users}
-                                        label="Seats"
-                                        value={`${selected.detail.seats} seat${selected.detail.seats === 1 ? "" : "s"}`}
-                                    />
-                                )}
-                                {selected.detail?.duration_type && (
-                                    <InfoRow
-                                        icon={Clock}
-                                        label="Duration"
-                                        value={
-                                            selected.detail.duration
-                                                ? `${selected.detail.duration} ${selected.detail.duration_type}`
-                                                : selected.detail.duration_type
-                                        }
-                                    />
-                                )}
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+                                    <div className="col-span-2">
+                                        <InfoRow
+                                            icon={Building2}
+                                            label="Service"
+                                            value={
+                                                <>
+                                                    {selected.service_name}
+                                                    {(selected.lease_term || selected.package || selected.event_type) && (
+                                                        <span className="block text-xs font-normal text-[#64748B] mt-0.5">
+                                                            {[selected.lease_term, selected.package, selected.event_type].filter(Boolean).join(" · ")}
+                                                        </span>
+                                                    )}
+                                                </>
+                                            }
+                                        />
+                                    </div>
+                                    {selected.detail?.date && (
+                                        <InfoRow
+                                            icon={Clock}
+                                            label="Date & time"
+                                            value={`${formatDate(selected.detail.date)}${selected.detail.time ? ` · ${selected.detail.time}` : ""}`}
+                                        />
+                                    )}
+                                    {selected.detail?.seats != null && (
+                                        <InfoRow
+                                            icon={Users}
+                                            label="Seats"
+                                            value={`${selected.detail.seats} seat${selected.detail.seats === 1 ? "" : "s"}`}
+                                        />
+                                    )}
+                                    {selected.detail?.duration_type && (
+                                        <InfoRow
+                                            icon={Clock}
+                                            label="Duration"
+                                            value={
+                                                selected.detail.duration
+                                                    ? `${selected.detail.duration} ${selected.detail.duration_type}`
+                                                    : selected.detail.duration_type
+                                            }
+                                        />
+                                    )}
+                                </div>
                             </SectionCard>
 
                             {/* Notes / requirements */}
@@ -684,26 +770,33 @@ export default function AdminQuotationsPage() {
                             {/* Payment — Virtual Office only */}
                             {selected.detail && selected.service_name?.trim().toLowerCase() === "virtual office" && (
                                 <SectionCard icon={Receipt} title="Payment">
-                                    <div className="flex items-center justify-between bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl px-4 py-3">
-                                        <span className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">Total</span>
-                                        <span className="text-lg font-bold text-[#0B1F4A]">{formatCurrency(selected.detail.total)}</span>
+                                    <div className="bg-gradient-to-br from-[#F0F4FB] to-[#F8FAFD] border border-[#D9E2F0] rounded-xl px-5 py-4 flex items-center justify-between">
+                                        <div>
+                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B]">Total amount</p>
+                                            <p className="text-2xl font-bold text-[#0B1F4A] mt-1">{formatCurrency(selected.detail.total)}</p>
+                                        </div>
+                                        <span className="w-11 h-11 rounded-xl bg-white border border-[#D9E2F0] flex items-center justify-center shrink-0">
+                                            <Banknote className="w-5 h-5 text-[#1B3A8C]" />
+                                        </span>
                                     </div>
-                                    <InfoRow icon={Banknote} label="Method" value={<span className="capitalize">{selected.detail.payment_method}</span>} />
-                                    {selected.detail.transaction_id && (
-                                        <InfoRow icon={Hash} label="Transaction ID" value={selected.detail.transaction_id} />
-                                    )}
-                                    {selected.detail.receipt && (
-                                        <InfoRow icon={Receipt} label="Receipt" value={selected.detail.receipt} />
-                                    )}
-                                    {selected.paid_at && (
-                                        <InfoRow icon={Calendar} label="Paid at" value={formatDate(selected.paid_at)} />
-                                    )}
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-5 pt-1">
+                                        <InfoRow icon={Banknote} label="Method" value={<span className="capitalize">{selected.detail.payment_method}</span>} />
+                                        {selected.paid_at && (
+                                            <InfoRow icon={Calendar} label="Paid at" value={formatDate(selected.paid_at)} />
+                                        )}
+                                        {selected.detail.transaction_id && (
+                                            <InfoRow icon={Hash} label="Transaction ID" value={selected.detail.transaction_id} />
+                                        )}
+                                        {selected.detail.receipt && (
+                                            <InfoRow icon={Receipt} label="Receipt" value={selected.detail.receipt} />
+                                        )}
+                                    </div>
                                 </SectionCard>
                             )}
                         </div>
 
                         {/* Footer actions */}
-                        <div className="sticky bottom-0 bg-white border-t border-[#D9E2F0] p-4">
+                        <div className="shrink-0 bg-white border-t border-[#D9E2F0] p-4">
                             <button
                                 onClick={() => setDeleteTarget(selected)}
                                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition"
@@ -711,6 +804,73 @@ export default function AdminQuotationsPage() {
                                 <Trash2 className="w-4 h-4" />
                                 Delete Quotation
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Status edit modal — triggered from the table's Status column */}
+            {statusEditTarget && (
+                <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={closeStatusEdit}
+                    />
+
+                    {/* Modal */}
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                        <div className="p-6">
+                            <div className="flex items-start justify-between gap-4 mb-1">
+                                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#EEF2FB]">
+                                    <Pencil className="w-6 h-6 text-[#1B3A8C]" />
+                                </div>
+                                <button
+                                    onClick={closeStatusEdit}
+                                    className="p-1.5 rounded-full text-[#64748B] hover:bg-[#F0F4FB] transition shrink-0"
+                                    aria-label="Close"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <h2 className="mt-4 text-lg font-bold text-[#0B1F4A]">Edit Status</h2>
+                            <p className="mt-1 text-sm text-[#64748B]">
+                                <span className="font-semibold text-[#0B1F4A]">{statusEditTarget.quotation_id}</span>
+                                {statusEditTarget.detail?.full_name ? ` · ${statusEditTarget.detail.full_name}` : ""}
+                            </p>
+
+                            <label className="block mt-5 text-[10px] font-semibold uppercase tracking-wide text-[#64748B] mb-1.5">
+                                New status
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={pendingStatus ?? statusEditTarget.status}
+                                    onChange={(e) => setPendingStatus(e.target.value as Status)}
+                                    className="w-full appearance-none px-4 py-3 pr-10 bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl text-sm font-medium text-[#0B1F4A] focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C] cursor-pointer"
+                                >
+                                    {STATUSES.map((s) => (
+                                        <option key={s.value} value={s.value}>{s.label}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                            </div>
+
+                            <div className="mt-8 flex gap-3">
+                                <button
+                                    onClick={closeStatusEdit}
+                                    className="flex-1 rounded-xl border border-[#D9E2F0] py-3 font-medium hover:bg-gray-50 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={submitStatusEdit}
+                                    disabled={!pendingStatus || pendingStatus === statusEditTarget.status}
+                                    className="flex-1 rounded-xl bg-[#1B3A8C] py-3 text-white font-semibold hover:bg-[#16316F] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Continue
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -775,7 +935,7 @@ export default function AdminQuotationsPage() {
                 </div>
             )}
 
-            {/* Delete confirmation modal - shared by table row and drawer */}
+            {/* Delete confirmation modal - shared by table row and detail modal */}
             {deleteTarget && (
                 <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
                     {/* Backdrop */}

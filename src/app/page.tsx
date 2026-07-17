@@ -13,11 +13,41 @@ import {
   CheckCircle2,
   Play,
   Star,
+  Quote,
+  AlertCircle,
+  Inbox,
 } from "lucide-react";
 import AnnouncementPopup from "@/components/AnnouncementPopup";
 
+interface Testimonial {
+  id: number;
+  name: string;
+  title: string;
+  company: string;
+  rating: number;
+  quote: string;
+  status: "pending" | "approved" | "rejected";
+}
+
+function getInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+const FEATURED_COUNT = 3;
+
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [servicesLoading, setServicesLoading] = useState(true);
 
   const heroSlides = [
     {
@@ -69,36 +99,31 @@ export default function Home() {
       title: "Private Offices",
       description:
         "Private offices designed for individual professionals and small teams.",
-      image:
-        "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80",
+      image: "private-space.jpg",
     },
     {
       title: "Virtual Offices",
       description:
         "Remote office solutions for businesses that need flexibility and scalability.",
-      image:
-        "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=80",
+      image: "virtual-office.jpg",
     },
     {
       title: "Co-working Spaces",
       description:
         "Flexible workspaces designed for freelancers and entrepreneurs.",
-      image:
-        "https://images.unsplash.com/photo-1543269664-7eef42226a21?w=800&q=80",
+      image: "co-working.jpg",
     },
     {
       title: "Meeting Rooms",
       description:
         "Professional meeting spaces equipped with the latest technology.",
-      image:
-        "https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&q=80",
+      image: "meeting-space.jpg",
     },
     {
       title: "Event Space",
       description:
         "Versatile event spaces ideal for seminars, workshops, networking events, and corporate gatherings.",
-      image:
-        "https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&q=80",
+      image: "event-space.jpg",
     },
   ];
 
@@ -113,6 +138,56 @@ export default function Home() {
     "Cleaning and maintenance services",
   ];
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTestimonials() {
+      setLoading(true);
+      setLoadError(null);
+
+      try {
+        const res = await fetch("/api/testimonials", { cache: "no-store" });
+
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.data ?? []);
+
+        if (!cancelled) {
+          const approved = list.filter(
+            (t: Testimonial) => t.status === "approved",
+          );
+          setTestimonials(approved);
+        }
+      } catch (err) {
+        console.error("Testimonials fetch failed:", err);
+        if (!cancelled) {
+          setLoadError(
+            "We couldn't load testimonials right now. Check your connection and try again.",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadTestimonials();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []); // fixed: was missing the dependency array, causing a fetch loop on every render
+
+  const featuredTestimonials = testimonials.slice(0, FEATURED_COUNT);
+
+  // Services are static content, but the section still shows a brief skeleton
+  // state so the page doesn't pop in abruptly and stays consistent with the
+  // loading UX used elsewhere on the page.
+  useEffect(() => {
+    const timer = setTimeout(() => setServicesLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="min-h-screen">
       <AnnouncementPopup />
@@ -126,9 +201,8 @@ export default function Home() {
               src={slide.image}
               alt={slide.location}
               fill
-              className={`absolute inset-0 object-cover transition-opacity duration-1000 ${
-                currentSlide === index ? "opacity-100" : "opacity-0"
-              }`}
+              className={`absolute inset-0 object-cover transition-opacity duration-1000 ${currentSlide === index ? "opacity-100" : "opacity-0"
+                }`}
               priority={index === 0}
             />
           ))}
@@ -195,9 +269,8 @@ export default function Home() {
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}
-              className={`w-2 h-2 rounded-full transition-all ${
-                currentSlide === index ? "bg-white w-6" : "bg-white/50"
-              }`}
+              className={`w-2 h-2 rounded-full transition-all ${currentSlide === index ? "bg-white w-6" : "bg-white/50"
+                }`}
             />
           ))}
         </div>
@@ -250,43 +323,63 @@ export default function Home() {
               <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {services.map((service, index) => (
-              <motion.div
-                key={service.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
-              >
-                <div className="relative aspect-video overflow-hidden">
-                  <Image
-                    src={service.image}
-                    alt={service.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500 bg-opacity-50 group-hover:opacity-100"
-                    unoptimized
-                  />
-                  <div className="absolute inset-0 bg-gray-400/20" />
-                </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    {service.title}
-                  </h3>
-                  <p className="text-gray-600 mb-4">{service.description}</p>
-                  <div className="flex items-center justify-between">
-                    <Link
-                      href="/quotation"
-                      className="text-sm font-medium text-gray-900 hover:text-[#1B3A8C] transition-colors"
-                    >
-                      Get Quotation →
-                    </Link>
+
+          {servicesLoading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {Array.from({ length: services.length }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse"
+                >
+                  <div className="relative aspect-video bg-gray-100" />
+                  <div className="p-6 space-y-3">
+                    <div className="h-5 w-2/3 rounded bg-gray-100" />
+                    <div className="h-3 w-full rounded bg-gray-100" />
+                    <div className="h-3 w-4/5 rounded bg-gray-100" />
+                    <div className="h-3 w-1/3 rounded bg-gray-100 mt-4" />
                   </div>
                 </div>
-              </motion.div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {services.map((service, index) => (
+                <motion.div
+                  key={service.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  viewport={{ once: true }}
+                  className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
+                >
+                  <div className="relative aspect-video overflow-hidden">
+                    <Image
+                      src={service.image}
+                      alt={service.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500 bg-opacity-50 group-hover:opacity-100"
+                      unoptimized
+                    />
+                    <div className="absolute inset-0 bg-gray-400/20" />
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                      {service.title}
+                    </h3>
+                    <p className="text-gray-600 mb-4">{service.description}</p>
+                    <div className="flex items-center justify-between">
+                      <Link
+                        href="/quotation"
+                        className="text-sm font-medium text-gray-900 hover:text-[#1B3A8C] transition-colors"
+                      >
+                        Get Quotation →
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -315,7 +408,7 @@ export default function Home() {
             <div className="relative">
               <div className="relative aspect-square rounded-2xl overflow-hidden">
                 <Image
-                  src="https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=800&q=80"
+                  src="/_ARM8120.jpg"
                   alt="Office interior"
                   fill
                   className="object-cover"
@@ -344,7 +437,144 @@ export default function Home() {
       </section>
 
       {/* Testimonials Section */}
-      <section></section>
+      <section className="py-20 border-t border-gray-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-center items-center mb-12">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                What Our Clients Say
+              </h2>
+              <p className="text-lg text-gray-600">
+                Trusted by growing companies in Makati
+              </p>
+            </div>
+          </div>
+
+          {/* Loading state */}
+          {loading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {Array.from({ length: FEATURED_COUNT }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl border border-gray-100 p-6 animate-pulse"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex gap-1">
+                      {Array.from({ length: 5 }).map((_, j) => (
+                        <div
+                          key={j}
+                          className="h-5 w-5 rounded-full bg-gray-100"
+                        />
+                      ))}
+                    </div>
+                    <div className="h-8 w-8 rounded bg-gray-100" />
+                  </div>
+                  <div className="space-y-2 mb-6">
+                    <div className="h-3 rounded bg-gray-100 w-full" />
+                    <div className="h-3 rounded bg-gray-100 w-full" />
+                    <div className="h-3 rounded bg-gray-100 w-2/3" />
+                  </div>
+                  <div className="border-t border-gray-100 pt-5 flex items-center gap-3">
+                    <div className="h-11 w-11 rounded-full bg-gray-100 shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <div className="h-3 w-1/2 rounded bg-gray-100" />
+                      <div className="h-2.5 w-1/3 rounded bg-gray-100" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Error state */}
+          {!loading && loadError && (
+            <div className="flex flex-col items-center justify-center text-center py-16 px-4">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 border border-red-100">
+                <AlertCircle className="h-6 w-6 text-red-500" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1.5">
+                Something went wrong
+              </h3>
+              <p className="text-sm text-gray-500 max-w-sm">{loadError}</p>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!loading && !loadError && featuredTestimonials.length === 0 && (
+            <div className="flex flex-col items-center justify-center text-center py-16 px-4">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 border border-gray-200">
+                <Inbox className="h-6 w-6 text-gray-400" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1.5">
+                No testimonials yet
+              </h3>
+              <p className="text-sm text-gray-500 max-w-sm">
+                Be the first to share your experience at Hero Serviced Office.
+              </p>
+            </div>
+          )}
+
+          {/* Results */}
+          {!loading && !loadError && featuredTestimonials.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredTestimonials.map((t, i) => (
+                <motion.div
+                  key={t.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: i * 0.05 }}
+                  viewport={{ once: true }}
+                  className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: t.rating }).map((_, j) => (
+                        <Star
+                          key={j}
+                          className="h-5 w-5 fill-[#1B3A8C] text-[#1B3A8C]"
+                        />
+                      ))}
+                    </div>
+                    <Quote className="h-8 w-8 text-gray-100 fill-gray-100" />
+                  </div>
+
+                  <p className="text-sm text-gray-700 leading-relaxed flex-1 mb-6">
+                    &ldquo;{t.quote}&rdquo;
+                  </p>
+
+                  <div className="border-t border-gray-100 pt-5">
+                    <div className="flex items-center gap-3">
+                      <div className="h-11 w-11 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0">
+                        <span className="text-xs font-semibold text-white">
+                          {getInitials(t.name)}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {t.name}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {t.title}
+                          {t.company ? ` · ${t.company}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          <div className="py-12 flex items-center justify-center">
+            <Link
+              href="/testimonial"
+              className="inline-flex items-center gap-2 mt-4 md:mt-0 bg-[#1B3A8C] text-white rounded-lg px-6 py-3 font-semibold hover:bg-[#3B5EA6]"
+            >
+              View All Testimonials
+            </Link>
+          </div>
+        </div>
+      </section>
 
       {/* CTA Section */}
       <section className="py-20 bg-linear-to-r from-[#0D47A1] to-[#00ACC1]">

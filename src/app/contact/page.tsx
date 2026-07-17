@@ -11,8 +11,10 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
-  User,
-  Building2,
+  Loader2,
+  Phone,
+  Mail,
+  Check,
 } from "lucide-react";
 
 const inputCls =
@@ -45,6 +47,51 @@ function SelectWrapper({ children }: { children: React.ReactNode }) {
     <div className="relative">
       {children}
       <ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+    </div>
+  );
+}
+
+// Step progress indicator
+
+function StepProgress({ step }: { step: 1 | 2 }) {
+  const steps = [
+    { n: 1, label: "Your Details" },
+    { n: 2, label: "Requirements" },
+  ];
+  return (
+    <div className="flex items-center gap-3 mb-8">
+      {steps.map((s, i) => {
+        const isDone = step > s.n;
+        const isActive = step === s.n;
+        return (
+          <div key={s.n} className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
+              <span
+                className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0 transition-colors ${isDone
+                    ? "bg-[#1B3A8C] text-white"
+                    : isActive
+                      ? "bg-[#1B3A8C] text-white"
+                      : "bg-gray-100 text-gray-400"
+                  }`}
+              >
+                {isDone ? <Check className="w-3.5 h-3.5" /> : s.n}
+              </span>
+              <span
+                className={`text-sm font-medium hidden sm:block ${isActive ? "text-gray-900" : "text-gray-400"
+                  }`}
+              >
+                {s.label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <span
+                className={`w-8 h-px transition-colors ${step > s.n ? "bg-[#1B3A8C]" : "bg-gray-200"
+                  }`}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -372,13 +419,15 @@ function MultiStepForm() {
   )?.label;
 
   return (
-    <div>
-      <h2 className="text-3xl font-bold text-gray-900 mb-2">
+    <div className="bg-white rounded-3xl border border-gray-200 shadow-xl shadow-gray-200/50 p-6 sm:p-8 lg:p-10">
+      <h2 className="text-2xl font-bold text-gray-900 mb-2">
         Send Us a Message
       </h2>
-      <p className="text-gray-600 mb-8">
-        Fill out the form below and we'll get back to you within 24 hours
+      <p className="text-gray-600 mb-6">
+        Fill out the form below and we&apos;ll get back to you within 24 hours
       </p>
+
+      <StepProgress step={step} />
 
       {/* Success / Error banners */}
       <AnimatePresence>
@@ -392,7 +441,7 @@ function MultiStepForm() {
             <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
             <div>
               <p className="font-medium text-green-900">
-                Message sent successfully! We'll get back to you soon.
+                Message sent successfully! We&apos;ll get back to you soon.
               </p>
               <p className="text-sm text-green-700">
                 Thank you for reaching out to HERO Serviced Office.
@@ -548,7 +597,7 @@ function MultiStepForm() {
                         !formData.phone ||
                         !formData.inquiryType
                       }
-                      className="w-full md:w-auto px-8 py-4 bg-[#1B3A8C] text-white rounded-full font-semibold hover:bg-[#3B5EA6] transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="w-full md:w-auto px-8 py-4 bg-[#1B3A8C] text-white rounded-full font-semibold hover:bg-[#3B5EA6] transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       Next: {selectedLabel} Details
                       <ArrowRight className="w-5 h-5" />
@@ -564,7 +613,7 @@ function MultiStepForm() {
                         !formData.inquiryType ||
                         !formData.message
                       }
-                      className="w-full md:w-auto px-8 py-4 bg-[#1B3A8C] text-white rounded-full font-semibold hover:bg-[#3B5EA6] transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="w-full md:w-auto px-8 py-4 bg-[#1B3A8C] text-white rounded-full font-semibold hover:bg-[#3B5EA6] transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {isSubmitting ? (
                         <>
@@ -663,7 +712,7 @@ function MultiStepForm() {
   );
 }
 
-// ─── FAQ Components ────────────────────────────────────────────────────────────
+// FAQ Components
 
 const faqTabs = [
   {
@@ -791,15 +840,23 @@ const faqTabs = [
 function FaqItem({ faq }: { faq: { q: string; a: string } }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border border-gray-200 rounded-2xl overflow-hidden">
+    <div
+      className={`border rounded-2xl overflow-hidden transition-colors ${open ? "border-[#1B3A8C]/30" : "border-gray-200"
+        }`}
+    >
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-6 py-4 text-left bg-white hover:bg-gray-50 transition-colors"
       >
         <span className="font-medium text-gray-900 pr-4">{faq.q}</span>
-        <ChevronDown
-          className={`w-5 h-5 text-[#1B3A8C] shrink-0 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
-        />
+        <span
+          className={`flex items-center justify-center w-7 h-7 rounded-full shrink-0 transition-colors ${open ? "bg-[#1B3A8C] text-white" : "bg-gray-100 text-[#1B3A8C]"
+            }`}
+        >
+          <ChevronDown
+            className={`w-4 h-4 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+          />
+        </span>
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -830,11 +887,10 @@ function FaqTabs() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
-              activeTab === tab.id
-                ? "bg-[#1B3A8C] text-white shadow-md"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
+            className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${activeTab === tab.id
+              ? "bg-[#1B3A8C] text-white shadow-md"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
           >
             {tab.label}
           </button>
@@ -858,7 +914,57 @@ function FaqTabs() {
   );
 }
 
-// ─── Page ──────────────────────────────────────────────────────────────────────
+// Map card — one office location with its own independent loading state
+
+function MapCard({
+  title,
+  src,
+  titleAttr,
+}: {
+  title: string;
+  src: string;
+  titleAttr: string;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className="relative rounded-2xl overflow-hidden border border-gray-300 shadow-lg group">
+      <div className="relative h-56 overflow-hidden">
+        {!loaded && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-gray-100 animate-pulse">
+            <Loader2 className="w-5 h-5 text-[#1B3A8C] animate-spin" />
+            <span className="text-xs font-medium text-gray-400">Loading map…</span>
+          </div>
+        )}
+        <iframe
+          src={src}
+          title={titleAttr}
+          width="100%"
+          height="100%"
+          style={{ border: 0 }}
+          allowFullScreen
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          onLoad={() => setLoaded(true)}
+          className={`absolute inset-0 transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
+        />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 pointer-events-none flex items-center justify-center">
+          <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            View on Google Maps
+          </span>
+        </div>
+        <div className="absolute top-3 right-3 z-20 px-3 py-1.5 rounded-full bg-[#0A1E3F] backdrop-blur-sm border border-white/60 shadow-sm">
+          <span className="text-sm font-bold text-white">{title}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const contactChannels = [
+  { icon: MapPin, label: "Visit us", value: "Ayala Avenue, Makati City" },
+  { icon: Phone, label: "Call us", value: "+63 2 8888 0000" },
+  { icon: Mail, label: "Email us", value: "hello@heroph.com" },
+];
 
 export default function ContactPage() {
   return (
@@ -913,39 +1019,60 @@ export default function ContactPage() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="space-y-8"
+              className="space-y-5"
             >
-              <div className="group relative overflow-hidden rounded-4xl border border-gray-200 bg-white shadow-xl">
-                <div className="absolute inset-0 bg-linear-to-tr from-[#1B3A8C]/10 via-transparent to-[#C5D2EC]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10" />
-                <div className="relative aspect-video overflow-hidden">
-                  <Image
-                    src="/hero-map.png"
-                    alt="Map Location"
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-700"
-                    unoptimized
-                  />
+              <div>
+                <h3 className="text-xl md:text-2xl font-bold text-gray-900">Our Locations</h3>
+              </div>
+
+              <MapCard
+                title="Tower 6789"
+                titleAttr="Tower 6789 map"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.7277203334647!2d121.01805607468263!3d14.557556885923752!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c90f316aaaab%3A0xf80063632113a229!2sHERO%20PH!5e0!3m2!1sen!2sph!4v1782451174323!5m2!1sen!2sph"
+              />
+              <MapCard
+                title="Insular Life Building"
+                titleAttr="Insular Life Building map"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.7349367396077!2d121.01852111072995!3d14.55714458586539!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c90f31651de5%3A0xf2d7d4161752e079!2sHero%20Serviced%20Office!5e0!3m2!1sen!2sph!4v1781155861898!5m2!1sen!2sph"
+              />
+
+              <div className="flex items-start gap-3 bg-white border border-gray-200 rounded-2xl px-5 py-4">
+                <div className="w-10 h-10 rounded-xl bg-[#1B3A8C]/10 flex items-center justify-center shrink-0">
+                  <MapPin className="w-5 h-5 text-[#1B3A8C]" />
                 </div>
-                <div className="absolute bottom-5 left-5 z-20 backdrop-blur-xl bg-white/90 border border-white/40 shadow-lg rounded-2xl px-5 py-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#1B3A8C]/10 flex items-center justify-center">
-                      <MapPin className="w-5 h-5 text-[#1B3A8C]" />
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-widest text-gray-500 font-medium">
-                        Office Location
-                      </p>
-                      <h3 className="font-semibold text-gray-900">
-                        HERO Serviced Office
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Makati City, Philippines
-                      </p>
-                    </div>
-                  </div>
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-gray-500 font-medium">
+                    Office Location
+                  </p>
+                  <h4 className="font-semibold text-gray-900">HERO Serviced Office</h4>
+                  <p className="text-sm text-gray-600">
+                    Ayala Avenue, Makati City, Philippines
+                  </p>
                 </div>
               </div>
             </motion.div>
+          </div>
+        </div>
+
+        {/* Quick contact strip, anchored to the bottom edge of the hero */}
+        <div className="pt-10">
+          <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-4">
+            {contactChannels.map((c) => (
+              <div
+                key={c.label}
+                className="flex items-center gap-3 bg-gray-200 backdrop-blur-md border border-gray-300 rounded-2xl px-5 py-4"
+              >
+                <span className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                  <c.icon className="w-4.5 h-4.5 text-black" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-wide text-black font-medium">
+                    {c.label}
+                  </p>
+                  <p className="text-sm font-semibold text-black truncate">{c.value}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

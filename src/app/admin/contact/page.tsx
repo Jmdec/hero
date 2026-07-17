@@ -1,7 +1,3 @@
-// 📁 PUT THIS FILE AT: app/admin/contact/page.tsx
-// (this is the ADMIN PAGE itself — different from the app/api/admin/contact/
-// route files from before, which are the backend proxy routes this page calls)
-
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -22,8 +18,6 @@ import {
   Building2,
   Phone,
 } from "lucide-react";
-
-// ─── Types ──────────────────────────────────────────────────────────────────
 
 interface ThreadEntry {
   type: "inbound" | "outbound";
@@ -47,8 +41,6 @@ interface ContactInquiry {
   last_replied_at: string | null;
   created_at: string;
 }
-
-// ─── Static config ─────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, string> = {
   new: "bg-blue-100 text-blue-700 ring-1 ring-inset ring-blue-200",
@@ -186,8 +178,6 @@ const STATUS_FILTERS = [
   { value: "closed", label: "Closed" },
 ];
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
 function formatDate(value: string) {
   const d = new Date(value);
   if (isNaN(d.getTime())) return value;
@@ -224,7 +214,22 @@ function fillTemplate(text: string, name: string) {
   return text.replace(/\{\{name\}\}/g, name || "there");
 }
 
-// ─── Page ───────────────────────────────────────────────────────────────────
+// Builds a compact page list with ellipses, e.g. 1 … 4 5 [6] 7 8 … 12
+function getPageNumbers(current: number, last: number): (number | "…")[] {
+  if (last <= 7) return Array.from({ length: last }, (_, i) => i + 1);
+
+  const pages = new Set<number>([1, last, current - 1, current, current + 1]);
+  const sorted = Array.from(pages)
+    .filter((p) => p >= 1 && p <= last)
+    .sort((a, b) => a - b);
+
+  const result: (number | "…")[] = [];
+  sorted.forEach((p, i) => {
+    if (i > 0 && p - (sorted[i - 1] as number) > 1) result.push("…");
+    result.push(p);
+  });
+  return result;
+}
 
 export default function ContactAdmin() {
   const [items, setItems] = useState<ContactInquiry[]>([]);
@@ -459,28 +464,23 @@ export default function ContactAdmin() {
     }
   }
 
+  const pageNumbers = useMemo(
+    () => getPageNumbers(page, lastPage),
+    [page, lastPage],
+  );
+
   return (
     <div className="min-h-screen p-4 md:p-8">
       <main className="mx-auto space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
-              Contact Inquiries
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Reply to inquiries submitted through the contact form
-            </p>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-          <div className="flex flex-col gap-3 md:flex-row">
+        <div className="flex flex-col gap-3 md:flex-row mb-5">
+          {/* Filters */}
+          <div className="flex flex-col gap-3 md:flex-row mb-5">
+            {/* Search */}
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="Search name, email, message..."
+                placeholder="Search title, tag, excerpt..."
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -578,7 +578,6 @@ export default function ContactAdmin() {
 
                       <td className="px-5 py-4">
                         <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                          <Tag className="h-3 w-3" />
                           {INQUIRY_TYPE_LABELS[row.inquiry_type] ??
                             row.inquiry_type}
                         </span>
@@ -586,10 +585,9 @@ export default function ContactAdmin() {
 
                       <td className="px-5 py-4">
                         <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                            STATUS_STYLES[row.status] ??
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[row.status] ??
                             "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
-                          }`}
+                            }`}
                         >
                           {STATUS_LABELS[row.status] ?? row.status}
                         </span>
@@ -633,9 +631,9 @@ export default function ContactAdmin() {
 
         {/* Pagination */}
         {!loading && !error && items.length > 0 && (
-          <div className="flex flex-col items-center justify-between gap-3 md:flex-row">
+          <div className="mt-5 flex flex-col items-center justify-between gap-3 md:flex-row">
             <p className="text-sm text-slate-500">
-              {total > 0 ? `${total} total inquiries` : null}
+              {total > 0 ? `${total} total announcements` : null}
             </p>
 
             <div className="flex items-center gap-2">
@@ -648,7 +646,31 @@ export default function ContactAdmin() {
                 Prev
               </button>
 
-              <span className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700">
+              <div className="hidden items-center gap-1 sm:flex">
+                {pageNumbers.map((p, i) =>
+                  p === "…" ? (
+                    <span
+                      key={`ellipsis-${i}`}
+                      className="px-2 text-sm text-slate-400"
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`h-9 w-9 rounded-lg text-sm font-medium transition-colors ${page === p
+                        ? "bg-blue-600 text-white"
+                        : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                    >
+                      {p}
+                    </button>
+                  ),
+                )}
+              </div>
+
+              <span className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 sm:hidden">
                 Page {page} of {lastPage}
               </span>
 
@@ -702,9 +724,8 @@ export default function ContactAdmin() {
                   onChange={(e) =>
                     updateStatus(e.target.value as ContactInquiry["status"])
                   }
-                  className={`rounded-full border-none px-3 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-200 ${
-                    STATUS_STYLES[selected.status]
-                  }`}
+                  className={`rounded-full border-none px-3 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-200 ${STATUS_STYLES[selected.status]
+                    }`}
                 >
                   {STATUS_FILTERS.filter((f) => f.value).map((f) => (
                     <option key={f.value} value={f.value}>
@@ -737,16 +758,14 @@ export default function ContactAdmin() {
                       className={`flex ${isInbound ? "justify-start" : "justify-end"}`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
-                          isInbound
-                            ? "bg-white text-slate-700 ring-1 ring-inset ring-slate-200"
-                            : "bg-blue-600 text-white"
-                        }`}
+                        className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${isInbound
+                          ? "bg-white text-slate-700 ring-1 ring-inset ring-slate-200"
+                          : "bg-blue-600 text-white"
+                          }`}
                       >
                         <div
-                          className={`mb-1 flex items-center justify-between gap-3 text-xs ${
-                            isInbound ? "text-slate-400" : "text-blue-100"
-                          }`}
+                          className={`mb-1 flex items-center justify-between gap-3 text-xs ${isInbound ? "text-slate-400" : "text-blue-100"
+                            }`}
                         >
                           <span className="font-medium">
                             {isInbound ? selected.name : "You (Admin)"}
@@ -754,9 +773,8 @@ export default function ContactAdmin() {
                           <span>{formatDateTime(entry.created_at)}</span>
                         </div>
                         <p
-                          className={`whitespace-pre-wrap text-sm ${
-                            isInbound ? "text-slate-700" : "text-white"
-                          }`}
+                          className={`whitespace-pre-wrap text-sm ${isInbound ? "text-slate-700" : "text-white"
+                            }`}
                         >
                           {entry.body}
                         </p>

@@ -1,24 +1,86 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
-import { X, Megaphone, Sparkles } from "lucide-react";
+import { X, Calendar, ExternalLink } from "lucide-react";
+
+interface SocialMediaEntry {
+  platform: string;
+  link: string | null;
+}
 
 interface Announcement {
   id: number;
+  tag: string;
+  date: string;
   title: string;
   content: string;
   image?: string | null;
   created_at: string;
+  social_platforms?: string[] | null;
+  social_links?: Array<string | null> | null;
+}
+
+const SOCIAL_MEDIA_OPTIONS = [
+  { value: "facebook", label: "Facebook" },
+  { value: "x", label: "X (Twitter)" },
+  { value: "instagram", label: "Instagram" },
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "youtube", label: "YouTube" },
+  { value: "tiktok", label: "TikTok" },
+];
+
+function formatSocialPlatform(value: string) {
+  return SOCIAL_MEDIA_OPTIONS.find((opt) => opt.value === value)?.label ?? value;
+}
+
+function normalizeSocialMedia(
+  platforms?: string[] | null,
+  links?: Array<string | null> | null,
+): SocialMediaEntry[] {
+  const normalizedPlatforms = Array.isArray(platforms) ? platforms : [];
+  const normalizedLinks = Array.isArray(links) ? links : [];
+
+  const count = Math.max(normalizedPlatforms.length, normalizedLinks.length);
+  return Array.from({ length: count }, (_, index) => {
+    const platform = normalizedPlatforms[index]?.trim();
+    if (!platform) return null;
+    return { platform, link: normalizedLinks[index]?.trim() ?? null };
+  }).filter((item): item is SocialMediaEntry => item !== null);
+}
+
+function formatDate(value: string) {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 const SEEN_KEY = "seen_announcement_id";
 
-// Used whenever an announcement has no image of its own — so the popup
-// never looks like an empty flat-color box.
+// Used whenever an announcement has no image of its own, or its uploaded
+// image fails to load — so the popup never looks like an empty flat-color box.
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=1000&q=80";
+
+function getAnnouncementImageUrl(image?: string | null) {
+  if (!image) return null;
+
+  const configured =
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.LARAVEL_API_URL ||
+    "http://localhost:8000";
+  const normalized = configured.replace(/\/+$/g, "");
+  const base = normalized.endsWith("/api")
+    ? normalized.replace(/\/api$/, "")
+    : normalized;
+
+  return `${base}/storage/${image.replace(/^\/+/, "")}`;
+}
 
 function getSeenId(): number | null {
   try {
@@ -40,6 +102,8 @@ function markSeen(id: number) {
 export default function AnnouncementPopup() {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [open, setOpen] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     let cancelled = false;
@@ -77,12 +141,44 @@ export default function AnnouncementPopup() {
     };
   }, []);
 
-  function handleClose() {
-    if (announcement) markSeen(announcement.id);
+  const handleClose = useCallback(() => {
+    setAnnouncement((current) => {
+      if (current) markSeen(current.id);
+      return current;
+    });
     setOpen(false);
-  }
+  }, []);
 
-  const imageSrc = announcement?.image || FALLBACK_IMAGE;
+  // Close on Escape, and don't let the page scroll behind the popup.
+  useEffect(() => {
+    if (!open) return;
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") handleClose();
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, handleClose]);
+
+  // Reset image-error tracking whenever a new announcement is loaded
+  useEffect(() => {
+    setImageFailed(false);
+  }, [announcement?.id]);
+
+  const uploadedImageSrc = getAnnouncementImageUrl(announcement?.image);
+  const imageSrc =
+    uploadedImageSrc && !imageFailed ? uploadedImageSrc : FALLBACK_IMAGE;
+
+  const socialPlatforms = announcement
+    ? normalizeSocialMedia(announcement.social_platforms, announcement.social_links)
+    : [];
 
   return (
     <AnimatePresence>
@@ -91,167 +187,138 @@ export default function AnnouncementPopup() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          transition={{ duration: shouldReduceMotion ? 0 : 0.25 }}
+          className="fixed inset-0 z-999 flex items-center justify-center overflow-y-auto bg-[#0A1E3F]/70 p-4 py-8 backdrop-blur-sm"
           onClick={handleClose}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.85, y: 40, rotate: -2 }}
-            animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
-            exit={{ opacity: 0, scale: 0.85, y: 20, rotate: 2 }}
-            transition={{ type: "spring", stiffness: 260, damping: 22 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="announcement-title"
+            initial={
+              shouldReduceMotion
+                ? { opacity: 0 }
+                : { opacity: 0, scale: 0.95, y: 24 }
+            }
+            animate={
+              shouldReduceMotion
+                ? { opacity: 1 }
+                : { opacity: 1, scale: 1, y: 0 }
+            }
+            exit={
+              shouldReduceMotion
+                ? { opacity: 0 }
+                : { opacity: 0, scale: 0.96, y: 12 }
+            }
+            transition={
+              shouldReduceMotion
+                ? { duration: 0.15 }
+                : { type: "spring", stiffness: 280, damping: 26 }
+            }
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
+            className="relative flex max-h-[90vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:max-w-lg md:max-w-3xl md:flex-row"
           >
-            {/* animated glow ring behind the card */}
+            {/* Close button — consistent placement regardless of column layout */}
+            <button
+              onClick={handleClose}
+              className="absolute right-3 top-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow-md backdrop-blur-sm transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-[#0D47A1]"
+              aria-label="Close announcement"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Signature: a document-tab / directory-plaque spine, brand gradient.
+                Runs along the top on mobile, the left edge on desktop. */}
             <motion.div
-              className="pointer-events-none absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#0D47A1] via-[#3B5EA6] to-[#00ACC1] opacity-40 blur-lg"
-              animate={{ opacity: [0.2, 0.5, 0.2] }}
-              transition={{
-                duration: 2.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
+              initial={shouldReduceMotion ? { opacity: 0 } : { scaleX: 0 }}
+              animate={shouldReduceMotion ? { opacity: 1 } : { scaleX: 1 }}
+              transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+              style={{ transformOrigin: "left" }}
+              className="absolute inset-x-0 top-0 z-20 h-1.5 bg-linear-to-r from-[#1B3A8C] via-[#0D47A1] to-[#00ACC1] md:hidden"
+            />
+            <motion.div
+              initial={shouldReduceMotion ? { opacity: 0 } : { scaleY: 0 }}
+              animate={shouldReduceMotion ? { opacity: 1 } : { scaleY: 1 }}
+              transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+              style={{ transformOrigin: "top" }}
+              className="absolute inset-y-0 left-0 z-20 hidden w-1.5 bg-linear-to-b from-[#1B3A8C] via-[#0D47A1] to-[#00ACC1] md:block"
             />
 
-            <div className="relative overflow-hidden rounded-2xl bg-white">
-              <motion.button
-                onClick={handleClose}
-                whileHover={{ scale: 1.1, rotate: 90 }}
-                whileTap={{ scale: 0.9 }}
-                className="absolute right-3 top-3 z-20 rounded-full bg-black/40 p-1.5 text-white hover:bg-black/60"
-                aria-label="Close announcement"
-              >
-                <X className="h-4 w-4" />
-              </motion.button>
-
-              {/* Image header — always an image now, real or fallback */}
-              <div className="relative aspect-video w-full overflow-hidden bg-gray-200">
-                <motion.div
-                  initial={{ scale: 1.25 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 6, ease: "easeOut" }}
-                  className="relative h-full w-full"
-                >
-                  <Image
-                    src={imageSrc}
-                    alt={announcement.title}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                </motion.div>
-
-                {/* dark gradient so text/badges stay legible over any photo */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
-
-                {/* shimmer sweep across the image */}
-                <motion.div
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
-                  initial={{ x: "-120%" }}
-                  animate={{ x: "120%" }}
-                  transition={{ duration: 1.6, delay: 0.5, ease: "easeInOut" }}
-                  style={{ width: "60%" }}
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row">
+              {/* Media column */}
+              <div className="relative aspect-video w-full shrink-0 overflow-hidden bg-slate-100 md:aspect-auto md:w-[42%]">
+                <Image
+                  src={imageSrc}
+                  alt={announcement.title}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                  onError={() => setImageFailed(true)}
                 />
+                <div className="absolute inset-x-0 top-0 h-16 bg-linear-to-b from-black/35 to-transparent" />
 
-                {/* floating megaphone badge, bottom-left over the image */}
-                <motion.div
-                  initial={{ scale: 0, rotate: -25, y: 10 }}
-                  animate={{ scale: 1, rotate: 0, y: 0 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 220,
-                    damping: 14,
-                    delay: 0.25,
-                  }}
-                  className="absolute bottom-3 left-4 flex items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 shadow-lg backdrop-blur-sm"
+                <motion.span
+                  initial={
+                    shouldReduceMotion
+                      ? { opacity: 0 }
+                      : { opacity: 0, y: -6 }
+                  }
+                  animate={
+                    shouldReduceMotion
+                      ? { opacity: 1 }
+                      : { opacity: 1, y: 0 }
+                  }
+                  transition={{ delay: 0.3, duration: 0.3 }}
+                  className="absolute left-3 top-3 rounded-md bg-[#FFC107] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#1B3A8C] shadow-sm"
                 >
-                  <motion.div
-                    animate={{ rotate: [0, -12, 12, 0] }}
-                    transition={{
-                      duration: 1.8,
-                      repeat: Infinity,
-                      repeatDelay: 1.5,
-                      ease: "easeInOut",
-                    }}
-                  >
-                    <Megaphone className="h-4 w-4 text-[#1B3A8C]" />
-                  </motion.div>
-                  <span className="text-xs font-semibold text-[#1B3A8C]">
-                    New Announcement
-                  </span>
-                </motion.div>
-
-                {/* floating sparkle accents */}
-                <motion.div
-                  className="absolute right-6 top-5 text-white/70"
-                  animate={{ y: [0, -6, 0], opacity: [0.4, 1, 0.4] }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                >
-                  <Sparkles className="h-4 w-4" />
-                </motion.div>
-                <motion.div
-                  className="absolute right-16 top-12 text-white/50"
-                  animate={{ y: [0, 5, 0], opacity: [0.3, 0.8, 0.3] }}
-                  transition={{
-                    duration: 2.4,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 0.6,
-                  }}
-                >
-                  <Sparkles className="h-3 w-3" />
-                </motion.div>
+                  New announcement
+                </motion.span>
               </div>
 
-              <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  hidden: {},
-                  visible: {
-                    transition: { staggerChildren: 0.08, delayChildren: 0.2 },
-                  },
-                }}
-                className="p-6"
-              >
-                <motion.h3
-                  variants={{
-                    hidden: { opacity: 0, y: 10 },
-                    visible: { opacity: 1, y: 0 },
-                  }}
-                  className="mb-2 text-xl font-bold text-gray-900"
+              {/* Content column */}
+              <div className="flex flex-1 flex-col gap-3 p-5 sm:p-6 md:p-7">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+                    {announcement.tag}
+                  </span>
+                  <div className="flex items-center gap-1.5 text-sm text-gray-400">
+                    <Calendar className="h-3.5 w-3.5" />
+                    {formatDate(announcement.date)}
+                  </div>
+                </div>
+
+                <h3
+                  id="announcement-title"
+                  className="text-xl font-bold leading-tight tracking-tight text-gray-900 sm:text-2xl"
                 >
                   {announcement.title}
-                </motion.h3>
+                </h3>
 
-                <motion.p
-                  variants={{
-                    hidden: { opacity: 0, y: 10 },
-                    visible: { opacity: 1, y: 0 },
-                  }}
-                  className="whitespace-pre-wrap text-sm text-gray-600"
-                >
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600 sm:text-[15px]">
                   {announcement.content}
-                </motion.p>
+                </p>
 
-                <motion.button
-                  variants={{
-                    hidden: { opacity: 0, y: 10 },
-                    visible: { opacity: 1, y: 0 },
-                  }}
-                  onClick={handleClose}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="mt-5 w-full rounded-full bg-[#1B3A8C] px-6 py-3 font-semibold text-white transition-colors hover:bg-[#3B5EA6]"
-                >
-                  Got it
-                </motion.button>
-              </motion.div>
+                {socialPlatforms.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {socialPlatforms.map((entry) =>
+                      entry.link ? (
+                        <a
+                          key={entry.platform}
+                          href={entry.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+                        >
+                          <span className="flex items-center gap-1 uppercase tracking-wide">
+                            {formatSocialPlatform(entry.platform)}{" "}
+                            <ExternalLink className="h-3 w-3" />
+                          </span>
+                        </a>
+                      ) : null,
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </motion.div>
         </motion.div>

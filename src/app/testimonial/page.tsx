@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -61,6 +62,23 @@ const empty: FormData = {
 const PAGE_SIZE = 6;
 
 type RatingFilter = 0 | 1 | 2 | 3 | 4 | 5;
+
+// Builds a compact page-number sequence with ellipses, e.g. [1, "…", 4, 5, 6, "…", 12]
+function getPageNumbers(current: number, total: number): Array<number | "…"> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const pages: Array<number | "…"> = [1];
+  if (current > 4) pages.push("…");
+
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) pages.push(i);
+
+  if (current < total - 3) pages.push("…");
+  pages.push(total);
+
+  return pages;
+}
 
 export default function TestimonialPage() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
@@ -144,6 +162,10 @@ export default function TestimonialPage() {
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   );
+  const pageNumbers = useMemo(
+    () => getPageNumbers(currentPage, totalPages),
+    [currentPage, totalPages],
+  );
 
   const hasActiveFilters = query.trim().length > 0 || ratingFilter !== 0;
 
@@ -152,7 +174,7 @@ export default function TestimonialPage() {
     setRatingFilter(0);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitError(null);
@@ -201,6 +223,7 @@ export default function TestimonialPage() {
     setModalOpen(false);
     setTimeout(() => {
       setForm(empty);
+      setHoveredStar(0);
       setSubmitted(false);
       setSubmitError(null);
     }, 300);
@@ -341,25 +364,6 @@ export default function TestimonialPage() {
                 </AnimatePresence>
               </div>
             </div>
-
-            {/* Results summary */}
-            {!loading && !loadError && (
-              <div className="flex items-center justify-between text-xs text-gray-400">
-                <span>
-                  {filtered.length}{" "}
-                  {filtered.length === 1 ? "testimonial" : "testimonials"}
-                  {hasActiveFilters ? " match your filters" : ""}
-                </span>
-                {hasActiveFilters && (
-                  <button
-                    onClick={clearFilters}
-                    className="font-medium text-[#1B3A8C] hover:underline"
-                  >
-                    Clear filters
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Loading state — skeleton cards */}
@@ -509,43 +513,60 @@ export default function TestimonialPage() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="mt-12 flex items-center justify-center gap-2">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    aria-label="Previous page"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
+                <div className="mt-10 flex flex-col items-center justify-between gap-3 md:flex-row">
+                  <p className="text-sm text-gray-400">
+                    {filtered.length} total{" "}
+                    {filtered.length === 1 ? "testimonial" : "testimonials"}
+                  </p>
 
-                  {Array.from({ length: totalPages }).map((_, idx) => {
-                    const pageNum = idx + 1;
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setPage(pageNum)}
-                        className={`h-9 w-9 rounded-full text-sm font-medium transition-colors ${
-                          currentPage === pageNum
-                            ? "bg-[#1B3A8C] text-white"
-                            : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={currentPage === 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Prev
+                    </button>
 
-                  <button
-                    onClick={() =>
-                      setPage((p) => Math.min(totalPages, p + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                    className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    aria-label="Next page"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+                    <div className="hidden items-center gap-1 sm:flex">
+                      {pageNumbers.map((p, i) =>
+                        p === "…" ? (
+                          <span
+                            key={`ellipsis-${i}`}
+                            className="px-2 text-sm text-gray-400"
+                          >
+                            …
+                          </span>
+                        ) : (
+                          <button
+                            key={p}
+                            onClick={() => setPage(p)}
+                            className={`h-9 w-9 rounded-lg text-sm font-medium transition-colors ${
+                              currentPage === p
+                                ? "bg-[#1B3A8C] text-white"
+                                : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        ),
+                      )}
+                    </div>
+
+                    <span className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 sm:hidden">
+                      Page {currentPage} of {totalPages}
+                    </span>
+
+                    <button
+                      disabled={currentPage === totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               )}
             </>
@@ -616,7 +637,7 @@ export default function TestimonialPage() {
                       Share your experience
                     </h2>
                     <p className="text-sm text-gray-400 mt-0.5">
-                      We'd love to hear from you
+                      We&rsquo;d love to hear from you
                     </p>
                   </div>
                   <button
@@ -677,10 +698,11 @@ export default function TestimonialPage() {
                                 onClick={() => set("rating", s)}
                               >
                                 <Star
-                                  className={`h-7 w-7 transition-colors ${s <= (hoveredStar || form.rating)
+                                  className={`h-7 w-7 transition-colors ${
+                                    s <= (hoveredStar || form.rating)
                                       ? "fill-[#FFC107] text-[#FFC107]"
                                       : "fill-gray-100 text-gray-200"
-                                    }`}
+                                  }`}
                                 />
                               </button>
                             ))}
@@ -688,36 +710,36 @@ export default function TestimonialPage() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
-                        {/* Name */}
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                            Full name <span className="text-red-400">*</span>
-                          </label>
-                          <input
-                            required
-                            type="text"
-                            value={form.name}
-                            onChange={(e) => set("name", e.target.value)}
-                            placeholder="e.g. Maria Santos"
-                            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
-                          />
-                        </div>
+                          {/* Name */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                              Full name <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                              required
+                              type="text"
+                              value={form.name}
+                              onChange={(e) => set("name", e.target.value)}
+                              placeholder="e.g. Maria Santos"
+                              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                            />
+                          </div>
 
-                        {/* Email */}
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                            Email address{" "}
-                            <span className="text-red-400">*</span>
-                          </label>
-                          <input
-                            required
-                            type="email"
-                            value={form.email}
-                            onChange={(e) => set("email", e.target.value)}
-                            placeholder="you@company.com"
-                            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
-                          />
-                        </div>
+                          {/* Email */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                              Email address{" "}
+                              <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                              required
+                              type="email"
+                              value={form.email}
+                              onChange={(e) => set("email", e.target.value)}
+                              placeholder="you@company.com"
+                              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                            />
+                          </div>
                         </div>
 
                         {/* Job title + Company */}
@@ -768,7 +790,7 @@ export default function TestimonialPage() {
 
                         <p className="text-[11px] text-gray-400">
                           Your testimonial may be published on our website after
-                          review. We'll never share your email address.
+                          review. We&rsquo;ll never share your email address.
                         </p>
 
                         {/* Submit */}

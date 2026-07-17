@@ -70,7 +70,7 @@ export async function POST(
   }
 
   // 1. fetch the inquiry (auth required — same as your other admin calls)
-  const getRes = await fetch(`${API_URL}/api/admin/contact/${id}`, {
+  const getRes = await fetch(`${API_URL}/api/admin/contacts/${id}`, {
     headers: {
       Accept: "application/json",
       Authorization: authHeader,
@@ -96,7 +96,7 @@ export async function POST(
   });
 
   // 3. record the reply back in Laravel (auth required again)
-  const patchRes = await fetch(`${API_URL}/api/admin/contact/${id}/reply`, {
+  const patchRes = await fetch(`${API_URL}/api/admin/contacts/${id}/reply`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

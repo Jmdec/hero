@@ -118,7 +118,7 @@ export default function Navigation() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`relative px-2 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${active
+                    className={`relative lg:px-1 xl:px-2 py-2 lg:text-sm xl:text-sm font-medium rounded-lg transition-all duration-200 ${active
                       ? "text-[#1B3A8C] bg-[#C5D2EC]/30"
                       : "text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30"
                       }`}

@@ -306,88 +306,128 @@ export default function VirtualTourPage() {
         id: "reception",
         title: "Reception",
         description:
-          "Professional reception area where visitors are welcomed and assisted by our bilingual staff.",
+          "A welcoming reception area where guests are greeted and assisted by our professional bilingual team.",
         features: [
           "Japanese-speaking reception staff",
-          "Visitor assistance",
+          "Guest assistance",
           "Comfortable waiting lounge",
-          "Mail & package receiving",
+          "Mail & package handling",
         ],
       },
       {
         id: "conference-room-a",
         title: "Conference Room A",
         description:
-          "Modern conference rooms designed for client presentations, interviews, seminars, and team discussions.",
-        features: [
-          "High-speed Wi-Fi",
-          "Large presentation display",
-          "Video conferencing",
-          "Flexible seating layout",
-        ],
+          "A fully equipped meeting room ideal for presentations, client meetings, interviews, and team collaborations.",
+        features: ["High-speed Wi-Fi", "Presentation display", "Video conferencing", "Flexible seating"],
       },
-
       {
         id: "conference-room-b",
         title: "Conference Room B",
         description:
-          "Modern conference rooms designed for client presentations, interviews, seminars, and team discussions.",
-        features: [
-          "High-speed Wi-Fi",
-          "Large presentation display",
-          "Video conferencing",
-          "Flexible seating layout",
-        ],
+          "A professional meeting space designed for productive discussions, presentations, and business events.",
+        features: ["High-speed Wi-Fi", "Presentation display", "Video conferencing", "Flexible seating"],
       },
-
       {
         id: "conference-room-c",
         title: "Conference Room C",
         description:
-          "Modern conference rooms designed for client presentations, interviews, seminars, and team discussions.",
-        features: [
-          "High-speed Wi-Fi",
-          "Large presentation display",
-          "Video conferencing",
-          "Flexible seating layout",
-        ],
-      },
-      {
-        id: "lounge",
-        title: "Lounge",
-        description:
-          "Comfortable shared lounge for informal meetings, networking, or working outside your office.",
-        features: [
-          "Comfortable seating",
-          "Free Wi-Fi",
-          "Networking space",
-          "Quiet atmosphere",
-        ],
-      },
-      {
-        id: "brochure-lockers",
-        title: "Brochure & Locker Area",
-        description:
-          "Secure personal lockers for members to safely store belongings during the workday.",
-        features: [
-          "Secure lockers",
-          "Member access",
-          "Convenient storage",
-          "Clean facilities",
-        ],
+          "A modern conference room built for meetings, workshops, interviews, and collaborative sessions.",
+        features: ["High-speed Wi-Fi", "Presentation display", "Video conferencing", "Flexible seating"],
       },
       {
         id: "pantry",
         title: "Pantry",
         description:
-          "Relax and recharge in our shared café space with complimentary refreshments.",
-        features: [
-          "Coffee & tea",
-          "Casual seating",
-          "Networking space",
-          "Break area",
-        ],
-      }
+          "A shared pantry where members can enjoy complimentary refreshments and unwind throughout the day.",
+        features: ["Complimentary coffee & tea", "Casual seating", "Refreshment area", "Relaxing atmosphere"],
+      },
+      {
+        id: "lounge",
+        title: "Lounge",
+        description:
+          "A relaxing shared lounge perfect for casual meetings, networking, or taking a productive break.",
+        features: ["Comfortable seating", "High-speed Wi-Fi", "Networking area", "Quiet ambiance"],
+      },
+      {
+        id: "brochure-lockers",
+        title: "Brochure & Locker Area",
+        description:
+          "A dedicated space with secure lockers and brochure displays for members and visitors.",
+        features: ["Secure storage lockers", "Member-only access", "Brochure display", "Clean and organized area"],
+      },
+      {
+        id: "hallway-1",
+        title: "Hallway",
+        description: "A connecting hallway providing access between the building's shared spaces and offices.",
+        features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
+      },
+      // {
+      //   id: "two-seats-corridor",
+      //   title: "2 Seats (Corridor)",
+      //   description: "A compact private office along the corridor, suited for a small team of two.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Private workspace", "Corridor access"],
+      // },
+      // {
+      //   id: "four-seats-corridor",
+      //   title: "4 Seats (Corridor)",
+      //   description: "A private office along the corridor designed for a team of four.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Collaborative workspace", "Corridor access"],
+      // },
+      // {
+      //   id: "six-seats-corridor",
+      //   title: "6 Seats (Corridor)",
+      //   description: "A private office along the corridor designed for a team of six.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Collaborative workspace", "Corridor access"],
+      // },
+      // {
+      //   id: "eight-seats-corridor",
+      //   title: "8 Seats (Corridor)",
+      //   description: "A spacious corridor-facing workspace comfortably designed for teams of up to eight.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Collaborative workspace", "Corridor access"],
+      // },
+      // {
+      //   id: "fifteen-seats-corridor",
+      //   title: "15 Seats (Corridor)",
+      //   description: "A large corridor-facing office suite tailored for growing teams.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Team collaboration area", "Corridor access"],
+      // },
+      // {
+      //   id: "twentyfive-seats-corridor",
+      //   title: "25 Seats (Corridor)",
+      //   description: "A large-scale corridor-facing office suite designed for sizeable teams.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Team collaboration area", "Corridor access"],
+      // },
+      // {
+      //   id: "four-seats-window",
+      //   title: "4 Seats (Window)",
+      //   description: "A window-side private office designed for a team of four.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
+      // {
+      //   id: "six-seats-window",
+      //   title: "6 Seats (Window)",
+      //   description: "A window-side private office designed for a team of six.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
+      // {
+      //   id: "ten-seats-window",
+      //   title: "10 Seats (Window)",
+      //   description: "A window-side office suite designed for a team of ten.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
+      // {
+      //   id: "fifteen-seats-window",
+      //   title: "15 Seats (Window)",
+      //   description: "A window-side office suite designed for growing teams of up to fifteen.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
+      // {
+      //   id: "twentyfive-seats-window",
+      //   title: "25 Seats (Window)",
+      //   description: "A large window-side office suite designed for sizeable teams.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
     ],
 
     insularLife: [
@@ -395,86 +435,141 @@ export default function VirtualTourPage() {
         id: "reception",
         title: "Reception",
         description:
-          "Elegant reception area providing professional visitor assistance and business support.",
-        features: [
-          "Japanese-speaking reception staff",
-          "Visitor assistance",
-          "Mail & package receiving",
-          "Reception services",
-        ],
+          "A welcoming reception area where guests are greeted and assisted by our professional bilingual team.",
+        features: ["Japanese-speaking reception staff", "Guest assistance", "Mail & package handling", "Reception services"],
       },
       {
         id: "lounge",
         title: "Lounge",
         description:
-          "Comfortable shared lounge for informal meetings, networking, or working outside your office.",
-        features: [
-          "Comfortable seating",
-          "Free Wi-Fi",
-          "Networking space",
-          "Quiet atmosphere",
-        ],
+          "A relaxing shared lounge perfect for casual meetings, networking, or taking a productive break.",
+        features: ["Comfortable seating", "High-speed Wi-Fi", "Networking area", "Quiet ambiance"],
+      },
+      {
+        id: "conference-room-a",
+        title: "Conference Room A",
+        description:
+          "A fully equipped meeting room ideal for presentations, client meetings, interviews, and team collaborations.",
+        features: ["Presentation display", "Video conferencing", "High-speed Wi-Fi", "Flexible seating"],
+      },
+      {
+        id: "conference-room-b",
+        title: "Conference Room B",
+        description:
+          "A professional meeting space designed for productive discussions, presentations, and business events.",
+        features: ["Presentation display", "Video conferencing", "High-speed Wi-Fi", "Flexible seating"],
       },
       {
         id: "meeting-box",
         title: "Meeting Box",
         description:
-          "Fully equipped meeting rooms suitable for conferences, interviews, and client meetings.",
-        features: [
-          "Presentation display",
-          "Video conferencing",
-          "High-speed Wi-Fi",
-          "Private environment",
-        ],
+          "A private meeting space designed for focused discussions, virtual meetings, and client consultations.",
+        features: ["Presentation display", "Video conferencing", "High-speed Wi-Fi", "Private setting"],
       },
       {
-        id: "meeting-room",
-        title: "Meeting Room",
+        id: "pantry",
+        title: "Pantry",
         description:
-          "Fully equipped meeting rooms suitable for conferences, interviews, and client meetings.",
-        features: [
-          "Presentation display",
-          "Video conferencing",
-          "High-speed Wi-Fi",
-          "Private environment",
-        ],
-      },
-      {
-        id: "cafe",
-        title: "Cafe Area",
-        description:
-          "Relax and recharge in our shared café space with complimentary refreshments.",
-        features: [
-          "Coffee & tea",
-          "Casual seating",
-          "Networking space",
-          "Break area",
-        ],
+          "A shared pantry where members can enjoy complimentary refreshments and unwind throughout the day.",
+        features: ["Complimentary coffee & tea", "Casual seating", "Refreshment area", "Relaxing atmosphere"],
       },
       {
         id: "mailbox",
         title: "Mailbox",
         description:
-          "Secure business mailing address with professional mail receiving and handling services.",
-        features: [
-          "Business address",
-          "Mail receiving",
-          "Package handling",
-          "Mail notification",
-        ],
+          "A secure business mailing service for receiving and managing your correspondence with ease.",
+        features: ["Professional business address", "Mail receiving", "Package handling", "Mail notifications"],
       },
       {
-        id: "locker-room",
-        title: "Locker Room",
-        description:
-          "Secure personal lockers for members to safely store belongings during the workday.",
-        features: [
-          "Secure lockers",
-          "Member access",
-          "Convenient storage",
-          "Clean facilities",
-        ],
+        id: "hallway",
+        title: "Hallway",
+        description: "A connecting hallway providing access between the building's shared spaces and offices.",
+        features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
       },
+      // {
+      //   id: "five-seats-corridor",
+      //   title: "5 Seats (Corridor)",
+      //   description: "A private office along the corridor designed for a team of five.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Collaborative workspace", "Corridor access"],
+      // },
+      // {
+      //   id: "ten-seats-corridor",
+      //   title: "10 Seats (Corridor)",
+      //   description: "A private office along the corridor designed for a team of ten.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Collaborative workspace", "Corridor access"],
+      // },
+      // {
+      //   id: "twelve-seats-corridor",
+      //   title: "12 Seats (Corridor)",
+      //   description: "A spacious corridor-facing office suite designed for a team of twelve.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Team collaboration area", "Corridor access"],
+      // },
+      // {
+      //   id: "fifteen-seats-corridor",
+      //   title: "15 Seats (Corridor)",
+      //   description: "A large corridor-facing office suite designed for growing teams.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Team collaboration area", "Corridor access"],
+      // },
+      // {
+      //   id: "twenty-seats-corridor",
+      //   title: "20 Seats (Corridor)",
+      //   description: "A large-scale corridor-facing office suite designed for sizeable teams.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Team collaboration area", "Corridor access"],
+      // },
+      // {
+      //   id: "two-seats-window",
+      //   title: "2 Seats (Window)",
+      //   description: "A compact window-side private office suited for a small team of two.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
+      // {
+      //   id: "four-seats-window",
+      //   title: "4 Seats (Window)",
+      //   description: "A window-side private office designed for a team of four.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
+      // {
+      //   id: "eight-seats-window",
+      //   title: "8 Seats (Window)",
+      //   description: "A spacious window-side workspace comfortably designed for teams of up to eight.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
+      // {
+      //   id: "ten-seats-window",
+      //   title: "10 Seats (Window)",
+      //   description: "A window-side office suite designed for a team of ten.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
+      // {
+      //   id: "twelve-seats-window",
+      //   title: "12 Seats (Window)",
+      //   description: "A window-side office suite designed for a team of twelve.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
+      // {
+      //   id: "fifteen-seats-window",
+      //   title: "15 Seats (Window)",
+      //   description: "A window-side office suite designed for growing teams of up to fifteen.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
+      // {
+      //   id: "twenty-seats-window",
+      //   title: "20 Seats (Window)",
+      //   description: "A large window-side office suite designed for a team of twenty.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
+      // {
+      //   id: "twentyfive-seats-window",
+      //   title: "25 Seats (Window)",
+      //   description: "A large window-side office suite designed for sizeable teams.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
+      // {
+      //   id: "thirty-seats-window",
+      //   title: "30 Seats (Window)",
+      //   description: "A large-scale window-side office suite designed for sizeable teams.",
+      //   features: ["Ergonomic seating", "High-speed Wi-Fi", "Natural light", "Window view"],
+      // },
     ],
   };
 
@@ -535,7 +630,12 @@ export default function VirtualTourPage() {
         panoramaUrl: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&q=80",
       },
       {
-        id: "hallway",
+        id: "hallway-1",
+        name: "Hallway",
+        panoramaUrl: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
+      },
+      {
+        id: "hallway-2",
         name: "Hallway",
         panoramaUrl: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
       },
@@ -564,6 +664,61 @@ export default function VirtualTourPage() {
         name: "Brochure & Locker Area",
         panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
       },
+      // {
+      //   id: "two-seats-corridor",
+      //   name: "2 Seats (Corridor)",
+      //   panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
+      // },
+      // {
+      //   id: "four-seats-corridor",
+      //   name: "4 Seats (Corridor)",
+      //   panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
+      // },
+      // {
+      //   id: "six-seats-corridor",
+      //   name: "6 Seats (Corridor)",
+      //   panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
+      // },
+      // {
+      //   id: "eight-seats-corridor",
+      //   name: "8 Seats (Corridor)",
+      //   panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
+      // },
+      // {
+      //   id: "fifteen-seats-corridor",
+      //   name: "15 Seats (Corridor)",
+      //   panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
+      // },
+      // {
+      //   id: "twentyfive-seats-corridor",
+      //   name: "25 Seats (Corridor)",
+      //   panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
+      // },
+      // {
+      //   id: "four-seats-window",
+      //   name: "4 Seats (Window)",
+      //   panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
+      // },
+      // {
+      //   id: "six-seats-window",
+      //   name: "6 Seats (Window)",
+      //   panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
+      // },
+      // {
+      //   id: "ten-seats-window",
+      //   name: "10 Seats (Window)",
+      //   panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
+      // },
+      // {
+      //   id: "fifteen-seats-window",
+      //   name: "15 Seats (Window)",
+      //   panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
+      // },
+      // {
+      //   id: "twentyfive-seats-window",
+      //   name: "25 Seats (Window)",
+      //   panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
+      // },
     ],
 
     insularLife: [
@@ -588,41 +743,97 @@ export default function VirtualTourPage() {
         panoramaUrl: "/360-view/IMG_20210318_133045_00_019.jpg",
       },
       {
-        id: "meeting-room",
-        name: "Meeting Room",
+        id: "conference-room-a",
+        name: "Conference Room A",
         panoramaUrl: "/360-view/IMG_20210318_134026_00_023.jpg",
       },
       {
-        id: "cafe",
-        name: "Cafe Area",
+        id: "conference-room-b",
+        name: "Conference Room B",
+        panoramaUrl: "/360-view/IMG_20210318_134026_00_023.jpg",
+      },
+      {
+        id: "pantry",
+        name: "Pantry",
         panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
       },
       {
         id: "mailbox",
         name: "Mailbox",
-        panoramaUrl: "https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=2400&q=85",
+        panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
       },
-      {
-        id: "locker-room",
-        name: "Locker Room",
-        panoramaUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=2400&q=85",
-      },
+      // {
+      //   id: "five-seats-corridor",
+      //   name: "5 Seats (Corridor)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "ten-seats-corridor",
+      //   name: "10 Seats (Corridor)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "twelve-seats-corridor",
+      //   name: "12 Seats (Corridor)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "fifteen-seats-corridor",
+      //   name: "15 Seats (Corridor)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "twenty-seats-corridor",
+      //   name: "20 Seats (Corridor)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "two-seats-window",
+      //   name: "2 Seats (Window)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "four-seats-window",
+      //   name: "4 Seats (Window)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "eight-seats-window",
+      //   name: "8 Seats (Window)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "ten-seats-window",
+      //   name: "10 Seats (Window)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "twelve-seats-window",
+      //   name: "12 Seats (Window)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "fifteen-seats-window",
+      //   name: "15 Seats (Window)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "twenty-seats-window",
+      //   name: "20 Seats (Window)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "twentyfive-seats-window",
+      //   name: "25 Seats (Window)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
+      // {
+      //   id: "thirty-seats-window",
+      //   name: "30 Seats (Window)",
+      //   panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+      // },
     ],
   };
-
-  /**
-   * Floor plans, one per building. Hotspot x/y are percentages of the image's
-   * width/height, so they stay correctly positioned at any render size.
-   * width/height (also percentages) describe the highlighted room region drawn
-   * around that center point. Each hotspot id must match an id in
-   * roomsByTab[building] and tourLocations[building] so it can open the right
-   * panorama.
-   *
-   * NOTE: hotspot coordinates below are eyeballed against the supplied floor
-   * plan images. Nudge the x/y/width/height values a couple of points if a
-   * marker or highlight doesn't land exactly on its room once rendered at
-   * full size.
-   */
 
   const floorPlans: Record<string, FloorPlanData> = {
     tower6789: {
@@ -640,21 +851,47 @@ export default function VirtualTourPage() {
         { id: "brochure-lockers", label: "Brochure & Locker Area", x: 76, y: 21 },
         { id: "hallway-1", label: "Hallway", x: 15, y: 50 },
         { id: "hallway-2", label: "Hallway", x: 86, y: 50 },
+        // { id: "two-seats-corridor", label: "2 Seats (Corridor)", x: 90, y: 45 },
+        // { id: "four-seats-corridor", label: "4 Seats (Corridor)", x: 90, y: 45 },
+        // { id: "six-seats-corridor", label: "6 Seats (Corridor)", x: 90, y: 45 },
+        // { id: "eight-seats-corridor", label: "8 Seats (Corridor)", x: 90, y: 45 },
+        // { id: "fifteen-seats-corridor", label: "15 Seats (Corridor)", x: 90, y: 45 },
+        // { id: "twentyfive-seats-corridor", label: "25 Seats (Corridor)", x: 90, y: 45 },
+        // { id: "four-seats-window", label: "4 Seats (Window)", x: 90, y: 45 },
+        // { id: "six-seats-window", label: "6 Seats (Window)", x: 90, y: 45 },
+        // { id: "ten-seats-window", label: "10 Seats (Window)", x: 90, y: 45 },
+        // { id: "fifteen-seats-window", label: "15 Seats (Window)", x: 90, y: 45 },
+        // { id: "twentyfive-seats-window", label: "25 Seats (Window)", x: 90, y: 45 },
       ],
     },
     insularLife: {
-      src: "/insular-life-layout.png",
+      src: "/insular-life-layout.jpg",
       alt: "Insular Life floor layout",
       width: 1631,
       height: 964,
       hotspots: [
-        { id: "reception", label: "Reception", x: 41.5, y: 51 },
-        { id: "lounge", label: "Lounge", x: 47.5, y: 46.5 },
-        { id: "meeting-room", label: "Meeting Room", x: 54.5, y: 52.5 },
-        { id: "cafe", label: "Cafe Area", x: 42.5, y: 63 },
-        { id: "mailbox", label: "Mailbox", x: 41.5, y: 55 },
-        { id: "locker-room", label: "Locker Room", x: 77.5, y: 18 },
-        { id: "hallway", label: "Hallway", x: 60, y: 46.5 },
+        { id: "reception", label: "Reception", x: 58, y: 46 },
+        { id: "lounge", label: "Lounge", x: 52, y: 55 },
+        { id: "conference-room-a", label: "Conference Room A", x: 48, y: 38 },
+        { id: "conference-room-b", label: "Conference Room B", x: 40, y: 38 },
+        { id: "meeting-box", label: "Meeting Box", x: 50, y: 50 },
+        { id: "Pantry", label: "Pantry", x: 55, y: 20 },
+        { id: "mailbox", label: "Mailbox", x: 48, y: 30 },
+        { id: "hallway", label: "Hallway", x: 40, y: 48 },
+        // { id: "five-seats-corridor", label: "5 Seats (Corridor)", x: 20, y: 50 },
+        // { id: "ten-seats-corridor", label: "10 Seats (Corridor)", x: 20, y: 50 },
+        // { id: "twelve-seats-corridor", label: "12 Seats (Corridor)", x: 20, y: 50 },
+        // { id: "fifteen-seats-corridor", label: "15 Seats (Corridor)", x: 20, y: 50 },
+        // { id: "twenty-seats-corridor", label: "20 Seats (Corridor)", x: 20, y: 50 },
+        // { id: "two-seats-window", label: "2 Seats (Window)", x: 62, y: 38 },
+        // { id: "four-seats-window", label: "4 Seats (Window)", x: 62, y: 38 },
+        // { id: "eight-seats-window", label: "8 Seats (Window)", x: 62, y: 38 },
+        // { id: "ten-seats-window", label: "10 Seats (Window)", x: 62, y: 38 },
+        // { id: "twelve-seats-window", label: "12 Seats (Window)", x: 62, y: 38 },
+        // { id: "fifteen-seats-window", label: "15 Seats (Window)", x: 62, y: 38 },
+        // { id: "twenty-seats-window", label: "20 Seats (Window)", x: 62, y: 38 },
+        // { id: "twentyfive-seats-window", label: "25 Seats (Window)", x: 62, y: 38 },
+        // { id: "thirty-seats-window", label: "30 Seats (Window)", x: 62, y: 38 },
       ],
     },
   };
@@ -835,7 +1072,7 @@ export default function VirtualTourPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
             {tourLocations[activeTab as keyof typeof tourLocations].map((location, index) => {
               const isActive = selectedRoomId === location.id;
               return (
@@ -845,13 +1082,13 @@ export default function VirtualTourPage() {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.07 }}
-                  className={`group flex flex-col text-left bg-white border rounded-2xl p-4 sm:p-5 transition-all ${isActive
+                  className={`group flex flex-col h-full text-left bg-white border rounded-2xl p-4 sm:p-5 transition-all ${isActive
                     ? "border-[#1B3A8C] ring-2 ring-[#1B3A8C]/20 shadow-sm"
                     : "border-gray-150 hover:border-gray-300 hover:shadow-sm"
                     }`}
                 >
                   {/* Icon + title */}
-                  <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                       <div
                         className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-[#1B3A8C]" : "bg-blue-50"
@@ -862,7 +1099,7 @@ export default function VirtualTourPage() {
                       <h3 className="font-semibold text-gray-900 text-lg sm:text-xl truncate">{location.title}</h3>
                     </div>
                     {isActive && (
-                      <span className="text-[10px] font-semibold tracking-wide uppercase text-[#1B3A8C] bg-[#1B3A8C]/10 px-2 py-1 rounded-full shrink-0">
+                      <span className="text-[10px] font-semibold tracking-wide uppercase text-[#1B3A8C] bg-[#1B3A8C]/10 px-2 py-1 rounded-full shrink-0 whitespace-nowrap">
                         Viewing
                       </span>
                     )}
@@ -874,7 +1111,7 @@ export default function VirtualTourPage() {
                     {location.features.map((feature) => (
                       <li key={feature} className="flex items-center gap-2 text-sm text-gray-500">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                        {feature}
+                        <span className="truncate">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -892,9 +1129,9 @@ export default function VirtualTourPage() {
               {buildingServices[activeTab as keyof typeof buildingServices].map((service) => (
                 <span
                   key={service}
-                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border border-gray-200 bg-gray-50 text-[11px] sm:text-xs text-gray-700"
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border border-gray-200 bg-gray-50 text-[11px] sm:text-xs text-gray-700 whitespace-nowrap"
                 >
-                  <span className="text-gray-400">{serviceIconMap[service]}</span>
+                  <span className="text-gray-400 shrink-0">{serviceIconMap[service]}</span>
                   {service}
                 </span>
               ))}
@@ -910,14 +1147,14 @@ export default function VirtualTourPage() {
             Ready to See It in person?
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-gray-100 mb-6 sm:mb-8">
-            Book a tour or contact us for more information about our services and amenities.
+            Get your space or contact us for more information about our services and amenities.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <Link
-              href="/reservation"
+              href="/quotation"
               className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-white text-[#1B3A8C] rounded-full font-semibold text-sm sm:text-base hover:bg-gray-100 transition-colors"
             >
-              Book a Tour
+              Get a Quote
             </Link>
             <Link
               href="/contact"

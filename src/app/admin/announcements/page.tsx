@@ -34,15 +34,18 @@ interface Announcement {
   title: string;
   excerpt: string;
   content: string;
+  image?: string | string[] | null;
   status: "draft" | "published" | "archived";
-  // Accepts the new { platform, link }[] shape, the legacy string[] /
-  // comma-separated-string shape, or null. normalizeSocialMedia() handles
-  // all of these when reading data back from the API.
-  social_media?: SocialMediaEntry[] | string[] | string | null;
   social_platforms?: string[] | null;
   social_links?: Array<string | null> | null;
   created_at: string;
   updated_at?: string;
+  publish_results?: Array<{
+    platform: string;
+    success: boolean;
+    message: string;
+    status?: number;
+  }>;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -64,6 +67,15 @@ const SOCIAL_MEDIA_OPTIONS = [
   { value: "tiktok", label: "TikTok" },
 ];
 
+const PLATFORM_LINK_TEMPLATES: Record<string, string> = {
+  facebook: "https://facebook.com/your-page/posts/[post-id]",
+  x: "https://twitter.com/your-handle/status/[tweet-id]",
+  instagram: "https://instagram.com/p/[post-id]/",
+  linkedin: "https://linkedin.com/feed/update/[update-id]/",
+  youtube: "https://youtube.com/watch?v=[video-id]",
+  tiktok: "https://tiktok.com/@your-handle/video/[video-id]",
+};
+
 const EMPTY_FORM = {
   tag: "",
   date: "",
@@ -74,71 +86,32 @@ const EMPTY_FORM = {
   publish_to_social: true,
 };
 
-// Normalizes whatever shape the API returns (new object array, legacy
-// string array, legacy comma-separated string, or null) into a single
-// { platform, link }[] shape the UI can rely on everywhere.
+// Builds the { platform, link }[] shape the UI relies on everywhere from
+// the API's parallel `social_platforms` / `social_links` arrays.
 function normalizeSocialMedia(
-  value: Announcement["social_media"],
   platforms?: string[] | null,
   links?: Array<string | null> | null,
 ): SocialMediaEntry[] {
   const normalizedPlatforms = Array.isArray(platforms) ? platforms : [];
   const normalizedLinks = Array.isArray(links) ? links : [];
 
-  if (normalizedPlatforms.length > 0 || normalizedLinks.length > 0) {
-    const count = Math.max(normalizedPlatforms.length, normalizedLinks.length);
-    return Array.from({ length: count }, (_, index) => {
-      const platform = normalizedPlatforms[index]?.trim();
-      if (!platform) return null;
-      return {
-        platform,
-        link: normalizedLinks[index]?.trim() ?? "",
-      };
-    }).filter((item): item is SocialMediaEntry => Boolean(item));
-  }
+  const count = Math.max(normalizedPlatforms.length, normalizedLinks.length);
 
-  if (Array.isArray(value)) {
-    return value
-      .map((item): SocialMediaEntry | null => {
-        if (item && typeof item === "object" && "platform" in item) {
-          const entry = item as Partial<SocialMediaEntry>;
-          return entry.platform
-            ? { platform: entry.platform, link: entry.link ?? "" }
-            : null;
-        }
-        if (typeof item === "string" && item.trim()) {
-          return { platform: item.trim(), link: "" };
-        }
-        return null;
-      })
-      .filter((item): item is SocialMediaEntry => Boolean(item));
-  }
-
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return [];
-
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed)) {
-        return normalizeSocialMedia(parsed);
-      }
-    } catch {
-      // fall back to comma-separated parsing below
-    }
-
-    return trimmed
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .map((platform) => ({ platform, link: "" }));
-  }
-
-  return [];
+  return Array.from({ length: count }, (_, index) => {
+    const platform = normalizedPlatforms[index]?.trim();
+    if (!platform) return null;
+    return {
+      platform,
+      link: normalizedLinks[index]?.trim() ?? "",
+    };
+  }).filter((item): item is SocialMediaEntry => Boolean(item));
 }
 
-function formatSocialMedia(value: Announcement["social_media"], platforms?: string[] | null, links?: Array<string | null> | null) {
-  return normalizeSocialMedia(value, platforms, links).map((entry) => {
+function formatSocialMedia(
+  platforms?: string[] | null,
+  links?: Array<string | null> | null,
+) {
+  return normalizeSocialMedia(platforms, links).map((entry) => {
     const option = SOCIAL_MEDIA_OPTIONS.find(
       (opt) => opt.value === entry.platform,
     );
@@ -174,6 +147,62 @@ function authHeaders(json = false) {
     Authorization: `Bearer ${token}`,
     ...(json ? { "Content-Type": "application/json" } : {}),
   };
+}
+
+function getAnnouncementImageUrls(image?: string | string[] | null) {
+  if (!image) return [];
+
+  const toArray = (value: unknown): string[] => {
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => (typeof item === "string" ? item.trim() : ""))
+        .filter(Boolean);
+    }
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) return [];
+
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((item) => (typeof item === "string" ? item.trim() : ""))
+            .filter(Boolean);
+        }
+      } catch {
+        // ignore and fall back to the plain string value below
+      }
+
+      return [trimmed];
+    }
+
+    return [];
+  };
+
+  const values = Array.isArray(image) ? image : [image];
+  const paths = values.flatMap((value) => toArray(value));
+
+  return paths.map((path) => {
+    if (!path) return null;
+    if (/^https?:\/\//i.test(path)) return path;
+    if (path.startsWith("/storage/")) return path;
+
+    const configured =
+      process.env.NEXT_PUBLIC_API_URL ||
+      process.env.LARAVEL_API_URL ||
+      "http://localhost:8000";
+    const normalized = configured.replace(/\/+$/g, "");
+    const base = normalized.endsWith("/api")
+      ? normalized.replace(/\/api$/, "")
+      : normalized;
+
+    return `${base}/storage/${path.replace(/^\/+/, "")}`;
+  }).filter(Boolean) as string[];
+}
+
+function getAnnouncementImageUrl(image?: string | string[] | null) {
+  return getAnnouncementImageUrls(image)[0] ?? null;
 }
 
 function sortAnnouncements(items: Announcement[]) {
@@ -263,6 +292,8 @@ export default function AnnouncementsAdmin() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   // Delete dialog
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
@@ -358,7 +389,7 @@ export default function AnnouncementsAdmin() {
 
   // Status-only updates use PATCH, not PUT. The API's PUT handler expects a
   // full resource replacement, so sending only `{ status }` via PUT was
-  // silently wiping every other field (title, content, tag, social_media,
+  // silently wiping every other field (title, content, tag, social media,
   // etc). PATCH is the correct verb for a partial update and leaves the
   // rest of the record untouched.
   async function saveStatus() {
@@ -397,6 +428,8 @@ export default function AnnouncementsAdmin() {
     setEditing(null);
     setForm({ ...EMPTY_FORM, social_media: [], publish_to_social: true });
     setFormErrors({});
+    setImageFiles([]);
+    setImagePreviews([]);
     setFormOpen(true);
   }
 
@@ -408,14 +441,12 @@ export default function AnnouncementsAdmin() {
       title: a.title,
       content: a.content,
       status: a.status,
-      social_media: normalizeSocialMedia(
-        a.social_media,
-        a.social_platforms,
-        a.social_links,
-      ),
+      social_media: normalizeSocialMedia(a.social_platforms, a.social_links),
       publish_to_social: true,
     });
     setFormErrors({});
+    setImageFiles([]);
+    setImagePreviews(getAnnouncementImageUrls(a.image));
     setFormOpen(true);
   }
 
@@ -450,6 +481,19 @@ export default function AnnouncementsAdmin() {
         (_, currentIndex) => currentIndex !== index,
       ),
     }));
+  }
+
+  function generatePlatformLink(platform: string) {
+    return PLATFORM_LINK_TEMPLATES[platform] || "";
+  }
+
+  function fillPlatformLink(index: number) {
+    const platform = form.social_media[index]?.platform;
+    if (!platform) return;
+    const template = generatePlatformLink(platform);
+    if (template) {
+      updateSocialMedia(index, "link", template);
+    }
   }
 
   // Options available for a given row: any option not already picked by a
@@ -493,10 +537,35 @@ export default function AnnouncementsAdmin() {
       : `/api/admin/announcements`;
 
     try {
+      const formData = new FormData();
+      formData.append("tag", form.tag);
+      formData.append("date", form.date);
+      formData.append("title", form.title);
+      formData.append("content", form.content);
+      formData.append("excerpt", payload.excerpt);
+      formData.append("status", form.status);
+      formData.append("publish_to_social", String(form.publish_to_social));
+
+      payload.social_platforms.forEach((platform) => {
+        formData.append("social_platforms[]", platform);
+      });
+
+      payload.social_links.forEach((link) => {
+        formData.append("social_links[]", link ?? "");
+      });
+
+      if (imageFiles.length > 0) {
+        imageFiles.forEach((file) => {
+          formData.append("images[]", file);
+        });
+      }
+
       const res = await fetch(url, {
         method: isEdit ? "PUT" : "POST",
-        headers: authHeaders(true),
-        body: JSON.stringify(payload),
+        headers: {
+          Authorization: authHeaders().Authorization,
+        },
+        body: formData,
       });
 
       if (res.status === 422) {
@@ -527,12 +596,38 @@ export default function AnnouncementsAdmin() {
       setFormOpen(false);
       setEditing(null);
       setForm(EMPTY_FORM);
-      showToast(
-        isEdit
-          ? "Announcement updated successfully."
-          : "Announcement created successfully.",
-        "success",
-      );
+      setImageFiles([]);
+      setImagePreviews([]);
+
+      // Show publish feedback if applicable
+      if (form.publish_to_social && saved.publish_results && saved.publish_results.length > 0) {
+        const results = saved.publish_results;
+        const successful = results.filter((r) => r.success).length;
+        const failed = results.filter((r) => !r.success).length;
+
+        if (successful > 0 && failed === 0) {
+          showToast(
+            `Announcement ${isEdit ? "updated" : "created"} and published to ${successful} platform${successful > 1 ? "s" : ""}.`,
+            "success"
+          );
+        } else if (successful > 0 && failed > 0) {
+          showToast(
+            `Announcement ${isEdit ? "updated" : "created"}. Published to ${successful} platform${successful > 1 ? "s" : ""}, but ${failed} platform${failed > 1 ? "s" : ""} failed.`,
+          );
+        } else if (failed > 0) {
+          showToast(
+            // `Announcement ${isEdit ? "updated" : "created"}, but publishing failed. Announcement was saved but not published to any platforms.`,
+            "error"
+          );
+        }
+      } else {
+        showToast(
+          isEdit
+            ? "Announcement updated successfully."
+            : "Announcement created successfully.",
+          "success",
+        );
+      }
     } catch {
       setFormErrors({ general: "Something went wrong. Please try again." });
       showToast("Something went wrong. Please try again.", "error");
@@ -930,7 +1025,6 @@ export default function AnnouncementsAdmin() {
 
               {/* Social media — each platform with its own post link */}
               {normalizeSocialMedia(
-                viewTarget.social_media,
                 viewTarget.social_platforms,
                 viewTarget.social_links,
               ).length > 0 && (
@@ -940,7 +1034,6 @@ export default function AnnouncementsAdmin() {
                   </dt>
                   <dd className="space-y-1.5">
                     {formatSocialMedia(
-                      viewTarget.social_media,
                       viewTarget.social_platforms,
                       viewTarget.social_links,
                     ).map((entry, i) => (
@@ -1058,6 +1151,38 @@ export default function AnnouncementsAdmin() {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Announcement image
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []);
+                    setImageFiles(files);
+                    setImagePreviews(files.map((file) => URL.createObjectURL(file)));
+                  }}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700"
+                />
+                {(imagePreviews.length > 0 || (editing && getAnnouncementImageUrls(editing.image).length > 0)) && (
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    {imagePreviews.length > 0
+                      ? imagePreviews.map((preview, index) => (
+                          <div key={`${preview}-${index}`} className="overflow-hidden rounded-lg border border-slate-200">
+                            <img src={preview} alt={`Announcement preview ${index + 1}`} className="h-32 w-full object-cover" />
+                          </div>
+                        ))
+                      : getAnnouncementImageUrls(editing?.image).map((preview, index) => (
+                          <div key={`${preview}-${index}`} className="overflow-hidden rounded-lg border border-slate-200">
+                            <img src={preview} alt={`Announcement image ${index + 1}`} className="h-32 w-full object-cover" />
+                          </div>
+                        ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
                   Content
                 </label>
                 <textarea
@@ -1123,14 +1248,26 @@ export default function AnnouncementsAdmin() {
                         />
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => removeSocialMedia(index)}
-                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-500 hover:bg-slate-50 sm:self-stretch"
-                        aria-label="Remove social media"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                      <div className="flex gap-1.5 sm:self-stretch">
+                        {/* {entry.platform && !entry.link && (
+                          <button
+                            type="button"
+                            onClick={() => fillPlatformLink(index)}
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                            title="Auto-fill with template"
+                          >
+                            Generate
+                          </button>
+                        )} */}
+                        <button
+                          type="button"
+                          onClick={() => removeSocialMedia(index)}
+                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-500 hover:bg-slate-50 sm:self-stretch"
+                          aria-label="Remove social media"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1146,6 +1283,11 @@ export default function AnnouncementsAdmin() {
                     {formErrors.social_media}
                   </p>
                 )}
+                {form.social_media.length > 0 && (
+                  <p className="mt-2 text-xs text-slate-400">
+                    Click "Generate" to auto-fill a template link for that platform, then replace the placeholders with actual IDs or URLs.
+                  </p>
+                )}
 
                 <button
                   type="button"
@@ -1157,7 +1299,7 @@ export default function AnnouncementsAdmin() {
                 </button>
               </div>
 
-              <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+              {/* <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
                 <label className="mb-2 block text-xs font-medium text-slate-600">
                   Publishing
                 </label>
@@ -1173,7 +1315,7 @@ export default function AnnouncementsAdmin() {
                 <p className="mt-2 text-xs text-slate-400">
                   If no webhook is configured for a selected platform, the save will still succeed and that platform will be skipped.
                 </p>
-              </div>
+              </div> */}
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-600">
