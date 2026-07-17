@@ -298,7 +298,7 @@ export default function InsularLifePage() {
               <div className="bg-white rounded-3xl shadow-lg overflow-hidden border">
                 <div className="relative aspect-4/3">
                   <Image
-                    src="/insular-life-layout.png"
+                    src="/INSULAR-LIFE-FLOOR-LAYOUT.jpg"
                     alt="Floor Layout"
                     fill
                     className="object-contain"

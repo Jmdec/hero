@@ -281,7 +281,7 @@ export default function Tower6789Page() {
               <div className="bg-white rounded-3xl shadow-lg overflow-hidden border">
                 <div className="relative aspect-4/3">
                   <Image
-                    src="/tower6789-layout.png"
+                    src="/TOWER6789-FLOOR-LAYOUT.jpg"
                     alt="Floor Layout"
                     fill
                     className="object-contain"
