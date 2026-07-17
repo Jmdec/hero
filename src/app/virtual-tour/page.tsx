@@ -864,6 +864,7 @@ export default function VirtualTourPage() {
         // { id: "twentyfive-seats-window", label: "25 Seats (Window)", x: 90, y: 45 },
       ],
     },
+    
     insularLife: {
       src: "/insular-life-layout.jpg",
       alt: "Insular Life floor layout",
@@ -875,7 +876,7 @@ export default function VirtualTourPage() {
         { id: "conference-room-a", label: "Conference Room A", x: 48, y: 38 },
         { id: "conference-room-b", label: "Conference Room B", x: 40, y: 38 },
         { id: "meeting-box", label: "Meeting Box", x: 50, y: 50 },
-        { id: "Pantry", label: "Pantry", x: 55, y: 20 },
+        { id: "pantry", label: "Pantry", x: 55, y: 20 },
         { id: "mailbox", label: "Mailbox", x: 48, y: 30 },
         { id: "hallway", label: "Hallway", x: 40, y: 48 },
         // { id: "five-seats-corridor", label: "5 Seats (Corridor)", x: 20, y: 50 },
