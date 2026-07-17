@@ -116,8 +116,15 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
       )
     }
 
+    // Remove the separate overlay button's onClick-only activation.
+    // Instead, activate directly inside onPointerDown so the same touch/click
+    // that starts the drag also activates the viewer — no extra click needed.
+
     const onPointerDown = (event: PointerEvent) => {
-      if (!isActiveRef.current) return
+      if (!isActiveRef.current) {
+        setIsActive(true)
+        isActiveRef.current = true // sync immediately, don't wait for useEffect
+      }
       isDragging.current = true
       setIsAutoRotating(false)
       previousMousePosition.current = { x: event.clientX, y: event.clientY }
@@ -251,14 +258,37 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
   }
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      wrapperRef.current?.requestFullscreen()
-      setIsFullscreen(true)
-    } else {
-      document.exitFullscreen()
-      setIsFullscreen(false)
-    }
+  // Already in CSS fake-fullscreen? Just toggle it off directly.
+  if (isFullscreen && !document.fullscreenElement) {
+    setIsFullscreen(false)
+    return
   }
+
+  const el = wrapperRef.current as any
+  if (!document.fullscreenElement) {
+    const request =
+      el?.requestFullscreen?.bind(el) ||
+      el?.webkitRequestFullscreen?.bind(el) ||
+      el?.webkitEnterFullscreen?.bind(el)
+
+    if (!request) {
+      setIsFullscreen(true)
+      return
+    }
+
+    Promise.resolve(request()).catch((err: any) => {
+      // Silently fall back for permission policy errors (expected in iframes)
+      if (err?.name === 'NotAllowedError' || err?.message?.includes('permissions policy')) {
+        setIsFullscreen(true)
+      } else {
+        console.warn("Fullscreen request failed, falling back to CSS fullscreen:", err)
+        setIsFullscreen(true)
+      }
+    })
+  } else {
+    document.exitFullscreen?.().catch(() => {})
+  }
+}
 
   useEffect(() => {
     const handleFsChange = () => {
@@ -284,16 +314,14 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
   }
 
   const dockButtonClass = (active?: boolean) =>
-    `w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center transition-colors ${
-      active ? "bg-[#C9A15D]/15 text-[#C9A15D]" : "text-white/70 hover:text-white hover:bg-white/5"
+    `w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center transition-colors ${active ? "bg-[#C9A15D]/15 text-[#C9A15D]" : "text-white/70 hover:text-white hover:bg-white/5"
     }`
 
   return (
     <div
       ref={wrapperRef}
-      className={`relative w-full ${isEmbedded ? "h-80 sm:h-105 md:h-125 lg:h-140" : "h-screen"} ${
-        isFullscreen ? "h-screen" : ""
-      } bg-[#0A1420] overflow-hidden rounded-2xl ring-1 ring-white/10`}
+      className={`relative w-full ${isEmbedded ? "h-80 sm:h-105 md:h-125 lg:h-140" : "h-screen"} ${isFullscreen ? "h-screen" : ""
+        } bg-[#0A1420] overflow-hidden rounded-2xl ring-1 ring-white/10`}
     >
       <div
         ref={containerRef}
@@ -305,17 +333,14 @@ export function Immersive360Tour({ rooms, initialRoomId, onClose, isEmbedded = f
           This keeps the panorama "static but moving" (auto-rotate still plays)
           while letting normal page scroll pass through underneath. */}
       {!isActive && !isLoading && !loadError && (
-        <button
-          type="button"
-          onClick={activateViewer}
-          className="absolute inset-0 z-10 flex items-end sm:items-center justify-center bg-black/0 hover:bg-black/10 transition-colors group cursor-pointer"
-          aria-label="Click to interact with 360° view"
+        <div
+          className="absolute inset-0 z-10 flex items-end sm:items-bottom py-6 justify-center pointer-events-none"
         >
-          <span className="mb-6 sm:mb-0 flex items-center gap-2 bg-[#0A1420]/85 text-white text-xs sm:text-sm font-medium px-4 py-2.5 rounded-full border border-[#C9A15D]/30 shadow-lg backdrop-blur-md group-hover:border-[#C9A15D]/60 transition-colors">
+          <span className="mb-6 sm:mb-0 flex items-center gap-2 bg-[#0A1420]/85 text-white text-xs sm:text-sm font-medium px-4 py-2.5 rounded-full border border-[#C9A15D]/30 shadow-lg backdrop-blur-md">
             <MousePointerClick className="w-4 h-4 text-[#C9A15D]" />
             Click to look around
           </span>
-        </button>
+        </div>
       )}
 
       {/* Active-state hint so users know how to get back to scrolling the page */}

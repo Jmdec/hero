@@ -228,14 +228,14 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
                 href="/virtual-tour"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-semibold hover:bg-gray-100 transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-semibold hover:bg-gray-200 transition-colors"
               >
                 <Play className="w-5 h-5" />
                 Virtual Tour
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#3B5EA6] text-white rounded-full font-semibold hover:bg-[#5C7ABF] transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#FFC107] text-[#1B3A8C] rounded-full font-semibold hover:bg-[#FFC107]/80 transition-colors"
               >
                 Contact Us
               </Link>
@@ -287,9 +287,9 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="group p-6 bg-[#F5F5F3] rounded-2xl hover:bg-[#C5D2EC]/30 transition-colors"
+                className="group p-6 bg-[#F5F5F3] rounded-2xl"
               >
-                <div className="w-14 h-14 bg-[#1B3A8C] rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="w-14 h-14 bg-[#1B3A8C] rounded-xl flex items-center justify-center mb-4">
                   <feature.icon className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -317,7 +317,7 @@ export default function Home() {
             </div>
             <Link
               href="/services"
-              className="inline-flex items-center gap-2 mt-4 md:mt-0 text-[#1B3A8C] font-semibold hover:text-[#3B5EA6]"
+              className="inline-flex items-center gap-2 mt-4 md:mt-0 text-[#1B3A8C] font-semibold hover:text-[#FFC107]"
             >
               View All Services
               <ArrowRight className="w-5 h-5" />
@@ -363,14 +363,14 @@ export default function Home() {
                     <div className="absolute inset-0 bg-gray-400/20" />
                   </div>
                   <div className="p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
                       {service.title}
                     </h3>
                     <p className="text-gray-600 mb-4">{service.description}</p>
                     <div className="flex items-center justify-between">
                       <Link
                         href="/quotation"
-                        className="text-sm font-medium text-gray-900 hover:text-[#1B3A8C] transition-colors"
+                        className="text-md font-medium text-[#1B3A8C] hover:text-[#FFC107] hover:underline transition-colors"
                       >
                         Get Quotation →
                       </Link>
@@ -404,6 +404,22 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
+
+              <div className="mt-6 flex flex-wrap gap-4 text-sm">
+                <Link
+                  href="/about"
+                  className="rounded-full bg-[#FFC107] px-5 py-4 font-semibold text-[#1B3A8C] transition hover:bg-transparent hover:text-[#1B3A8C] hover:border-[#FFC107] hover:border"
+                >
+                  Learn More
+                </Link>
+
+                <Link
+                  href="/services"
+                  className="rounded-full border border-[#FFC107] px-5 py-4 font-semibold text-[#1B3A8C] transition hover:bg-[#FFC107] hover:text-[#1B3A8C]"
+                >
+                  Explore Services
+                </Link>
+              </div>
             </div>
             <div className="relative">
               <div className="relative aspect-square rounded-2xl overflow-hidden">
@@ -568,7 +584,7 @@ export default function Home() {
           <div className="py-12 flex items-center justify-center">
             <Link
               href="/testimonial"
-              className="inline-flex items-center gap-2 mt-4 md:mt-0 bg-[#1B3A8C] text-white rounded-lg px-6 py-3 font-semibold hover:bg-[#3B5EA6]"
+              className="inline-flex items-center gap-2 mt-4 md:mt-0 bg-[#FFC107] text-[#1B3A8C] rounded-lg px-6 py-3 font-semibold hover:bg-[#FFC107]/80"
             >
               View All Testimonials
             </Link>

@@ -376,7 +376,7 @@ function NavRow({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 px-6 py-3 border border-[#D9E2F0] text-[#0B1F4A] text-sm font-semibold rounded-full hover:border-[#1B3A8C] hover:text-[#1B3A8C] transition-all duration-200"
+          className="flex items-center gap-2 px-6 py-3 border border-[#FFC107] text-[#1B3A8C] text-sm font-semibold rounded-full hover:border-[#FFC107] hover:text-[#1B3A8C] transition-all duration-200"
         >
           <ChevronLeft className="w-4 h-4" /> Back
         </button>
@@ -385,7 +385,7 @@ function NavRow({
         type={isSubmit ? "submit" : "button"}
         onClick={!isSubmit ? onNext : undefined}
         disabled={nextDisabled || isSubmitting}
-        className="flex items-center gap-2 px-7 py-3 bg-[#0B1F4A] text-white text-sm font-semibold rounded-full hover:bg-[#1B3A8C] disabled:bg-[#D9E2F0] disabled:text-[#64748B] disabled:cursor-not-allowed transition-all duration-200"
+        className="flex items-center gap-2 px-7 py-3 bg-[#FFC107] text-[#1B3A8C] text-sm font-semibold rounded-full hover:bg-[#FFC107]/80 disabled:bg-[#D9E2F0] disabled:text-[#64748B] disabled:cursor-not-allowed transition-all duration-200"
       >
         {isSubmitting ? (
           <>

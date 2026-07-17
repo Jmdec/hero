@@ -597,7 +597,7 @@ function MultiStepForm() {
                         !formData.phone ||
                         !formData.inquiryType
                       }
-                      className="w-full md:w-auto px-8 py-4 bg-[#1B3A8C] text-white rounded-full font-semibold hover:bg-[#3B5EA6] transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="w-full md:w-auto px-8 py-4 bg-[#FFC107] text-[#1B3A8C] rounded-full font-semibold hover:bg-[#FFC107]/80 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       Next: {selectedLabel} Details
                       <ArrowRight className="w-5 h-5" />
@@ -613,7 +613,7 @@ function MultiStepForm() {
                         !formData.inquiryType ||
                         !formData.message
                       }
-                      className="w-full md:w-auto px-8 py-4 bg-[#1B3A8C] text-white rounded-full font-semibold hover:bg-[#3B5EA6] transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="w-full md:w-auto px-8 py-4 bg-[#FFC107] text-[#1B3A8C] rounded-full font-semibold hover:bg-[#FFC107]/80 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {isSubmitting ? (
                         <>

@@ -150,7 +150,7 @@ export default function Navigation() {
             } */}
             <Link
               href="/quotation"
-              className="px-5 py-2.5 bg-[#1B3A8C] text-white font-medium text-sm rounded-full hover:bg-[#3B5EA6] transition-colors whitespace-nowrap"
+              className="px-5 py-2.5 bg-[#FFC107] text-[#1B3A8C] font-bold text-md rounded-full hover:bg-[#FFC107]/80 transition-colors whitespace-nowrap"
             >
               Get a Quote
             </Link>
@@ -168,9 +168,20 @@ export default function Navigation() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="lg:hidden p-2 text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30 rounded-lg transition-colors"
+            className="lg:hidden p-2 text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30 rounded-lg transition-colors relative"
           >
-            <Menu className="w-6 h-6" />
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={isOpen ? "close" : "menu"}
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="block"
+              >
+                {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </motion.span>
+            </AnimatePresence>
           </button>
         </div>
       </div>
@@ -183,17 +194,18 @@ export default function Navigation() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
               onClick={() => setIsOpen(false)}
               className="fixed inset-0 bg-black/40 z-998 lg:hidden"
             />
 
             <motion.div
-              initial={{ opacity: 15, y: 0 }}
+              initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-              className="fixed top-0 left-0 right-0 z-999 bg-white shadow-xl border-t border-gray-100 lg:hidden overflow-y-auto">
-
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed top-0 left-0 right-0 z-999 bg-white shadow-xl border-t border-gray-100 lg:hidden overflow-y-auto"
+            >
               <div className="flex items-center justify-end h-16 md:h-20 mx-6">
                 <button
                   onClick={() => setIsOpen(!isOpen)}
@@ -206,59 +218,54 @@ export default function Navigation() {
               <div className="p-5 space-y-1">
                 {navLinks
                   .filter((link) => link?.href?.trim())
-                  .map((link) => {
+                  .map((link, i) => {
                     const active = isActive(link.href);
                     return (
-                      <Link
+                      <motion.div
                         key={link.href}
-                        href={link.href}
-                        onClick={() => setIsOpen(false)}
-                        className={`flex items-center justify-between px-4 py-3 text-base font-medium rounded-lg transition-colors ${active
-                          ? "text-[#1B3A8C] bg-[#C5D2EC]/30"
-                          : "text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30"
-                          }`}
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          duration: 0.25,
+                          delay: 0.08 + i * 0.04,
+                          ease: "easeOut",
+                        }}
                       >
-                        {link.label}
-                        {active && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#1B3A8C] shrink-0" />
-                        )}
-                      </Link>
+                        <Link
+                          href={link.href}
+                          onClick={() => setIsOpen(false)}
+                          className={`flex items-center justify-between px-4 py-3 text-base font-medium rounded-lg transition-colors ${active
+                              ? "text-[#1B3A8C] bg-[#C5D2EC]/30"
+                              : "text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30"
+                            }`}
+                        >
+                          {link.label}
+                          {active && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#1B3A8C] shrink-0" />
+                          )}
+                        </Link>
+                      </motion.div>
                     );
                   })}
-                <div className="pt-4 border-t border-gray-100 space-y-2">
-                  {/* {showInstallButton && (
-                    <button
-                      onClick={() => {
-                        handleInstallClick();
-                        setIsOpen(false);
-                      }}
-                      className="flex items-center justify-center gap-1.5 w-full px-4 py-3 text-base font-medium text-[#1B3A8C] border border-[#3B5EA6] rounded-full hover:bg-[#C5D2EC]/30 transition-colors"
-                    >
-                      <Download className="w-4 h-4 shrink-0" />
-                      Install App
-                    </button>
-                  )} */}
-                  {/* {isAuthenticated ? (
-                  <div className="px-4 py-3">
-                    <UserProfileDropdown />
-                  </div>
-                ) : (
-                  <Link
-                    href="/login"
-                    onClick={() => setIsOpen(false)}
-                    className="block px-4 py-3 text-base font-medium text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30 rounded-lg transition-colors"
-                  >
-                    Login
-                  </Link>
-                )} */}
+
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.25,
+                    delay: 0.08 + navLinks.length * 0.04,
+                    ease: "easeOut",
+                  }}
+                  className="pt-4 border-t border-gray-100 space-y-2"
+                >
                   <Link
                     href="/quotation"
                     onClick={() => setIsOpen(false)}
-                    className="block w-full text-center px-5 py-3 bg-[#1B3A8C] text-white font-medium rounded-full hover:bg-[#3B5EA6] transition-colors"
+                    className="block w-full text-center px-5 py-3 bg-[#FFC107] text-[#1B3A8C] font-medium rounded-full hover:bg-[#FFC107]/80 transition-colors"
                   >
                     Get a Quote
                   </Link>
-                </div>
+                </motion.div>
               </div>
             </motion.div>
           </>

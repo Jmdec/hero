@@ -619,7 +619,7 @@ export default function ServicesPage() {
                 </ul>
                 <Link
                   href="/services/tower-6789"
-                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#0D47A1] hover:bg-[#0A1E3F] text-white rounded-xl font-semibold transition-colors"
+                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#FFC107] hover:bg-[#FFC107]/80 text-[#1B3A8C] rounded-xl font-semibold transition-colors"
                 >
                   View Tower 6789 Makati
                   <ChevronRight className="w-5 h-5" />
@@ -664,7 +664,7 @@ export default function ServicesPage() {
                 </ul>
                 <Link
                   href="/services/insular-life"
-                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#0D47A1] hover:bg-[#0A1E3F] text-white rounded-xl font-semibold transition-colors"
+                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#FFC107] hover:bg-[#FFC107]/80 text-[#1B3A8C] rounded-xl font-semibold transition-colors"
                 >
                   View Insular Life Building
                   <ChevronRight className="w-5 h-5" />

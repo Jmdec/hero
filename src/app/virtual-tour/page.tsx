@@ -1001,6 +1001,7 @@ export default function VirtualTourPage() {
                     alt={activeFloorPlan.alt}
                     fill
                     className="object-contain"
+                    loading="eager"
                     unoptimized
                   />
                   {activeFloorPlan.hotspots.map((hotspot) => (
