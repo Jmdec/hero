@@ -135,7 +135,6 @@ export default function Home() {
     "Cafe and lounge areas",
     "Japanese-speaking support staff",
     "Printing and copying facilities",
-    "Cleaning and maintenance services",
   ];
 
   useEffect(() => {
@@ -303,85 +302,114 @@ export default function Home() {
       </section>
 
       {/* Services Section */}
-      <section className="py-14 bg-gray-50 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                Our Services
-              </h2>
-              <p className="text-lg text-gray-600">
-                We offer a range of flexible office solutions to meet the unique
-                needs of your business.
-              </p>
-            </div>
-            <Link
-              href="/services"
-              className="inline-flex items-center gap-2 mt-4 md:mt-0 text-[#1B3A8C] font-semibold hover:text-[#FFC107]"
+      {servicesLoading ? (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100"
             >
-              View All Services
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-          </div>
+              {/* Image Skeleton */}
+              <div className="aspect-video bg-gray-200 animate-pulse" />
 
-          {servicesLoading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {Array.from({ length: services.length }).map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse"
-                >
-                  <div className="relative aspect-video bg-gray-100" />
-                  <div className="p-6 space-y-3">
-                    <div className="h-5 w-2/3 rounded bg-gray-100" />
-                    <div className="h-3 w-full rounded bg-gray-100" />
-                    <div className="h-3 w-4/5 rounded bg-gray-100" />
-                    <div className="h-3 w-1/3 rounded bg-gray-100 mt-4" />
-                  </div>
+              {/* Content Skeleton */}
+              <div className="p-6 space-y-4">
+                <div className="h-6 w-2/3 rounded bg-gray-200 animate-pulse" />
+
+                <div className="space-y-2">
+                  <div className="h-4 w-full rounded bg-gray-200 animate-pulse" />
+                  <div className="h-4 w-5/6 rounded bg-gray-200 animate-pulse" />
+                  <div className="h-4 w-3/4 rounded bg-gray-200 animate-pulse" />
                 </div>
-              ))}
+
+                <div className="pt-2">
+                  <div className="h-4 w-32 rounded bg-gray-200 animate-pulse" />
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {services.map((service, index) => (
-                <motion.div
-                  key={service.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  viewport={{ once: true }}
-                  className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
-                >
-                  <div className="relative aspect-video overflow-hidden">
-                    <Image
-                      src={service.image}
-                      alt={service.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500 bg-opacity-50 group-hover:opacity-100"
-                      unoptimized
-                    />
-                    <div className="absolute inset-0 bg-gray-400/20" />
-                  </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
-                      {service.title}
-                    </h3>
-                    <p className="text-gray-600 mb-4">{service.description}</p>
-                    <div className="flex items-center justify-between">
-                      <Link
-                        href="/quotation"
-                        className="text-md font-medium text-[#1B3A8C] hover:text-[#FFC107] hover:underline transition-colors"
-                      >
-                        Get Quotation →
-                      </Link>
+          ))}
+        </div>
+      ) : (
+        <section className="py-14 bg-gray-50 border-t border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                  Our Services
+                </h2>
+                <p className="text-lg text-gray-600">
+                  We offer a range of flexible office solutions to meet the unique
+                  needs of your business.
+                </p>
+              </div>
+              <Link
+                href="/services"
+                className="inline-flex items-center gap-2 mt-4 md:mt-0 text-[#1B3A8C] font-semibold hover:text-[#FFC107]"
+              >
+                View All Services
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </div>
+
+            {servicesLoading ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {Array.from({ length: services.length }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse"
+                  >
+                    <div className="relative aspect-video bg-gray-100" />
+                    <div className="p-6 space-y-3">
+                      <div className="h-5 w-2/3 rounded bg-gray-100" />
+                      <div className="h-3 w-full rounded bg-gray-100" />
+                      <div className="h-3 w-4/5 rounded bg-gray-100" />
+                      <div className="h-3 w-1/3 rounded bg-gray-100 mt-4" />
                     </div>
                   </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+                ))}
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {services.map((service, index) => (
+                  <motion.div
+                    key={service.title}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    viewport={{ once: true }}
+                    className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
+                  >
+                    <div className="relative aspect-video overflow-hidden">
+                      <Image
+                        src={service.image}
+                        alt={service.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500 bg-opacity-50 group-hover:opacity-100"
+                        unoptimized
+                      />
+                      <div className="absolute inset-0 bg-gray-400/20" />
+                    </div>
+                    <div className="p-6">
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">
+                        {service.title}
+                      </h3>
+                      <p className="text-gray-600 mb-4">{service.description}</p>
+                      <div className="flex items-center justify-between">
+                        <Link
+                          href="/quotation"
+                          className="text-md font-medium text-[#1B3A8C] hover:text-[#FFC107] hover:underline transition-colors"
+                        >
+                          Get Quotation →
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Benefits Section */}
       <section className="py-16 bg-gray-50">
