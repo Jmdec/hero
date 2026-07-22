@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Navigation from "../components/Navigation";
@@ -8,6 +8,7 @@ import Footer from "../components/Footer";
 import FloatingSocialMedia from "@/components/FloatingSocialMedia";
 import Chatbot from "@/components/Chatbot";
 import { Loading } from "@/components/Loading";
+import AnnouncementPopup from "@/components/AnnouncementPopup";
 
 export default function ClientLayout({
   children,
@@ -40,6 +41,8 @@ export default function ClientLayout({
   // never lingers once they are. Shown once per session, not per route.
   const [isAppReady, setIsAppReady] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
+  const [isRouteLoading, setIsRouteLoading] = useState(false);
+  const isFirstRouteRender = useRef(true);
 
   useEffect(() => {
     // Already loaded before this effect ran (e.g. fast cache) — skip straight through.
@@ -87,10 +90,24 @@ export default function ClientLayout({
     };
   }, []);
 
+  // Show a short branded loader on every route change after first render.
+  useEffect(() => {
+    if (isFirstRouteRender.current) {
+      isFirstRouteRender.current = false;
+      return;
+    }
+
+    setIsRouteLoading(true);
+    const timer = setTimeout(() => setIsRouteLoading(false), 420);
+    return () => clearTimeout(timer);
+  }, [pathname]);
+
+  const isLoading = !isAppReady || isRouteLoading;
+
   return (
     <>
       <AnimatePresence>
-        {!isAppReady && (
+        {isLoading && (
           <motion.div
             key="app-loading"
             className="fixed inset-0 z-100"
@@ -98,10 +115,17 @@ export default function ClientLayout({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5, ease: "easeInOut" }}
           >
-            <Loading />
+            <Loading
+              variant="screen"
+              title={isRouteLoading ? "Opening page" : "Preparing your workspace"}
+              subtitle="Hero Serviced Office"
+              progress={isRouteLoading ? undefined : loadProgress}
+            />
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AnnouncementPopup key={pathname} />
 
       {/* Public Navigation */}
       {isPublicPage && <Navigation />}

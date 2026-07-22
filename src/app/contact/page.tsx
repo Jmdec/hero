@@ -441,7 +441,7 @@ function MultiStepForm() {
             <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
             <div>
               <p className="font-medium text-green-900">
-                Message sent successfully! We&apos;ll get back to you soon.
+                Message sent successfully! We&apos;ll get back to you as soon as possible.
               </p>
               <p className="text-sm text-green-700">
                 Thank you for reaching out to HERO Serviced Office.

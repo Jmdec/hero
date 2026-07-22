@@ -1,262 +1,127 @@
+"use client";
+
 import { useEffect, useState } from "react";
 
-export function Loading() {
-    const [progress, setProgress] = useState(0);
+type LoadingVariant = "screen" | "section" | "panel";
+
+interface LoadingProps {
+    variant?: LoadingVariant;
+    title?: string;
+    subtitle?: string;
+    progress?: number;
+    showProgress?: boolean;
+}
+
+export function Loading({
+    variant = "screen",
+    title = "Preparing your workspace",
+    subtitle = "Hero Serviced Office",
+    progress,
+    showProgress = true,
+}: LoadingProps) {
+    const [autoProgress, setAutoProgress] = useState(0);
+    const resolvedProgress = Math.max(0, Math.min(100, Math.round(progress ?? autoProgress)));
 
     useEffect(() => {
-        const duration = 2600;
-        const start = performance.now();
-        let raf: number;
+        if (typeof progress === "number") return;
 
-        const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+        const duration = 2400;
+        const start = performance.now();
+        let raf = 0;
+        const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
 
         const tick = (now: number) => {
             const t = Math.min(1, (now - start) / duration);
-            setProgress(Math.round(easeOutCubic(t) * 100));
+            setAutoProgress(Math.round(easeOutExpo(t) * 100));
             if (t < 1) raf = requestAnimationFrame(tick);
         };
+
         raf = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(raf);
-    }, []);
+    }, [progress]);
+
+    const containerClass =
+        variant === "screen"
+            ? "relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f7f2e7] px-5 py-10 text-[#0c2248]"
+            : variant === "section"
+                ? "relative flex min-h-[50vh] items-center justify-center overflow-hidden rounded-2xl bg-[#f7f2e7] px-4 py-8 text-[#0c2248]"
+                : "relative flex h-full min-h-[320px] items-center justify-center overflow-hidden rounded-2xl bg-[#0f172a] px-4 py-6 text-white";
+
+    const panelClass =
+        variant === "panel"
+            ? "w-full max-w-md rounded-2xl border border-white/15 bg-white/5 p-5 shadow-2xl backdrop-blur-md"
+            : "w-full max-w-136 rounded-[2rem] border border-[#d6c7a5] bg-[#fffaf0]/90 p-6 shadow-[0_24px_80px_rgba(12,34,72,0.18)] backdrop-blur-sm sm:p-8";
+
+    const lineBgClass = variant === "panel" ? "bg-white/20" : "bg-[#e8dcc3]";
+    const lineFillClass =
+        variant === "panel"
+            ? "bg-linear-to-r from-[#FFC107] to-[#ffe08f]"
+            : "bg-linear-to-r from-[#b78e44] to-[#d6b06d]";
 
     return (
-        <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#0f2d52] text-white">
-            {/* Blueprint grid */}
-            <div
-                className="pointer-events-none absolute inset-0 opacity-[0.35]"
-                style={{
-                    backgroundImage:
-                        "linear-gradient(rgba(201,164,76,0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(201,164,76,0.09) 1px, transparent 1px)",
-                    backgroundSize: "44px 44px",
-                }}
-                aria-hidden
-            />
-            {/* Vignette to keep focus centered */}
-            <div
-                className="pointer-events-none absolute inset-0"
-                style={{
-                    background:
-                        "radial-gradient(ellipse at 50% 42%, rgba(15,45,82,0) 0%, rgba(8,26,51,0.55) 78%)",
-                }}
-                aria-hidden
-            />
-            {/* Soft glow behind the drawing */}
-            <div
-                className="pointer-events-none absolute left-1/2 top-[38%] h-105 w-105 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30"
-                style={{ background: "radial-gradient(circle, rgba(201,164,76,0.25) 0%, transparent 70%)" }}
-                aria-hidden
-            />
-
-            {/* Eyebrow */}
-            <div className="relative z-10 flex items-center gap-3">
-                <span className="h-px w-8 bg-[#c9a44c]/70" />
-                <span
-                    className="text-[10px] font-medium uppercase tracking-[0.5em] text-[#c9a44c]"
-                    style={{ fontFamily: "'Jost', sans-serif" }}
-                >
-                    Hero Serviced Office
-                </span>
-                <span className="h-px w-8 bg-[#c9a44c]/70" />
+        <div className={containerClass} aria-live="polite" aria-busy="true">
+            <div className="pointer-events-none absolute inset-0" aria-hidden>
+                <div
+                    className={
+                        variant === "panel"
+                            ? "absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1f355d] blur-3xl"
+                            : "absolute -left-28 -top-28 h-88 w-88 rounded-full bg-[#e5d7b7] blur-3xl"
+                    }
+                />
+                <div
+                    className={
+                        variant === "panel"
+                            ? "absolute -right-16 -bottom-24 h-80 w-80 rounded-full bg-[#365b87] blur-3xl"
+                            : "absolute -right-24 -bottom-36 h-96 w-96 rounded-full bg-[#a8c0d6] blur-3xl"
+                    }
+                />
             </div>
 
-            {/* Architectural elevation drawing */}
-            <div className="relative z-10 mt-6">
-                <svg
-                    viewBox="0 0 300 360"
-                    className="h-75 w-63 sm:h-85 sm:w-70"
-                    fill="none"
-                >
-                    {/* Ground line with tick marks */}
-                    <g stroke="#c9a44c" strokeOpacity="0.6" strokeWidth="1">
-                        <line x1="60" y1="336" x2="240" y2="336" />
-                        {Array.from({ length: 10 }).map((_, i) => (
-                            <line key={i} x1={64 + i * 20} y1="336" x2={64 + i * 20} y2="341" strokeOpacity="0.35" />
-                        ))}
-                    </g>
+            <section className={`relative z-10 ${panelClass}`}>
+                <div className="flex items-center justify-between gap-4">
+                    <div>
+                        <p className={`text-[0.62rem] font-semibold uppercase tracking-[0.3em] ${variant === "panel" ? "text-white/60" : "text-[#8f7650]"}`}>
+                            {subtitle}
+                        </p>
+                        <h2 className={`mt-2 font-semibold tracking-[0.06em] ${variant === "panel" ? "text-xl sm:text-2xl text-white" : "text-3xl sm:text-4xl text-[#0c2248]"}`}>
+                            {title}
+                        </h2>
+                        <p className={`mt-2 text-xs uppercase tracking-[0.18em] ${variant === "panel" ? "text-white/60" : "text-[#5c6f8a]"}`}>
+                            Loading systems
+                        </p>
+                    </div>
 
-                    {/* Tower body outline (self-drawing) */}
-                    <rect
-                        x="105"
-                        y="70"
-                        width="90"
-                        height="266"
-                        pathLength={1}
-                        stroke="#c9a44c"
-                        strokeWidth="1.4"
-                        fill="rgba(201,164,76,0.04)"
-                        style={{
-                            strokeDasharray: 1,
-                            strokeDashoffset: 1,
-                            animation: "draw 1.9s cubic-bezier(0.22,1,0.36,1) 0.15s forwards",
-                        }}
-                    />
-
-                    {/* Penthouse setback */}
-                    <rect
-                        x="122"
-                        y="38"
-                        width="56"
-                        height="32"
-                        pathLength={1}
-                        stroke="#c9a44c"
-                        strokeWidth="1.4"
-                        fill="rgba(201,164,76,0.05)"
-                        style={{
-                            strokeDasharray: 1,
-                            strokeDashoffset: 1,
-                            animation: "draw 1.1s cubic-bezier(0.22,1,0.36,1) 1.5s forwards",
-                        }}
-                    />
-
-                    {/* Spire / antenna */}
-                    <line
-                        x1="150"
-                        y1="38"
-                        x2="150"
-                        y2="16"
-                        stroke="#c9a44c"
-                        strokeWidth="1.2"
-                        pathLength={1}
-                        style={{
-                            strokeDasharray: 1,
-                            strokeDashoffset: 1,
-                            animation: "draw 0.5s ease-out 2.4s forwards",
-                        }}
-                    />
-                    <circle cx="150" cy="14" r="2" fill="#c9a44c" opacity="0" style={{ animation: "fadeIn 0.4s ease-out 2.8s forwards" }} />
-
-                    {/* Floor lines */}
-                    <g stroke="#c9a44c" strokeWidth="0.75">
-                        {Array.from({ length: 13 }).map((_, i) => {
-                            const y = 92 + i * 18.5;
-                            return (
-                                <line
-                                    key={i}
-                                    x1="105"
-                                    y1={y}
-                                    x2="195"
-                                    y2={y}
-                                    opacity="0"
-                                    style={{
-                                        transformOrigin: "105px center" as unknown as string,
-                                        animation: `floorIn 0.5s ease-out ${1.1 + i * 0.045}s forwards`,
-                                    }}
-                                />
-                            );
-                        })}
-                    </g>
-
-                    {/* Center dimension line */}
-                    <g
-                        stroke="#c9a44c"
-                        strokeWidth="0.75"
-                        opacity="0"
-                        style={{ animation: "fadeIn 0.6s ease-out 2.3s forwards" }}
-                    >
-                        <line x1="215" y1="70" x2="215" y2="336" strokeOpacity="0.5" />
-                        <line x1="210" y1="70" x2="220" y2="70" />
-                        <line x1="210" y1="336" x2="220" y2="336" />
-                    </g>
-
-                    {/* Annotations */}
-                    <text
-                        x="223"
-                        y="205"
-                        fill="#c9a44c"
-                        fontSize="9"
-                        letterSpacing="2"
-                        opacity="0"
-                        style={{
-                            fontFamily: "'Jost', sans-serif",
-                            writingMode: "vertical-rl" as const,
-                            animation: "fadeIn 0.6s ease-out 2.4s forwards",
-                        }}
-                    >
-                        AYALA AVENUE
-                    </text>
-                    <text
-                        x="150"
-                        y="58"
-                        fill="#c9a44c"
-                        fontSize="10"
-                        textAnchor="middle"
-                        letterSpacing="1"
-                        opacity="0"
-                        style={{ fontFamily: "'Jost', sans-serif", animation: "fadeIn 0.6s ease-out 2.2s forwards" }}
-                    >
-                        23F
-                    </text>
-                </svg>
-            </div>
-
-            {/* Wordmark */}
-            <div className="relative z-10 mt-2 flex flex-col items-center text-center">
-                <h1
-                    className="text-[44px] leading-none tracking-[0.12em] text-white sm:text-[52px]"
-                    style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 400 }}
-                >
-                    HERO
-                </h1>
-                <p
-                    className="mt-2 text-[10px] uppercase tracking-[0.45em] text-[#c9a44c]"
-                    style={{ fontFamily: "'Jost', sans-serif" }}
-                >
-                    Serviced Office
-                </p>
-                <p className="mt-3 text-[11px] uppercase tracking-[0.3em] text-white/40">
-                    Ayala Avenue · Makati City
-                </p>
-            </div>
-
-            {/* Progress */}
-            <div className="relative z-10 mt-10 w-70">
-                <div className="flex items-baseline justify-between">
-                    <span
-                        className="text-[10px] uppercase tracking-[0.35em] text-white/50"
-                        style={{ fontFamily: "'Jost', sans-serif" }}
-                    >
-                        Preparing your workspace
-                    </span>
-                    <span
-                        className="text-[13px] tabular-nums text-[#c9a44c]"
-                        style={{ fontFamily: "'Jost', sans-serif", fontWeight: 500 }}
-                    >
-                        {String(progress).padStart(2, "0")}%
-                    </span>
+                    <div className={`relative grid place-items-center rounded-full border shadow-inner ${variant === "panel" ? "h-18 w-18 border-white/20 bg-white/10" : "h-20 w-20 border-[#d3c39e] bg-white sm:h-24 sm:w-24"}`}>
+                        <div
+                            className="absolute inset-1.5 rounded-full"
+                            style={{
+                                background:
+                                    variant === "panel"
+                                        ? `conic-gradient(#FFC107 ${resolvedProgress * 3.6}deg, rgba(255,255,255,0.2) 0deg)`
+                                        : `conic-gradient(#c8a861 ${resolvedProgress * 3.6}deg, #ebdfc5 0deg)`,
+                                WebkitMask:
+                                    "radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px))",
+                                mask:
+                                    "radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px))",
+                            }}
+                        />
+                        <span className={`relative z-10 text-sm font-semibold tabular-nums ${variant === "panel" ? "text-white" : "text-[#0c2248]"}`}>
+                            {String(resolvedProgress).padStart(2, "0")}%
+                        </span>
+                    </div>
                 </div>
-                <div className="mt-3 h-px w-full bg-white/10">
-                    <div
-                        className="h-full bg-[#c9a44c] transition-[width] duration-150 ease-linear"
-                        style={{ width: `${progress}%` }}
-                    />
-                </div>
-                <p className="mt-3 text-center text-[10px] tracking-[0.2em] text-white/30">
-                    しばらくお待ちください
-                </p>
-            </div>
 
-            <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Jost:wght@300;400;500&display=swap');
-
-        @keyframes draw {
-          to { stroke-dashoffset: 0; }
-        }
-        @keyframes fadeIn {
-          to { opacity: 1; }
-        }
-        @keyframes floorIn {
-          from { opacity: 0; transform: scaleX(0); }
-          to { opacity: 0.45; transform: scaleX(1); }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          *, *::before, *::after {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-          }
-        }
-      `}</style>
-        </main>
+                {showProgress && (
+                    <div className="mt-6">
+                        <div className={`h-1.5 w-full overflow-hidden rounded-full ${lineBgClass}`}>
+                            <div
+                                className={`h-full rounded-full transition-[width] duration-150 ease-linear ${lineFillClass}`}
+                                style={{ width: `${resolvedProgress}%` }}
+                            />
+                        </div>
+                    </div>
+                )}
+            </section>
+        </div>
     );
 }

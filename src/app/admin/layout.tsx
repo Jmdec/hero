@@ -13,7 +13,6 @@ import {
   MailQuestion,
   Megaphone,
   MessageCircleHeart,
-  Newspaper,
   ArrowLeft,
   Menu,
   Bell,
@@ -22,6 +21,7 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
+import { Loading } from "@/components/Loading";
 
 const menuItems = [
   {
@@ -62,11 +62,6 @@ const menuItems = [
         href: "/admin/testimonials",
         icon: MessageCircleHeart,
       },
-      // {
-      //   title: "Blogs",
-      //   href: "/admin/blogs",
-      //   icon: Newspaper,
-      // },
     ],
   },
 ];
@@ -127,9 +122,11 @@ export default function AdminLayout({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#F0EDE7]">
-        <div className="w-5 h-5 border-2 border-[#0F1B2D] border-t-transparent rounded-full animate-spin" />
-      </div>
+      <Loading
+        variant="screen"
+        title="Loading admin workspace"
+        subtitle="Hero Admin"
+      />
     );
   }
 

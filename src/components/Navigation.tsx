@@ -166,23 +166,26 @@ export default function Navigation() {
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="lg:hidden p-2 text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30 rounded-lg transition-colors relative"
-          >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={isOpen ? "close" : "menu"}
-                initial={{ rotate: -90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: 90, opacity: 0 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="block"
-              >
-                {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-              </motion.span>
-            </AnimatePresence>
-          </button>
+          <div className="flex items-center gap-2 lg:hidden">
+            <LanguageSwitcher />
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="lg:hidden p-2 text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30 rounded-lg transition-colors relative"
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={isOpen ? "close" : "menu"}
+                  initial={{ rotate: -90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 90, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="block"
+                >
+                  {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                </motion.span>
+              </AnimatePresence>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -235,8 +238,8 @@ export default function Navigation() {
                           href={link.href}
                           onClick={() => setIsOpen(false)}
                           className={`flex items-center justify-between px-4 py-3 text-base font-medium rounded-lg transition-colors ${active
-                              ? "text-[#1B3A8C] bg-[#C5D2EC]/30"
-                              : "text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30"
+                            ? "text-[#1B3A8C] bg-[#C5D2EC]/30"
+                            : "text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30"
                             }`}
                         >
                           {link.label}

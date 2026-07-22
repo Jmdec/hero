@@ -149,6 +149,9 @@ export function Immersive360Tour({
   // collapse it (e.g. to see more of the panorama) and reopen it via a
   // small pill button that stays in its place.
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(true)
+  const wasMobileViewport = useRef(false)
+  const [isMobileViewport, setIsMobileViewport] = useState(false)
+  const [mobileSwitcherBottom, setMobileSwitcherBottom] = useState(20)
 
   // Forces a re-render each frame-ish so hotspot screen positions track the camera.
   const [, forceHotspotUpdate] = useState(0)
@@ -383,6 +386,14 @@ export function Immersive360Tour({
     return () => document.removeEventListener("pointerdown", handleOutsidePointerDown)
   }, [])
 
+  // Collapse the switcher by default when entering mobile layout.
+  useEffect(() => {
+    if (isMobileViewport && !wasMobileViewport.current) {
+      setIsSwitcherOpen(false)
+    }
+    wasMobileViewport.current = isMobileViewport
+  }, [isMobileViewport])
+
   // Escape also releases the viewer, handy on desktop.
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -390,6 +401,44 @@ export function Immersive360Tour({
     }
     window.addEventListener("keydown", handleKey)
     return () => window.removeEventListener("keydown", handleKey)
+  }, [])
+
+  // Keep the mobile room switcher above iOS browser chrome by tracking the
+  // visual viewport delta (window bottom minus visible viewport bottom).
+  useEffect(() => {
+    const updateMobileBottomOffset = () => {
+      const mobile = window.matchMedia("(max-width: 639px)").matches
+      setIsMobileViewport(mobile)
+
+      if (!mobile) {
+        setMobileSwitcherBottom(0)
+        return
+      }
+
+      const vv = window.visualViewport
+      if (!vv) {
+        setMobileSwitcherBottom(20)
+        return
+      }
+
+      const chromeInset = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop))
+      const nextOffset = Math.max(16, Math.min(140, Math.round(chromeInset + 12)))
+      setMobileSwitcherBottom(nextOffset)
+    }
+
+    updateMobileBottomOffset()
+    const vv = window.visualViewport
+    window.addEventListener("resize", updateMobileBottomOffset)
+    window.addEventListener("orientationchange", updateMobileBottomOffset)
+    vv?.addEventListener("resize", updateMobileBottomOffset)
+    vv?.addEventListener("scroll", updateMobileBottomOffset)
+
+    return () => {
+      window.removeEventListener("resize", updateMobileBottomOffset)
+      window.removeEventListener("orientationchange", updateMobileBottomOffset)
+      vv?.removeEventListener("resize", updateMobileBottomOffset)
+      vv?.removeEventListener("scroll", updateMobileBottomOffset)
+    }
   }, [])
 
   const handleResetView = () => {
@@ -423,6 +472,21 @@ export function Immersive360Tour({
     const nextIndex = (baseIndex + 1 + rooms.length) % rooms.length
     navigateToRoom(rooms[nextIndex].id)
   }
+
+  const toggleInfoPanel = () => {
+    setShowInfo((prev) => {
+      const next = !prev
+      if (next && isMobileViewport) {
+        setIsSwitcherOpen(false)
+      }
+      return next
+    })
+  }
+
+  const mobileInfoBottom = Math.max(
+    mobileSwitcherBottom + (isSwitcherOpen ? 110 : 16),
+    84,
+  )
 
   const toggleFullscreen = () => {
     // Already in CSS fake-fullscreen? Just toggle it off directly.
@@ -466,6 +530,20 @@ export function Immersive360Tour({
     document.addEventListener("fullscreenchange", handleFsChange)
     return () => document.removeEventListener("fullscreenchange", handleFsChange)
   }, [])
+
+  // Lock page scroll while the CSS fullscreen fallback is active.
+  useEffect(() => {
+    if (!isFullscreen) return
+    const previousBodyOverflow = document.body.style.overflow
+    const previousHtmlOverflow = document.documentElement.style.overflow
+    document.body.style.overflow = "hidden"
+    document.documentElement.style.overflow = "hidden"
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow
+      document.documentElement.style.overflow = previousHtmlOverflow
+    }
+  }, [isFullscreen])
 
   const handleShare = async () => {
     const url = window.location.href
@@ -517,7 +595,7 @@ export function Immersive360Tour({
   return (
     <div
       ref={wrapperRef}
-      className={`relative w-full ${isEmbedded ? "h-105 sm:h-130 md:h-150 lg:h-160" : "h-screen"} ${isFullscreen ? "h-screen" : ""
+      className={`relative w-full ${isEmbedded ? "h-[62vh] min-h-85 max-h-195 sm:h-130 md:h-150 lg:h-160" : "h-screen"} ${isFullscreen ? "fixed inset-0 z-120 h-dvh w-screen rounded-none ring-0" : ""
         } bg-[#0A1420] overflow-hidden ring-1 ring-white/10`}
     >
       <div
@@ -546,12 +624,12 @@ export function Immersive360Tour({
               title={`Go to ${hs.targetName}`}
             >
               <span className="relative flex items-center justify-center">
-                <span className="absolute inline-flex h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-[#C9A15D]/30 animate-ping" />
-                <span className="relative flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-[#0A1420]/85 border-2 border-[#C9A15D] shadow-lg backdrop-blur-md transition-transform group-hover:scale-110">
-                  <ChevronUp className="w-8 h-8 text-[#C9A15D]" />
+                <span className="absolute inline-flex h-8 w-8 sm:h-11 sm:w-11 rounded-full bg-[#C9A15D]/30 animate-ping" />
+                <span className="relative flex h-8 w-8 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-[#0A1420]/85 border-2 border-[#C9A15D] shadow-lg backdrop-blur-md transition-transform group-hover:scale-110">
+                  <ChevronUp className="w-6 h-6 sm:w-8 sm:h-8 text-[#C9A15D]" />
                 </span>
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-[#0A1420]/90 border border-[#C9A15D]/25 text-white text-[10px] sm:text-xs font-medium whitespace-nowrap shadow-md">
+              <span className="hidden sm:block px-2 py-0.5 rounded-full bg-[#0A1420]/90 border border-[#C9A15D]/25 text-white text-xs font-medium whitespace-nowrap shadow-md">
                 {hs.targetName}
               </span>
             </button>
@@ -562,14 +640,14 @@ export function Immersive360Tour({
       {/* Building switcher — top-left overlay, inside the view */}
       {buildingTabs && buildingTabs.length > 0 && (
         <div
-          className="absolute z-20 inline-flex p-1 bg-[#0A1420]/80 backdrop-blur-md rounded-xl border border-white/10 shadow-lg"
+          className="absolute z-20 inline-flex max-w-[calc(100vw-1.5rem)] overflow-x-auto p-1 bg-[#0A1420]/80 backdrop-blur-md rounded-xl border border-white/10 shadow-lg"
           style={{ top: "max(0.75rem, env(safe-area-inset-top))", left: "max(0.75rem, env(safe-area-inset-left))" }}
         >
           {buildingTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => onSwitchBuilding?.(tab.id)}
-              className={`relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-sm font-semibold transition-colors ${activeBuildingId === tab.id ? "text-white" : "text-white/50 hover:text-white/80"
+              className={`relative flex shrink-0 items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-sm font-semibold transition-colors ${activeBuildingId === tab.id ? "text-white" : "text-white/50 hover:text-white/80"
                 }`}
             >
               {activeBuildingId === tab.id && (
@@ -608,18 +686,28 @@ export function Immersive360Tour({
 
       {/* Info panel */}
       {showInfo && (
-        <div className="absolute top-16 left-18 z-20 bg-[#0A1B33]/95 border border-[#C9A15D]/20 rounded-xl shadow-2xl sm:w-82 backdrop-blur-md max-h-[70%] overflow-y-auto">
+        <div
+          className="absolute top-14 left-2 right-2 sm:top-16 sm:left-18 sm:right-auto z-30 bg-[#0A1B33]/95 border border-[#C9A15D]/20 rounded-xl shadow-2xl w-auto sm:w-82 backdrop-blur-md overflow-y-auto"
+          style={
+            isMobileViewport
+              ? { bottom: `calc(${mobileInfoBottom}px + env(safe-area-inset-bottom))` }
+              : { maxHeight: "70%" }
+          }
+        >
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-2 text-white text-sm font-medium">
               <p className="text-white font-semibold mb-1 text-xl">{selectedRoom.name}</p>
             </div>
-            <button onClick={() => setShowInfo(false)} className="text-white/40 hover:text-white transition-colors">
+            <button
+              onClick={() => setShowInfo(false)}
+              className="text-white/40 hover:text-white transition-colors touch-manipulation"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
           <div className="p-4 space-y-3">
             <div>
-              
+
               {selectedRoom.description && (
                 <p className="text-white/60 text-sm leading-relaxed">{selectedRoom.description}</p>
               )}
@@ -642,7 +730,7 @@ export function Immersive360Tour({
       {/* Left-side control dock: Exit fullscreen (when active), Room info, Share, Full screen, Reset view.
           Sits below the building switcher (when present) so the two overlays never collide. */}
       <div
-        className="absolute z-20 flex flex-col bg-[#0A1420]/80 backdrop-blur-md rounded-xl border border-white/10 shadow-lg divide-y divide-white/10 overflow-hidden"
+        className="absolute z-20 flex flex-row sm:flex-col bg-[#0A1420]/80 backdrop-blur-md rounded-xl border border-white/10 shadow-lg divide-x sm:divide-x-0 sm:divide-y divide-white/10 overflow-hidden"
         style={{
           top:
             buildingTabs && buildingTabs.length > 0
@@ -657,7 +745,7 @@ export function Immersive360Tour({
           </button>
         )}
 
-        <button className={dockButtonClass(showInfo)} onClick={() => setShowInfo(!showInfo)} title="Room info">
+        <button className={dockButtonClass(showInfo)} onClick={toggleInfoPanel} title="Room info">
           <Eye className="w-4 h-4" />
         </button>
 
@@ -666,7 +754,7 @@ export function Immersive360Tour({
             <Share2 className="w-4 h-4" />
           </button>
           {showShareMenu && (
-            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-[#C9A15D] text-[#0A1420] px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shadow-lg">
+            <div className="absolute right-full mr-2 sm:right-auto sm:mr-0 sm:left-full sm:ml-2 top-1/2 -translate-y-1/2 bg-[#C9A15D] text-[#0A1420] px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shadow-lg">
               Link copied
             </div>
           )}
@@ -701,7 +789,13 @@ export function Immersive360Tour({
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 16, opacity: 0 }}
               transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
-              className="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 w-[min(90vw,21rem)] rounded-t-2xl border border-b-0 border-white/10 bg-[#0A1420]/90 backdrop-blur-3xl shadow-2xl"
+              className="absolute bottom-0 sm:bottom-0 left-1/2 -translate-x-1/2 z-30 pointer-events-auto touch-manipulation w-[min(95vw,21rem)] sm:pb-[max(0.25rem,env(safe-area-inset-bottom))] rounded-2xl sm:rounded-t-2xl sm:rounded-b-none border sm:border-b-0 border-white/10 bg-[#0A1420]/90 backdrop-blur-3xl shadow-2xl"
+              style={
+                isMobileViewport
+                  ? { bottom: `calc(${mobileSwitcherBottom}px + env(safe-area-inset-bottom))` }
+                  : undefined
+              }
+              onPointerDown={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => setIsSwitcherOpen(false)}
@@ -714,19 +808,20 @@ export function Immersive360Tour({
               <div className="flex items-center gap-2 px-3 pb-3">
                 <button
                   onClick={goToPrevRoom}
-                  className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                  className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 active:bg-white/15 transition-colors shrink-0 touch-manipulation"
                   title="Previous room"
+                  aria-label="Previous room"
                 >
-                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <ChevronLeft className="w-5 h-5 sm:w-5 sm:h-5" />
                 </button>
 
                 <div
-                  className="relative flex-1 h-14 sm:h-30 rounded-xl overflow-hidden bg-cover bg-center"
+                  className="relative flex-1 h-14 sm:h-30 min-w-0 rounded-xl overflow-hidden bg-cover bg-center"
                   style={{ backgroundImage: `url(${selectedRoom.thumbnailUrl || selectedRoom.panoramaUrl})` }}
                 >
                   <div className="absolute inset-0 bg-linear-to-t from-[#0A1420]/95 via-[#0A1420]/15 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 px-2.5 py-1.5">
-                    <span className="text-sm md:text-lg font-semibold text-white truncate">
+                    <span className="text-sm sm:text-base md:text-lg font-semibold text-white truncate">
                       {selectedRoom.name}
                     </span>
                     <span className="text-[9px] sm:text-[10px] text-white/60 tabular-nums shrink-0">
@@ -737,10 +832,11 @@ export function Immersive360Tour({
 
                 <button
                   onClick={goToNextRoom}
-                  className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                  className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 active:bg-white/15 transition-colors shrink-0 touch-manipulation"
                   title="Next room"
+                  aria-label="Next room"
                 >
-                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <ChevronRight className="w-5 h-5 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
@@ -749,9 +845,8 @@ export function Immersive360Tour({
                   <button
                     key={r.id}
                     onClick={() => navigateToRoom(r.id)}
-                    className={`h-1.5 rounded-full transition-all ${
-                      r.id === selectedRoom.id ? "w-5 bg-[#C9A15D]" : "w-1.5 bg-white/25 hover:bg-white/40"
-                    }`}
+                    className={`h-1.5 rounded-full transition-all ${r.id === selectedRoom.id ? "w-5 bg-[#C9A15D]" : "w-1.5 bg-white/25 hover:bg-white/40"
+                      }`}
                     title={r.name}
                   />
                 ))}
@@ -765,14 +860,19 @@ export function Immersive360Tour({
               exit={{ y: 16, opacity: 0 }}
               transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
               onClick={() => setIsSwitcherOpen(true)}
-              className="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1.5 rounded-t-2xl border border-b-0 border-white/10 bg-[#0A1420]/90 backdrop-blur-3xl px-5 pt-2 pb-3 shadow-lg text-white/70 hover:text-white transition-colors"
+              className="absolute bottom-0 sm:bottom-0 left-1/2 -translate-x-1/2 z-30 pointer-events-auto touch-manipulation flex flex-col items-center gap-1.5 rounded-2xl sm:rounded-t-2xl sm:rounded-b-none border sm:border-b-0 border-white/10 bg-[#0A1420]/90 backdrop-blur-3xl px-4 sm:px-5 pt-2 pb-3 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg text-white/70 hover:text-white transition-colors"
+              style={
+                isMobileViewport
+                  ? { bottom: `calc(${mobileSwitcherBottom}px + env(safe-area-inset-bottom))` }
+                  : undefined
+              }
               title="Show room switcher"
             >
               <span className="h-1 w-9 rounded-full bg-white/20" />
               <span className="flex items-center gap-1.5 font-semibold">
-                <span className="truncate max-w-28 sm:max-w-40 text-lg">{selectedRoom.name}</span>
+                <span className="truncate max-w-28 sm:max-w-40 text-sm sm:text-base">{selectedRoom.name}</span>
                 <span className="text-white/30">·</span>
-                <span className="text-white/40 tabular-nums text-md">
+                <span className="text-white/40 tabular-nums text-xs sm:text-sm">
                   {(selectedRoomIndex === -1 ? 1 : selectedRoomIndex + 1)}/{rooms.length}
                 </span>
               </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,9 +19,11 @@ import {
   Upload,
   Clock,
   AlertCircle,
+  MapPin,
 } from "lucide-react";
 
 type ServiceId = "private-office" | "virtual-office" | "coworking" | "meeting-room" | "event-space";
+type BranchId = "tower-6789" | "insular-life";
 type PaymentMethod = "paymongo" | "gcash" | null;
 type ModalKey = "privacy" | "success" | null;
 
@@ -46,7 +49,7 @@ interface VirtualOfficeFields {
 interface CoworkingFields {
   seats: string;
   startDate: string;
-  passType: string;
+  terms: string;
   otherRequirements: string;
 }
 
@@ -73,6 +76,20 @@ const SERVICES: { id: ServiceId; label: string; desc: string; icon: React.Elemen
   { id: "meeting-room", label: "Meeting Room", desc: "Hourly meeting rooms", icon: CalendarDays },
   { id: "event-space", label: "Event Space", desc: "Venues for events & functions", icon: PartyPopper },
 ];
+
+// Branch buildings the client can choose from at Step 1.
+// Max private-office seats differ per branch (see PRIVATE_OFFICE_MAX_SEATS below).
+const BRANCHES: { id: BranchId; label: string; address: string }[] = [
+  { id: "tower-6789", label: "Tower 6789", address: "6789 Ayala Avenue, Makati City" },
+  { id: "insular-life", label: "Insular Life Building", address: "6781 Ayala Avenue cor. Paseo de Roxas, Makati City" },
+];
+
+// Per-branch maximum seats for the Private Office service (from Services Overview: max 35 total,
+// split per branch capacity here as 25 / 30).
+const PRIVATE_OFFICE_MAX_SEATS: Record<BranchId, number> = {
+  "tower-6789": 25,
+  "insular-life": 30,
+};
 
 // ─── API Config ───────────────────────────────────────────────────────────────
 
@@ -151,11 +168,10 @@ function PillSelect({ options, value, onChange }: { options: string[]; value: st
           key={opt}
           type="button"
           onClick={() => onChange(opt)}
-          className={`px-4 py-2 rounded-full text-sm font-semibold border-[1.5px] transition-all duration-150 ${
-            value === opt
-              ? "border-[#1B3A8C] bg-[#1B3A8C] text-white"
-              : "border-[#D9E2F0] bg-white text-[#0B1F4A] hover:border-[#1B3A8C] hover:text-[#1B3A8C]"
-          }`}
+          className={`px-4 py-2 rounded-full text-sm font-semibold border-[1.5px] transition-all duration-150 ${value === opt
+            ? "border-[#1B3A8C] bg-[#1B3A8C] text-white"
+            : "border-[#D9E2F0] bg-white text-[#0B1F4A] hover:border-[#1B3A8C] hover:text-[#1B3A8C]"
+            }`}
         >
           {opt}
         </button>
@@ -196,7 +212,7 @@ function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-1000 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -252,7 +268,7 @@ function SuccessModalContent({
 
       {isGCash ? (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
-          Your proof of payment has been received.<br/>A HERO Serviced Office representative will
+          Your proof of payment has been received.<br />A HERO Serviced Office representative will
           verify your GCash payment and send your service contract to your email within{" "}
           <strong>24 business hours</strong>.
         </p>
@@ -263,25 +279,25 @@ function SuccessModalContent({
         </p>
       ) : (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
-         Your quotation request has been received. {" "}
-         A HERO Serviced Office representative will contact you within <strong>24 business hours</strong>.
+          Your quotation request has been received. {" "}
+          A HERO Serviced Office representative will contact you within <strong>24 business hours</strong>.
         </p>
       )}
 
       <div className="bg-[#F4F6FB] rounded-2xl p-5 text-left mb-6 space-y-3">
         {(isGCash
           ? [
-              "We'll verify your GCash payment within 24 business hours",
-              "Your service contract will be generated and emailed to you",
-              "Our team will reach out to confirm your virtual office activation",
-            ]
+            "We'll verify your GCash payment within 24 business hours",
+            "Your service contract will be generated and emailed to you",
+            "Our team will reach out to confirm your virtual office activation",
+          ]
           : isVO
-          ? [
+            ? [
               "Your payment has been processed successfully",
               "A contract will be emailed to you for your records",
               "Your virtual office service is now being set up",
             ]
-          : [
+            : [
               "We'll review your service requirements and preferences",
               "A customised quotation will be prepared for you",
               "Our team will reach out via email or phone to discuss next steps",
@@ -300,7 +316,7 @@ function SuccessModalContent({
         <button
           type="button"
           onClick={onClose}
-          className="px-8 py-3 bg-[#0B1F4A] text-white rounded-full text-sm font-semibold hover:bg-[#1B3A8C] transition"
+          className="px-8 py-3 text-[#0B1F4A] bg-[#FFC107] rounded-full text-sm font-semibold hover:bg-[#FFC107]/80 transition"
         >
           Submit another request
         </button>
@@ -327,22 +343,20 @@ function StepRail({ step, steps }: { step: number; steps: string[] }) {
         return (
           <div key={label} className="flex items-center">
             <div className="flex flex-col items-center">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
-                done
-                  ? "bg-[#FFC107] text-[#0B1F4A]"
-                  : active
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${done
+                ? "bg-[#FFC107] text-[#0B1F4A]"
+                : active
                   ? "bg-[#0B1F4A] text-white shadow-[0_0_0_4px_rgba(27,58,140,0.15)]"
                   : "bg-white text-[#64748B] border border-[#D9E2F0]"
-              }`}>
+                }`}>
                 {done ? (
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 ) : idx}
               </div>
-              <span className={`mt-1.5 text-[10px] tracking-[0.15em] uppercase font-semibold ${
-                active ? "text-[#1B3A8C]" : done ? "text-[#C9A84C]" : "text-[#64748B]"
-              }`}>{label}</span>
+              <span className={`mt-1.5 text-[10px] tracking-[0.15em] uppercase font-semibold ${active ? "text-[#1B3A8C]" : done ? "text-[#C9A84C]" : "text-[#64748B]"
+                }`}>{label}</span>
             </div>
             {i < steps.length - 1 && (
               <div className={`h-0.5 w-10 md:w-14 mx-1 mb-5 transition-all duration-500 ${done ? "bg-[#C9A84C]" : "bg-[#D9E2F0]"}`} />
@@ -404,17 +418,21 @@ function NavRow({
 function Step1({
   selectedService,
   setSelectedService,
+  selectedBranch,
+  setSelectedBranch,
   onNext,
 }: {
   selectedService: ServiceId | null;
   setSelectedService: (s: ServiceId) => void;
+  selectedBranch: BranchId | null;
+  setSelectedBranch: (b: BranchId) => void;
   onNext: () => void;
 }) {
   const [touched, setTouched] = useState(false);
 
   const handleNext = () => {
     setTouched(true);
-    if (selectedService) onNext();
+    if (selectedService && selectedBranch) onNext();
   };
 
   return (
@@ -430,15 +448,14 @@ function Step1({
               key={s.id}
               type="button"
               onClick={() => setSelectedService(s.id)}
-              className={`p-4 rounded-2xl border-[1.5px] text-left transition-all duration-200 group ${
-                active
-                  ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C]"
-                  : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
-              }`}
+              className={`p-4 rounded-2xl border-[1.5px] text-left transition-all duration-200 group ${active
+                ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C]"
+                : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
+                }`}
             >
               <Icon className={`w-5 h-5 mb-2.5 transition-colors ${active ? "text-[#1B3A8C]" : "text-[#64748B] group-hover:text-[#1B3A8C]"}`} />
               <p className={`font-semibold text-md mb-0.5 ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A] group-hover:text-[#1B3A8C]"}`}>{s.label}</p>
-              <p className="text-sm text-[#64748B] leading-snug">{s.desc}</p>
+              <p className="text-sm text-[#64748B] leading-snug">{s.desc}</p> {/* Remove description and make modal for the inclusion */}
             </button>
           );
         })}
@@ -449,6 +466,38 @@ function Step1({
           Please select a service to continue.
         </div>
       )}
+
+      <div className="mt-8">
+        <h3 className="text-lg font-bold text-[#0B1F4A] mb-1">Select a Branch</h3>
+        <p className="text-sm text-[#64748B] mb-4">Choose which HERO Serviced Office location you'd like to inquire about.</p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {BRANCHES.map((b) => {
+            const active = selectedBranch === b.id;
+            return (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setSelectedBranch(b.id)}
+                className={`p-4 rounded-2xl border-[1.5px] text-left transition-all duration-200 group ${active
+                  ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C]"
+                  : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
+                  }`}
+              >
+                <MapPin className={`w-5 h-5 mb-2.5 transition-colors ${active ? "text-[#1B3A8C]" : "text-[#64748B] group-hover:text-[#1B3A8C]"}`} />
+                <p className={`font-semibold text-md mb-0.5 ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A] group-hover:text-[#1B3A8C]"}`}>{b.label}</p>
+                <p className="text-sm text-[#64748B] leading-snug">{b.address}</p>
+              </button>
+            );
+          })}
+        </div>
+        {touched && !selectedBranch && (
+          <div className="mt-4 flex items-center gap-2 text-sm text-red-500">
+            <AlertCircle className="w-4 h-4" />
+            Please select a branch to continue.
+          </div>
+        )}
+      </div>
+
       <NavRow onNext={handleNext} />
     </div>
   );
@@ -459,24 +508,34 @@ function Step2PrivateOffice({
   data,
   onChange,
   errors,
+  branch,
 }: {
   data: PrivateOfficeFields;
   onChange: (d: Partial<PrivateOfficeFields>) => void;
   errors: Partial<Record<keyof PrivateOfficeFields, string>>;
+  branch: BranchId | null;
 }) {
   const today = new Date().toISOString().split("T")[0];
+  const maxSeats = branch ? PRIVATE_OFFICE_MAX_SEATS[branch] : Math.max(...Object.values(PRIVATE_OFFICE_MAX_SEATS));
+  const branchLabel = BRANCHES.find((b) => b.id === branch)?.label;
   return (
     <div className="space-y-5">
+      {branchLabel && (
+        <div className="flex items-center gap-2 text-xs font-semibold text-[#1B3A8C] bg-[#EEF2FB] border border-[#C5D2EC] rounded-xl px-4 py-2.5">
+          <MapPin className="w-3.5 h-3.5 shrink-0" />
+          {branchLabel} · Maximum {maxSeats} seats available
+        </div>
+      )}
       <div className="grid sm:grid-cols-2 gap-5">
         <Field label="Number of Seats" required error={errors.seats}>
           <input
             type="number"
             min={1}
-            max={17}
+            max={maxSeats}
             value={data.seats}
             onChange={(e) => onChange({ seats: e.target.value })}
             className={errors.seats ? inputErrCls : inputCls}
-            placeholder="Maximum 17"
+            placeholder={`Maximum ${maxSeats}`}
           />
         </Field>
         <Field label="Target Move-in Date" required error={errors.moveInDate}>
@@ -518,25 +577,94 @@ function Step2VirtualOffice({
   return (
     <div className="space-y-5">
       <Field label="Package" required error={errors.package}>
-        <div className="grid sm:grid-cols-3 gap-3 mt-1">
+        <div className="mt-1 grid gap-4 md:grid-cols-3">
           {[
-            { id: "Basic", desc: "Business address registration", price: "₱8,000/mo" },
-            { id: "Standard", desc: "Address + mail handling", price: "₱12,000/mo" },
-            { id: "Premium", desc: "Address + mail forwarding + receptionist", price: "₱15,000/mo" },
+            {
+              id: "Basic",
+              features: [
+                "Business Address",
+                "Business Registration Documents Assistance",
+                "Mail Handling",
+                "Basic Call Handling",
+                "1 Day Co-working Space Access",
+                "1 Hour Conference Room Access",
+              ],
+              price: "₱2,000 / Month",
+            },
+            {
+              id: "Standard",
+              features: [
+                "Business Address",
+                "Business Registration Documents Assistance",
+                "Mail Handling",
+                "Basic Call Handling",
+                "2 Days Co-working Space Access",
+                "2 Hours Conference Room Access",
+              ],
+              price: "₱3,000 / Month",
+            },
+            {
+              id: "Premium",
+              features: [
+                "Business Address",
+                "Business Registration Documents Assistance",
+                "Mail Handling",
+                "Basic Call Handling",
+                "5 Days Co-working Space Access",
+                "3 Hours Conference Room Access",
+              ],
+              price: "₱5,000 / Month",
+            },
           ].map((pkg) => {
             const active = data.package === pkg.id;
+
             return (
-              <button key={pkg.id} type="button" onClick={() => onChange({ package: pkg.id })}
-                className={`p-4 rounded-2xl border-[1.5px] text-left transition-all duration-200 group ${active ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C]" : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"}`}>
-                <p className={`font-bold text-md mb-1 ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A]"}`}>{pkg.id}</p>
-                <p className="text-sm text-[#64748B] mb-2 leading-snug">{pkg.desc}</p>
-                <p className={`text-xs font-bold ${active ? "text-[#C9A84C]" : "text-[#64748B]"}`}>{pkg.price}</p>
+              <button
+                key={pkg.id}
+                type="button"
+                onClick={() => onChange({ package: pkg.id })}
+                className={`rounded-2xl border p-5 text-left transition-all duration-200 ${active
+                    ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-lg ring-1 ring-[#1B3A8C]/10"
+                    : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:shadow-md"
+                  }`}
+              >
+                <div className="flex items-center justify-between">
+                  <h3
+                    className={`text-lg font-bold ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A]"
+                      }`}
+                  >
+                    {pkg.id}
+                  </h3>
+                </div>
+
+                <ul className="mt-4 space-y-2 text-sm text-[#64748B]">
+                  {pkg.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#C9A84C] shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-5 border-t border-gray-200 pt-4">
+                  <p
+                    className={`text-md font-bold ${active ? "text-[#C9A84C]" : "text-[#1B3A8C]"
+                      }`}
+                  >
+                    {pkg.price}
+                  </p>
+                </div>
               </button>
             );
           })}
         </div>
       </Field>
-      <Field label="Preferred Start Date" required error={errors.startDate}>
+
+      <Field
+        label="Preferred Start Date"
+        required
+        error={errors.startDate}
+      >
         <input
           type="date"
           min={today}
@@ -582,8 +710,8 @@ function Step2Coworking({
           />
         </Field>
       </div>
-      <Field label="Pass Type" required error={errors.passType}>
-        <PillSelect options={PASS_TYPES} value={data.passType} onChange={(v) => onChange({ passType: v })} />
+      <Field label="Terms" required error={errors.terms}>
+        <PillSelect options={PASS_TYPES} value={data.terms} onChange={(v) => onChange({ terms: v })} />
       </Field>
       <Field label="Other Requirements">
         <textarea
@@ -803,6 +931,7 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 
 function Step4({
   selectedService,
+  selectedBranch,
   privateOffice,
   virtualOffice,
   coworking,
@@ -818,6 +947,7 @@ function Step4({
   isVO,
 }: {
   selectedService: ServiceId | null;
+  selectedBranch: BranchId | null;
   privateOffice: PrivateOfficeFields;
   virtualOffice: VirtualOfficeFields;
   coworking: CoworkingFields;
@@ -834,6 +964,7 @@ function Step4({
 }) {
   const [modal, setModal] = useState<ModalKey>(null);
   const serviceName = SERVICES.find((s) => s.id === selectedService)?.label ?? "";
+  const branchName = BRANCHES.find((b) => b.id === selectedBranch)?.label ?? "";
 
   const serviceRows = () => {
     if (selectedService === "private-office") return [
@@ -849,7 +980,7 @@ function Step4({
     if (selectedService === "coworking") return [
       { label: "Seats", value: coworking.seats },
       { label: "Start Date", value: coworking.startDate },
-      { label: "Pass Type", value: coworking.passType },
+      { label: "Pass Type", value: coworking.terms },
       { label: "Other Requirements", value: coworking.otherRequirements },
     ];
     if (selectedService === "meeting-room") return [
@@ -880,6 +1011,7 @@ function Step4({
       <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5 mb-4">
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40 mb-3">Service</p>
         <ReviewRow label="Selected Service" value={serviceName} />
+        <ReviewRow label="Branch" value={branchName} />
         {serviceRows().map((r) => <ReviewRow key={r.label} label={r.label} value={r.value} />)}
       </div>
 
@@ -963,9 +1095,9 @@ function StepVOPayment({
   const gcashRef = useRef<HTMLInputElement>(null);
 
   const packagePrices: Record<string, string> = {
-    Basic: "₱8,000",
-    Standard: "₱12,000",
-    Premium: "₱15,000",
+    Basic: "₱2,000 per Seat/Month",
+    Standard: "₱3,000 per Seat/Month",
+    Premium: "₱5,000 per Seat/Month",
   };
 
   const canProceed =
@@ -1003,15 +1135,13 @@ function StepVOPayment({
                 key={opt.id!}
                 type="button"
                 onClick={() => { setPaymentMethod(opt.id); setGcashProof(null); }}
-                className={`p-4 rounded-2xl border-[1.5px] text-left transition-all duration-200 ${
-                  active ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C]" : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
-                }`}
+                className={`p-4 rounded-2xl border-[1.5px] text-left transition-all duration-200 ${active ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C]" : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
+                  }`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <Icon className={`w-5 h-5 ${active ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    opt.badge === "Instant" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                  }`}>{opt.badge}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${opt.badge === "Instant" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                    }`}>{opt.badge}</span>
                 </div>
                 <p className={`font-bold text-sm ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A]"}`}>{opt.label}</p>
                 <p className="text-xs text-[#64748B]">{opt.sub}</p>
@@ -1041,7 +1171,7 @@ function StepVOPayment({
             <p className="text-sm font-bold uppercase tracking-wide text-[#0B1F4A] mb-3">GCash Payment Details</p>
             <div className="flex items-center gap-4">
               <div className="w-24 h-24 bg-[#EEF2FB] rounded-xl flex items-center justify-center shrink-0 border border-[#C5D2EC]">
-                <Smartphone className="w-8 h-8 text-[#1B3A8C]" /> 
+                <Smartphone className="w-8 h-8 text-[#1B3A8C]" />
               </div>
               <div className="text-sm text-[#64748B] space-y-1">
                 <p><span className="font-semibold text-[#0B1F4A]">GCash Number:</span> 09XX XXX XXXX</p>
@@ -1056,9 +1186,8 @@ function StepVOPayment({
             <button
               type="button"
               onClick={() => gcashRef.current?.click()}
-              className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${
-                gcashProof ? "border-[#1B3A8C] bg-[#EEF2FB]" : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
-              }`}
+              className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${gcashProof ? "border-[#1B3A8C] bg-[#EEF2FB]" : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
+                }`}
             >
               <Upload className={`w-5 h-5 ${gcashProof ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
               <span className={`text-sm font-semibold ${gcashProof ? "text-[#1B3A8C]" : "text-[#64748B]"}`}>
@@ -1092,12 +1221,27 @@ function StepVOPayment({
 }
 
 export default function GetAQuotePage() {
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<ServiceId | null>(null);
+  const [selectedBranch, setSelectedBranch] = useState<BranchId | null>(null);
   const [contact, setContact] = useState<ContactFields>({ name: "", company: "", email: "", phone: "" });
   const [privateOffice, setPrivateOffice] = useState<PrivateOfficeFields>({ seats: "", moveInDate: "", leaseTerm: "", otherRequirements: "" });
+
+  useEffect(() => {
+    const branch = searchParams.get("branch");
+    const service = searchParams.get("service");
+
+    if (branch && BRANCHES.some((b) => b.id === branch)) {
+      setSelectedBranch(branch as BranchId);
+    }
+
+    if (service && SERVICES.some((s) => s.id === service)) {
+      setSelectedService(service as ServiceId);
+    }
+  }, [searchParams]);
   const [virtualOffice, setVirtualOffice] = useState<VirtualOfficeFields>({ package: "", startDate: "" });
-  const [coworking, setCoworking] = useState<CoworkingFields>({ seats: "", startDate: "", passType: "", otherRequirements: "" });
+  const [coworking, setCoworking] = useState<CoworkingFields>({ seats: "", startDate: "", terms: "", otherRequirements: "" });
   const [meetingRoom, setMeetingRoom] = useState<MeetingRoomFields>({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
   const [eventSpace, setEventSpace] = useState<EventSpaceFields>({ eventDate: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
@@ -1119,8 +1263,9 @@ export default function GetAQuotePage() {
   const validateStep2 = (): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (selectedService === "private-office") {
+      const maxSeats = selectedBranch ? PRIVATE_OFFICE_MAX_SEATS[selectedBranch] : Math.max(...Object.values(PRIVATE_OFFICE_MAX_SEATS));
       if (!privateOffice.seats || Number(privateOffice.seats) < 1) errs.seats = "Please enter a valid number of seats (min 1).";
-      if (Number(privateOffice.seats) > 17) errs.seats = "Maximum 17 seats available.";
+      else if (Number(privateOffice.seats) > maxSeats) errs.seats = `Maximum ${maxSeats} seats available at this branch.`;
       if (!privateOffice.moveInDate) errs.moveInDate = "Please select a target move-in date.";
       if (!privateOffice.leaseTerm) errs.leaseTerm = "Please select a lease term.";
     }
@@ -1131,7 +1276,7 @@ export default function GetAQuotePage() {
     if (selectedService === "coworking") {
       if (!coworking.seats || Number(coworking.seats) < 1) errs.seats = "Please enter a valid number of seats.";
       if (!coworking.startDate) errs.startDate = "Please select a preferred start date.";
-      if (!coworking.passType) errs.passType = "Please select a pass type.";
+      if (!coworking.terms) errs.passType = "Please select a pass type.";
     }
     if (selectedService === "meeting-room") {
       if (!meetingRoom.date) errs.date = "Please select a reservation date.";
@@ -1157,10 +1302,11 @@ export default function GetAQuotePage() {
   const handleReset = useCallback(() => {
     setStep(1);
     setSelectedService(null);
+    setSelectedBranch(null);
     setContact({ name: "", company: "", email: "", phone: "" });
     setPrivateOffice({ seats: "", moveInDate: "", leaseTerm: "", otherRequirements: "" });
     setVirtualOffice({ package: "", startDate: "" });
-    setCoworking({ seats: "", startDate: "", passType: "", otherRequirements: "" });
+    setCoworking({ seats: "", startDate: "", terms: "", otherRequirements: "" });
     setMeetingRoom({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
     setEventSpace({ eventDate: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
     setPaymentMethod(null);
@@ -1177,6 +1323,7 @@ export default function GetAQuotePage() {
   // Builds the payload expected by App\Http\Controllers\Api\QuotationController::store
   const buildPayload = () => {
     const serviceLabel = SERVICES.find((s) => s.id === selectedService)?.label ?? "";
+    const branchLabel = BRANCHES.find((b) => b.id === selectedBranch)?.label ?? "";
 
     // Shared detail fields
     const detail: Record<string, unknown> = {
@@ -1209,7 +1356,7 @@ export default function GetAQuotePage() {
     } else if (selectedService === "coworking") {
       detail.seats = Number(coworking.seats) || null;
       detail.date = coworking.startDate;
-      detail.duration_type = coworking.passType;
+      detail.duration_type = coworking.terms;
       detail.other_requirements = coworking.otherRequirements || null;
     } else if (selectedService === "meeting-room") {
       detail.seats = Number(meetingRoom.participants) || null;
@@ -1230,6 +1377,7 @@ export default function GetAQuotePage() {
     return {
       service_id: selectedService ? SERVICE_IDS[selectedService] : null,
       service_name: serviceLabel,
+      branch: branchLabel,
       lease_term,
       package: pkg,
       event_type,
@@ -1277,6 +1425,7 @@ export default function GetAQuotePage() {
         data={privateOffice}
         onChange={(d) => { setPrivateOffice((p) => ({ ...p, ...d })); setStep2Errors({}); }}
         errors={step2Errors}
+        branch={selectedBranch}
       />
     );
     if (selectedService === "virtual-office") return (
@@ -1361,6 +1510,8 @@ export default function GetAQuotePage() {
                   <Step1
                     selectedService={selectedService}
                     setSelectedService={(s) => { setSelectedService(s); setStep2Errors({}); }}
+                    selectedBranch={selectedBranch}
+                    setSelectedBranch={(b) => { setSelectedBranch(b); setStep2Errors({}); }}
                     onNext={() => setStep(2)}
                   />
                 )}
@@ -1396,6 +1547,7 @@ export default function GetAQuotePage() {
                 {step === 4 && (
                   <Step4
                     selectedService={selectedService}
+                    selectedBranch={selectedBranch}
                     privateOffice={privateOffice}
                     virtualOffice={virtualOffice}
                     coworking={coworking}

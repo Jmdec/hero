@@ -486,7 +486,7 @@ export default function Tower6789Page() {
           {/* CTA */}
           <div className="flex justify-center pt-5">
             <Link
-              href="/quotation"
+              href="/quotation?branch=tower-6789"
               className="group inline-flex items-center gap-3 rounded-full bg-[#FFC107] px-8 py-4 font-semibold text-[#0A1E3F] transition-all duration-300 hover:scale-105 hover:bg-[#FFD54F]"
             >
               Get a Quote Now

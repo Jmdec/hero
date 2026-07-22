@@ -60,7 +60,7 @@ function formatDate(value: string) {
   });
 }
 
-const SEEN_KEY = "seen_announcement_id";
+const PROMO_TAG_KEYWORDS = ["promo", "promotion", "promotional", "offer", "deal", "sale", "discount"];
 
 // Used whenever an announcement has no image of its own, or its uploaded
 // image fails to load — so the popup never looks like an empty flat-color box.
@@ -82,21 +82,13 @@ function getAnnouncementImageUrl(image?: string | null) {
   return `${base}/storage/${image.replace(/^\/+/, "")}`;
 }
 
-function getSeenId(): number | null {
-  try {
-    const raw = localStorage.getItem(SEEN_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function markSeen(id: number) {
-  try {
-    localStorage.setItem(SEEN_KEY, JSON.stringify(id));
-  } catch {
-    // localStorage unavailable (private mode etc) — fail silently
-  }
+function isPromotionalAnnouncement(item: Announcement) {
+  const tag = (item.tag || "").toLowerCase();
+  const title = (item.title || "").toLowerCase();
+  const content = (item.content || "").toLowerCase();
+  return PROMO_TAG_KEYWORDS.some(
+    (keyword) => tag.includes(keyword) || title.includes(keyword) || content.includes(keyword),
+  );
 }
 
 export default function AnnouncementPopup() {
@@ -120,16 +112,16 @@ export default function AnnouncementPopup() {
 
         if (cancelled || list.length === 0) return;
 
-        const latest = [...list].sort(
+        const promotionalAnnouncements = list.filter(isPromotionalAnnouncement);
+        if (promotionalAnnouncements.length === 0) return;
+
+        const latest = [...promotionalAnnouncements].sort(
           (a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
         )[0];
 
-        const seenId = getSeenId();
-        if (latest.id !== seenId) {
-          setAnnouncement(latest);
-          setTimeout(() => setOpen(true), 400);
-        }
+        setAnnouncement(latest);
+        setTimeout(() => setOpen(true), 400);
       } catch {
         // silently ignore — a broken announcements fetch shouldn't block the page
       }
@@ -142,10 +134,6 @@ export default function AnnouncementPopup() {
   }, []);
 
   const handleClose = useCallback(() => {
-    setAnnouncement((current) => {
-      if (current) markSeen(current.id);
-      return current;
-    });
     setOpen(false);
   }, []);
 

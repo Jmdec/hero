@@ -21,19 +21,7 @@ import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 
 const Immersive360Tour = dynamic(
-  () => import("../../components/PanoramaViewer").then((mod) => ({ default: mod.Immersive360Tour })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-105 sm:h-130 md:h-150 lg:h-160 bg-[#0f172a] rounded-2xl flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-[3px] border-[#FFC107] border-t-transparent mx-auto mb-3 sm:mb-4" />
-          <p className="text-white/60 text-xs sm:text-sm">Loading 360° viewer…</p>
-        </div>
-      </div>
-    ),
-  }
-);
+  () => import("../../components/PanoramaViewer").then((mod) => ({ default: mod.Immersive360Tour })));
 
 interface TourRoom {
   id: string;
@@ -51,7 +39,6 @@ export default function VirtualTourPage() {
   const [activeTab, setActiveTab] = useState<BuildingId>("tower6789");
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const viewerSectionRef = useRef<HTMLDivElement>(null);
-  const panoramaRef = useRef<HTMLDivElement>(null);
 
   const locationTabs: { id: BuildingId; label: string; icon: typeof Building2 }[] = [
     { id: "tower6789", label: "Tower 6789", icon: Building2 },
@@ -61,45 +48,6 @@ export default function VirtualTourPage() {
   const switchBuilding = (tabId: BuildingId) => {
     setActiveTab(tabId);
     setSelectedRoomId(null);
-  };
-
-  const buildingServices = {
-    tower6789: [
-      "Air Conditioning",
-      "High-Speed Wi-Fi",
-      "CCTV Security",
-      "24/7 Access",
-      "Reception Staff",
-      "Printing & Scanning",
-      "conference Rooms",
-      "Mail Handling",
-    ],
-    insularLife: [
-      "Air Conditioning",
-      "High-Speed Wi-Fi",
-      "CCTV Security",
-      "24/7 Access",
-      "Reception Staff",
-      "Café & Pantry",
-      "Business Lounge",
-      "Secure Lockers",
-      "Mail Handling",
-      "Printing & Scanning",
-    ],
-  };
-
-  const serviceIconMap: Record<string, React.ReactNode> = {
-    "Air Conditioning": <Wind className="w-3.5 h-3.5" />,
-    "High-Speed Wi-Fi": <Wifi className="w-3.5 h-3.5" />,
-    "CCTV Security": <Shield className="w-3.5 h-3.5" />,
-    "24/7 Access": <Clock className="w-3.5 h-3.5" />,
-    "Reception Staff": <Users className="w-3.5 h-3.5" />,
-    "Printing & Scanning": <Printer className="w-3.5 h-3.5" />,
-    "conference Rooms": <Video className="w-3.5 h-3.5" />,
-    "Mail Handling": <Mail className="w-3.5 h-3.5" />,
-    "Café & Pantry": <Coffee className="w-3.5 h-3.5" />,
-    "Business Lounge": <Armchair className="w-3.5 h-3.5" />,
-    "Secure Lockers": <Lock className="w-3.5 h-3.5" />,
   };
 
   // Room connectivity graph 
@@ -295,7 +243,7 @@ export default function VirtualTourPage() {
       <section ref={viewerSectionRef} className="bg-gray-50 scroll-mt-24">
         <div>
           {/* 360° viewer panel */}
-          <div ref={panoramaRef} className="relative scroll-mt-24">
+          <div className="relative scroll-mt-24">
             <AnimatePresence mode="wait">
               <motion.div
                 key={`viewer-${activeTab}-${selectedRoomId}`}

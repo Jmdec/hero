@@ -17,7 +17,6 @@ import {
   AlertCircle,
   Inbox,
 } from "lucide-react";
-import AnnouncementPopup from "@/components/AnnouncementPopup";
 
 interface Testimonial {
   id: number;
@@ -189,7 +188,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      <AnnouncementPopup />
       {/* Hero Section */}
       <section className="relative text-white overflow-hidden ">
         {/* Background Image Carousel */}
@@ -227,14 +225,14 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
                 href="/virtual-tour"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-semibold hover:bg-gray-200 transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-bold hover:bg-gray-200 transition-colors"
               >
                 <Play className="w-5 h-5" />
                 Virtual Tour
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#FFC107] text-[#1B3A8C] rounded-full font-semibold hover:bg-[#FFC107]/80 transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#FFC107] text-[#1B3A8C] rounded-full font-bold hover:bg-[#FFC107]/80 transition-colors"
               >
                 Contact Us
               </Link>
@@ -397,7 +395,7 @@ export default function Home() {
                       <div className="flex items-center justify-between">
                         <Link
                           href="/quotation"
-                          className="text-md font-medium text-[#1B3A8C] hover:text-[#FFC107] hover:underline transition-colors"
+                          className="text-md font-bold text-[#1B3A8C] hover:text-[#FFC107] hover:underline transition-colors"
                         >
                           Get Quotation →
                         </Link>
@@ -436,14 +434,14 @@ export default function Home() {
               <div className="mt-6 flex flex-wrap gap-4 text-sm">
                 <Link
                   href="/about"
-                  className="rounded-full bg-[#FFC107] px-5 py-4 font-semibold text-[#1B3A8C] transition hover:bg-transparent hover:text-[#1B3A8C] hover:border-[#FFC107] hover:border"
+                  className="rounded-full bg-[#FFC107] px-5 py-4 font-bold text-[#1B3A8C] transition hover:bg-transparent hover:text-[#1B3A8C] hover:border-[#FFC107] hover:border"
                 >
                   Learn More
                 </Link>
 
                 <Link
                   href="/services"
-                  className="rounded-full border border-[#FFC107] px-5 py-4 font-semibold text-[#1B3A8C] transition hover:bg-[#FFC107] hover:text-[#1B3A8C]"
+                  className="rounded-full border border-[#FFC107] px-5 py-4 font-bold text-[#1B3A8C] transition hover:bg-[#FFC107] hover:text-[#1B3A8C]"
                 >
                   Explore Services
                 </Link>
@@ -612,7 +610,7 @@ export default function Home() {
           <div className="py-12 flex items-center justify-center">
             <Link
               href="/testimonial"
-              className="inline-flex items-center gap-2 mt-4 md:mt-0 bg-[#FFC107] text-[#1B3A8C] rounded-lg px-6 py-3 font-semibold hover:bg-[#FFC107]/80"
+              className="inline-flex items-center gap-2 mt-4 md:mt-0 bg-[#FFC107] text-[#1B3A8C] rounded-lg px-6 py-3 font-bold hover:bg-[#FFC107]/80"
             >
               View All Testimonials
             </Link>
@@ -633,13 +631,13 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/quotation"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-semibold hover:bg-gray-100 transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-bold hover:bg-gray-100 transition-colors"
             >
               Get a Quote →
             </Link>
             <Link
               href="/contact"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-semibold hover:bg-white/10 transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-bold hover:bg-white/10 transition-colors"
             >
               Contact Us
             </Link>

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { CheckCircle2, XCircle, Loader2, Mail } from "lucide-react";
+import { Loading } from "@/components/Loading";
 
 type Status = "loading" | "success" | "error" | "missing";
 
@@ -180,9 +181,11 @@ export default function VerifyEmailPage() {
     return (
         <Suspense
             fallback={
-                <div className="min-h-screen bg-[#F5F5F3] flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 text-[#1B3A8C] animate-spin" />
-                </div>
+                <Loading
+                    variant="screen"
+                    title="Verifying your email"
+                    subtitle="Hero Serviced Office"
+                />
             }
         >
             <VerifyEmailContent />

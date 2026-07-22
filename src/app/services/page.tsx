@@ -434,7 +434,7 @@ function SpaceModal({
           <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex gap-3">
             <a
               href="/quotation"
-              className="flex-1 text-center px-4 py-2.5 bg-[#efb916] hover:bg-[#FFC107] text-white text-sm font-semibold rounded-xl transition-colors"
+              className="flex-1 text-center px-4 py-2.5 bg-[#efb916] hover:bg-[#FFC107] text-white text-sm font-bold rounded-xl transition-colors"
             >
               Get a Quote Now
             </a>
@@ -619,7 +619,7 @@ export default function ServicesPage() {
                 </ul>
                 <Link
                   href="/services/tower-6789"
-                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#FFC107] hover:bg-[#FFC107]/80 text-[#1B3A8C] rounded-xl font-semibold transition-colors"
+                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#FFC107] hover:bg-[#FFC107]/80 text-[#1B3A8C] rounded-xl font-bold transition-colors"
                 >
                   View Tower 6789 Makati
                   <ChevronRight className="w-5 h-5" />
@@ -664,7 +664,7 @@ export default function ServicesPage() {
                 </ul>
                 <Link
                   href="/services/insular-life"
-                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#FFC107] hover:bg-[#FFC107]/80 text-[#1B3A8C] rounded-xl font-semibold transition-colors"
+                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#FFC107] hover:bg-[#FFC107]/80 text-[#1B3A8C] rounded-xl font-bold transition-colors"
                 >
                   View Insular Life Building
                   <ChevronRight className="w-5 h-5" />
@@ -714,7 +714,7 @@ export default function ServicesPage() {
                     </span>
                   </div>
 
-                  <div className="mt-auto flex items-center gap-2 pt-8 font-semibold text-[#0D47A1] transition-all group-hover:gap-3">
+                  <div className="mt-auto flex items-center gap-2 pt-8 font-bold text-[#0D47A1] group-hover:gap-3 hover:text-[#FFC107] hover:underline transition-colors">
                     <span>Explore Space</span>
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </div>

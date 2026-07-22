@@ -597,7 +597,7 @@ export default function AdminQuotationsPage() {
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelected(null)} />
                     <div className="relative w-full max-w-xl bg-[#F8FAFD] rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[88vh]">
                         {/* Header */}
-                        <div className="relative shrink-0 bg-gradient-to-br from-[#1B3A8C] to-[#0B1F4A] px-6 pt-6 pb-14 overflow-hidden">
+                        <div className="relative shrink-0 bg-linear-to-br from-[#1B3A8C] to-[#0B1F4A] px-6 pt-6 pb-14 overflow-hidden">
                             <div className="absolute -right-10 -top-14 w-48 h-48 rounded-full bg-white/5" />
                             <div className="absolute -right-2 top-16 w-24 h-24 rounded-full bg-white/5" />
 
@@ -770,7 +770,7 @@ export default function AdminQuotationsPage() {
                             {/* Payment — Virtual Office only */}
                             {selected.detail && selected.service_name?.trim().toLowerCase() === "virtual office" && (
                                 <SectionCard icon={Receipt} title="Payment">
-                                    <div className="bg-gradient-to-br from-[#F0F4FB] to-[#F8FAFD] border border-[#D9E2F0] rounded-xl px-5 py-4 flex items-center justify-between">
+                                    <div className="bg-linear-to-br from-[#F0F4FB] to-[#F8FAFD] border border-[#D9E2F0] rounded-xl px-5 py-4 flex items-center justify-between">
                                         <div>
                                             <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B]">Total amount</p>
                                             <p className="text-2xl font-bold text-[#0B1F4A] mt-1">{formatCurrency(selected.detail.total)}</p>
