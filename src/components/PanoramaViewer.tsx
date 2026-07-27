@@ -62,7 +62,6 @@ interface Hotspot {
 
 const HOTSPOT_LAT = -12 // slightly below eye-level, like a floor-directed arrow
 
-/** Evenly distribute hotspots for a room's connections around the horizon. */
 function computeHotspots(room: RoomScene, allRooms: RoomScene[]): Hotspot[] {
   const targets = (room.connectsTo || [])
     .map((id) => allRooms.find((r) => r.id === id))

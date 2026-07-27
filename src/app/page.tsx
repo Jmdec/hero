@@ -22,7 +22,7 @@ interface Testimonial {
   id: number;
   name: string;
   title: string;
-  company: string;
+  company?: string;
   rating: number;
   quote: string;
   status: "pending" | "approved" | "rejected";
@@ -40,7 +40,8 @@ function getInitials(name: string) {
 const FEATURED_COUNT = 3;
 
 export default function Home() {
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [heroSlide, setHeroSlide] = useState(0);
+  const [spaceSlide, setSpaceSlide] = useState(0);
 
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,10 +62,10 @@ export default function Home() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+      setHeroSlide((prev) => (prev + 1) % heroSlides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [heroSlides.length]);
 
   const features = [
     {
@@ -98,33 +99,48 @@ export default function Home() {
       title: "Private Offices",
       description:
         "Private offices designed for individual professionals and small teams.",
-      image: "private-space.jpg",
+      image: "/spaces/private-space.jpg",
     },
     {
       title: "Virtual Offices",
       description:
         "Remote office solutions for businesses that need flexibility and scalability.",
-      image: "virtual-office.jpg",
+      image: "/spaces/virtual-office.jpg",
     },
     {
       title: "Co-working Spaces",
       description:
         "Flexible workspaces designed for freelancers and entrepreneurs.",
-      image: "co-working.jpg",
+      image: "/spaces/co-working.jpg",
     },
     {
       title: "Meeting Rooms",
       description:
         "Professional meeting spaces equipped with the latest technology.",
-      image: "meeting-space.jpg",
+      image: "/spaces/_ARM8065.jpg",
     },
     {
       title: "Event Space",
       description:
         "Versatile event spaces ideal for seminars, workshops, networking events, and corporate gatherings.",
-      image: "event-space.jpg",
+      image: "/spaces/event-space.jpg",
     },
   ];
+
+  const spacesCarousel = [
+    { image: "/spaces/_ARM8120.jpg" },
+    { image: "/spaces/_ARM7474.jpg" },
+    { image: "/spaces/_ARM7597.jpg" },
+    { image: "/spaces/_ARM7477.jpg" },
+    { image: "/spaces/_ARM7611.jpg" },
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSpaceSlide((prev) => (prev + 1) % spacesCarousel.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [spacesCarousel.length]);
 
   const benefits = [
     "High-speed internet and WiFi connectivity",
@@ -174,13 +190,10 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []); // fixed: was missing the dependency array, causing a fetch loop on every render
+  }, []);
 
   const featuredTestimonials = testimonials.slice(0, FEATURED_COUNT);
 
-  // Services are static content, but the section still shows a brief skeleton
-  // state so the page doesn't pop in abruptly and stays consistent with the
-  // loading UX used elsewhere on the page.
   useEffect(() => {
     const timer = setTimeout(() => setServicesLoading(false), 600);
     return () => clearTimeout(timer);
@@ -190,7 +203,6 @@ export default function Home() {
     <div className="min-h-screen">
       {/* Hero Section */}
       <section className="relative text-white overflow-hidden ">
-        {/* Background Image Carousel */}
         <div className="absolute inset-0">
           {heroSlides.map((slide, index) => (
             <Image
@@ -198,7 +210,7 @@ export default function Home() {
               src={slide.image}
               alt={slide.location}
               fill
-              className={`absolute inset-0 object-cover transition-opacity duration-1000 ${currentSlide === index ? "opacity-100" : "opacity-0"
+              className={`absolute inset-0 object-cover transition-opacity duration-1000 ${heroSlide === index ? "opacity-100" : "opacity-0"
                 }`}
               priority={index === 0}
             />
@@ -254,19 +266,17 @@ export default function Home() {
           </motion.div>
         </div>
 
-        {/* Location Badge */}
         <div className="absolute bottom-8 left-8 flex items-center gap-2 bg-black/40 backdrop-blur-sm px-4 py-2 rounded-full">
           <MapPin className="w-4 h-4" />
-          <span className="text-sm">{heroSlides[currentSlide].location}</span>
+          <span className="text-sm">{heroSlides[heroSlide].location}</span>
         </div>
 
-        {/* Navigation Dots */}
         <div className="absolute bottom-8 right-8 flex gap-2">
           {heroSlides.map((_, index) => (
             <button
               key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`w-2 h-2 rounded-full transition-all ${currentSlide === index ? "bg-white w-6" : "bg-white/50"
+              onClick={() => setHeroSlide(index)}
+              className={`w-2 h-2 rounded-full transition-all ${heroSlide === index ? "bg-white w-6" : "bg-white/50"
                 }`}
             />
           ))}
@@ -300,114 +310,87 @@ export default function Home() {
       </section>
 
       {/* Services Section */}
-      {servicesLoading ? (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100"
+      <section className="py-14 bg-gray-50 border-t border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                Our Services
+              </h2>
+              <p className="text-lg text-gray-600">
+                We offer a range of flexible office solutions to meet the
+                unique needs of your business.
+              </p>
+            </div>
+            <Link
+              href="/services"
+              className="inline-flex items-center gap-2 mt-4 md:mt-0 text-[#1B3A8C] font-semibold hover:text-[#FFC107]"
             >
-              {/* Image Skeleton */}
-              <div className="aspect-video bg-gray-200 animate-pulse" />
+              View All Services
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
 
-              {/* Content Skeleton */}
-              <div className="p-6 space-y-4">
-                <div className="h-6 w-2/3 rounded bg-gray-200 animate-pulse" />
-
-                <div className="space-y-2">
-                  <div className="h-4 w-full rounded bg-gray-200 animate-pulse" />
-                  <div className="h-4 w-5/6 rounded bg-gray-200 animate-pulse" />
-                  <div className="h-4 w-3/4 rounded bg-gray-200 animate-pulse" />
+          {servicesLoading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {Array.from({ length: services.length }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse"
+                >
+                  <div className="relative aspect-video bg-gray-100" />
+                  <div className="p-6 space-y-3">
+                    <div className="h-5 w-2/3 rounded bg-gray-100" />
+                    <div className="h-3 w-full rounded bg-gray-100" />
+                    <div className="h-3 w-4/5 rounded bg-gray-100" />
+                    <div className="h-3 w-1/3 rounded bg-gray-100 mt-4" />
+                  </div>
                 </div>
-
-                <div className="pt-2">
-                  <div className="h-4 w-32 rounded bg-gray-200 animate-pulse" />
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : (
-        <section className="py-14 bg-gray-50 border-t border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12">
-              <div>
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                  Our Services
-                </h2>
-                <p className="text-lg text-gray-600">
-                  We offer a range of flexible office solutions to meet the unique
-                  needs of your business.
-                </p>
-              </div>
-              <Link
-                href="/services"
-                className="inline-flex items-center gap-2 mt-4 md:mt-0 text-[#1B3A8C] font-semibold hover:text-[#FFC107]"
-              >
-                View All Services
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-            </div>
-
-            {servicesLoading ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {Array.from({ length: services.length }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse"
-                  >
-                    <div className="relative aspect-video bg-gray-100" />
-                    <div className="p-6 space-y-3">
-                      <div className="h-5 w-2/3 rounded bg-gray-100" />
-                      <div className="h-3 w-full rounded bg-gray-100" />
-                      <div className="h-3 w-4/5 rounded bg-gray-100" />
-                      <div className="h-3 w-1/3 rounded bg-gray-100 mt-4" />
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {services.map((service, index) => (
+                <motion.div
+                  key={service.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  viewport={{ once: true }}
+                  className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
+                >
+                  <div className="relative aspect-video overflow-hidden">
+                    <Image
+                      src={service.image}
+                      alt={service.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      unoptimized
+                    />
+                    <div className="absolute inset-0" />
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      {service.title}
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      {service.description}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <Link
+                        href="/quotation"
+                        className="text-md font-bold text-[#1B3A8C] hover:text-[#FFC107] hover:underline transition-colors"
+                      >
+                        Get Quotation →
+                      </Link>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {services.map((service, index) => (
-                  <motion.div
-                    key={service.title}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    viewport={{ once: true }}
-                    className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
-                  >
-                    <div className="relative aspect-video overflow-hidden">
-                      <Image
-                        src={service.image}
-                        alt={service.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500 bg-opacity-50 group-hover:opacity-100"
-                        unoptimized
-                      />
-                      <div className="absolute inset-0 bg-gray-400/20" />
-                    </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        {service.title}
-                      </h3>
-                      <p className="text-gray-600 mb-4">{service.description}</p>
-                      <div className="flex items-center justify-between">
-                        <Link
-                          href="/quotation"
-                          className="text-md font-bold text-[#1B3A8C] hover:text-[#FFC107] hover:underline transition-colors"
-                        >
-                          Get Quotation →
-                        </Link>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Benefits Section */}
       <section className="py-16 bg-gray-50">
@@ -447,29 +430,32 @@ export default function Home() {
                 </Link>
               </div>
             </div>
-            <div className="relative">
-              <div className="relative aspect-square rounded-2xl overflow-hidden">
-                <Image
-                  src="/_ARM8120.jpg"
-                  alt="Office interior"
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
-                <div className="absolute inset-0 bg-gray-400/20" />
+            <div className="relative aspect-square w-full">
+              <div className="absolute inset-0 overflow-hidden rounded-2xl">
+                {spacesCarousel.map((slide, index) => (
+                  <Image
+                    key={index}
+                    src={slide.image}
+                    alt=""
+                    fill
+                    priority={index === 0}
+                    className={`absolute inset-0 object-cover transition-opacity duration-1000 ${spaceSlide === index ? "opacity-100" : "opacity-0"
+                      }`}
+                  />
+                ))}
+                <div className="absolute inset-0 bg-black/10" />
               </div>
-              <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl">
+
+              <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl max-w-lg z-10">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-[#C5D2EC]/50 rounded-full flex items-center justify-center">
-                    <CheckCircle2 className="w-6 h-6 text-[#1B3A8C]" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#C5D2EC]/50">
+                    <CheckCircle2 className="h-6 w-6 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-900">
-                      Ready to Use
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Move in immediately with all amenities provided.
-                    </div>
+                    <h3 className="font-semibold text-gray-900">Ready to Use</h3>
+                    <p className="text-sm text-gray-600">
+                      Move in immediately with all amenities provided
+                    </p>
                   </div>
                 </div>
               </div>
@@ -492,7 +478,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Loading state */}
           {loading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {Array.from({ length: FEATURED_COUNT }).map((_, i) => (
@@ -528,7 +513,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Error state */}
           {!loading && loadError && (
             <div className="flex flex-col items-center justify-center text-center py-16 px-4">
               <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 border border-red-100">
@@ -541,7 +525,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Empty state */}
           {!loading && !loadError && featuredTestimonials.length === 0 && (
             <div className="flex flex-col items-center justify-center text-center py-16 px-4">
               <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 border border-gray-200">
@@ -556,7 +539,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Results */}
           {!loading && !loadError && featuredTestimonials.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {featuredTestimonials.map((t, i) => (

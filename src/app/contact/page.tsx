@@ -107,6 +107,13 @@ const SERVICES_WITH_FIELDS = [
   "ocular-visit",
 ];
 
+const BRANCH_OPTIONS = [
+  { value: "", label: "Select Branch" },
+  { value: "tower-6789", label: "Tower 6789" },
+  { value: "insular-life", label: "Insular Life Building" },
+  { value: "both", label: "Both Branches" },
+];
+
 function DynamicFields({
   inquiryType,
   dynamicData,
@@ -240,6 +247,9 @@ function DynamicFields({
     case "meeting-room":
       return (
         <div className="space-y-6">
+          <div className="rounded-xl border border-[#1B3A8C]/15 bg-[#1B3A8C]/5 px-4 py-3 text-sm text-[#1B3A8C]">
+            We&apos;ll check the availability.
+          </div>
           {field(
             "participants",
             "Number of Participants",
@@ -324,6 +334,7 @@ function MultiStepForm() {
     email: "",
     phone: "",
     company: "",
+    branchInterest: "",
     inquiryType: "",
     message: "",
     policy: false,
@@ -394,6 +405,7 @@ function MultiStepForm() {
         email: "",
         phone: "",
         company: "",
+        branchInterest: "",
         inquiryType: "",
         message: "",
         policy: false,
@@ -545,6 +557,28 @@ function MultiStepForm() {
                 </div>
 
                 <div>
+                  <Label htmlFor="branchInterest" required>
+                    Branch Interested In
+                  </Label>
+                  <SelectWrapper>
+                    <select
+                      id="branchInterest"
+                      name="branchInterest"
+                      value={formData.branchInterest}
+                      onChange={handleChange}
+                      required
+                      className={selectCls}
+                    >
+                      {BRANCH_OPTIONS.map((branch) => (
+                        <option key={branch.value} value={branch.value}>
+                          {branch.label}
+                        </option>
+                      ))}
+                    </select>
+                  </SelectWrapper>
+                </div>
+
+                <div>
                   <Label htmlFor="inquiryType" required>
                     Inquiry Type
                   </Label>
@@ -578,10 +612,12 @@ function MultiStepForm() {
                       value={formData.message}
                       onChange={handleChange}
                       required
+                      maxLength={200}
                       rows={5}
                       className={`${inputCls} resize-none`}
                       placeholder="Tell us about your requirements..."
                     />
+                    <p className="mt-2 text-xs text-gray-500 text-right">{formData.message.length}/200</p>
                   </div>
                 )}
 
@@ -595,6 +631,7 @@ function MultiStepForm() {
                         !formData.name ||
                         !formData.email ||
                         !formData.phone ||
+                        !formData.branchInterest ||
                         !formData.inquiryType
                       }
                       className="w-full md:w-auto px-8 py-4 bg-[#FFC107] text-[#1B3A8C] rounded-full font-semibold hover:bg-[#FFC107]/80 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -610,6 +647,7 @@ function MultiStepForm() {
                         !formData.name ||
                         !formData.email ||
                         !formData.phone ||
+                        !formData.branchInterest ||
                         !formData.inquiryType ||
                         !formData.message
                       }
@@ -668,10 +706,12 @@ function MultiStepForm() {
                     value={formData.message}
                     onChange={handleChange}
                     required
+                    maxLength={200}
                     rows={4}
                     className={`${inputCls} resize-none`}
                     placeholder="Tell us about your requirements..."
                   />
+                  <p className="mt-2 text-xs text-gray-500 text-right">{formData.message.length}/200</p>
                 </div>
 
                 {/* Navigation */}

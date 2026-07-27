@@ -21,12 +21,13 @@ export interface ChatConversation {
     chat_inquiry_id: number | null;
     session_id: string;
     chat_mode: "assistant" | "admin";
-    status: "active" | "waiting_admin" | "closed";
+    status: "active" | "waiting_admin" | "agent_requested" | "agent_active" | "agent_closed" | "closed";
     message_count: number;
     started_at: string;
     ended_at: string | null;
     created_at: string;
     updated_at: string;
+    addressed_at?: string | null;
     inquiry?: {
         id: number;
         full_name: string;
@@ -48,6 +49,11 @@ export interface ChatMessage {
 
 export interface ConversationResponse extends ChatConversation {
     messages: ChatMessage[];
+}
+
+export interface PreferredContactPayload {
+    preferred_time: string;
+    preferred_method?: "email" | "phone" | "either";
 }
 
 export class ChatApiError extends Error {
@@ -104,9 +110,6 @@ async function request<T>(
 }
 
 export const chatApi = {
-    /**
-     * POST /api/chat/start
-     */
     start(payload: ChatInquiryPayload) {
         return request<StartChatResponse>("/chat/start", {
             method: "POST",
@@ -114,9 +117,6 @@ export const chatApi = {
         });
     },
 
-    /**
-     * POST /api/chat/{conversation}/message
-     */
     sendMessage(
         conversationId: number,
         sender: "user" | "assistant" | "admin" | "system",
@@ -141,18 +141,26 @@ export const chatApi = {
         });
     },
 
-    /**
-     * GET /api/chat/{conversation}
-     */
+    submitPreferredContact(conversationId: number, payload: PreferredContactPayload) {
+        return request(`/chat/${conversationId}/preferred-contact`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
+    },
+
+    markAddressed(conversationId: number, addressed: boolean) {
+        return request(`/chat/${conversationId}/addressed`, {
+            method: "PATCH",
+            body: JSON.stringify({ addressed }),
+        });
+    },
+
     getConversation(conversationId: number) {
         return request<ConversationResponse>(
             `/chat/${conversationId}`
         );
     },
 
-    /**
-     * PATCH /api/chat/{conversation}/mode
-     */
     switchMode(
         conversationId: number,
         mode: "assistant" | "admin"
@@ -165,9 +173,6 @@ export const chatApi = {
         });
     },
 
-    /**
-     * PATCH /api/chat/{conversation}/close
-     */
     closeConversation(conversationId: number) {
         return request(`/chat/${conversationId}/close`, {
             method: "PATCH",
@@ -175,8 +180,40 @@ export const chatApi = {
     },
 
     /**
-     * GET /api/chat
+     * Best-effort "close on tab exit" call.
+     *
+     * Regular fetch() gets cancelled by the browser when the tab is
+     * actually closing (unload), so this uses sendBeacon when available
+     * (fire-and-forget, survives page teardown) and falls back to a
+     * keepalive fetch otherwise. Both hit the SAME close endpoint as
+     * closeConversation() — if your backend requires PATCH specifically
+     * and can't accept a beacon (which is always a POST), add a
+     * `POST /api/chat/{conversation}/close-beacon` route server-side that
+     * does the same thing as the PATCH close and swap the URL below.
      */
+    closeConversationOnExit(conversationId: number) {
+        const url = `${API_URL}/api/chat/${conversationId}/close`;
+
+        if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
+            const blob = new Blob([JSON.stringify({})], {
+                type: "application/json",
+            });
+            const ok = navigator.sendBeacon(url, blob);
+            if (ok) return;
+        }
+
+        try {
+            fetch(url, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({}),
+                keepalive: true,
+            }).catch(() => {});
+        } catch {
+            // Best-effort only — nothing more we can do during teardown.
+        }
+    },
+
     listConversations() {
         return request("/chat");
     },

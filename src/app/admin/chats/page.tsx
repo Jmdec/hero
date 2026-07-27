@@ -9,9 +9,12 @@ import {
     Headset,
     Inbox,
     Mail,
+    Menu,
+    RefreshCw,
     Search,
     Send,
     User,
+    X,
     XCircle,
 } from "lucide-react";
 import { chatApi, type ChatConversation, type ConversationResponse } from "@/lib/chatApi";
@@ -36,8 +39,55 @@ const STATUS: Record<StatusKey, { label: string; rail: string; dot: string; chip
 // admin reply straight away without a separate "take over" click first.
 const NEEDS_ADMIN: StatusKey[] = ["waiting_admin", "agent_requested"];
 
+// Statuses where a human owns (or has been asked to own) the conversation.
+// While in one of these, the admin panel is the only one that should be
+// replying — this mirrors AGENT_OWNED_STATUSES on the widget side so the
+// two surfaces can't disagree about who's supposed to be talking.
+const AGENT_OWNED: StatusKey[] = ["waiting_admin", "agent_requested", "agent_active"];
+
+// Client-side filter for the "addressed" workflow — orthogonal to chat
+// status, since a conversation can be closed without anyone having
+// confirmed the inquiry was actually handled (or vice versa: still open
+// but already answered and just waiting on the visitor).
+type AddressedFilter = "all" | "needs_response" | "addressed";
+
+// Sender color scheme for message bubbles — keeps the three roles visually
+// distinct at a glance (admin / AI assistant / client), independent of the
+// left/right alignment used to separate "us" (admin) from "them".
+type SenderKey = "admin" | "assistant" | "client";
+
+const SENDER_STYLE: Record<SenderKey, { bubble: string; label: string; icon: typeof User }> = {
+    admin: {
+        bubble: "rounded-br-sm bg-[#0D47A1] text-white",
+        label: "text-blue-100/80",
+        icon: User,
+    },
+    assistant: {
+        bubble: "rounded-bl-sm border border-violet-100 bg-violet-50 text-violet-900",
+        label: "text-violet-400",
+        icon: Bot,
+    },
+    client: {
+        bubble: "rounded-bl-sm border border-slate-100 bg-white text-slate-700",
+        label: "text-slate-400",
+        icon: User,
+    },
+};
+
+function senderKeyOf(sender: string): SenderKey {
+    if (sender === "admin") return "admin";
+    if (sender === "assistant") return "assistant";
+    // Anything else (the visitor's own role string, whatever the backend
+    // calls it) is treated as the client.
+    return "client";
+}
+
 function statusOf(status: string) {
     return STATUS[status as StatusKey] ?? STATUS.closed;
+}
+
+function isAddressed(c: ChatConversation) {
+    return Boolean(c.addressed_at);
 }
 
 /** A live-indicator dot with a proper radiating ping ring, used instead of
@@ -57,6 +107,15 @@ function StatusChip({ status }: { status: string }) {
         <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ring-inset ${s.chip}`}>
             {s.live ? <LiveDot /> : <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />}
             {s.label}
+        </span>
+    );
+}
+
+function AddressedChip() {
+    return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-medium text-teal-700 ring-1 ring-inset ring-teal-600/20">
+            <CheckCircle2 className="h-3 w-3" />
+            Addressed
         </span>
     );
 }
@@ -86,8 +145,8 @@ function durationSince(iso: string) {
 }
 
 /** Skeleton shown in the thread pane while a newly-selected conversation is
- *  still being fetched, so switching threads doesn't show stale messages
- *  or a blank pane while the request is in flight. */
+ *  still being fetched (or the admin hit refresh), so switching threads or
+ *  refreshing doesn't show stale messages or a blank pane mid-request. */
 function ConversationSkeleton() {
     return (
         <div className="flex h-full flex-col">
@@ -110,6 +169,18 @@ function ConversationSkeleton() {
     );
 }
 
+/** Skeleton rows for the conversation list, shown on first load and while a
+ *  manual refresh is in flight. */
+function ConversationListSkeleton() {
+    return (
+        <div className="space-y-1.5 p-1">
+            {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="h-18 animate-pulse rounded-xl bg-slate-100" />
+            ))}
+        </div>
+    );
+}
+
 /* ---------------------------------------------------------------------- */
 
 export default function AdminChatsPage() {
@@ -118,12 +189,22 @@ export default function AdminChatsPage() {
     const [selectedConversation, setSelectedConversation] = useState<ConversationResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [conversationLoading, setConversationLoading] = useState(false);
+    // NEW: separate from `loading` (which drives the list skeleton on first
+    // paint) so the manual refresh button can show its own spinner without
+    // re-triggering the full-page skeleton every click.
+    const [refreshing, setRefreshing] = useState(false);
     const [reply, setReply] = useState("");
     const [sending, setSending] = useState(false);
+    const [markingAddressed, setMarkingAddressed] = useState(false);
     const [error, setError] = useState("");
     const [query, setQuery] = useState("");
+    const [addressedFilter, setAddressedFilter] = useState<AddressedFilter>("all");
     const [agentRequestNotice, setAgentRequestNotice] = useState<string | null>(null);
+    // Controls the off-canvas conversation list on mobile/tablet, where the
+    // sidebar collapses into a menu button instead of a permanent column.
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Tracks which conversation ids we've already surfaced an "agent requested"
     // notice for, so polling doesn't re-announce the same request every 2s.
@@ -154,7 +235,8 @@ export default function AdminChatsPage() {
     // conversation's status flips to "waiting_admin" / "agent_requested" —
     // that's the reliable place to send it, since it fires even if no admin
     // has this page open. Hook it into whatever transitions the status in
-    // your backend (e.g. the endpoint the widget calls for "Talk to an agent").
+    // your backend (e.g. the endpoint the widget calls for "Talk to an agent"
+    // or the new out-of-hours "preferred contact" submission).
     const checkForNewAgentRequests = (items: ChatConversation[]) => {
         for (const c of items) {
             const needsAdmin = NEEDS_ADMIN.includes(c.status as StatusKey);
@@ -213,6 +295,13 @@ export default function AdminChatsPage() {
                         return conversation;
                     }
 
+                    // Also refresh when just the status changed (e.g. visitor
+                    // requested an agent) even if the message count is the
+                    // same, so the header/composer gating stays current.
+                    if (prev.status !== conversation.status) {
+                        return conversation;
+                    }
+
                     return prev;
                 });
 
@@ -241,6 +330,26 @@ export default function AdminChatsPage() {
             } catch {
                 // Ignore refresh errors and keep the existing view intact.
             }
+        }
+    };
+
+    // Manual refresh button handler — same underlying work as `refresh()`,
+    // but tracked with its own spinner state and always clears any stale
+    // error banner so a successful manual refresh visibly resolves it.
+    // Also flips `conversationLoading` on for the duration, so the thread
+    // pane shows its skeleton alongside the list skeleton (which already
+    // reacts to `loading` inside loadConversations) instead of sitting
+    // there with stale messages while the list clearly refreshes.
+    const handleManualRefresh = async () => {
+        if (refreshing) return;
+        setRefreshing(true);
+        setConversationLoading(true);
+        setError("");
+        try {
+            await refresh();
+        } finally {
+            setRefreshing(false);
+            setConversationLoading(false);
         }
     };
 
@@ -299,27 +408,75 @@ export default function AdminChatsPage() {
         }
     };
 
+    // Marks (or unmarks) an inquiry as handled so it's clear at a glance
+    // which conversations still need a first response, preventing two team
+    // members from replying to the same visitor.
+    const handleToggleAddressed = async () => {
+        if (!selectedConversationId || !selectedConversation) return;
+
+        const nextAddressed = !isAddressed(selectedConversation);
+        setMarkingAddressed(true);
+        setError("");
+
+        try {
+            await chatApi.markAddressed(selectedConversationId, nextAddressed);
+            await refresh();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Unable to update addressed status.");
+        } finally {
+            setMarkingAddressed(false);
+        }
+    };
+
+    // Selecting a conversation from the mobile drawer should also close it,
+    // so tapping a chat takes the admin straight to the thread.
+    const handleSelectConversation = (id: number) => {
+        setSelectedConversationId(id);
+        setSidebarOpen(false);
+    };
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({
             behavior: "smooth",
         });
     }, [selectedConversation?.messages]);
 
+    // Auto-grow the reply box as the admin types — starts at the same
+    // height as the old fixed 3-row textarea, expands with content, and
+    // caps out (then scrolls internally) so a long paste can't push the
+    // send button off-screen or shrink the thread above it.
+    const REPLY_MIN_HEIGHT = 72; // px, ~3 rows
+    const REPLY_MAX_HEIGHT = 200; // px, ~8-9 rows before it scrolls
+
+    useEffect(() => {
+        const el = replyTextareaRef.current;
+        if (!el) return;
+        el.style.height = "auto";
+        const next = Math.min(Math.max(el.scrollHeight, REPLY_MIN_HEIGHT), REPLY_MAX_HEIGHT);
+        el.style.height = `${next}px`;
+    }, [reply]);
+
     const filteredConversations = useMemo(() => {
         const q = query.trim().toLowerCase();
-        const base = !q
+        let base = !q
             ? conversations
             : conversations.filter((c) => {
-                  const name = c.inquiry?.full_name?.toLowerCase() ?? "";
-                  const email = c.inquiry?.email_address?.toLowerCase() ?? "";
-                  return name.includes(q) || email.includes(q);
-              });
+                const name = c.inquiry?.full_name?.toLowerCase() ?? "";
+                const email = c.inquiry?.email_address?.toLowerCase() ?? "";
+                return name.includes(q) || email.includes(q);
+            });
+
+        if (addressedFilter === "needs_response") {
+            base = base.filter((c) => !isAddressed(c));
+        } else if (addressedFilter === "addressed") {
+            base = base.filter((c) => isAddressed(c));
+        }
 
         // Most recently updated conversation first.
         return [...base].sort(
             (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
         );
-    }, [conversations, query]);
+    }, [conversations, query, addressedFilter]);
 
     // Conversation overview — quick counts across the whole queue.
     const overview = useMemo(() => {
@@ -327,21 +484,112 @@ export default function AdminChatsPage() {
         const needsYou = conversations.filter((c) => NEEDS_ADMIN.includes(c.status as StatusKey)).length;
         const live = conversations.filter((c) => (c.status as StatusKey) === "agent_active").length;
         const ended = conversations.filter((c) => statusOf(c.status).ended).length;
-        return { total, needsYou, live, ended };
+        const addressed = conversations.filter(isAddressed).length;
+        const needsResponse = total - addressed;
+        return { total, needsYou, live, ended, addressed, needsResponse };
     }, [conversations]);
 
     const selectedIsEnded = selectedConversation ? statusOf(selectedConversation.status).ended : false;
+    const selectedIsAddressed = selectedConversation ? isAddressed(selectedConversation) : false;
+    const selectedNeedsAdmin = selectedConversation
+        ? NEEDS_ADMIN.includes(selectedConversation.status as StatusKey)
+        : false;
+    const selectedIsAgentOwned = selectedConversation
+        ? AGENT_OWNED.includes(selectedConversation.status as StatusKey)
+        : false;
 
     // True while we're waiting on the thread for the currently-selected id —
-    // covers both the in-flight fetch and the moment right after a click,
-    // before the effect above has swapped selectedConversation over.
+    // covers the in-flight fetch, the moment right after a click (before the
+    // effect above has swapped selectedConversation over), and a manual
+    // refresh (which also flips conversationLoading on).
     const isSwitchingConversation =
         selectedConversationId !== null &&
         (conversationLoading || selectedConversation?.id !== selectedConversationId);
 
+    // Shared list header (search box) and list body (skeleton / empty state /
+    // conversation rows), rendered once for the desktop sidebar column and
+    // once for the mobile off-canvas drawer so both stay in sync.
+    const sidebarSearchHeader = (
+        <div className="shrink-0 space-y-2 border-b border-slate-100 p-3">
+            <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search by name or email"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#0D47A1] focus:bg-white focus:ring-2 focus:ring-[#0D47A1]/10"
+                />
+            </div>
+        </div>
+    );
+
+    const sidebarListBody = (
+        <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5">
+            {loading || refreshing ? (
+                <ConversationListSkeleton />
+            ) : filteredConversations.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 rounded-xl bg-slate-50 p-8 text-center">
+                    <Inbox className="h-5 w-5 text-slate-300" />
+                    <p className="text-sm text-slate-500">
+                        {conversations.length === 0 ? "No conversations yet." : "Nothing matches that filter."}
+                    </p>
+                </div>
+            ) : (
+                filteredConversations.map((conversation) => {
+                    const isActive = conversation.id === selectedConversationId;
+                    const s = statusOf(conversation.status);
+                    const name = conversation.inquiry?.full_name ?? "Guest visitor";
+                    return (
+                        <button
+                            key={conversation.id}
+                            onClick={() => handleSelectConversation(conversation.id)}
+                            className={`group relative flex w-full items-start gap-3 overflow-hidden rounded-xl border p-2.5 pl-3.5 text-left transition ${isActive ? "border-[#0D47A1]/30 bg-[#0D47A1]/4" : "border-transparent hover:bg-slate-50"
+                                }`}
+                        >
+                            <span className={`absolute inset-y-2 left-0 w-0.75 rounded-full ${s.rail}`} />
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
+                                    <span className="shrink-0 font-mono text-[10px] text-slate-400">{timeAgo(conversation.updated_at)}</span>
+                                </div>
+                                <p className="truncate text-xs text-slate-500">{conversation.inquiry?.email_address ?? "No email"}</p>
+                                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <StatusChip status={conversation.status} />
+                                        {isAddressed(conversation) ? <AddressedChip /> : null}
+                                    </div>
+                                    <span className="font-mono text-[10px] text-slate-400">{conversation.message_count} msgs</span>
+                                </div>
+                            </div>
+                        </button>
+                    );
+                })
+            )}
+        </div>
+    );
+
     return (
-        <div className="flex h-screen flex-col">
-            <main className="mx-auto flex w-full min-h-0 max-w-7xl flex-1 flex-col gap-3">
+        <div className="flex h-dvh flex-col overflow-hidden">
+            <main className="mx-auto flex w-full min-h-0 max-w-7xl flex-1 flex-col overflow-hidden">
+                {/* Mobile/tablet top bar */}
+                <div className="flex shrink-0 items-center justify-between gap-2 px-1 pb-2 lg:hidden">
+                    <button
+                        onClick={() => setSidebarOpen(true)}
+                        aria-label="Open conversations menu"
+                        className="flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1]"
+                    >
+                        <Menu className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={() => void handleManualRefresh()}
+                        disabled={refreshing || loading}
+                        aria-label="Refresh conversations"
+                        className="flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                    </button>
+                </div>
+
                 {/* Agent-request toast */}
                 {agentRequestNotice ? (
                     <div className="flex shrink-0 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -361,65 +609,73 @@ export default function AdminChatsPage() {
                     </div>
                 ) : null}
 
-                <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-                    <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                        <div className="shrink-0 border-b border-slate-100 p-3">
-                            <div className="relative">
-                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                                <input
-                                    value={query}
-                                    onChange={(e) => setQuery(e.target.value)}
-                                    placeholder="Search by name or email"
-                                    className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#0D47A1] focus:bg-white focus:ring-2 focus:ring-[#0D47A1]/10"
-                                />
-                            </div>
+                {/* Queue summary + Refresh */}
+                <div className="hidden shrink-0 items-stretch gap-2 mb-2 lg:flex">
+                    <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-5">
+                        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                            <p className="text-[11px] text-slate-400">Total</p>
+                            <p className="text-lg font-semibold text-slate-800">{overview.total}</p>
                         </div>
-
-                        <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5">
-                            {loading ? (
-                                <div className="space-y-1.5 p-1">
-                                    {[0, 1, 2, 3].map((i) => (
-                                        <div key={i} className="h-[72px] animate-pulse rounded-xl bg-slate-100" />
-                                    ))}
-                                </div>
-                            ) : filteredConversations.length === 0 ? (
-                                <div className="flex flex-col items-center gap-2 rounded-xl bg-slate-50 p-8 text-center">
-                                    <Inbox className="h-5 w-5 text-slate-300" />
-                                    <p className="text-sm text-slate-500">
-                                        {conversations.length === 0 ? "No conversations yet." : "Nothing matches that search."}
-                                    </p>
-                                </div>
-                            ) : (
-                                filteredConversations.map((conversation) => {
-                                    const isActive = conversation.id === selectedConversationId;
-                                    const s = statusOf(conversation.status);
-                                    const name = conversation.inquiry?.full_name ?? "Guest visitor";
-                                    return (
-                                        <button
-                                            key={conversation.id}
-                                            onClick={() => setSelectedConversationId(conversation.id)}
-                                            className={`group relative flex w-full items-start gap-3 overflow-hidden rounded-xl border p-2.5 pl-3.5 text-left transition ${
-                                                isActive ? "border-[#0D47A1]/30 bg-[#0D47A1]/[0.04]" : "border-transparent hover:bg-slate-50"
-                                            }`}
-                                        >
-                                            <span className={`absolute inset-y-2 left-0 w-[3px] rounded-full ${s.rail}`} />
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
-                                                    <span className="shrink-0 font-mono text-[10px] text-slate-400">{timeAgo(conversation.updated_at)}</span>
-                                                </div>
-                                                <p className="truncate text-xs text-slate-500">{conversation.inquiry?.email_address ?? "No email"}</p>
-                                                <div className="mt-1.5 flex items-center justify-between gap-2">
-                                                    <StatusChip status={conversation.status} />
-                                                    <span className="font-mono text-[10px] text-slate-400">{conversation.message_count} msgs</span>
-                                                </div>
-                                            </div>
-                                        </button>
-                                    );
-                                })
-                            )}
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                            <p className="text-[11px] text-amber-600">Needs you</p>
+                            <p className="text-lg font-semibold text-amber-700">{overview.needsYou}</p>
+                        </div>
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2">
+                            <p className="text-[11px] text-[#0D47A1]/70">Live now</p>
+                            <p className="text-lg font-semibold text-[#0D47A1]">{overview.live}</p>
+                        </div>
+                        <div className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2">
+                            <p className="text-[11px] text-teal-600">Addressed</p>
+                            <p className="text-lg font-semibold text-teal-700">{overview.addressed}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                            <p className="text-[11px] text-slate-400">Unaddressed</p>
+                            <p className="text-lg font-semibold text-slate-800">{overview.needsResponse}</p>
                         </div>
                     </div>
+
+                    <button
+                        onClick={() => void handleManualRefresh()}
+                        disabled={refreshing || loading}
+                        title="Refresh conversations"
+                        aria-label="Refresh conversations"
+                        className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                        <span className="hidden sm:inline">Refresh</span>
+                    </button>
+                </div>
+
+                <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
+                    {/* Desktop/tablet-landscape sidebar column */}
+                    <div className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:flex">
+                        {sidebarSearchHeader}
+                        {sidebarListBody}
+                    </div>
+
+                    {/* Mobile/tablet off-canvas drawer with the same content */}
+                    {sidebarOpen ? (
+                        <div className="fixed inset-0 z-50 lg:hidden">
+                            <div
+                                className="absolute inset-0 bg-slate-900/40"
+                                onClick={() => setSidebarOpen(false)}
+                            />
+                            <div className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm flex-col overflow-hidden bg-white shadow-xl">
+                                <div className="flex shrink-0 items-center justify-between border-b border-slate-100 p-3">
+                                    <p className="text-sm font-semibold text-slate-800">Conversations</p>
+                                    <button
+                                        onClick={() => setSidebarOpen(false)}
+                                        aria-label="Close conversations menu"
+                                        className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100"
+                                    >
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
+                                {sidebarSearchHeader}
+                                {sidebarListBody}
+                            </div>
+                        </div>
+                    ) : null}
 
                     <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                         {selectedConversationId === null ? (
@@ -443,6 +699,7 @@ export default function AdminChatsPage() {
                                                         {selectedConversation.inquiry?.full_name ?? "Guest visitor"}
                                                     </p>
                                                     <StatusChip status={selectedConversation.status} />
+                                                    {selectedIsAddressed ? <AddressedChip /> : null}
                                                 </div>
                                                 <p className="flex items-center gap-1.5 text-xs text-slate-500">
                                                     <Mail className="h-3 w-3" />
@@ -455,6 +712,17 @@ export default function AdminChatsPage() {
                                             </div>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
+                                            <button
+                                                onClick={() => void handleToggleAddressed()}
+                                                disabled={markingAddressed}
+                                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedIsAddressed
+                                                    ? "border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100"
+                                                    : "border-slate-200 text-slate-700 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
+                                                    }`}
+                                            >
+                                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                                {selectedIsAddressed ? "Addressed" : "Mark as addressed"}
+                                            </button>
                                             <button
                                                 onClick={() => void handleTakeOver()}
                                                 disabled={selectedIsEnded}
@@ -510,18 +778,20 @@ export default function AdminChatsPage() {
                                                     );
                                                 }
 
-                                                const isAdmin = message.sender === "admin";
+                                                // Color-coded by role: admin (blue, right), AI assistant
+                                                // (violet, left), client/visitor (white, left).
+                                                const senderKey = senderKeyOf(message.sender);
+                                                const style = SENDER_STYLE[senderKey];
+                                                const SenderIcon = style.icon;
+                                                const isAdmin = senderKey === "admin";
+
                                                 return (
                                                     <div key={message.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
                                                         <div
-                                                            className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
-                                                                isAdmin
-                                                                    ? "rounded-br-sm bg-[#0D47A1] text-white"
-                                                                    : "rounded-bl-sm border border-slate-100 bg-white text-slate-700"
-                                                            }`}
+                                                            className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${style.bubble}`}
                                                         >
-                                                            <div className={`mb-1 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wide ${isAdmin ? "text-blue-100/80" : "text-slate-400"}`}>
-                                                                {isAdmin ? <User className="h-3 w-3" /> : <Bot className="h-3 w-3" />}
+                                                            <div className={`mb-1 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wide ${style.label}`}>
+                                                                <SenderIcon className="h-3 w-3" />
                                                                 <span>{message.sender}</span>
                                                                 <span>·</span>
                                                                 <span>{new Date(message.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
@@ -545,13 +815,25 @@ export default function AdminChatsPage() {
                                         </div>
                                     ) : (
                                         <div className="mt-3 shrink-0 rounded-xl border border-slate-200 p-3">
-                                            {NEEDS_ADMIN.includes(selectedConversation.status as StatusKey) ? (
+                                            {selectedNeedsAdmin ? (
                                                 <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-amber-600">
                                                     <LiveDot />
                                                     This visitor asked for a person — sending a reply takes over the chat.
                                                 </p>
+                                            ) : selectedIsAgentOwned ? (
+                                                <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#0D47A1]">
+                                                    <Headset className="h-3.5 w-3.5" />
+                                                    You own this chat — the AI assistant is paused here.
+                                                </p>
+                                            ) : null}
+                                            {!selectedIsAddressed ? (
+                                                <p className="mb-2 flex items-center gap-1.5 text-xs text-slate-400">
+                                                    <AlertCircle className="h-3.5 w-3.5" />
+                                                    Not yet marked as addressed — check before replying to avoid a duplicate response.
+                                                </p>
                                             ) : null}
                                             <textarea
+                                                ref={replyTextareaRef}
                                                 value={reply}
                                                 onChange={(event) => setReply(event.target.value)}
                                                 onKeyDown={(event) => {
@@ -561,8 +843,9 @@ export default function AdminChatsPage() {
                                                     }
                                                 }}
                                                 placeholder="Type a reply to the visitor..."
-                                                rows={3}
-                                                className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#0D47A1] focus:ring-2 focus:ring-[#0D47A1]/10"
+                                                rows={1}
+                                                style={{ minHeight: REPLY_MIN_HEIGHT, maxHeight: REPLY_MAX_HEIGHT }}
+                                                className="w-full resize-none overflow-y-auto rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#0D47A1] focus:ring-2 focus:ring-[#0D47A1]/10"
                                             />
                                             <div className="mt-2 flex items-center justify-between">
                                                 <div className="flex items-center gap-1.5 text-xs text-slate-400">

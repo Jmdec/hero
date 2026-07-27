@@ -5,13 +5,16 @@ const LARAVEL_API_URL = process.env.LARAVEL_API_URL ?? "http://localhost:8000/ap
 export async function GET(request: NextRequest) {
     try {
         const url = new URL(request.url);
-        const laravelUrl = `${LARAVEL_API_URL}/analytics${url.search}`;
+        const laravelUrl = `${LARAVEL_API_URL}/admin/analytics${url.search}`;
+
+        const authHeader = request.headers.get("authorization") ?? "";
 
         const res = await fetch(laravelUrl, {
             method: "GET",
             headers: {
                 Accept: "application/json",
                 "Content-Type": "application/json",
+                ...(authHeader ? { Authorization: authHeader } : {}),
             },
             cache: "no-store",
         });

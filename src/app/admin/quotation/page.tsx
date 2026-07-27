@@ -23,7 +23,7 @@ import {
     Hash,
     Sparkles,
     Pencil,
-    Copy,
+    Download,
 } from "lucide-react";
 
 type Status =
@@ -51,6 +51,13 @@ interface QuotationDetail {
     payment_method: "paymongo" | "gcash";
     transaction_id: string | null;
     receipt: string | null;
+    receipt_url?: string | null;
+    receipt_path?: string | null;
+    id_type?: string | null;
+    id_number?: string | null;
+    government_id_file?: string | null;
+    government_id_url?: string | null;
+    government_id_path?: string | null;
 }
 
 interface Quotation {
@@ -131,6 +138,14 @@ function getInitials(name: string | null | undefined) {
     return (first + last).toUpperCase() || "?";
 }
 
+// Resolves a stored receipt/ID path (relative storage path or already-absolute URL)
+// into a URL the <img>/<a> tags can use directly.
+function toAssetUrl(path: string | null | undefined): string | null {
+    if (!path) return null;
+    if (/^https?:\/\//i.test(path)) return path;
+    return `/storage/${path.replace(/^\/+/, "")}`;
+}
+
 // Toast
 
 type ToastTone = "success" | "error";
@@ -208,28 +223,6 @@ function StatCard({
     );
 }
 
-// Small reusable pieces for the detail modal
-
-function SectionCard({
-    icon: Icon,
-    title,
-    children,
-}: {
-    icon: React.ComponentType<{ className?: string }>;
-    title: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="bg-white border border-[#D9E2F0] rounded-2xl overflow-hidden">
-            <div className="flex items-center gap-2 px-5 py-3 border-b border-[#F0F4FB] bg-[#F8FAFD]">
-                <Icon className="w-3.5 h-3.5 text-[#1B3A8C]" />
-                <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#0B1F4A]/50">{title}</p>
-            </div>
-            <div className="p-5 space-y-4">{children}</div>
-        </div>
-    );
-}
-
 function InfoRow({
     icon: Icon,
     label,
@@ -275,9 +268,11 @@ export default function AdminQuotationsPage() {
     const [deleteTarget, setDeleteTarget] = useState<Quotation | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [statusChangeTarget, setStatusChangeTarget] = useState<{ quote: Quotation; newStatus: Status } | null>(null);
+    const [previewImage, setPreviewImage] = useState<{ url: string; label: string } | null>(null);
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const [statusEditTarget, setStatusEditTarget] = useState<Quotation | null>(null);
     const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
+
     const [toasts, setToasts] = useState<ToastItem[]>([]);
     const toastIdRef = useRef(0);
 
@@ -292,18 +287,6 @@ export default function AdminQuotationsPage() {
     const dismissToast = (id: number) => {
         setToasts((t) => t.filter((toast) => toast.id !== id));
     };
-
-    const copyToClipboard = useCallback(
-        async (text: string, label: string) => {
-            try {
-                await navigator.clipboard.writeText(text);
-                pushToast(`${label} copied to clipboard`, "success");
-            } catch {
-                pushToast(`Couldn't copy ${label.toLowerCase()}`, "error");
-            }
-        },
-        [pushToast]
-    );
 
     const fetchQuotations = useCallback(async (background = false) => {
         background ? setRefreshing(true) : setLoading(true);
@@ -331,7 +314,6 @@ export default function AdminQuotationsPage() {
             if (!matchesStatus) return false;
             if (!q) return true;
             const haystack = [
-                quote.quotation_id,
                 quote.service_name,
                 quote.detail?.full_name,
                 quote.detail?.company_name,
@@ -371,6 +353,7 @@ export default function AdminQuotationsPage() {
     const handleStatusUpdate = async (quote: Quotation, status: Status) => {
         const previousStatus = quote.status;
         const statusLabel = STATUSES.find((s) => s.value === status)?.label ?? status;
+        const who = quote.detail?.full_name ?? "Request";
 
         // Skip no-op updates
         if (previousStatus === status) return;
@@ -393,11 +376,11 @@ export default function AdminQuotationsPage() {
                 }),
             });
             if (!res.ok) throw new Error("Failed to update status.");
-            pushToast(`${quote.quotation_id} updated to "${statusLabel}"`, "success");
+            pushToast(`${who} updated to "${statusLabel}"`, "success");
         } catch {
             setQuotations(previous);
             setError("Couldn't update the status. Please try again.");
-            pushToast(`Couldn't update ${quote.quotation_id} to "${statusLabel}"`, "error");
+            pushToast(`Couldn't update ${who} to "${statusLabel}"`, "error");
         }
     };
 
@@ -416,6 +399,7 @@ export default function AdminQuotationsPage() {
     const confirmDelete = async () => {
         if (!deleteTarget) return;
         const quote = deleteTarget;
+        const who = quote.detail?.full_name ?? "Request";
         const previous = quotations;
         setDeleting(true);
         try {
@@ -423,12 +407,12 @@ export default function AdminQuotationsPage() {
             if (!res.ok) throw new Error("Failed to delete quotation.");
             setQuotations((qs) => qs.filter((q) => q.id !== quote.id));
             setSelected((s) => (s && s.id === quote.id ? null : s));
-            pushToast(`${quote.quotation_id} deleted`, "success");
+            pushToast(`${who} deleted`, "success");
             setDeleteTarget(null);
         } catch {
             setQuotations(previous);
             setError("Couldn't delete the quotation. Please try again.");
-            pushToast(`Couldn't delete ${quote.quotation_id}`, "error");
+            pushToast(`Couldn't delete ${who}`, "error");
         } finally {
             setDeleting(false);
         }
@@ -478,7 +462,7 @@ export default function AdminQuotationsPage() {
                             type="text"
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Search by quotation ID, name, email, phone…"
+                            placeholder="Search by name, email, phone…"
                             className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#D9E2F0] rounded-xl text-sm text-[#0B1F4A] placeholder:text-[#64748B]/60 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C]"
                         />
                     </div>
@@ -526,7 +510,6 @@ export default function AdminQuotationsPage() {
                             <table className="w-full text-sm">
                                 <thead className="bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
                                     <tr>
-                                        <th className="px-5 py-3 text-left">Quotation</th>
                                         <th className="px-5 py-3 text-left">Customer</th>
                                         <th className="px-5 py-3 text-left">Service</th>
                                         <th className="px-5 py-3 text-left">Date</th>
@@ -541,7 +524,6 @@ export default function AdminQuotationsPage() {
                                             onClick={() => setSelected(quote)}
                                             className="border-b border-[#F0F4FB] last:border-0 hover:bg-[#F8FAFD] cursor-pointer transition"
                                         >
-                                            <td className="px-5 py-4 font-semibold text-[#0B1F4A] whitespace-nowrap">{quote.quotation_id}</td>
                                             <td className="px-5 py-4">
                                                 <p className="font-semibold text-[#0B1F4A]">{quote.detail?.full_name ?? "—"}</p>
                                                 <p className="text-xs text-[#64748B]">{quote.detail?.email ?? "—"}</p>
@@ -555,7 +537,7 @@ export default function AdminQuotationsPage() {
                                                         openStatusEdit(quote);
                                                     }}
                                                     className="group inline-flex items-center gap-1.5 rounded-full transition hover:opacity-80"
-                                                    aria-label={`Edit status for ${quote.quotation_id}`}
+                                                    aria-label={`Edit status for ${quote.detail?.full_name ?? "this request"}`}
                                                     title="Edit status"
                                                 >
                                                     <StatusBadge status={quote.status} />
@@ -567,7 +549,7 @@ export default function AdminQuotationsPage() {
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); setSelected(quote); }}
                                                         className="p-2 rounded-lg text-[#64748B] hover:text-[#1B3A8C] hover:bg-[#F0F4FB] transition"
-                                                        aria-label={`View ${quote.quotation_id}`}
+                                                        aria-label={`View request from ${quote.detail?.full_name ?? "customer"}`}
                                                         title="View"
                                                     >
                                                         <Eye className="w-4 h-4" />
@@ -575,7 +557,7 @@ export default function AdminQuotationsPage() {
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); setDeleteTarget(quote); }}
                                                         className="p-2 rounded-lg text-[#64748B] hover:text-red-600 hover:bg-red-50 transition"
-                                                        aria-label={`Delete ${quote.quotation_id}`}
+                                                        aria-label={`Delete request from ${quote.detail?.full_name ?? "customer"}`}
                                                         title="Delete"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
@@ -594,216 +576,192 @@ export default function AdminQuotationsPage() {
             {/* Detail modal */}
             {selected && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelected(null)} />
-                    <div className="relative w-full max-w-xl bg-[#F8FAFD] rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[88vh]">
+                    <div className="absolute inset-0 bg-black/50" onClick={() => setSelected(null)} />
+                    <div className="relative w-full max-w-lg bg-white rounded-2xl overflow-hidden shadow-xl flex flex-col max-h-[85vh]">
+
                         {/* Header */}
-                        <div className="relative shrink-0 bg-linear-to-br from-[#1B3A8C] to-[#0B1F4A] px-6 pt-6 pb-14 overflow-hidden">
-                            <div className="absolute -right-10 -top-14 w-48 h-48 rounded-full bg-white/5" />
-                            <div className="absolute -right-2 top-16 w-24 h-24 rounded-full bg-white/5" />
-
-                            <div className="relative flex items-start justify-between">
-                                <button
-                                    onClick={() => copyToClipboard(selected.quotation_id, "Quotation ID")}
-                                    className="inline-flex items-center gap-1.5 text-[11px] font-medium text-white/60 hover:text-white/90 tracking-wide transition"
-                                    title="Copy quotation ID"
-                                >
-                                    <Hash className="w-3 h-3" />
-                                    {selected.quotation_id}
-                                    <Copy className="w-3 h-3" />
-                                </button>
-                                <button
-                                    onClick={() => setSelected(null)}
-                                    className="p-2 -m-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition"
-                                    aria-label="Close"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
-                            </div>
-
-                            <div className="relative mt-4 flex items-center gap-4">
-                                <span className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 text-white flex items-center justify-center font-bold text-lg shrink-0 backdrop-blur-sm">
+                        <div className="shrink-0 px-6 py-5 border-b border-[#E5EAF2] flex items-start justify-between gap-4">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <span className="w-11 h-11 rounded-full bg-[#1B3A8C] text-white flex items-center justify-center font-semibold text-sm shrink-0">
                                     {getInitials(selected.detail?.full_name)}
                                 </span>
                                 <div className="min-w-0">
-                                    <h2 className="text-xl font-bold text-white truncate">
+                                    <h2 className="text-base font-semibold text-[#0B1F4A] truncate">
                                         {selected.detail?.full_name ?? "Unnamed request"}
                                     </h2>
-                                    <p className="text-sm text-white/60 truncate">
+                                    <p className="text-xs text-[#64748B] truncate">
                                         {selected.detail?.company_name ?? "Submitted"} · {formatDate(selected.created_at)}
                                     </p>
                                 </div>
                             </div>
+                            <button
+                                onClick={() => setSelected(null)}
+                                className="p-1.5 -m-1.5 rounded-full text-[#64748B] hover:bg-[#F0F4FB] transition shrink-0"
+                                aria-label="Close"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
                         </div>
 
-                        {/* Status card, overlapping the header */}
-                        <div className="relative z-10 px-6 -mt-8">
-                            <div className="bg-white border border-[#D9E2F0] rounded-2xl shadow-[0_8px_24px_rgba(11,31,74,0.08)] px-5 py-4 flex items-center justify-between gap-4">
-                                <div className="min-w-0">
-                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B] mb-1.5">Status</p>
-                                    <StatusBadge status={selected.status} />
-                                </div>
-                                <div className="relative w-44 shrink-0">
-                                    <select
-                                        value={selected.status}
-                                        onChange={(e) => {
-                                            const newStatus = e.target.value as Status;
-                                            if (newStatus === selected.status) return;
-                                            setStatusChangeTarget({ quote: selected, newStatus });
-                                        }}
-                                        className="w-full appearance-none px-3.5 py-2.5 pr-9 bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl text-xs font-semibold text-[#0B1F4A] focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C] cursor-pointer"
-                                    >
-                                        {STATUSES.map((s) => (
-                                            <option key={s.value} value={s.value}>{s.label}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#64748B] pointer-events-none" />
-                                </div>
+                        <div className="overflow-y-auto px-6 py-5 space-y-5 flex-1">
+
+                            {/* Status */}
+                            <div className="flex items-center justify-between gap-3">
+                                <StatusBadge status={selected.status} />
+                                <select
+                                    value={selected.status}
+                                    onChange={(e) => {
+                                        const newStatus = e.target.value as Status;
+                                        if (newStatus === selected.status) return;
+                                        setStatusChangeTarget({ quote: selected, newStatus });
+                                    }}
+                                    className="text-xs font-medium text-[#0B1F4A] bg-[#F8FAFD] border border-[#D9E2F0] rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1B3A8C] cursor-pointer"
+                                >
+                                    {STATUSES.map((s) => (
+                                        <option key={s.value} value={s.value}>{s.label}</option>
+                                    ))}
+                                </select>
                             </div>
-                        </div>
-
-                        <div className="overflow-y-auto px-6 pt-5 pb-6 space-y-4 flex-1">
-                            {/* Quick contact actions */}
-                            {(selected.detail?.email || selected.detail?.phone) && (
-                                <div className="flex gap-2.5">
-                                    {selected.detail?.email && (
-                                        <a
-                                            href={`mailto:${selected.detail.email}`}
-                                            className="flex-1 flex items-center gap-2 justify-center px-3 py-2.5 rounded-xl border border-[#D9E2F0] bg-white text-xs font-semibold text-[#1B3A8C] hover:border-[#1B3A8C] hover:bg-[#F0F4FB] transition"
-                                        >
-                                            <Mail className="w-3.5 h-3.5" />
-                                            Email
-                                        </a>
-                                    )}
-                                    {selected.detail?.phone && (
-                                        <a
-                                            href={`tel:${selected.detail.phone}`}
-                                            className="flex-1 flex items-center gap-2 justify-center px-3 py-2.5 rounded-xl border border-[#D9E2F0] bg-white text-xs font-semibold text-[#1B3A8C] hover:border-[#1B3A8C] hover:bg-[#F0F4FB] transition"
-                                        >
-                                            <Phone className="w-3.5 h-3.5" />
-                                            Call
-                                        </a>
-                                    )}
-                                </div>
-                            )}
 
                             {/* Contact */}
-                            <SectionCard icon={Users} title="Contact">
-                                {selected.detail?.company_name && (
-                                    <InfoRow icon={Building2} label="Company" value={selected.detail.company_name} />
-                                )}
-                                {selected.detail?.email && (
-                                    <InfoRow icon={Mail} label="Email" value={selected.detail.email} href={`mailto:${selected.detail.email}`} />
-                                )}
-                                {selected.detail?.phone && (
-                                    <InfoRow icon={Phone} label="Phone" value={selected.detail.phone} href={`tel:${selected.detail.phone}`} />
-                                )}
-                                {!selected.detail?.company_name && !selected.detail?.email && !selected.detail?.phone && (
-                                    <p className="text-sm text-[#64748B]">No contact details on file.</p>
-                                )}
-                            </SectionCard>
+                            <div className="space-y-2.5">
+                                <p className="text-xs font-semibold text-[#64748B]">Contact</p>
+                                {selected.detail?.company_name && <InfoRow icon={Building2} label="Company" value={selected.detail.company_name} />}
+                                {selected.detail?.email && <InfoRow icon={Mail} label="Email" value={selected.detail.email} href={`mailto:${selected.detail.email}`} />}
+                                {selected.detail?.phone && <InfoRow icon={Phone} label="Phone" value={selected.detail.phone} href={`tel:${selected.detail.phone}`} />}
+                                {selected.detail?.id_number && <InfoRow icon={Hash} label="ID" value={`${selected.detail.id_type ?? ""} ${selected.detail.id_number}`} />}
+                            </div>
 
                             {/* Booking details */}
-                            <SectionCard icon={Calendar} title="Booking details">
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-5">
-                                    <div className="col-span-2">
-                                        <InfoRow
-                                            icon={Building2}
-                                            label="Service"
-                                            value={
-                                                <>
-                                                    {selected.service_name}
-                                                    {(selected.lease_term || selected.package || selected.event_type) && (
-                                                        <span className="block text-xs font-normal text-[#64748B] mt-0.5">
-                                                            {[selected.lease_term, selected.package, selected.event_type].filter(Boolean).join(" · ")}
-                                                        </span>
-                                                    )}
-                                                </>
-                                            }
-                                        />
-                                    </div>
-                                    {selected.detail?.date && (
-                                        <InfoRow
-                                            icon={Clock}
-                                            label="Date & time"
-                                            value={`${formatDate(selected.detail.date)}${selected.detail.time ? ` · ${selected.detail.time}` : ""}`}
-                                        />
-                                    )}
-                                    {selected.detail?.seats != null && (
-                                        <InfoRow
-                                            icon={Users}
-                                            label="Seats"
-                                            value={`${selected.detail.seats} seat${selected.detail.seats === 1 ? "" : "s"}`}
-                                        />
-                                    )}
-                                    {selected.detail?.duration_type && (
-                                        <InfoRow
-                                            icon={Clock}
-                                            label="Duration"
-                                            value={
-                                                selected.detail.duration
-                                                    ? `${selected.detail.duration} ${selected.detail.duration_type}`
-                                                    : selected.detail.duration_type
-                                            }
-                                        />
-                                    )}
-                                </div>
-                            </SectionCard>
+                            <div className="space-y-2.5">
+                                <p className="text-xs font-semibold text-[#64748B]">Booking</p>
+                                <InfoRow
+                                    icon={Building2}
+                                    label="Service"
+                                    value={[selected.service_name, selected.lease_term, selected.package, selected.event_type].filter(Boolean).join(" · ")}
+                                />
+                                {selected.detail?.date && (
+                                    <InfoRow icon={Clock} label="Date & time" value={`${formatDate(selected.detail.date)}${selected.detail.time ? ` · ${selected.detail.time}` : ""}`} />
+                                )}
+                                {selected.detail?.seats != null && (
+                                    <InfoRow icon={Users} label="Seats" value={`${selected.detail.seats} seat${selected.detail.seats === 1 ? "" : "s"}`} />
+                                )}
+                                {selected.detail?.duration_type && (
+                                    <InfoRow icon={Clock} label="Duration" value={selected.detail.duration ? `${selected.detail.duration} ${selected.detail.duration_type}` : selected.detail.duration_type} />
+                                )}
+                            </div>
 
-                            {/* Notes / requirements */}
-                            {(selected.detail?.other_requirements || selected.detail?.request) && (
-                                <SectionCard icon={AlertCircle} title="Notes & requirements">
-                                    {selected.detail?.request && (
-                                        <div>
-                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B] mb-1">Request</p>
-                                            <p className="text-sm text-[#0B1F4A] leading-relaxed">{selected.detail.request}</p>
-                                        </div>
-                                    )}
-                                    {selected.detail?.other_requirements && (
-                                        <div>
-                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B] mb-1">Other requirements</p>
-                                            <p className="text-sm text-[#0B1F4A] leading-relaxed">{selected.detail.other_requirements}</p>
-                                        </div>
-                                    )}
-                                </SectionCard>
+                            {/* Notes */}
+                            {(selected.detail?.request || selected.detail?.other_requirements) && (
+                                <div className="space-y-2.5">
+                                    <p className="text-xs font-semibold text-[#64748B]">Notes</p>
+                                    {selected.detail?.request && <p className="text-sm text-[#0B1F4A]">{selected.detail.request}</p>}
+                                    {selected.detail?.other_requirements && <p className="text-sm text-[#0B1F4A]">{selected.detail.other_requirements}</p>}
+                                </div>
                             )}
 
                             {/* Payment — Virtual Office only */}
                             {selected.detail && selected.service_name?.trim().toLowerCase() === "virtual office" && (
-                                <SectionCard icon={Receipt} title="Payment">
-                                    <div className="bg-linear-to-br from-[#F0F4FB] to-[#F8FAFD] border border-[#D9E2F0] rounded-xl px-5 py-4 flex items-center justify-between">
+                                <div className="space-y-3">
+                                    <p className="text-xs font-semibold text-[#64748B]">Payment</p>
+                                    <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl px-4 py-3 flex items-center justify-between">
                                         <div>
-                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B]">Total amount</p>
-                                            <p className="text-2xl font-bold text-[#0B1F4A] mt-1">{formatCurrency(selected.detail.total)}</p>
+                                            <p className="text-[10px] text-[#64748B]">Total</p>
+                                            <p className="text-lg font-semibold text-[#0B1F4A]">{formatCurrency(selected.detail.total)}</p>
                                         </div>
-                                        <span className="w-11 h-11 rounded-xl bg-white border border-[#D9E2F0] flex items-center justify-center shrink-0">
-                                            <Banknote className="w-5 h-5 text-[#1B3A8C]" />
+                                        <span className="text-xs font-medium text-[#0B1F4A] bg-white border border-[#D9E2F0] rounded-full px-2.5 py-1">
+                                            {selected.detail.payment_method.replace(/_/g, " ")}
                                         </span>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-5 pt-1">
-                                        <InfoRow icon={Banknote} label="Method" value={<span className="capitalize">{selected.detail.payment_method}</span>} />
-                                        {selected.paid_at && (
-                                            <InfoRow icon={Calendar} label="Paid at" value={formatDate(selected.paid_at)} />
+
+                                    {selected.paid_at && <InfoRow icon={Calendar} label="Paid at" value={formatDate(selected.paid_at)} />}
+                                    {selected.detail.transaction_id && <InfoRow icon={Hash} label="Transaction ID" value={selected.detail.transaction_id} />}
+
+                                    <div className="flex gap-2">
+                                        {selected.detail.receipt && toAssetUrl(selected.detail.receipt_url ?? selected.detail.receipt_path) && (
+                                            <button
+                                                onClick={() => setPreviewImage({
+                                                    url: toAssetUrl(selected.detail!.receipt_url ?? selected.detail!.receipt_path)!,
+                                                    label: "Payment receipt",
+                                                })}
+                                                className="flex-1 flex items-center gap-1.5 justify-center py-2 rounded-lg border border-[#D9E2F0] text-xs font-medium text-[#1B3A8C] hover:bg-[#F0F4FB] transition"
+                                            >
+                                                <Receipt className="w-3.5 h-3.5" /> View receipt
+                                            </button>
                                         )}
-                                        {selected.detail.transaction_id && (
-                                            <InfoRow icon={Hash} label="Transaction ID" value={selected.detail.transaction_id} />
-                                        )}
-                                        {selected.detail.receipt && (
-                                            <InfoRow icon={Receipt} label="Receipt" value={selected.detail.receipt} />
+                                        {selected.detail.government_id_file && toAssetUrl(selected.detail.government_id_url ?? selected.detail.government_id_path) && (
+                                            <button
+                                                onClick={() => setPreviewImage({
+                                                    url: toAssetUrl(selected.detail!.government_id_url ?? selected.detail!.government_id_path)!,
+                                                    label: "Government ID",
+                                                })}
+                                                className="flex-1 flex items-center gap-1.5 justify-center py-2 rounded-lg border border-[#D9E2F0] text-xs font-medium text-[#1B3A8C] hover:bg-[#F0F4FB] transition"
+                                            >
+                                                <Receipt className="w-3.5 h-3.5" /> View ID
+                                            </button>
                                         )}
                                     </div>
-                                </SectionCard>
+                                </div>
                             )}
                         </div>
 
-                        {/* Footer actions */}
-                        <div className="shrink-0 bg-white border-t border-[#D9E2F0] p-4">
+                        {/* Footer */}
+                        <div className="shrink-0 border-t border-[#E5EAF2] p-4">
                             <button
                                 onClick={() => setDeleteTarget(selected)}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition"
+                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-red-600 text-sm font-medium hover:bg-red-50 transition"
                             >
-                                <Trash2 className="w-4 h-4" />
-                                Delete Quotation
+                                <Trash2 className="w-4 h-4" /> Delete quotation
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Receipt / ID preview lightbox */}
+            {previewImage && (
+                <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/70" onClick={() => setPreviewImage(null)} />
+                    <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-sm font-medium text-white">{previewImage.label}</p>
+                            <div className="flex items-center gap-3">
+                                {previewImage.url && (
+                                    <a
+                                        href={previewImage.url}
+                                        download
+                                        className="text-white/70 hover:text-white"
+                                        title="Download"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                    </a>
+                                )}
+                                <button
+                                    onClick={() => setPreviewImage(null)}
+                                    className="text-white/70 hover:text-white"
+                                    aria-label="Close preview"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-xl overflow-hidden flex items-center justify-center flex-1 min-h-50">
+                            {previewImage.url ? (
+                                <img
+                                    src={previewImage.url}
+                                    alt={previewImage.label}
+                                    className="max-w-full max-h-[80vh] object-contain"
+                                    onError={(e) => {
+                                        e.currentTarget.style.display = "none";
+                                        e.currentTarget.parentElement?.insertAdjacentHTML(
+                                            "beforeend",
+                                            '<p class="text-sm text-[#64748B] p-8">Unable to load this file.</p>'
+                                        );
+                                    }}
+                                />
+                            ) : (
+                                <p className="text-sm text-[#64748B] p-8">No file available.</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -836,8 +794,7 @@ export default function AdminQuotationsPage() {
 
                             <h2 className="mt-4 text-lg font-bold text-[#0B1F4A]">Edit Status</h2>
                             <p className="mt-1 text-sm text-[#64748B]">
-                                <span className="font-semibold text-[#0B1F4A]">{statusEditTarget.quotation_id}</span>
-                                {statusEditTarget.detail?.full_name ? ` · ${statusEditTarget.detail.full_name}` : ""}
+                                {statusEditTarget.detail?.full_name ?? "This request"}
                             </p>
 
                             <label className="block mt-5 text-[10px] font-semibold uppercase tracking-wide text-[#64748B] mb-1.5">
@@ -897,7 +854,7 @@ export default function AdminQuotationsPage() {
                             </h2>
 
                             <p className="mt-3 text-center text-sm text-[#64748B] leading-6">
-                                Change <span className="font-semibold text-[#0B1F4A]">{statusChangeTarget.quote.quotation_id}</span> from
+                                Change status for <span className="font-semibold text-[#0B1F4A]">{statusChangeTarget.quote.detail?.full_name ?? "this request"}</span> from
                             </p>
 
                             <div className="mt-3 flex items-center justify-center gap-2.5">
@@ -956,8 +913,7 @@ export default function AdminQuotationsPage() {
                             </h2>
 
                             <p className="mt-3 text-center text-sm text-[#64748B] leading-6">
-                                Are you sure you want to delete{" "}
-                                <span className="font-semibold text-[#0B1F4A]">{deleteTarget.quotation_id}</span>
+                                Are you sure you want to delete this request
                                 {deleteTarget.detail?.full_name ? ` for ${deleteTarget.detail.full_name}` : ""}?
                                 <br />
                                 This action cannot be undone.

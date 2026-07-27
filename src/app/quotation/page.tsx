@@ -14,24 +14,50 @@ import {
   ChevronLeft,
   CheckCircle2,
   X,
-  CreditCard,
+  Landmark,
+  Wallet,
+  HandCoins,
+  ArrowRightLeft,
   Smartphone,
   Upload,
   Clock,
   AlertCircle,
   MapPin,
+  Eye,
+  FileText,
 } from "lucide-react";
 
 type ServiceId = "private-office" | "virtual-office" | "coworking" | "meeting-room" | "event-space";
 type BranchId = "tower-6789" | "insular-life";
-type PaymentMethod = "paymongo" | "gcash" | null;
-type ModalKey = "privacy" | "success" | null;
+type PaymentMethod = "bank" | "cheque" | "cash" | "online_transfer" | "gcash" | null;
+type ModalKey = "privacy" | "success" | "preview" | null;
 
 interface ContactFields {
   name: string;
   company: string;
   email: string;
   phone: string;
+}
+
+interface ContractIdentityFields {
+  idType: string;
+  idTypeOther: string;
+  idName: string;
+  idNumber: string;
+  idAddress: string;
+  governmentIdFile: File | null;
+  signatorySameAsIdHolder: boolean;
+  signatoryIdType: string;
+  signatoryIdTypeOther: string;
+  signatoryIdName: string;
+  signatoryIdNumber: string;
+  signatoryIdAddress: string;
+  signatoryGovernmentIdFile: File | null;
+}
+
+interface PreviewTarget {
+  title: string;
+  file: File;
 }
 
 interface PrivateOfficeFields {
@@ -69,12 +95,12 @@ interface EventSpaceFields {
   otherRequirements: string;
 }
 
-const SERVICES: { id: ServiceId; label: string; desc: string; icon: React.ElementType }[] = [
-  { id: "private-office", label: "Private Office", desc: "Enclosed rooms, 1–17 seats", icon: Building2 },
-  { id: "virtual-office", label: "Virtual Office", desc: "Address & mail services", icon: Wifi },
-  { id: "coworking", label: "Co-working Space", desc: "Open desks, hot desking", icon: Armchair },
-  { id: "meeting-room", label: "Meeting Room", desc: "Hourly meeting rooms", icon: CalendarDays },
-  { id: "event-space", label: "Event Space", desc: "Venues for events & functions", icon: PartyPopper },
+const SERVICES: { id: ServiceId; label: string; icon: React.ElementType }[] = [
+  { id: "private-office", label: "Private Office", icon: Building2 },
+  { id: "virtual-office", label: "Virtual Office", icon: Wifi },
+  { id: "coworking", label: "Co-working Space", icon: Armchair },
+  { id: "meeting-room", label: "Meeting Room", icon: CalendarDays },
+  { id: "event-space", label: "Event Space", icon: PartyPopper },
 ];
 
 // Branch buildings the client can choose from at Step 1.
@@ -120,6 +146,20 @@ const PASS_TYPES = ["Daily", "Weekly", "Monthly"];
 const TIME_SLOTS = [
   ["09:00", "9:00 AM"], ["10:00", "10:00 AM"], ["11:00", "11:00 AM"],
   ["13:00", "1:00 PM"], ["14:00", "2:00 PM"], ["15:00", "3:00 PM"], ["16:00", "4:00 PM"],
+];
+
+const GOVERNMENT_ID_TYPES = [
+  "Philippine National ID",
+  "Passport",
+  "Driver's License",
+  "Social Security System",
+  "Professional Regulation Commission",
+  "Voter's ID",
+  "PWD ID",
+  "PhilHealth ID",
+  "TIN Card",
+  "Postal ID",
+  "Others",
 ];
 
 // ─── Validation Helpers ───────────────────────────────────────────────────────
@@ -253,8 +293,6 @@ function SuccessModalContent({
   paymentMethod: PaymentMethod;
   onClose: () => void;
 }) {
-  const isGCash = isVO && paymentMethod === "gcash";
-
   return (
     <div className="text-center py-4">
       <div className="w-16 h-16 bg-[#EEF2FB] rounded-full flex items-center justify-center mx-auto mb-5">
@@ -266,16 +304,10 @@ function SuccessModalContent({
       </p>
       <h3 className="text-2xl font-bold text-[#0B1F4A] mb-3">Thank You!</h3>
 
-      {isGCash ? (
+      {isVO ? (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
-          Your proof of payment has been received.<br />A HERO Serviced Office representative will
-          verify your GCash payment and send your service contract to your email within{" "}
-          <strong>24 business hours</strong>.
-        </p>
-      ) : isVO ? (
-        <p className="text-[#64748B] text-sm leading-relaxed mb-6">
-          Payment confirmed. Your service contract has been auto-generated and will be sent to
-          your email. Your virtual office service will begin on your selected start date.
+          Your request and payment details have been submitted. We will confirm your payment and
+          send your quotation contract to your email.
         </p>
       ) : (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
@@ -285,23 +317,17 @@ function SuccessModalContent({
       )}
 
       <div className="bg-[#F4F6FB] rounded-2xl p-5 text-left mb-6 space-y-3">
-        {(isGCash
+        {(isVO
           ? [
-            "We'll verify your GCash payment within 24 business hours",
-            "Your service contract will be generated and emailed to you",
-            "Our team will reach out to confirm your virtual office activation",
+            `Payment method selected: ${getPaymentMethodLabel(paymentMethod)}`,
+            "We'll verify your submitted payment and supporting documents",
+            "Your quotation contract will be emailed for your reference",
           ]
-          : isVO
-            ? [
-              "Your payment has been processed successfully",
-              "A contract will be emailed to you for your records",
-              "Your virtual office service is now being set up",
-            ]
-            : [
-              "We'll review your service requirements and preferences",
-              "A customised quotation will be prepared for you",
-              "Our team will reach out via email or phone to discuss next steps",
-            ]
+          : [
+            "We'll review your service requirements and preferences",
+            "A customised quotation will be prepared for you",
+            "Our team will reach out via email or phone to discuss next steps",
+          ]
         ).map((s, i) => (
           <div key={i} className="flex items-start gap-3">
             <span className="w-5 h-5 rounded-full bg-[#0B1F4A] text-white text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-bold">
@@ -390,7 +416,7 @@ function NavRow({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 px-6 py-3 border border-[#FFC107] text-[#1B3A8C] text-sm font-semibold rounded-full hover:border-[#FFC107] hover:text-[#1B3A8C] transition-all duration-200"
+          className="flex items-center gap-2 px-6 py-3 border border-[#FFC107] text-[#1B3A8C] text-sm font-bold rounded-full hover:border-[#FFC107] hover:text-[#1B3A8C] transition-all duration-200"
         >
           <ChevronLeft className="w-4 h-4" /> Back
         </button>
@@ -399,7 +425,7 @@ function NavRow({
         type={isSubmit ? "submit" : "button"}
         onClick={!isSubmit ? onNext : undefined}
         disabled={nextDisabled || isSubmitting}
-        className="flex items-center gap-2 px-7 py-3 bg-[#FFC107] text-[#1B3A8C] text-sm font-semibold rounded-full hover:bg-[#FFC107]/80 disabled:bg-[#D9E2F0] disabled:text-[#64748B] disabled:cursor-not-allowed transition-all duration-200"
+        className="flex items-center gap-2 px-7 py-3 bg-[#FFC107] text-[#1B3A8C] text-sm font-bold rounded-full hover:bg-[#FFC107]/80 disabled:bg-[#D9E2F0] disabled:text-[#64748B] disabled:cursor-not-allowed transition-all duration-200"
       >
         {isSubmitting ? (
           <>
@@ -455,7 +481,6 @@ function Step1({
             >
               <Icon className={`w-5 h-5 mb-2.5 transition-colors ${active ? "text-[#1B3A8C]" : "text-[#64748B] group-hover:text-[#1B3A8C]"}`} />
               <p className={`font-semibold text-md mb-0.5 ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A] group-hover:text-[#1B3A8C]"}`}>{s.label}</p>
-              <p className="text-sm text-[#64748B] leading-snug">{s.desc}</p> {/* Remove description and make modal for the inclusion */}
             </button>
           );
         })}
@@ -467,9 +492,9 @@ function Step1({
         </div>
       )}
 
-      <div className="mt-8">
-        <h3 className="text-lg font-bold text-[#0B1F4A] mb-1">Select a Branch</h3>
-        <p className="text-sm text-[#64748B] mb-4">Choose which HERO Serviced Office location you'd like to inquire about.</p>
+      <div className="mt-8 border-t border-gray-300">
+        <h3 className="text-3xl font-bold text-[#0B1F4A] my-5">Select a Branch</h3>
+        <p className="text-md text-[#64748B] mb-7">Choose which HERO Serviced Office location you'd like to inquire about.</p>
         <div className="grid sm:grid-cols-2 gap-3">
           {BRANCHES.map((b) => {
             const active = selectedBranch === b.id;
@@ -568,10 +593,14 @@ function Step2VirtualOffice({
   data,
   onChange,
   errors,
+  notes,
+  setNotes,
 }: {
   data: VirtualOfficeFields;
   onChange: (d: Partial<VirtualOfficeFields>) => void;
   errors: Partial<Record<keyof VirtualOfficeFields, string>>;
+  notes: string;
+  setNotes: React.Dispatch<React.SetStateAction<string>>;
 }) {
   const today = new Date().toISOString().split("T")[0];
   return (
@@ -624,8 +653,8 @@ function Step2VirtualOffice({
                 type="button"
                 onClick={() => onChange({ package: pkg.id })}
                 className={`rounded-2xl border p-5 text-left transition-all duration-200 ${active
-                    ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-lg ring-1 ring-[#1B3A8C]/10"
-                    : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:shadow-md"
+                  ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-lg ring-1 ring-[#1B3A8C]/10"
+                  : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:shadow-md"
                   }`}
               >
                 <div className="flex items-center justify-between">
@@ -673,6 +702,19 @@ function Step2VirtualOffice({
           className={errors.startDate ? inputErrCls : inputCls}
         />
       </Field>
+
+      <div className="mt-5">
+        <Field label="Other Requirements / Conditions">
+          <textarea
+            rows={4}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className={inputCls + " resize-none"}
+            placeholder="Anything else you'd like us to include in your virtual office request."
+          />
+        </Field>
+      </div>
+
     </div>
   );
 }
@@ -813,25 +855,30 @@ function Step2EventSpace({
 
 // Step 3: Contact
 function Step3({
+  isVO,
   contact,
-  notes,
+  contractIdentity,
   setContact,
-  setNotes,
+  setContractIdentity,
   onBack,
   onNext,
 }: {
+  isVO: boolean;
   contact: ContactFields;
-  notes: string;
+  contractIdentity: ContractIdentityFields;
   setContact: React.Dispatch<React.SetStateAction<ContactFields>>;
-  setNotes: React.Dispatch<React.SetStateAction<string>>;
+  setContractIdentity: React.Dispatch<React.SetStateAction<ContractIdentityFields>>;
   onBack: () => void;
   onNext: () => void;
 }) {
-  const [errors, setErrors] = useState<Partial<Record<keyof ContactFields, string>>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState(false);
+  const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
+  const idUploadRef = useRef<HTMLInputElement>(null);
+  const signatoryUploadRef = useRef<HTMLInputElement>(null);
 
   const validate = () => {
-    const errs: Partial<Record<keyof ContactFields, string>> = {};
+    const errs: Record<string, string> = {};
     if (!contact.name.trim()) errs.name = "Full name is required.";
     if (!contact.email.trim()) {
       errs.email = "Email address is required.";
@@ -843,6 +890,51 @@ function Step3({
     } else if (!isValidPhone(contact.phone)) {
       errs.phone = "Please enter a valid PH mobile number (e.g. +63 917 123 4567 or 09171234567).";
     }
+
+    if (!contractIdentity.idType) {
+      errs.idType = "Please select a government ID type.";
+    }
+    if (contractIdentity.idType === "Others" && !contractIdentity.idTypeOther.trim()) {
+      errs.idTypeOther = "Please specify your government ID type.";
+    }
+    if (!contractIdentity.idName.trim()) {
+      errs.idName = "Name on government ID is required.";
+    }
+    if (!contractIdentity.idNumber.trim()) {
+      errs.idNumber = "Government ID number is required.";
+    }
+    if (!contractIdentity.idAddress.trim()) {
+      errs.idAddress = "Address on government ID is required.";
+    }
+    if (!contractIdentity.governmentIdFile) {
+      errs.governmentIdFile = "Please upload a government-issued ID copy.";
+    }
+
+    if (!contractIdentity.signatorySameAsIdHolder) {
+      if (!contractIdentity.signatoryIdType) {
+        errs.signatoryIdType = "Please select the signatory ID type.";
+      }
+      if (contractIdentity.signatoryIdType === "Others" && !contractIdentity.signatoryIdTypeOther.trim()) {
+        errs.signatoryIdTypeOther = "Please specify the signatory ID type.";
+      }
+      if (!contractIdentity.signatoryIdName.trim()) {
+        errs.signatoryIdName = "Signatory name on ID is required.";
+      }
+      if (!contractIdentity.signatoryIdNumber.trim()) {
+        errs.signatoryIdNumber = "Signatory ID number is required.";
+      }
+      if (!contractIdentity.signatoryIdAddress.trim()) {
+        errs.signatoryIdAddress = "Signatory address on ID is required.";
+      }
+      if (!contractIdentity.signatoryGovernmentIdFile) {
+        errs.signatoryGovernmentIdFile = "Please upload the signatory's government ID copy.";
+      }
+    }
+
+    // Backend currently enforces these on Virtual Office.
+    if (isVO && !contractIdentity.idName.trim()) {
+      errs.idName = "Name on government ID is required for virtual office.";
+    }
     return errs;
   };
 
@@ -852,12 +944,6 @@ function Step3({
     setErrors(errs);
     if (Object.keys(errs).length === 0) onNext();
   };
-
-  // Live validate after first submit attempt
-  useEffect(() => {
-    if (touched) setErrors(validate());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contact, touched]);
 
   return (
     <div>
@@ -901,18 +987,246 @@ function Step3({
           />
         </Field>
       </div>
-      <div className="mt-5">
-        <Field label="Notes / Special Requests">
-          <textarea
-            rows={4}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className={inputCls + " resize-none"}
-            placeholder="Anything else you'd like us to know before preparing your quote…"
-          />
-        </Field>
+
+      <div className="mt-7 border-t border-[#D9E2F0] pt-6">
+        <h3 className="text-2xl font-bold text-[#0B1F4A] mb-2">Government ID & Signatory</h3>
+        <p className="text-sm text-[#64748B] mb-5">
+          These details are used for contract preparation and verification.
+        </p>
+
+        <label className="my-5 flex items-start gap-3 cursor-pointer group">
+          <div className="relative mt-0.5 shrink-0">
+            <input
+              type="checkbox"
+              checked={contractIdentity.signatorySameAsIdHolder}
+              onChange={(e) =>
+                setContractIdentity((p) => ({
+                  ...p,
+                  signatorySameAsIdHolder: e.target.checked,
+                  signatoryIdType: e.target.checked ? "" : p.signatoryIdType,
+                  signatoryIdTypeOther: e.target.checked ? "" : p.signatoryIdTypeOther,
+                  signatoryIdName: e.target.checked ? "" : p.signatoryIdName,
+                  signatoryIdNumber: e.target.checked ? "" : p.signatoryIdNumber,
+                  signatoryIdAddress: e.target.checked ? "" : p.signatoryIdAddress,
+                  signatoryGovernmentIdFile: e.target.checked ? null : p.signatoryGovernmentIdFile,
+                }))
+              }
+              className="sr-only"
+            />
+            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-150 ${contractIdentity.signatorySameAsIdHolder ? "bg-[#0B1F4A] border-[#0B1F4A]" : "border-[#D9E2F0] bg-white group-hover:border-[#1B3A8C]"}`}>
+              {contractIdentity.signatorySameAsIdHolder && (
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+          </div>
+          <span className="text-sm text-[#4A5568] leading-relaxed">
+            The client name on the government ID will be the signatory.
+          </span>
+        </label>
+
+        <div className="grid sm:grid-cols-2 gap-5">
+          <Field label="Government ID Type" required error={errors.idType}>
+            <select
+              value={contractIdentity.idType}
+              onChange={(e) => setContractIdentity((p) => ({ ...p, idType: e.target.value, idTypeOther: "" }))}
+              className={errors.idType ? inputErrCls : inputCls}
+            >
+              <option value="">Select ID type</option>
+              {GOVERNMENT_ID_TYPES.map((idType) => (
+                <option key={idType} value={idType}>{idType}</option>
+              ))}
+            </select>
+          </Field>
+
+          {contractIdentity.idType === "Others" && (
+            <Field label="Specify ID Type" required error={errors.idTypeOther}>
+              <input
+                type="text"
+                value={contractIdentity.idTypeOther}
+                onChange={(e) => setContractIdentity((p) => ({ ...p, idTypeOther: e.target.value }))}
+                className={errors.idTypeOther ? inputErrCls : inputCls}
+                placeholder="Enter ID type"
+              />
+            </Field>
+          )}
+
+          <Field label="Name on Government ID" required error={errors.idName}>
+            <input
+              type="text"
+              value={contractIdentity.idName}
+              onChange={(e) => setContractIdentity((p) => ({ ...p, idName: e.target.value }))}
+              className={errors.idName ? inputErrCls : inputCls}
+              placeholder="As shown on your ID"
+            />
+          </Field>
+
+          <Field label="Government ID Number" required error={errors.idNumber}>
+            <input
+              type="text"
+              value={contractIdentity.idNumber}
+              onChange={(e) => setContractIdentity((p) => ({ ...p, idNumber: e.target.value }))}
+              className={errors.idNumber ? inputErrCls : inputCls}
+              placeholder="Enter ID number"
+            />
+          </Field>
+        </div>
+
+        <div className="mt-5">
+          <Field label="Address on Government ID" required error={errors.idAddress}>
+            <textarea
+              rows={3}
+              value={contractIdentity.idAddress}
+              onChange={(e) => setContractIdentity((p) => ({ ...p, idAddress: e.target.value }))}
+              className={(errors.idAddress ? inputErrCls : inputCls) + " resize-none"}
+              placeholder="Complete address as shown on your ID"
+            />
+          </Field>
+        </div>
+
+        <div className="mt-5">
+          <Field label="Upload Government ID" required error={errors.governmentIdFile}>
+            <button
+              type="button"
+              onClick={() => idUploadRef.current?.click()}
+              className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${contractIdentity.governmentIdFile ? "border-[#1B3A8C] bg-[#EEF2FB]" : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"}`}
+            >
+              <Upload className={`w-5 h-5 ${contractIdentity.governmentIdFile ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
+              <span className={`text-sm font-semibold ${contractIdentity.governmentIdFile ? "text-[#1B3A8C]" : "text-[#64748B]"}`}>
+                {contractIdentity.governmentIdFile ? contractIdentity.governmentIdFile.name : "Click to upload government ID"}
+              </span>
+            </button>
+            <input
+              ref={idUploadRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={(e) => setContractIdentity((p) => ({ ...p, governmentIdFile: e.target.files?.[0] ?? null }))}
+            />
+            <p className="text-xs text-[#64748B] mt-2">Accepted: JPG, PNG, PDF - Max 10 MB</p>
+            {contractIdentity.governmentIdFile && isPreviewableFile(contractIdentity.governmentIdFile) && (
+              <div className="mt-3 rounded-xl border border-[#D9E2F0] bg-white px-3 py-2 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-[#0B1F4A]">Preview uploaded ID</p>
+                  <p className="text-[11px] text-[#64748B] truncate">{contractIdentity.governmentIdFile.name}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewTarget({ title: "Government ID Preview", file: contractIdentity.governmentIdFile! })}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1B3A8C] hover:underline shrink-0"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  View
+                </button>
+              </div>
+            )}
+          </Field>
+        </div>
+
+        {!contractIdentity.signatorySameAsIdHolder && (
+          <div className="mt-5 rounded-2xl border border-[#D9E2F0] bg-[#F8FAFD] p-5 space-y-5">
+            <h4 className="text-sm font-bold text-[#0B1F4A]">Alternate Signatory Details</h4>
+            <div className="grid sm:grid-cols-2 gap-5">
+              <Field label="Signatory ID Type" required error={errors.signatoryIdType}>
+                <select
+                  value={contractIdentity.signatoryIdType}
+                  onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdType: e.target.value, signatoryIdTypeOther: "" }))}
+                  className={errors.signatoryIdType ? inputErrCls : inputCls}
+                >
+                  <option value="">Select ID type</option>
+                  {GOVERNMENT_ID_TYPES.map((idType) => (
+                    <option key={idType} value={idType}>{idType}</option>
+                  ))}
+                </select>
+              </Field>
+
+              {contractIdentity.signatoryIdType === "Others" && (
+                <Field label="Specify Signatory ID Type" required error={errors.signatoryIdTypeOther}>
+                  <input
+                    type="text"
+                    value={contractIdentity.signatoryIdTypeOther}
+                    onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdTypeOther: e.target.value }))}
+                    className={errors.signatoryIdTypeOther ? inputErrCls : inputCls}
+                    placeholder="Enter ID type"
+                  />
+                </Field>
+              )}
+
+              <Field label="Signatory Name on Government ID" required error={errors.signatoryIdName}>
+                <input
+                  type="text"
+                  value={contractIdentity.signatoryIdName}
+                  onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdName: e.target.value }))}
+                  className={errors.signatoryIdName ? inputErrCls : inputCls}
+                  placeholder="As shown on signatory ID"
+                />
+              </Field>
+
+              <Field label="Signatory ID Number" required error={errors.signatoryIdNumber}>
+                <input
+                  type="text"
+                  value={contractIdentity.signatoryIdNumber}
+                  onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdNumber: e.target.value }))}
+                  className={errors.signatoryIdNumber ? inputErrCls : inputCls}
+                  placeholder="Enter signatory ID number"
+                />
+              </Field>
+            </div>
+
+            <Field label="Signatory Address on Government ID" required error={errors.signatoryIdAddress}>
+              <textarea
+                rows={3}
+                value={contractIdentity.signatoryIdAddress}
+                onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdAddress: e.target.value }))}
+                className={(errors.signatoryIdAddress ? inputErrCls : inputCls) + " resize-none"}
+                placeholder="Complete address as shown on signatory ID"
+              />
+            </Field>
+
+            <Field label="Upload Signatory Government ID" required error={errors.signatoryGovernmentIdFile}>
+              <button
+                type="button"
+                onClick={() => signatoryUploadRef.current?.click()}
+                className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${contractIdentity.signatoryGovernmentIdFile ? "border-[#1B3A8C] bg-[#EEF2FB]" : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"}`}
+              >
+                <Upload className={`w-5 h-5 ${contractIdentity.signatoryGovernmentIdFile ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
+                <span className={`text-sm font-semibold ${contractIdentity.signatoryGovernmentIdFile ? "text-[#1B3A8C]" : "text-[#64748B]"}`}>
+                  {contractIdentity.signatoryGovernmentIdFile ? contractIdentity.signatoryGovernmentIdFile.name : "Click to upload signatory government ID"}
+                </span>
+              </button>
+              <input
+                ref={signatoryUploadRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="hidden"
+                onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryGovernmentIdFile: e.target.files?.[0] ?? null }))}
+              />
+              <p className="text-xs text-[#64748B] mt-2">Accepted: JPG, PNG, PDF - Max 10 MB</p>
+              {contractIdentity.signatoryGovernmentIdFile && isPreviewableFile(contractIdentity.signatoryGovernmentIdFile) && (
+                <div className="mt-3 rounded-xl border border-[#D9E2F0] bg-white px-3 py-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-[#0B1F4A]">Preview uploaded signatory ID</p>
+                    <p className="text-[11px] text-[#64748B] truncate">{contractIdentity.signatoryGovernmentIdFile.name}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewTarget({ title: "Signatory ID Preview", file: contractIdentity.signatoryGovernmentIdFile! })}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1B3A8C] hover:underline shrink-0"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    View
+                  </button>
+                </div>
+              )}
+            </Field>
+          </div>
+        )}
       </div>
+
       <NavRow onBack={onBack} onNext={handleNext} />
+
+      <FilePreviewModal target={previewTarget} onClose={() => setPreviewTarget(null)} />
     </div>
   );
 }
@@ -938,6 +1252,7 @@ function Step4({
   meetingRoom,
   eventSpace,
   contact,
+  contractIdentity,
   notes,
   consent,
   setConsent,
@@ -954,6 +1269,7 @@ function Step4({
   meetingRoom: MeetingRoomFields;
   eventSpace: EventSpaceFields;
   contact: ContactFields;
+  contractIdentity: ContractIdentityFields;
   notes: string;
   consent: boolean;
   setConsent: (v: boolean) => void;
@@ -1021,12 +1337,23 @@ function Step4({
         <ReviewRow label="Company" value={contact.company} />
         <ReviewRow label="Email" value={contact.email} />
         <ReviewRow label="Phone" value={contact.phone} />
-        <ReviewRow label="Notes" value={notes} />
+        <ReviewRow
+          label="Government ID Type"
+          value={contractIdentity.idType === "Others" ? contractIdentity.idTypeOther : contractIdentity.idType}
+        />
+        <ReviewRow label="ID Name" value={contractIdentity.idName} />
+        <ReviewRow label="ID Number" value={contractIdentity.idNumber} />
+        <ReviewRow label="ID Address" value={contractIdentity.idAddress} />
+        <ReviewRow
+          label="Signatory"
+          value={contractIdentity.signatorySameAsIdHolder ? contractIdentity.idName : contractIdentity.signatoryIdName}
+        />
+        <ReviewRow label="Other Requirements / Conditions" value={notes} />
       </div>
 
       {isVO && (
         <div className="bg-[#fffaec] border border-[#dbd4bd] rounded-xl px-5 py-4 mb-6 flex items-start gap-3">
-          <CreditCard className="w-4 h-4 text-[#FFC107]/50 shrink-0 mt-0.5" />
+          <Wallet className="w-4 h-4 text-[#FFC107]/50 shrink-0 mt-0.5" />
           <p className="text-xs text-gray-800 leading-relaxed">
             After confirming, you'll proceed to select your payment method and complete the transaction before your virtual office is activated.
           </p>
@@ -1078,21 +1405,25 @@ function StepVOPayment({
   virtualOffice,
   paymentMethod,
   setPaymentMethod,
-  gcashProof,
-  setGcashProof,
+  paymentReference,
+  setPaymentReference,
+  paymentProof,
+  setPaymentProof,
   onBack,
   isSubmitting,
 }: {
   virtualOffice: VirtualOfficeFields;
   paymentMethod: PaymentMethod;
   setPaymentMethod: (m: PaymentMethod) => void;
-  gcashProof: File | null;
-  setGcashProof: (f: File | null) => void;
+  paymentReference: string;
+  setPaymentReference: (value: string) => void;
+  paymentProof: File | null;
+  setPaymentProof: (f: File | null) => void;
   onBack: () => void;
   isSubmitting: boolean;
 }) {
-  const [touched, setTouched] = useState(false);
-  const gcashRef = useRef<HTMLInputElement>(null);
+  const paymentProofRef = useRef<HTMLInputElement>(null);
+  const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
 
   const packagePrices: Record<string, string> = {
     Basic: "₱2,000 per Seat/Month",
@@ -1100,9 +1431,77 @@ function StepVOPayment({
     Premium: "₱5,000 per Seat/Month",
   };
 
+  const paymentOptions: Array<{
+    id: Exclude<PaymentMethod, null>;
+    icon: React.ElementType;
+    label: string;
+    sub: string;
+    details: string[];
+    hasQr?: boolean;
+  }> = [
+      {
+        id: "bank",
+        icon: Landmark,
+        label: "Bank",
+        sub: "Direct bank deposit",
+        details: [
+          "Bank: BDO Unibank",
+          "Account Name: HERO PH INC.",
+          "Account Number: 012345678901",
+          "Upload your validated deposit slip or transfer confirmation.",
+        ],
+      },
+      {
+        id: "cheque",
+        icon: FileText,
+        label: "Cheque",
+        sub: "Cheque payment",
+        details: [
+          "Payee: HERO PH INC.",
+          "Crossed cheque only.",
+          "Upload a clear image/scan of the issued cheque and deposit acknowledgement.",
+        ],
+      },
+      {
+        id: "cash",
+        icon: HandCoins,
+        label: "Cash",
+        sub: "In-person cash payment",
+        details: [
+          "Payment location: HERO Serviced Office Front Desk",
+          "Keep your official receipt.",
+          "Upload your signed cash receipt for verification.",
+        ],
+      },
+      {
+        id: "online_transfer",
+        icon: ArrowRightLeft,
+        label: "Online Transfer",
+        sub: "Online bank transfer",
+        details: [
+          "Transfer to: HERO PH INC. official bank account",
+          "Include your full name as transfer note/reference.",
+          "Upload the transfer reference screenshot or PDF receipt.",
+        ],
+      },
+      {
+        id: "gcash",
+        icon: Smartphone,
+        label: "GCash",
+        sub: "Mobile wallet transfer",
+        details: [
+          "GCash Number: 09XX XXX XXXX",
+          "Account Name: HERO PH INC.",
+          "Use your full name as payment reference.",
+          "Upload your GCash transaction screenshot for verification.",
+        ],
+        hasQr: true,
+      },
+    ];
+
+  const selectedPaymentOption = paymentOptions.find((opt) => opt.id === paymentMethod) ?? null;
   const canProceed =
-    paymentMethod === "paymongo" ||
-    (paymentMethod === "gcash" && gcashProof !== null);
+    paymentMethod !== null && paymentReference.trim() !== "" && paymentProof !== null;
 
   return (
     <div>
@@ -1115,33 +1514,36 @@ function StepVOPayment({
           <p className="text-xs font-semibold text-[#1B3A8C] uppercase tracking-wide">Virtual Office — {virtualOffice.package}</p>
           <p className="text-xs text-[#64748B] mt-0.5">Starting {virtualOffice.startDate || "TBD"}</p>
         </div>
-        <p className="text-xl font-bold text-[#0B1F4A]">
+        <p className="text-md font-bold text-[#0B1F4A]">
           {packagePrices[virtualOffice.package] ?? "—"}
-          <span className="text-xs text-[#64748B] font-normal">/mo</span>
         </p>
       </div>
 
       {/* Payment method selector */}
-      <Field label="Payment Method" required error={touched && !paymentMethod ? "Please select a payment method." : undefined}>
+      <Field label="Payment Method" required error={!paymentMethod ? "Please select a payment method." : undefined}>
         <div className="grid sm:grid-cols-2 gap-3 mt-1">
-          {[
-            { id: "paymongo" as PaymentMethod, icon: CreditCard, label: "PayMongo", sub: "Credit / Debit Card", badge: "Instant" },
-            { id: "gcash" as PaymentMethod, icon: Smartphone, label: "GCash", sub: "Mobile wallet", badge: "Manual verify" },
-          ].map((opt) => {
+          {paymentOptions.map((opt) => {
             const Icon = opt.icon;
             const active = paymentMethod === opt.id;
             return (
               <button
-                key={opt.id!}
                 type="button"
-                onClick={() => { setPaymentMethod(opt.id); setGcashProof(null); }}
-                className={`p-4 rounded-2xl border-[1.5px] text-left transition-all duration-200 ${active ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C]" : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
-                  }`}
+                key={opt.id}
+                onClick={() => {
+                  const isAlreadySelected = paymentMethod === opt.id;
+                  setPaymentMethod(opt.id);
+                  if (!isAlreadySelected) {
+                    setPaymentProof(null);
+                  }
+                }}
+                className={`rounded-2xl border-[1.5px] transition-all duration-200 ${active
+                  ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C] text-left"
+                  : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C]"
+                  } p-4 text-left`}
+                aria-pressed={active}
               >
                 <div className="flex items-center justify-between mb-2">
                   <Icon className={`w-5 h-5 ${active ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${opt.badge === "Instant" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                    }`}>{opt.badge}</span>
                 </div>
                 <p className={`font-bold text-sm ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A]"}`}>{opt.label}</p>
                 <p className="text-xs text-[#64748B]">{opt.sub}</p>
@@ -1151,58 +1553,102 @@ function StepVOPayment({
         </div>
       </Field>
 
-      {/* PayMongo flow */}
-      {paymentMethod === "paymongo" && (
-        <div className="mt-6 space-y-4">
-          <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
-            <p className="text-sm font-semibold uppercase tracking-wide text-[#0B1F4A] mb-1">How it works</p>
-            <ol className="text-sm text-[#64748B] space-y-1 list-decimal list-inside">
-              <li>Pay securely via PayMongo</li>
-              <li>Your contract is auto-generated and emailed to you upon payment confirmation</li>
-            </ol>
-          </div>
+      {selectedPaymentOption && (
+        <div className="mt-6 bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
+          <p className="text-sm font-bold uppercase tracking-wide text-[#0B1F4A] mb-3">Payment Details</p>
+          <ul className="space-y-1.5">
+            {selectedPaymentOption.details.map((detail) => (
+              <li key={detail} className="text-xs text-[#64748B] leading-relaxed flex items-start gap-2">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#C9A84C] shrink-0" />
+                <span>{detail}</span>
+              </li>
+            ))}
+          </ul>
+
+          {selectedPaymentOption.hasQr && (
+            <div className="mt-3 rounded-xl border border-[#D9E2F0] bg-white p-3">
+              <p className="text-[11px] font-semibold text-[#0B1F4A] mb-2">GCash QR</p>
+              <div className="flex items-center gap-3">
+                <img
+                  src="/payments/gcash-qr.svg"
+                  alt="GCash QR"
+                  className="w-24 h-24 rounded-lg border border-[#D9E2F0] bg-white"
+                />
+                <p className="text-[11px] text-[#64748B] leading-relaxed">
+                  Scan to pay using GCash. If you need help, please contact HERO support for the official payment QR.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* GCash flow */}
-      {paymentMethod === "gcash" && (
+      <div className="mt-6">
+        <Field
+          label="Reference Number"
+          required
+          error={!paymentReference.trim() ? "Please enter your payment reference number." : undefined}
+        >
+          <input
+            type="text"
+            value={paymentReference}
+            onChange={(e) => setPaymentReference(e.target.value)}
+            className={!paymentReference.trim() ? inputErrCls : inputCls}
+            placeholder="e.g. GCash/Bank reference ID"
+          />
+        </Field>
+      </div>
+
+      <div className="mt-6">
+        <Field label="Upload Receipt" required error={!paymentProof ? "Please upload your receipt." : undefined}>
+          <button
+            type="button"
+            onClick={() => paymentProofRef.current?.click()}
+            className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${paymentProof ? "border-[#1B3A8C] bg-[#EEF2FB]" : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"}`}
+          >
+            <Upload className={`w-5 h-5 ${paymentProof ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
+            <span className={`text-sm font-semibold ${paymentProof ? "text-[#1B3A8C]" : "text-[#64748B]"}`}>
+              {paymentProof ? paymentProof.name : "Click to upload receipt image or PDF"}
+            </span>
+          </button>
+          <input ref={paymentProofRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setPaymentProof(e.target.files?.[0] ?? null)} />
+          <p className="text-xs text-[#64748B] mt-2">Accepted: JPG, PNG, PDF · Max 10 MB</p>
+          {paymentProof && isPreviewableFile(paymentProof) && (
+            <div className="mt-3 rounded-xl border border-[#D9E2F0] bg-white px-3 py-2 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-[#0B1F4A]">Preview uploaded payment proof</p>
+                <p className="text-[11px] text-[#64748B] truncate">{paymentProof.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewTarget({ title: "Payment Proof Preview", file: paymentProof })}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1B3A8C] hover:underline shrink-0"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                View
+              </button>
+            </div>
+          )}
+        </Field>
+      </div>
+
+      {paymentMethod && (
         <div className="mt-6 space-y-4">
           <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
-            <p className="text-sm font-bold uppercase tracking-wide text-[#0B1F4A] mb-3">GCash Payment Details</p>
-            <div className="flex items-center gap-4">
-              <div className="w-24 h-24 bg-[#EEF2FB] rounded-xl flex items-center justify-center shrink-0 border border-[#C5D2EC]">
-                <Smartphone className="w-8 h-8 text-[#1B3A8C]" />
-              </div>
-              <div className="text-sm text-[#64748B] space-y-1">
-                <p><span className="font-semibold text-[#0B1F4A]">GCash Number:</span> 09XX XXX XXXX</p>
-                <p><span className="font-semibold text-[#0B1F4A]">Account Name:</span> HERO PH INC.</p>
-                <p><span className="font-semibold text-[#0B1F4A]">Amount:</span> {packagePrices[virtualOffice.package] ?? "—"}/mo</p>
-                <p className="mt-2 text-[#64748B]">Use your <strong>full name</strong> as the reference / note.</p>
-              </div>
-            </div>
+            <p className="text-sm font-bold uppercase tracking-wide text-[#0B1F4A] mb-2">Payment Summary</p>
+            <p className="text-sm text-[#64748B] leading-relaxed">
+              Selected: <span className="font-semibold text-[#0B1F4A]">{getPaymentMethodLabel(paymentMethod)}</span>
+            </p>
+            <p className="text-sm text-[#64748B] mt-2">
+              Reference No.: <span className="font-semibold text-[#0B1F4A]">{paymentReference || "—"}</span>
+            </p>
           </div>
-
-          <Field label="Upload Proof of Payment" required error={touched && !gcashProof ? "Please upload your GCash proof of payment." : undefined}>
-            <button
-              type="button"
-              onClick={() => gcashRef.current?.click()}
-              className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${gcashProof ? "border-[#1B3A8C] bg-[#EEF2FB]" : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
-                }`}
-            >
-              <Upload className={`w-5 h-5 ${gcashProof ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
-              <span className={`text-sm font-semibold ${gcashProof ? "text-[#1B3A8C]" : "text-[#64748B]"}`}>
-                {gcashProof ? gcashProof.name : "Click to upload screenshot or PDF"}
-              </span>
-            </button>
-            <input ref={gcashRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setGcashProof(e.target.files?.[0] ?? null)} />
-            <p className="text-xs text-[#64748B] mt-2">Accepted: JPG, PNG, PDF · Max 10 MB</p>
-          </Field>
 
           <div className="bg-[#FFFBF0] border border-[#F0D98A] rounded-xl px-5 py-4 flex items-start gap-3">
             <Clock className="w-4 h-4 text-[#C9A84C] shrink-0 mt-0.5" />
             <div className="text-xs text-[#7A5C00] space-y-1 leading-relaxed">
               <p className="font-semibold">Verification within 24 business hours</p>
-              <p>Our sales officer will verify your payment and send the service contract to your email within 24 business hours of receiving your proof of payment.</p>
+              <p>Our sales officer will verify your payment and send the quotation contract to your email within 24 business hours of receiving your proof of payment.</p>
             </div>
           </div>
 
@@ -1216,6 +1662,8 @@ function StepVOPayment({
         isSubmit={true}
         isSubmitting={isSubmitting}
       />
+
+      <FilePreviewModal target={previewTarget} onClose={() => setPreviewTarget(null)} />
     </div>
   );
 }
@@ -1226,6 +1674,21 @@ export default function GetAQuotePage() {
   const [selectedService, setSelectedService] = useState<ServiceId | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<BranchId | null>(null);
   const [contact, setContact] = useState<ContactFields>({ name: "", company: "", email: "", phone: "" });
+  const [contractIdentity, setContractIdentity] = useState<ContractIdentityFields>({
+    idType: "",
+    idTypeOther: "",
+    idName: "",
+    idNumber: "",
+    idAddress: "",
+    governmentIdFile: null,
+    signatorySameAsIdHolder: true,
+    signatoryIdType: "",
+    signatoryIdTypeOther: "",
+    signatoryIdName: "",
+    signatoryIdNumber: "",
+    signatoryIdAddress: "",
+    signatoryGovernmentIdFile: null,
+  });
   const [privateOffice, setPrivateOffice] = useState<PrivateOfficeFields>({ seats: "", moveInDate: "", leaseTerm: "", otherRequirements: "" });
 
   useEffect(() => {
@@ -1245,11 +1708,13 @@ export default function GetAQuotePage() {
   const [meetingRoom, setMeetingRoom] = useState<MeetingRoomFields>({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
   const [eventSpace, setEventSpace] = useState<EventSpaceFields>({ eventDate: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
-  const [gcashProof, setGcashProof] = useState<File | null>(null);
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modal, setModal] = useState<ModalKey>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Step 2 validation errors (set on attempted advance)
   const [step2Errors, setStep2Errors] = useState<Record<string, string>>({});
@@ -1258,6 +1723,10 @@ export default function GetAQuotePage() {
   // Standard: Service(1) → Requirements(2) → Contact(3) → Review(4)
   // Virtual Office: Service(1) → Requirements(2) → Contact(3) → Review(4) → Payment(5)
   const steps = isVO ? VO_STEPS : BASE_STEPS;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
 
   // Step 2 validation per service
   const validateStep2 = (): Record<string, string> => {
@@ -1304,21 +1773,35 @@ export default function GetAQuotePage() {
     setSelectedService(null);
     setSelectedBranch(null);
     setContact({ name: "", company: "", email: "", phone: "" });
+    setContractIdentity({
+      idType: "",
+      idTypeOther: "",
+      idName: "",
+      idNumber: "",
+      idAddress: "",
+      governmentIdFile: null,
+      signatorySameAsIdHolder: true,
+      signatoryIdType: "",
+      signatoryIdTypeOther: "",
+      signatoryIdName: "",
+      signatoryIdNumber: "",
+      signatoryIdAddress: "",
+      signatoryGovernmentIdFile: null,
+    });
     setPrivateOffice({ seats: "", moveInDate: "", leaseTerm: "", otherRequirements: "" });
     setVirtualOffice({ package: "", startDate: "" });
     setCoworking({ seats: "", startDate: "", terms: "", otherRequirements: "" });
     setMeetingRoom({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
     setEventSpace({ eventDate: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
     setPaymentMethod(null);
-    setGcashProof(null);
+    setPaymentReference("");
+    setPaymentProof(null);
     setNotes("");
     setConsent(false);
     setStep2Errors({});
     setModal(null);
     setSubmitError(null);
   }, []);
-
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Builds the payload expected by App\Http\Controllers\Api\QuotationController::store
   const buildPayload = () => {
@@ -1332,9 +1815,25 @@ export default function GetAQuotePage() {
       email: contact.email,
       phone: contact.phone,
       request: notes || null,
-      payment_method: paymentMethod ?? "gcash", // backend requires this; defaults to gcash for non-VO flows
-      transaction_id: null,
-      receipt: gcashProof ? gcashProof.name : null,
+      payment_method: paymentMethod ?? "cash",
+      transaction_id: paymentReference.trim() || null,
+      receipt: paymentProof ? paymentProof.name : null,
+      id_type: contractIdentity.idType === "Others" ? contractIdentity.idTypeOther : contractIdentity.idType,
+      id_name: contractIdentity.idName || null,
+      id_number: contractIdentity.idNumber || null,
+      id_address: contractIdentity.idAddress || null,
+      signatory_same_as_id_holder: contractIdentity.signatorySameAsIdHolder,
+      signatory_id_name: contractIdentity.signatorySameAsIdHolder ? null : contractIdentity.signatoryIdName || null,
+      signatory_id_number: contractIdentity.signatorySameAsIdHolder ? null : contractIdentity.signatoryIdNumber || null,
+      signatory_id_address: contractIdentity.signatorySameAsIdHolder ? null : contractIdentity.signatoryIdAddress || null,
+      signatory_id_type: contractIdentity.signatorySameAsIdHolder
+        ? null
+        : (contractIdentity.signatoryIdType === "Others" ? contractIdentity.signatoryIdTypeOther : contractIdentity.signatoryIdType),
+      signatory_details: contractIdentity.signatorySameAsIdHolder
+        ? `${contractIdentity.idName || contact.name}`
+        : `${contractIdentity.signatoryIdName} (${contractIdentity.signatoryIdType === "Others" ? contractIdentity.signatoryIdTypeOther : contractIdentity.signatoryIdType})`,
+      government_id_file: contractIdentity.governmentIdFile ? contractIdentity.governmentIdFile.name : null,
+      signatory_id_file: contractIdentity.signatoryGovernmentIdFile ? contractIdentity.signatoryGovernmentIdFile.name : null,
     };
 
     let lease_term: string | null = null;
@@ -1350,7 +1849,7 @@ export default function GetAQuotePage() {
       lease_term = privateOffice.leaseTerm;
     } else if (selectedService === "virtual-office") {
       detail.date = virtualOffice.startDate;
-      const packagePrices: Record<string, number> = { Basic: 8000, Standard: 12000, Premium: 15000 };
+      const packagePrices: Record<string, number> = { Basic: 2000, Standard: 3000, Premium: 5000 };
       total = packagePrices[virtualOffice.package] ?? 0;
       pkg = virtualOffice.package;
     } else if (selectedService === "coworking") {
@@ -1392,13 +1891,37 @@ export default function GetAQuotePage() {
     setIsSubmitting(true);
 
     try {
+      const payload = buildPayload();
+      const hasFileUploads = !!paymentProof || !!contractIdentity.governmentIdFile || !!contractIdentity.signatoryGovernmentIdFile;
+      const headers: HeadersInit = {
+        Accept: "application/json",
+      };
+
+      let body: BodyInit;
+      if (hasFileUploads) {
+        const formData = new FormData();
+        formData.append("payload", JSON.stringify(payload));
+
+        if (paymentProof) {
+          formData.append("payment_proof", paymentProof);
+        }
+        if (contractIdentity.governmentIdFile) {
+          formData.append("government_id", contractIdentity.governmentIdFile);
+        }
+        if (contractIdentity.signatoryGovernmentIdFile) {
+          formData.append("signatory_government_id", contractIdentity.signatoryGovernmentIdFile);
+        }
+
+        body = formData;
+      } else {
+        headers["Content-Type"] = "application/json";
+        body = JSON.stringify(payload);
+      }
+
       const res = await fetch(`${API_BASE_URL}/quotations`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(buildPayload()),
+        headers,
+        body,
       });
 
       if (!res.ok) {
@@ -1433,6 +1956,8 @@ export default function GetAQuotePage() {
         data={virtualOffice}
         onChange={(d) => { setVirtualOffice((p) => ({ ...p, ...d })); setStep2Errors({}); }}
         errors={step2Errors}
+        notes={notes}
+        setNotes={setNotes}
       />
     );
     if (selectedService === "coworking") return (
@@ -1534,10 +2059,11 @@ export default function GetAQuotePage() {
                 {/* Step 3: Contact (both flows) */}
                 {step === 3 && (
                   <Step3
+                    isVO={isVO}
                     contact={contact}
-                    notes={notes}
+                    contractIdentity={contractIdentity}
                     setContact={setContact}
-                    setNotes={setNotes}
+                    setContractIdentity={setContractIdentity}
                     onBack={() => setStep(2)}
                     onNext={() => setStep(4)}
                   />
@@ -1554,6 +2080,7 @@ export default function GetAQuotePage() {
                     meetingRoom={meetingRoom}
                     eventSpace={eventSpace}
                     contact={contact}
+                    contractIdentity={contractIdentity}
                     notes={notes}
                     consent={consent}
                     setConsent={setConsent}
@@ -1570,8 +2097,10 @@ export default function GetAQuotePage() {
                     virtualOffice={virtualOffice}
                     paymentMethod={paymentMethod}
                     setPaymentMethod={setPaymentMethod}
-                    gcashProof={gcashProof}
-                    setGcashProof={setGcashProof}
+                    paymentReference={paymentReference}
+                    setPaymentReference={setPaymentReference}
+                    paymentProof={paymentProof}
+                    setPaymentProof={setPaymentProof}
                     onBack={() => setStep(4)}
                     isSubmitting={isSubmitting}
                   />
@@ -1684,5 +2213,62 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h3 className="font-semibold text-[#0A1E3F] mb-1">{title}</h3>
       <div className="text-gray-600">{children}</div>
     </div>
+  );
+}
+
+function getPaymentMethodLabel(paymentMethod: PaymentMethod | string | null | undefined) {
+  switch (paymentMethod) {
+    case "gcash":
+      return "GCash";
+    case "bank":
+      return "Bank";
+    case "cheque":
+      return "Cheque";
+    case "cash":
+      return "Cash";
+    case "online_transfer":
+      return "Online Transfer";
+    default:
+      return paymentMethod || "—";
+  }
+}
+
+function isPreviewableFile(file: File) {
+  return file.type.startsWith("image/") || file.type === "application/pdf";
+}
+
+function FilePreviewModal({ target, onClose }: { target: PreviewTarget | null; onClose: () => void }) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!target) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(target.file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [target]);
+
+  if (!target || !previewUrl) return null;
+
+  const isImage = target.file.type.startsWith("image/");
+
+  return (
+    <Modal open={true} onClose={onClose} title={target.title}>
+      <div className="space-y-3">
+        <p className="text-xs text-[#64748B]">
+          {target.file.name}
+        </p>
+        <div className="rounded-xl border border-[#D9E2F0] bg-[#F8FAFD] p-3">
+          {isImage ? (
+            <img src={previewUrl} alt={target.file.name} className="max-h-[60vh] w-full object-contain rounded-lg" />
+          ) : (
+            <iframe src={previewUrl} title={target.file.name} className="h-[60vh] w-full rounded-lg bg-white" />
+          )}
+        </div>
+      </div>
+    </Modal>
   );
 }

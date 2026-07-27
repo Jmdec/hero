@@ -4,9 +4,8 @@ import { sendQuotationNotifications, QuotationPayload } from "@/lib/nodemailer";
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { quotation, quotationId } = body as {
+        const { quotation } = body as {
             quotation: QuotationPayload;
-            quotationId?: string | number;
         };
 
         if (!quotation?.detail?.email) {
@@ -16,7 +15,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const { userSent, adminSent } = await sendQuotationNotifications(quotation, quotationId);
+        const { userSent, adminSent } = await sendQuotationNotifications(quotation);
 
         return NextResponse.json(
             { success: userSent || adminSent, userEmailSent: userSent, adminEmailSent: adminSent },

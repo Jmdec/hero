@@ -27,50 +27,18 @@ const menuItems = [
   {
     section: "Menu",
     items: [
-      {
-        title: "Dashboard",
-        href: "/admin",
-        icon: LayoutDashboard,
-      },
-      {
-        title: "Quotation",
-        href: "/admin/quotation",
-        icon: FileSpreadsheet,
-      },
-      {
-        title: "Users",
-        href: "/admin/users",
-        icon: Users,
-      },
-      {
-        title: "Chats",
-        href: "/admin/chats",
-        icon: MessagesSquare,
-      },
-      {
-        title: "Contact",
-        href: "/admin/contact",
-        icon: MailQuestion,
-      },
-      {
-        title: "Announcements",
-        href: "/admin/announcements",
-        icon: Megaphone,
-      },
-      {
-        title: "Testimonials",
-        href: "/admin/testimonials",
-        icon: MessageCircleHeart,
-      },
+      { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
+      { title: "Quotation", href: "/admin/quotation", icon: FileSpreadsheet },
+      { title: "Users", href: "/admin/users", icon: Users },
+      { title: "Chats", href: "/admin/chats", icon: MessagesSquare },
+      { title: "Inquiry", href: "/admin/contact", icon: MailQuestion },
+      { title: "Announcements", href: "/admin/announcements", icon: Megaphone },
+      { title: "Testimonials", href: "/admin/testimonials", icon: MessageCircleHeart },
     ],
   },
 ];
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -78,28 +46,27 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Clear the server-side cookie so middleware also denies access
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // proceed with client cleanup regardless
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     router.replace("/");
   };
 
   useEffect(() => {
+    // NOTE: middleware.ts is the actual security boundary — it runs server-side
+    // before this component ever mounts. This client-side check exists only
+    // to populate `user` for the UI and avoid a flash of admin content while
+    // localStorage is read. There is no dev-mode bypass here anymore.
     try {
       const storedUser = localStorage.getItem("user");
 
       if (!storedUser) {
-        if (process.env.NODE_ENV !== "production") {
-          setUser({
-            id: 0,
-            name: "Admin Demo",
-            email: "admin@demo.local",
-            role: "admin",
-          });
-          setLoading(false);
-          return;
-        }
-
         router.replace("/login");
         return;
       }
@@ -125,7 +92,7 @@ export default function AdminLayout({
       <Loading
         variant="screen"
         title="Loading admin workspace"
-        subtitle="Hero Admin"
+        subtitle="Hero Serviced Office — Admin"
       />
     );
   }
@@ -168,7 +135,7 @@ export default function AdminLayout({
           </h1>
         </div>
 
-        {/* Nav — scrollable if items overflow */}
+        {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-3">
           {menuItems.map(({ section, items }) => (
             <div key={section}>
@@ -187,9 +154,7 @@ export default function AdminLayout({
                           : "text-[#0D47A1] border-transparent hover:bg-[#0A1E3F]/5 hover:text-[#1565C0]"
                       }`}
                     >
-                      <Icon
-                        className={`w-4 h-4 shrink-0 ${active ? "text-[#4F8EF7]" : ""}`}
-                      />
+                      <Icon className={`w-4 h-4 shrink-0 ${active ? "text-[#4F8EF7]" : ""}`} />
                       {title}
                     </Link>
                   );
@@ -198,7 +163,7 @@ export default function AdminLayout({
           ))}
         </nav>
 
-        {/* Footer nav — always pinned to bottom of sidebar */}
+        {/* Footer nav */}
         <div className="px-3 pb-4 pt-2 border-t border-[#d1d4da] shrink-0">
           <Link
             href="/"
@@ -210,12 +175,10 @@ export default function AdminLayout({
         </div>
       </aside>
 
-      {/* Main area — offset by sidebar width on desktop */}
+      {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
-        {/* Top Navbar — sticky so it stays on scroll */}
         <header className="sticky top-0 z-30 md:mt-2 md:mb-1 md:mx-2 md:rounded-xl shadow-sm h-14 bg-white border-b border-[#DDD9D0] px-4 md:px-6 lg:px-8 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            {/* Hamburger — mobile only */}
             <button
               onClick={() => setSidebarOpen(true)}
               className="lg:hidden"
@@ -225,9 +188,7 @@ export default function AdminLayout({
             </button>
 
             <span className="sm:text-lg md:text-2xl font-bold text-[#0A1E3F]">
-              {menuItems
-                .flatMap((s) => s.items)
-                .find((i) => i.href === pathname)?.title ?? "Admin"}
+              {menuItems.flatMap((s) => s.items).find((i) => i.href === pathname)?.title ?? "Admin"}
             </span>
           </div>
 
@@ -245,21 +206,14 @@ export default function AdminLayout({
                 className="flex items-center gap-2 px-4 py-2 bg-[#1B3A8C]/10 hover:bg-[#1B3A8C]/20 text-[#1B3A8C] border border-[#1B3A8C]/30 rounded-full transition-all"
               >
                 <User className="w-4 h-4" />
-                <span className="hidden md:block text-xs md:text-sm font-medium">
-                  {user?.name}
-                </span>
-                <ChevronDown
-                  className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                />
+                <span className="hidden md:block text-xs md:text-sm font-medium">{user?.name}</span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
               </button>
 
               <AnimatePresence>
                 {isOpen && (
                   <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setIsOpen(false)}
-                    />
+                    <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -268,9 +222,7 @@ export default function AdminLayout({
                       className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50"
                     >
                       <div className="p-4 border-b border-gray-100">
-                        <p className="text-sm font-medium text-gray-900">
-                          {user?.name}
-                        </p>
+                        <p className="text-sm font-medium text-gray-900">{user?.name}</p>
                         <p className="text-xs text-gray-500">{user?.email}</p>
                       </div>
                       <div className="py-2">
@@ -298,7 +250,6 @@ export default function AdminLayout({
           </div>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 p-4 md:p-6 lg:p-8 bg-white md:my-2 md:mx-2 md:rounded-xl shadow-sm">
           {children}
         </main>

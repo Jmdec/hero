@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Trash2,
@@ -134,7 +135,7 @@ HERO Serviced Office Team`,
     subject: "Your booking inquiry",
     body: `Hi {{name}},
 
-Thanks for reaching out. Could you confirm your preferred date and time so we can check availability for you?
+Thanks for reaching out. Could you confirm your preferred date and time? We'll check the availability.
 
 Once confirmed, we'll send over the booking details and rate for your session.
 
@@ -204,10 +205,15 @@ function authHeaders(json = false) {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-  return {
-    Authorization: `Bearer ${token}`,
+  const headers: Record<string, string> = {
     ...(json ? { "Content-Type": "application/json" } : {}),
   };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
 }
 
 function fillTemplate(text: string, name: string) {
@@ -232,6 +238,7 @@ function getPageNumbers(current: number, last: number): (number | "…")[] {
 }
 
 export default function ContactAdmin() {
+  const router = useRouter();
   const [items, setItems] = useState<ContactInquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -266,6 +273,17 @@ export default function ContactAdmin() {
     setLoading(true);
     setError(null);
 
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+    if (!token) {
+      setError("Session expired. Please log in again.");
+      setItems([]);
+      setLoading(false);
+      router.replace("/login");
+      return;
+    }
+
     try {
       const params = new URLSearchParams({
         page: String(page),
@@ -278,6 +296,14 @@ export default function ContactAdmin() {
       const res = await fetch(`/api/admin/contacts?${params}`, {
         headers: authHeaders(),
       });
+
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setError("Session expired. Please log in again.");
+        router.replace("/login");
+        return;
+      }
 
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
 
@@ -301,7 +327,7 @@ export default function ContactAdmin() {
   useEffect(() => {
     fetchInquiries();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, status]);
+  }, [page, search, status, router]);
 
   // Relevant templates float to the top for this inquiry's type, but every
   // template stays selectable — nothing is hidden.

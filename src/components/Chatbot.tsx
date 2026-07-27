@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     MessageCircle,
     X,
@@ -353,15 +354,48 @@ const WELCOME_MESSAGE: Message = {
 const AGENT_ENDED_MESSAGE =
     "🔴 The live agent ended the chat. You're back with our AI assistant — feel free to keep chatting or pick a quick reply below.";
 
+/* ------------------------------------------------------------------ */
+/*  Business hours                                                     */
+/*  Tower 6789 runs a Mon–Fri, 8AM–8PM live-chat desk. Insular Life is  */
+/*  staffed 24/7 on-site, but until the two teams share one chat queue  */
+/*  the widget checks against Tower 6789's hours for live-agent chat.   */
+/*  Update WINDOW below (or wire in a location switch) if Insular's     */
+/*  24/7 desk should also answer the widget directly.                   */
+/* ------------------------------------------------------------------ */
+const BUSINESS_HOURS_WINDOW = {
+    days: [1, 2, 3, 4, 5], // Mon–Fri
+    openHour: 8,
+    closeHour: 20,
+};
+
+function isAgentAvailableNow(): boolean {
+    const now = new Date();
+    const day = now.getDay();
+    const hour = now.getHours();
+    return (
+        BUSINESS_HOURS_WINDOW.days.includes(day) &&
+        hour >= BUSINESS_HOURS_WINDOW.openHour &&
+        hour < BUSINESS_HOURS_WINDOW.closeHour
+    );
+}
+
+const OUT_OF_HOURS_MESSAGE =
+    "Our live agents are offline right now (Tower 6789 hours: Mon–Fri, 8AM–8PM PHT). Let us know your preferred time and how to reach you (email or phone), and someone from the team will follow up.";
+
+const PREFERRED_CONTACT_RECEIVED_MESSAGE =
+    "Got it, thank you! We've saved your preferred contact details and someone from the team will reach out. Feel free to keep chatting with me in the meantime. 😊";
+
 const PREDEFINED_REPLIES: Record<string, string> = {
     "Our Services":
-        "We offer a range of workspace solutions:\n\n• Flexible Office Spaces\n• Meeting & Conference Rooms\n• Virtual Offices\n• Coworking Spaces\n• Business Support Services\n\nAll designed to help your business operate professionally and efficiently!",
-    "About Us":
-        "HERO Serviced Office provides premium, fully-equipped workspaces for businesses of all sizes in the Philippines. With 2+ years of experience and 20+ completed projects, we help companies scale without the overhead of a traditional office.",
+        "We offer a range of workspace solutions:\n\n• Private Offices\n• Virtual Offices\n• Co-working Spaces\n• Meeting & Conference Rooms\n• Business Support Services\n\nAll designed to help your business operate professionally and efficiently!",
     "Contact Info":
-        "📍 Tower 6789\n23F Tower6789, 6789 Ayala Avenue, Makati City 1209, Metro Manila, Philippines\n\n📍 Insular Life Building\n11F Insular Life Building, 6781 Ayala Avenue, Corner Paseo de Roxas, Makati City, Metro Manila, Philippines\n\n📧 Email: info@heroph.net\n\nFeel free to reach out — we'd love to hear from you!",
-    "Office Spaces":
-        "Our private office spaces are fully furnished and ready to move in. Whether you need a space for 1 person or a whole team, we have flexible options to fit your needs and budget.",
+        "HERO Serviced Office provides premium, fully-equipped workspaces for businesses of all sizes in the Philippines. With 2+ years of experience and 20+ completed projects, we help companies scale without the overhead of a traditional office.\n\n📍 Tower 6789\n23F Tower6789, 6789 Ayala Avenue, Makati City 1209, Metro Manila, Philippines\n🕐 Mon–Fri, 8AM–8PM\n\n📍 Insular Life Building\n11F Insular Life Building, 6781 Ayala Avenue, Corner Paseo de Roxas, Makati City, Metro Manila, Philippines\n🕐 Open 24/7\n\n📧 Email: info@heroph.net\n\nFeel free to reach out — we'd love to hear from you!",
+    "Private Office":
+        "Our private offices are fully furnished and ready to move in — whether you need a space for 1 person or a whole team. Flexible terms, all-inclusive pricing, no fit-out hassle.",
+    "Virtual Office":
+        "Our virtual office plans give your business a prestigious Makati address, mail handling, and call answering — without the cost of a physical lease. Great for remote or early-stage teams.",
+    "Co-working Space":
+        "Our co-working spaces are shared, flexible desks with high-speed Wi-Fi, communal areas, and networking opportunities — perfect for freelancers, startups, and small teams.",
     "Meeting Rooms":
         "Our meeting rooms are equipped with high-speed Wi-Fi, presentation displays, and video conferencing tools — perfect for client meetings, interviews, and team sessions. Available by the hour or day.",
     "Get a Quote":
@@ -393,7 +427,7 @@ const BOT_RULES: BotRule[] = [
             "good evening",
         ],
         reply:
-            "Hello! 👋 How can I help you today? You can ask about our services, office spaces, meeting rooms, pricing, or how to reach us.",
+            "Hello! 👋 How can I help you today? You can ask about our services, private offices, virtual offices, co-working spaces, meeting rooms, pricing, or how to reach us.",
     },
     {
         keywords: ["service", "services", "what do you offer", "offer"],
@@ -401,7 +435,7 @@ const BOT_RULES: BotRule[] = [
     },
     {
         keywords: ["about", "who are you", "company"],
-        reply: PREDEFINED_REPLIES["About Us"],
+        reply: PREDEFINED_REPLIES["Contact Info"],
     },
     {
         keywords: [
@@ -416,8 +450,16 @@ const BOT_RULES: BotRule[] = [
         reply: PREDEFINED_REPLIES["Contact Info"],
     },
     {
-        keywords: ["private office", "office space", "workspace", "desk"],
-        reply: PREDEFINED_REPLIES["Office Spaces"],
+        keywords: ["private office", "office space", "desk space"],
+        reply: PREDEFINED_REPLIES["Private Office"],
+    },
+    {
+        keywords: ["virtual office", "virtual address", "mail handling"],
+        reply: PREDEFINED_REPLIES["Virtual Office"],
+    },
+    {
+        keywords: ["co-working", "coworking", "shared desk", "hot desk"],
+        reply: PREDEFINED_REPLIES["Co-working Space"],
     },
     {
         keywords: ["meeting room", "conference room", "boardroom"],
@@ -438,17 +480,17 @@ const BOT_RULES: BotRule[] = [
     {
         keywords: ["agent", "human", "representative", "real person"],
         reply:
-            'I can connect you with a live team member — just click "Talk to an agent" at the top of the chat.',
+            'I can connect you with a live team member — just tap "Talk to an Agent" below.',
     },
     {
         keywords: ["hour", "open", "opening time", "business hours"],
         reply:
-            "We're available Monday–Friday, 9AM–6PM (PHT). You can also email us anytime at info@heroph.net.",
+            "Tower 6789's live-chat desk is available Mon–Fri, 8AM–6PM (PHT). Our Insular Life location is staffed 24/7 on-site. You can also email us anytime at info@heroph.net.",
     },
 ];
 
 const FALLBACK_REPLY =
-    "Thanks for your message! I'm not sure I fully understood that, but here's what I can help with — our services, office spaces, meeting rooms, pricing, or contact details. You can also tap one of the quick replies below, or click \"Talk to an agent\" for a live team member.";
+    "Thanks for your message! I'm not sure I fully understood that, but here's what I can help with — our services, private offices, virtual offices, co-working spaces, meeting rooms, pricing, or contact details. You can also tap one of the quick replies below, or tap \"Talk to an Agent\" for a live team member.";
 
 /**
  * Matches free-typed user text against BOT_RULES and returns a canned reply.
@@ -502,8 +544,10 @@ const Chatbot = () => {
     const [agreedToPolicy, setAgreedToPolicy] = useState(false);
     const [agreementTouched, setAgreementTouched] = useState(false);
     const [agentRequested, setAgentRequested] = useState(false);
-    const [chatEnabled, setChatEnabled] = useState(false);
     const [conversationClosed, setConversationClosed] = useState(false);
+    // True while we've asked an out-of-hours visitor for their preferred
+    // contact time/method and are waiting on their reply.
+    const [awaitingPreferredContact, setAwaitingPreferredContact] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -514,13 +558,17 @@ const Chatbot = () => {
     // (e.g. `status`, `agent_status`, a boolean `agent_active`, etc.)
     const previousStatusRef = useRef<string | null>(null);
 
+    // AI handles every inquiry first; "Talk to an Agent" is just one of the
+    // quick replies below, not a gate the visitor has to pass through
+    // before they can chat at all.
     const quickReplies = [
-        "Our Services",
-        "About Us",
-        "Contact Info",
-        "Office Spaces",
+        "Private Office",
+        "Virtual Office",
+        "Co-working Space",
         "Meeting Rooms",
-        "Get a Quote",
+        "Our Services",
+        "Contact Info",
+        "Talk to an Agent",
     ];
 
     const scrollToBottom = () => {
@@ -611,10 +659,9 @@ const Chatbot = () => {
                 });
 
                 if (agentJustEnded) {
-                    // Loop back to AI mode: re-enable the "Talk to an agent" button
-                    // and clear any stale error state so the assistant flow resumes cleanly.
+                    // Loop back to AI mode: clear the agent-requested flag and any
+                    // stale error state so the assistant flow resumes cleanly.
                     setAgentRequested(false);
-                    setChatEnabled(false);
                     setSendError("");
                 }
             } catch {
@@ -693,7 +740,15 @@ const Chatbot = () => {
     );
 
     const handleQuickReply = async (reply: string) => {
-        if (conversationClosed || !chatEnabled) return;
+        if (conversationClosed) return;
+
+        // "Talk to an Agent" is a quick reply, but it drives its own flow
+        // (live-agent request or the out-of-hours fallback) instead of a
+        // canned answer.
+        if (reply === "Talk to an Agent") {
+            await handleTalkToAgent();
+            return;
+        }
 
         const time = formatTime();
 
@@ -717,19 +772,36 @@ const Chatbot = () => {
     };
 
     const handleTalkToAgent = async () => {
-        if (conversationClosed) return;
+        if (conversationClosed || agentRequested || awaitingPreferredContact) return;
 
-        setChatEnabled(true);
         const time = formatTime();
         const userText = "I'd like to talk to a live agent.";
 
         setMessages((prev) => [...prev, { type: "user", text: userText, time }]);
         setIsTyping(true);
         setSendError("");
+
+        const activeConversation = await ensureConversation();
+        void persistMessage(activeConversation, "user", userText);
+
+        await humanDelay();
+        setIsTyping(false);
+
+        // Outside business hours: collect a preferred contact time/method
+        // instead of dead-ending on "no agent available".
+        if (!isAgentAvailableNow()) {
+            setMessages((prev) => [
+                ...prev,
+                { type: "bot", text: OUT_OF_HOURS_MESSAGE, time: formatTime() },
+            ]);
+            void persistMessage(activeConversation, "assistant", OUT_OF_HOURS_MESSAGE);
+            setAwaitingPreferredContact(true);
+            return;
+        }
+
         setAgentRequested(true);
 
         try {
-            const activeConversation = await ensureConversation();
             const targetId = conversation?.id ?? activeConversation?.id;
 
             if (targetId) {
@@ -739,10 +811,8 @@ const Chatbot = () => {
                 previousStatusRef.current = "agent_requested";
             }
 
-            void persistMessage(activeConversation, "user", userText);
-
             const agentReply =
-                "Sure thing! 🙋 One of our team members will be with you shortly.\n\nIn the meantime, you can also reach us directly:\n\n📧 info@heroph.net\n📞 Mon–Fri, 9AM–6PM (PHT)\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
+                "Sure thing! 🙋 One of our team members will be with you shortly.\n\nIn the meantime, you can also reach us directly:\n\n📧 info@heroph.net\n📞 Mon–Fri, 8AM–8PM (Tower 6789) or 24/7 (Insular Life)\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
 
             setMessages((prev) => [
                 ...prev,
@@ -762,13 +832,11 @@ const Chatbot = () => {
                 },
             ]);
             setAgentRequested(false);
-        } finally {
-            setIsTyping(false);
         }
     };
 
     const handleSendMessage = async () => {
-        if (conversationClosed || !chatEnabled) return;
+        if (conversationClosed) return;
         if (!message.trim()) return;
 
         const time = formatTime();
@@ -781,6 +849,42 @@ const Chatbot = () => {
 
         const activeConversation = await ensureConversation();
         await persistMessage(activeConversation, "user", userMessage.text);
+
+        // If we're waiting on a preferred contact time/method (out-of-hours
+        // agent request), the next thing the visitor types is treated as
+        // that answer instead of routed through the local bot rules.
+        if (awaitingPreferredContact) {
+            await humanDelay();
+            setIsTyping(false);
+            setAwaitingPreferredContact(false);
+
+            try {
+                const targetId = conversation?.id ?? activeConversation?.id;
+                if (targetId) {
+                    await chatApi.submitPreferredContact(targetId, {
+                        preferred_time: userMessage.text,
+                    });
+                }
+            } catch {
+                // Non-fatal — the message is already persisted above, and the
+                // team can still see it in the conversation thread.
+            }
+
+            setMessages((prev) => [
+                ...prev,
+                {
+                    type: "bot",
+                    text: PREFERRED_CONTACT_RECEIVED_MESSAGE,
+                    time: formatTime(),
+                },
+            ]);
+            void persistMessage(
+                activeConversation,
+                "assistant",
+                PREFERRED_CONTACT_RECEIVED_MESSAGE,
+            );
+            return;
+        }
 
         await humanDelay();
 
@@ -859,6 +963,7 @@ const Chatbot = () => {
             setMessages([{ type: "bot", text: greeting, time: formatTime() }]);
             await persistMessage(newConversation, "assistant", greeting);
 
+            // AI handles the inquiry immediately — no extra step needed before chatting.
             setLeadSubmitted(true);
         } catch (err) {
             const detail = err instanceof Error ? err.message : undefined;
@@ -925,29 +1030,13 @@ const Chatbot = () => {
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                            {leadSubmitted && !conversationClosed && (
-                                <button
-                                    onClick={handleTalkToAgent}
-                                    disabled={isTyping || agentRequested}
-                                    className="flex items-center gap-1.5 text-white/90 hover:text-white hover:bg-white/15 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-white"
-                                    aria-label="Talk to an agent"
-                                    title="Talk to an agent"
-                                >
-                                    <UserRound className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline">
-                                        {agentRequested ? "Agent requested" : "Talk to an agent"}
-                                    </span>
-                                </button>
-                            )}
-                            <button
-                                onClick={handleCloseChat}
-                                className="text-white/70 hover:text-white hover:bg-white/15 rounded-full p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-white"
-                                aria-label="Close chat"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
+                        <button
+                            onClick={handleCloseChat}
+                            className="text-white/70 hover:text-white hover:bg-white/15 rounded-full p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-white"
+                            aria-label="Close chat"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
                     </div>
 
                     {/* Body */}
@@ -1148,29 +1237,43 @@ const Chatbot = () => {
                                 ))}
 
                                 {/* Typing indicator */}
-                                {isTyping && (
-                                    <div className="flex justify-start items-end gap-2">
-                                        <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0">
-                                            <span className="text-white text-xs font-bold">H</span>
-                                        </div>
-                                        <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                                            <div className="flex gap-1 items-center">
-                                                <span
-                                                    className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                                                    style={{ animationDelay: "0ms" }}
-                                                />
-                                                <span
-                                                    className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                                                    style={{ animationDelay: "150ms" }}
-                                                />
-                                                <span
-                                                    className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                                                    style={{ animationDelay: "300ms" }}
-                                                />
+                                <AnimatePresence>
+                                    {isTyping && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 8 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="flex justify-start items-end gap-2"
+                                        >
+                                            <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0">
+                                                <span className="text-white text-xs font-bold">H</span>
                                             </div>
-                                        </div>
-                                    </div>
-                                )}
+
+                                            <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+                                                <div className="flex gap-1">
+                                                    {[0, 1, 2].map((i) => (
+                                                        <motion.div
+                                                            key={i}
+                                                            className="w-1.5 h-1.5 rounded-full bg-gray-400"
+                                                            animate={{
+                                                                y: [0, -4, 0],
+                                                                opacity: [0.4, 1, 0.4],
+                                                                scale: [0.8, 1, 0.8],
+                                                            }}
+                                                            transition={{
+                                                                duration: 1,
+                                                                repeat: Infinity,
+                                                                ease: "easeInOut",
+                                                                delay: i * 0.18,
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
                                 {/* Send error */}
                                 {sendError && !isTyping && (
@@ -1179,31 +1282,44 @@ const Chatbot = () => {
                                     </p>
                                 )}
 
-                                {!chatEnabled && !conversationClosed && (
-                                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                                        Please click "Talk to an agent" above to enable the live chat.
+                                {/* Preferred-contact prompt hint (out of business hours) */}
+                                {awaitingPreferredContact && !isTyping && (
+                                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 ml-9">
+                                        Type your preferred day/time and contact method (email or
+                                        phone) below, then hit send.
                                     </div>
                                 )}
 
                                 {/* Quick replies */}
-                                {chatEnabled && !conversationClosed && !isTyping && messages[messages.length - 1]?.type === "bot" && (
-                                    <div className="pt-1">
-                                        <p className="text-[11px] text-gray-400 mb-2 pl-9">
-                                            Quick replies
-                                        </p>
-                                        <div className="flex flex-wrap gap-1.5 pl-9">
-                                            {quickReplies.map((reply, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => handleQuickReply(reply)}
-                                                    className="px-3 py-1.5 text-xs border border-[#1B3A8C] text-[#1B3A8C] rounded-full hover:bg-[#1B3A8C] hover:text-white active:scale-95 transition-all font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
-                                                >
-                                                    {reply}
-                                                </button>
-                                            ))}
+                                {!conversationClosed &&
+                                    !isTyping &&
+                                    !awaitingPreferredContact &&
+                                    messages[messages.length - 1]?.type === "bot" && (
+                                        <div className="pt-1">
+                                            <p className="text-[11px] text-gray-400 mb-2 pl-9">
+                                                Quick replies
+                                            </p>
+                                            <div className="flex flex-wrap gap-1.5 pl-9">
+                                                {quickReplies.map((reply, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={() => handleQuickReply(reply)}
+                                                        disabled={
+                                                            reply === "Talk to an Agent" && agentRequested
+                                                        }
+                                                        className="px-3 py-1.5 text-xs border border-[#1B3A8C] text-[#1B3A8C] rounded-full hover:bg-[#1B3A8C] hover:text-white active:scale-95 transition-all font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#1B3A8C] inline-flex items-center gap-1"
+                                                    >
+                                                        {reply === "Talk to an Agent" && (
+                                                            <UserRound className="w-3 h-3" />
+                                                        )}
+                                                        {reply === "Talk to an Agent" && agentRequested
+                                                            ? "Agent requested"
+                                                            : reply}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
                                 <div ref={messagesEndRef} />
                             </div>
@@ -1211,7 +1327,7 @@ const Chatbot = () => {
                     </div>
 
                     {/* Input area */}
-                    {!isResumingSession && leadSubmitted && chatEnabled && !conversationClosed && (
+                    {!isResumingSession && leadSubmitted && !conversationClosed && (
                         <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
                             <div className="flex items-center gap-2">
                                 <input
@@ -1220,7 +1336,11 @@ const Chatbot = () => {
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
                                     onKeyDown={handleKeyPress}
-                                    placeholder="Type a message…"
+                                    placeholder={
+                                        awaitingPreferredContact
+                                            ? "e.g. Weekdays after 6PM, reach me by phone…"
+                                            : "Type a message…"
+                                    }
                                     aria-label="Type a message"
                                     className="flex-1 px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20 bg-gray-50 transition-colors"
                                 />

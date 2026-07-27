@@ -69,7 +69,7 @@ export async function sendVerificationEmail(
             </h1>
 
             <p style="margin-top:8px;color:#64748b;font-size:15px;">
-            Professional Workspace Solutions
+            Your Workspace for Success.
             </p>
 
             </div>
@@ -87,7 +87,7 @@ export async function sendVerificationEmail(
 
             <div style="text-align:center;margin:40px 0;">
 
-            
+            <a
             href="${verificationUrl}"
             style="
             display:inline-block;
@@ -190,8 +190,17 @@ export async function sendVerificationEmail(
 // QUOTATION EMAILS
 
 export interface QuotationDetail {
-    quotation_id?: string | number;
     full_name: string;
+    id_type?: string | null;
+    id_number?: string | null;
+    id_name?: string | null;
+    id_address?: string | null;
+    signatory_details?: string | null;
+    government_id_file?: string | null;
+    signatory_id_file?: string | null;
+    receipt_url?: string | null;
+    government_id_url?: string | null;
+    signatory_id_url?: string | null;
     company_name?: string | null;
     email: string;
     phone: string;
@@ -210,6 +219,7 @@ export interface QuotationDetail {
 export interface QuotationPayload {
     service_id?: number | null;
     service_name: string;
+    branch?: string | null;
     lease_term?: string | null;
     package?: string | null;
     event_type?: string | null;
@@ -217,11 +227,45 @@ export interface QuotationPayload {
     detail: QuotationDetail;
 }
 
+export interface QuotationDocumentCopy {
+    filename: string;
+    content: Buffer;
+    contentType: string;
+}
+
+export interface QuotationNotificationOptions {
+    paymentProofCopy?: QuotationDocumentCopy | null;
+    governmentIdCopy?: QuotationDocumentCopy | null;
+    signatoryGovernmentIdCopy?: QuotationDocumentCopy | null;
+}
+
 const VO_PACKAGE_PRICES: Record<string, string> = {
-    Basic: "₱8,000",
-    Standard: "₱12,000",
-    Premium: "₱15,000",
+    Basic: "₱2,000",
+    Standard: "₱3,000",
+    Premium: "₱5,000",
 };
+
+function formatDisplayDate(value?: string | null): string {
+    if (!value) return "—";
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+
+    return parsed.toLocaleDateString("en-PH", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    });
+}
+
+function formatPaymentMethodLabel(value?: string | null): string {
+    if (!value) return "N/A";
+    return value
+        .replace(/_/g, " ")
+        .split(" ")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(" ");
+}
 
 function quotationRow(label: string, value?: string | number | null): string {
     if (value === null || value === undefined || value === "") return "";
@@ -232,20 +276,49 @@ function quotationRow(label: string, value?: string | number | null): string {
         </tr>`;
 }
 
-function buildQuotationDetailRows(q: QuotationPayload): string {
+function formatQuotationDate(value?: string | null): string | null {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+
+    return parsed.toLocaleDateString("en-PH", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    });
+}
+
+function buildQuotationDetailRows(
+    q: QuotationPayload,
+    options: {
+        hideSeatsForVirtualOffice?: boolean;
+        formattedDate?: boolean;
+    } = {}
+): string {
     const d = q.detail;
+    const isVirtualOffice = isVirtualOfficePaymongo(q);
+    const seatsRow = options.hideSeatsForVirtualOffice && isVirtualOffice
+        ? ""
+        : quotationRow("Seats / Attendees", d.seats);
+    const dateValue = options.formattedDate ? formatQuotationDate(d.date) : d.date;
+
     return [
         quotationRow("Service", q.service_name),
         quotationRow("Package", q.package),
         quotationRow("Lease Term", q.lease_term),
         quotationRow("Event Type", q.event_type),
-        quotationRow("Seats / Attendees", d.seats),
-        quotationRow("Date", d.date),
+        seatsRow,
+        quotationRow("Date", dateValue),
         quotationRow("Time", d.time),
         quotationRow("Duration", d.duration_type),
         quotationRow("Other Requirements", d.other_requirements),
         quotationRow("Notes", d.request),
         quotationRow("Payment Method", d.payment_method),
+        quotationRow("ID Type", d.id_type),
+        quotationRow("ID Number", d.id_number),
+        quotationRow("ID Name", d.id_name),
+        quotationRow("ID Address", d.id_address),
+        quotationRow("Signatory", d.signatory_details),
     ].join("");
 }
 
@@ -264,7 +337,7 @@ function quotationWrapper(title: string, bodyHtml: string): string {
         <div style="height:6px;background:#0D47A1;"></div>
         <div style="padding:32px 40px 8px;text-align:center;">
           <h1 style="margin:0;font-size:22px;color:#0D47A1;">Hero Serviced Office</h1>
-          <p style="margin-top:6px;color:#64748b;font-size:13px;">Professional Workspace Solutions</p>
+          <p style="margin-top:6px;color:#64748b;font-size:13px;">Your Workspace for Success.</p>
         </div>
         <div style="padding:16px 40px 40px;">
           <h2 style="margin:0 0 16px;color:#1e293b;font-size:20px;">${title}</h2>
@@ -284,12 +357,105 @@ function isVirtualOfficePaymongo(
     quotation: QuotationPayload
 ): boolean {
     const service = quotation.service_name?.toLowerCase() ?? "";
-    const payment = quotation.detail.payment_method?.toLowerCase() ?? "";
 
-    return (
-        service.includes("virtual office") &&
-        payment.includes("paymongo")
+    return service.includes("virtual office");
+}
+
+const RECIPIENTS = {
+    salesOfficer: process.env.SALES_OFFICER_EMAIL || "sales.officer.mock@hero-office.test",
+    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "digital.marketing.mock@hero-office.test",
+    generalManager: process.env.GENERAL_MANAGER_EMAIL || "general.manager.mock@hero-office.test",
+    accounting: process.env.ACCOUNTING_EMAIL || "accounting.mock@hero-office.test",
+    branchManagers: {
+        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "tower6789.manager.mock@hero-office.test",
+        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "insular.manager.mock@hero-office.test",
+    },
+};
+
+function toUniqueEmails(values: Array<string | null | undefined>): string[] {
+    const seen = new Set<string>();
+    const list: string[] = [];
+
+    for (const value of values) {
+        const email = (value || "").trim();
+        if (!email) continue;
+        const key = email.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        list.push(email);
+    }
+
+    return list;
+}
+
+function parseRecipientList(input: string | undefined): string[] {
+    return (input || "")
+        .split(",")
+        .map((e) => e.trim())
+        .filter(Boolean);
+}
+
+function resolveBranchCode(branch: string | null | undefined): "S01" | "S02" {
+    const normalized = (branch || "").toLowerCase();
+    if (
+        normalized.includes("insular") ||
+        normalized.includes("s02")
+    ) {
+        return "S02";
+    }
+    return "S01";
+}
+
+function getSignedContractRouting(quotation: QuotationPayload) {
+    const branchCode = resolveBranchCode(quotation.branch);
+    const to = RECIPIENTS.branchManagers[branchCode];
+    const cc = toUniqueEmails([
+        RECIPIENTS.salesOfficer,
+        RECIPIENTS.digitalMarketing,
+    ]);
+
+    return { branchCode, to, cc };
+}
+
+function getCoreStakeholderRecipients(quotation: QuotationPayload): string[] {
+    const routing = getSignedContractRouting(quotation);
+    return toUniqueEmails([
+        routing.to,
+        RECIPIENTS.salesOfficer,
+        RECIPIENTS.digitalMarketing,
+        RECIPIENTS.generalManager,
+    ]);
+}
+
+function getDocumentCopyAttachments(options: QuotationNotificationOptions) {
+    return [
+        options.paymentProofCopy,
+        options.governmentIdCopy,
+        options.signatoryGovernmentIdCopy,
+    ].filter(
+        (attachment): attachment is QuotationDocumentCopy =>
+            Boolean(attachment)
     );
+}
+
+function hasPaymentCopy(options: QuotationNotificationOptions): boolean {
+    return Boolean(options.paymentProofCopy);
+}
+
+function hasGovernmentIdCopy(options: QuotationNotificationOptions): boolean {
+    return Boolean(options.governmentIdCopy);
+}
+
+function canGenerateContract(
+    quotation: QuotationPayload,
+    options: QuotationNotificationOptions
+): boolean {
+    if (!isVirtualOfficePaymongo(quotation)) return false;
+
+    const hasPaymentEvidence = hasPaymentCopy(options) || Boolean(quotation.detail.receipt);
+    const hasGovernmentEvidence = hasGovernmentIdCopy(options) || Boolean(quotation.detail.government_id_file);
+
+    return hasPaymentEvidence && hasGovernmentEvidence;
 }
 
 const PAGE_WIDTH = 595.28; // A4
@@ -330,8 +496,7 @@ function sanitizePdfText(text: string) {
  * pdfkit's .afm font loading tends to fail silently).
  */
 async function generateVirtualOfficeContractPdf(
-    quotation: QuotationPayload,
-    quotationId?: string | number
+    quotation: QuotationPayload
 ): Promise<Buffer> {
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -385,13 +550,15 @@ async function generateVirtualOfficeContractPdf(
 
     const d = quotation.detail;
     const monthlyFee = VO_PACKAGE_PRICES[quotation.package || ""] ?? "—";
-    const refLine = quotationId ? `#${quotationId}` : "N/A";
     const today = new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+    const idName = d.id_name || d.full_name;
+    const signatoryLabel = d.signatory_details || idName;
+    const paymentMethodLabel = formatPaymentMethodLabel(d.payment_method);
+    const formattedStartDate = formatDisplayDate(d.date);
 
     drawLine("Hero Serviced Office", { size: 20, bold: true, color: COLOR_PRIMARY, align: "center", gap: 26 });
     drawLine("Virtual Office Service Agreement", { size: 11, color: COLOR_MUTED, align: "center", gap: 28 });
 
-    drawLine(`Contract Reference: ${refLine}`, { size: 10 });
     drawLine(`Date Issued: ${today}`, { size: 10, gap: 20 });
 
     sectionTitle("1. Parties");
@@ -401,15 +568,21 @@ async function generateVirtualOfficeContractPdf(
     );
 
     sectionTitle("2. Service Details");
+    drawLine(`Service: ${quotation.service_name || "Virtual Office"}`);
+    if (quotation.branch) drawLine(`Branch: ${quotation.branch}`);
     drawLine(`Package: ${quotation.package || "—"}`);
     drawLine(`Monthly Fee: ${monthlyFee}/month`);
-    drawLine(`Start Date: ${d.date || "—"}`);
-    drawLine("Payment Method: PayMongo (Card / Online Payment)");
+    drawLine(`Start Date: ${formattedStartDate}`);
+    drawLine(`Payment Method: ${paymentMethodLabel}`);
     if (d.transaction_id) drawLine(`Transaction ID: ${d.transaction_id}`);
 
     sectionTitle("3. Client Information");
-    drawLine(`Name: ${d.full_name}`);
+    drawLine(`Name: ${idName}`);
+    if (d.id_type) drawLine(`ID Type: ${d.id_type}`);
+    if (d.id_number) drawLine(`ID Number: ${d.id_number}`);
     if (d.company_name) drawLine(`Company: ${d.company_name}`);
+    if (d.id_address) drawLine(`Address: ${d.id_address}`);
+    if (d.signatory_details) drawLine(`Signatory Details: ${d.signatory_details}`);
     drawLine(`Email: ${d.email}`);
     drawLine(`Phone: ${d.phone}`);
 
@@ -419,11 +592,11 @@ async function generateVirtualOfficeContractPdf(
     );
 
     cursorY -= 40;
-    drawLine("For Hero PH Inc.", { bold: true, gap: 40 });
+    drawLine("Hero PH Inc.", { bold: true, gap: 40 });
     drawLine("_______________________________", { gap: 14 });
     drawLine("Authorized Representative", { gap: 40 });
 
-    drawLine(`For ${d.full_name}`, { bold: true, gap: 40 });
+    drawLine(`${signatoryLabel}`, { bold: true, gap: 40 });
     drawLine("_______________________________", { gap: 14 });
     drawLine("Client Signature");
 
@@ -441,15 +614,16 @@ async function generateVirtualOfficeContractPdf(
 
 export async function sendQuotationUserEmail(
     quotation: QuotationPayload,
-    quotationId?: string | number
+    options: QuotationNotificationOptions = {}
 ) {
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
         throw new Error("SMTP credentials are not configured.");
     }
 
     const firstName = quotation.detail.full_name.split(" ")[0] || quotation.detail.full_name;
-    const refLine = quotationId ? ` (Ref #${quotationId})` : "";
     const qualifiesForContract = isVirtualOfficePaymongo(quotation);
+    const readyForContract = canGenerateContract(quotation, options);
+    const documentCopies = getDocumentCopyAttachments(options);
 
     let attachments:
         | {
@@ -457,7 +631,7 @@ export async function sendQuotationUserEmail(
             content: Buffer;
             contentType: string;
         }[]
-        | undefined;
+        = [...documentCopies];
 
     let contractAttached = false;
 
@@ -466,12 +640,9 @@ export async function sendQuotationUserEmail(
     console.log("Payment:", quotation.detail.payment_method);
     console.log("Qualifies:", qualifiesForContract);
 
-    if (qualifiesForContract) {
+    if (readyForContract) {
         try {
-            const pdfBuffer = await generateVirtualOfficeContractPdf(
-                quotation,
-                quotationId
-            );
+            const pdfBuffer = await generateVirtualOfficeContractPdf(quotation);
 
             console.log(
                 "PDF generated successfully:",
@@ -479,14 +650,11 @@ export async function sendQuotationUserEmail(
                 "bytes"
             );
 
-            attachments = [
-                {
-                    filename: `Hero-Virtual-Office-Contract${quotationId ? `-${quotationId}` : ""
-                        }.pdf`,
-                    content: pdfBuffer,
-                    contentType: "application/pdf",
-                },
-            ];
+            attachments.push({
+                filename: "Hero-Virtual-Office-Contract.pdf",
+                content: pdfBuffer,
+                contentType: "application/pdf",
+            });
 
             contractAttached = true;
         } catch (error) {
@@ -500,21 +668,34 @@ export async function sendQuotationUserEmail(
     console.log("Attachments:", attachments?.length ?? 0);
 
     const contractLine = contractAttached
-        ? `<p style="font-size:15px;line-height:1.8;color:#475569;">Your service contract is attached to this email as a PDF for your records — no further action is needed.</p>`
+        ? `<p style="font-size:15px;line-height:1.8;color:#475569;">Attached to this email is your quotation contract in PDF format, with your submitted client information already completed for your review.</p>`
         : qualifiesForContract
-            ? `<p style="font-size:15px;line-height:1.8;color:#475569;">Your service contract is being finalized and will be emailed to you shortly.</p>`
+            ? `<p style="font-size:15px;line-height:1.8;color:#475569;">Contract generation is queued. We can generate and send the contract after both your proof of payment and government ID copies are uploaded.</p>`
             : "";
+
+    const docCopyLine = documentCopies.length > 0
+        ? `<p style="font-size:13px;color:#64748b;line-height:1.7;margin-top:16px;">Copies of your uploaded payment proof and ID documents are attached for your records.</p>`
+        : "";
+
+    const paymentAcknowledgementLine = hasPaymentCopy(options)
+        ? `<p style="font-size:15px;line-height:1.8;color:#475569;">We acknowledge receipt of your submitted payment proof. Our team will verify it and proceed with your request.</p>`
+        : "";
 
     const body = `
         <p style="font-size:15px;line-height:1.8;color:#475569;">Hi ${firstName},</p>
         <p style="font-size:15px;line-height:1.8;color:#475569;">
             Thank you for your interest in Hero Serviced Office. We've received your
-            ${quotation.service_name.toLowerCase()} request${refLine} and our team will get back
+            ${quotation.service_name.toLowerCase()} request and our team will get back
             to you within <strong>24 business hours</strong>.
         </p>
+        ${paymentAcknowledgementLine}
         ${contractLine}
+        ${docCopyLine}
         <table style="width:100%;border-collapse:collapse;margin-top:16px;">
-            ${buildQuotationDetailRows(quotation)}
+            ${buildQuotationDetailRows(quotation, {
+                hideSeatsForVirtualOffice: true,
+                formattedDate: true,
+            })}
         </table>
         <p style="font-size:13px;color:#64748b;line-height:1.7;margin-top:24px;">
             If any of the details above look off, just reply to this email and we'll sort it out for you.
@@ -525,14 +706,11 @@ export async function sendQuotationUserEmail(
             process.env.SMTP_FROM ||
             `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
         to: quotation.detail.email,
-        subject: `We've received your ${quotation.service_name} request${refLine}`,
+        subject: `We've received your ${quotation.service_name} request`,
         html: quotationWrapper("Thank You!", body),
         text: `Hi ${firstName},
 
-        Thank you for your ${quotation.service_name} request${refLine}. Our team will get back to you within 24 business hours.${contractAttached
-                ? " Your service contract is attached as a PDF."
-                : ""
-            }
+        Thank you for your ${quotation.service_name} request. Our team will get back to you within 24 business hours.
 
 © ${new Date().getFullYear()} Hero Serviced Office`,
         attachments,
@@ -543,46 +721,63 @@ export async function sendQuotationUserEmail(
 
 export async function sendQuotationAdminEmail(
     quotation: QuotationPayload,
-    quotationId?: string | number
+    options: QuotationNotificationOptions = {}
 ) {
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
         throw new Error("SMTP credentials are not configured.");
     }
 
     const d = quotation.detail;
-    const refLine = quotationId ? ` (Ref #${quotationId})` : "";
+    const stakeholders = getCoreStakeholderRecipients(quotation);
+    const signedContractRouting = getSignedContractRouting(quotation);
+    const attachments = getDocumentCopyAttachments(options);
+    const readyForContract = canGenerateContract(quotation, options);
+
+    if (readyForContract) {
+        try {
+            const contractBuffer = await generateVirtualOfficeContractPdf(quotation);
+            attachments.push({
+                filename: "Hero-Virtual-Office-Contract-Reference.pdf",
+                content: contractBuffer,
+                contentType: "application/pdf",
+            });
+        } catch (error) {
+            console.error("Failed to generate admin contract reference:", error);
+        }
+    }
 
     const body = `
         <p style="font-size:15px;line-height:1.8;color:#475569;">
-            A new ${quotation.service_name.toLowerCase()} quotation request has come in${refLine}.
+            A new ${quotation.service_name.toLowerCase()} quotation request has come in.
         </p>
         <table style="width:100%;border-collapse:collapse;margin-top:8px;">
             ${quotationRow("Name", d.full_name)}
             ${quotationRow("Company", d.company_name)}
             ${quotationRow("Email", d.email)}
             ${quotationRow("Phone", d.phone)}
-            ${buildQuotationDetailRows(quotation)}
+            ${quotationRow("Branch", quotation.branch)}
+            ${buildQuotationDetailRows(quotation, {
+                formattedDate: true,
+            })}
             ${quotationRow("Transaction ID", d.transaction_id)}
             ${quotationRow("Receipt File", d.receipt)}
-        </table>
-        <div style="text-align:center;margin:32px 0 8px;">
-            <a href="mailto:${d.email}" style="display:inline-block;padding:12px 28px;background:#0D47A1;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:8px;font-size:14px;">
-                Reply to ${d.full_name.split(" ")[0] || d.full_name}
-            </a>
-        </div>`;
+            ${quotationRow("Government ID File", d.government_id_file)}
+            ${quotationRow("Signatory ID File", d.signatory_id_file)}
+        </table>`;
 
-    const adminEmails = (process.env.ADMIN_NOTIFICATION_EMAILS || process.env.SMTP_USER || "")
-        .split(",")
-        .map((e) => e.trim())
-        .filter(Boolean);
+    const configuredAdmins = parseRecipientList(process.env.ADMIN_NOTIFICATION_EMAILS);
+    const adminEmails = configuredAdmins.length > 0
+        ? toUniqueEmails([...configuredAdmins, ...stakeholders])
+        : toUniqueEmails(stakeholders);
 
     const mailOptions = {
         from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
         to: adminEmails,
         replyTo: d.email,
-        subject: `New ${quotation.service_name} request from ${d.full_name}${refLine}`,
+        subject: `New ${quotation.service_name} request from ${d.full_name}`,
         html: quotationWrapper("New Quotation Request", body),
-        text: `New ${quotation.service_name} request from ${d.full_name} (${d.email}, ${d.phone})${refLine}.`,
+        text: `New ${quotation.service_name} request from ${d.full_name} (${d.email}, ${d.phone}).`,
+        attachments,
     };
 
     return sendQuotationMailWithErrorHandling(mailOptions);
@@ -641,11 +836,11 @@ async function sendQuotationMailWithErrorHandling(
 
 export async function sendQuotationNotifications(
     quotation: QuotationPayload,
-    quotationId?: string | number
+    options: QuotationNotificationOptions = {}
 ) {
     const [userResult, adminResult] = await Promise.allSettled([
-        sendQuotationUserEmail(quotation, quotationId),
-        sendQuotationAdminEmail(quotation, quotationId),
+        sendQuotationUserEmail(quotation, options),
+        sendQuotationAdminEmail(quotation, options),
     ]);
 
     if (userResult.status === "rejected") {

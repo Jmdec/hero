@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
-    Users,
     MessageSquare,
-    BookOpen,
+    Megaphone,
     PhilippinePeso,
     TrendingUp,
     TrendingDown,
@@ -12,6 +11,9 @@ import {
     ChevronRight,
     Clock,
     Building2,
+    RefreshCw,
+    AlertCircle,
+    Bot,
 } from "lucide-react";
 import {
     AreaChart,
@@ -28,115 +30,75 @@ import {
     Cell,
 } from "recharts";
 
-/* ─── Mock Data ─── */
+/* ─── Types ─── */
 
-const monthlyUsers = [
-    { month: "Jan", users: 180 },
-    { month: "Feb", users: 195 },
-    { month: "Mar", users: 210 },
-    { month: "Apr", users: 205 },
-    { month: "May", users: 230 },
-    { month: "Jun", users: 250 },
-];
+interface MonthPoint {
+    month: string;
+    total: number;
+}
 
-const monthlyRevenue = [
-    { month: "Jan", revenue: 95000 },
-    { month: "Feb", revenue: 102000 },
-    { month: "Mar", revenue: 98000 },
-    { month: "Apr", revenue: 110000 },
-    { month: "May", revenue: 118000 },
-    { month: "Jun", revenue: 125000 },
-];
-
-const inquiryByType = [
-    { name: "Private Office", value: 14, color: "#0D47A1" },
-    { name: "Virtual Office", value: 8, color: "#1565C0" },
-    { name: "Co-working", value: 7, color: "#64B5F6" },
-    { name: "Conference Room", value: 5, color: "#FFC107" },
-];
-
-const monthlyBlogs = [
-    { month: "Jan", blogs: 2 },
-    { month: "Feb", blogs: 3 },
-    { month: "Mar", blogs: 4 },
-    { month: "Apr", blogs: 2 },
-    { month: "May", blogs: 3 },
-    { month: "Jun", blogs: 4 },
-];
-
-const recentInquiries = [
-    { id: "INQ-001", name: "Takashi Yamamoto", company: "TechnoSoft PH Inc.", type: "Private Office", branch: "Tower 6789", date: "Jun 24, 2026", status: "New", seats: 5 },
-    { id: "INQ-002", name: "Maria Santos", company: "Quantum Growth Ltd.", type: "Virtual Office", branch: "Insular Life", date: "Jun 23, 2026", status: "In Review", seats: null },
-    { id: "INQ-003", name: "James Reyes", company: "Pan Islands Inc.", type: "Co-working", branch: "Tower 6789", date: "Jun 23, 2026", status: "Contacted", seats: 2 },
-    { id: "INQ-004", name: "Lovely Cruz", company: "BPO Solutions Corp.", type: "Conference Room", branch: "Insular Life", date: "Jun 22, 2026", status: "New", seats: null },
-    { id: "INQ-005", name: "Bethany Callora", company: "Starfield Marketing", type: "Private Office", branch: "Insular Life", date: "Jun 21, 2026", status: "Converted", seats: 10 },
-    { id: "INQ-006", name: "Kenji Nakamura", company: "IMO Solutions PH", type: "Virtual Office", branch: "Tower 6789", date: "Jun 20, 2026", status: "In Review", seats: null },
-    { id: "INQ-007", name: "Ana Gonzales", company: "Liz Lisa PH", type: "Event Area", branch: "Tower 6789", date: "Jun 19, 2026", status: "Contacted", seats: null },
-];
-
-// Detail data per stat card
-const drillDownData: Record<string, { title: string; items: { label: string; value: string; sub?: string }[] }> = {
-    users: {
-        title: "User Breakdown",
-        items: [
-            { label: "Private Office Tenants", value: "98", sub: "39.2% of total" },
-            { label: "Virtual Office Clients", value: "72", sub: "28.8% of total" },
-            { label: "Co-working Members", value: "54", sub: "21.6% of total" },
-            { label: "Conference / Event", value: "26", sub: "10.4% of total" },
-            { label: "Tower 6789", value: "140", sub: "Active users" },
-            { label: "Insular Life Building", value: "110", sub: "Active users" },
-        ],
-    },
+interface Analytics {
+    users: { total: number; verified: number; admins: number };
+    chat_leads: {
+        total: number; active: number; agent_requested: number;
+        closed: number; conversations: number;
+    };
     inquiries: {
-        title: "Inquiry Summary",
-        items: [
-            { label: "New (unread)", value: "11", sub: "32.4%" },
-            { label: "In Review", value: "10", sub: "29.4%" },
-            { label: "Contacted", value: "8", sub: "23.5%" },
-            { label: "Converted", value: "5", sub: "14.7%" },
-            { label: "This week", value: "12", sub: "vs 9 last week ↑" },
-            { label: "Avg. response time", value: "4.2 hrs", sub: "Target: <6 hrs" },
-        ],
-    },
-    blogs: {
-        title: "Blog Overview",
-        items: [
-            { label: "Published", value: "14", sub: "Live on site" },
-            { label: "Draft", value: "3", sub: "Pending review" },
-            { label: "Archived", value: "1", sub: "Hidden from public" },
-            { label: "Top post views", value: "1,240", sub: "\"Why Choose Makati\"" },
-            { label: "Avg. read time", value: "3.4 min", sub: "Across all posts" },
-            { label: "This month", value: "4 new", sub: "vs 3 last month ↑" },
-        ],
-    },
-    revenue: {
-        title: "Revenue Breakdown",
-        items: [
-            { label: "Private Offices", value: "₱88,500", sub: "70.8% of total" },
-            { label: "Virtual Offices", value: "₱21,000", sub: "16.8%" },
-            { label: "Co-working", value: "₱9,900", sub: "7.9%" },
-            { label: "Conference / Events", value: "₱5,600", sub: "4.5%" },
-            { label: "Tower 6789", value: "₱72,000", sub: "57.6% of total" },
-            { label: "Insular Life Building", value: "₱53,000", sub: "42.4% of total" },
-        ],
-    },
-};
+        total: number; new: number; in_progress: number;
+        replied: number; closed: number; by_type: Record<string, number>;
+    };
+    announcements: { total: number; published: number; draft: number };
+    quotations: { total: number; revenue: number; by_status: Record<string, number> };
+    monthly: {
+        chat_leads: MonthPoint[];
+        inquiries: MonthPoint[];
+        revenue: MonthPoint[];
+        announcements: MonthPoint[];
+    };
+    recent_inquiries: {
+        id: number; name: string; company: string | null;
+        inquiry_type: string; branch: string; status: string; created_at: string;
+    }[];
+}
+
+/* ─── Helpers ─── */
+
+function authHeaders() {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    return { Authorization: `Bearer ${token ?? ""}`, "Content-Type": "application/json" };
+}
+
+function formatCurrency(value: number) {
+    if (value >= 1_000_000) return `₱${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `₱${(value / 1_000).toFixed(0)}k`;
+    return `₱${value.toLocaleString()}`;
+}
+
+function formatInquiryType(raw: string) {
+    return raw.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+}
+
+const PIE_COLORS = ["#0D47A1", "#1565C0", "#1976D2", "#64B5F6", "#FFC107", "#F57F17"];
 
 /* ─── Stat Card ─── */
-type StatKey = "users" | "inquiries" | "blogs" | "revenue";
+type StatKey = "chat_leads" | "inquiries" | "announcements" | "revenue";
 
 type StatCardProps = {
     id: StatKey;
     icon: React.ElementType;
     label: string;
     value: string;
-    trend: string;
-    trendUp: boolean;
+    sub: string;
+    trendUp: boolean | null;
     color: string;
     onClick: (id: StatKey) => void;
 };
 
-function StatCard({ id, icon: Icon, label, value, trend, trendUp, color, onClick }: StatCardProps) {
+function StatCard({ id, icon: Icon, label, value, sub, trendUp, color, onClick }: StatCardProps) {
     return (
         <button
             onClick={() => onClick(id)}
@@ -144,37 +106,87 @@ function StatCard({ id, icon: Icon, label, value, trend, trendUp, color, onClick
         >
             <div className={`absolute top-0 left-0 w-1 h-full ${color}`} />
             <div className="flex items-start justify-between mb-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color} bg-opacity-10`}
-                    style={{ backgroundColor: color === "bg-[#0D47A1]" ? "#EEF2FB" : color === "bg-[#FFC107]" ? "#FFF8E1" : "#E8F5E9" }}>
-                    <Icon className="w-5 h-5" style={{ color: color === "bg-[#0D47A1]" ? "#0D47A1" : color === "bg-[#FFC107]" ? "#F57F17" : "#2E7D32" }} />
+                <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: color === "bg-[#FFC107]" ? "#FFF8E1" : "#EEF2FB" }}
+                >
+                    <Icon className="w-5 h-5" style={{ color: color === "bg-[#FFC107]" ? "#F57F17" : "#0D47A1" }} />
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
             </div>
             <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
             <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-            <div className={`flex items-center gap-1 text-xs font-semibold ${trendUp ? "text-green-600" : "text-red-500"}`}>
-                {trendUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                {trend}
-            </div>
+            {trendUp !== null ? (
+                <div className={`flex items-center gap-1 text-xs font-semibold ${trendUp ? "text-green-600" : "text-red-500"}`}>
+                    {trendUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                    {sub}
+                </div>
+            ) : (
+                <p className="text-xs text-gray-400">{sub}</p>
+            )}
         </button>
     );
 }
 
 /* ─── Drill-Down Modal ─── */
-function DrillDownModal({ id, onClose }: { id: StatKey; onClose: () => void }) {
-    const data = drillDownData[id];
+function DrillDownModal({ id, data, onClose }: { id: StatKey; data: Analytics; onClose: () => void }) {
+    const drillMap: Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }> = {
+        chat_leads: {
+            title: "Chatbot Lead Generation",
+            items: [
+                { label: "Total Leads Captured", value: String(data.chat_leads.total) },
+                { label: "Total Conversations", value: String(data.chat_leads.conversations) },
+                { label: "Active Conversations", value: String(data.chat_leads.active) },
+                { label: "Awaiting Agent", value: String(data.chat_leads.agent_requested) },
+                { label: "Closed", value: String(data.chat_leads.closed) },
+            ],
+        },
+        inquiries: {
+            title: "Inquiry Summary",
+            items: [
+                { label: "New", value: String(data.inquiries.new) },
+                { label: "In Progress", value: String(data.inquiries.in_progress) },
+                { label: "Replied", value: String(data.inquiries.replied) },
+                { label: "Closed", value: String(data.inquiries.closed) },
+                ...Object.entries(data.inquiries.by_type).map(([k, v]) => ({
+                    label: formatInquiryType(k), value: String(v),
+                })),
+            ],
+        },
+        announcements: {
+            title: "Announcement Overview",
+            items: [
+                { label: "Total", value: String(data.announcements.total) },
+                { label: "Published", value: String(data.announcements.published), sub: "Live on site" },
+                { label: "Draft", value: String(data.announcements.draft), sub: "Pending review" },
+                { label: "Archived", value: String(data.announcements.total - data.announcements.published - data.announcements.draft), sub: "Hidden" },
+            ],
+        },
+        revenue: {
+            title: "Revenue Breakdown",
+            items: [
+                { label: "Total Revenue", value: `₱${data.quotations.revenue.toLocaleString()}` },
+                { label: "Total Quotations", value: String(data.quotations.total) },
+                ...Object.entries(data.quotations.by_status).map(([k, v]) => ({
+                    label: k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()), value: String(v),
+                })),
+            ],
+        },
+    };
+
+    const modal = drillMap[id];
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-[#0D47A1]">
-                    <h3 className="text-base font-bold text-white">{data.title}</h3>
+                    <h3 className="text-base font-bold text-white">{modal.title}</h3>
                     <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
                         <X className="w-4 h-4 text-white" />
                     </button>
                 </div>
                 <div className="p-5 space-y-3">
-                    {data.items.map((item, i) => (
+                    {modal.items.map((item, i) => (
                         <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                             <div>
                                 <p className="text-sm font-medium text-gray-800">{item.label}</p>
@@ -196,206 +208,303 @@ function DrillDownModal({ id, onClose }: { id: StatKey; onClose: () => void }) {
 
 /* ─── Status Badge ─── */
 const statusStyles: Record<string, string> = {
-    New: "bg-blue-50 text-blue-700",
-    "In Review": "bg-yellow-50 text-yellow-700",
-    Contacted: "bg-purple-50 text-purple-700",
-    Converted: "bg-green-50 text-green-700",
+    new: "bg-blue-50 text-blue-700",
+    in_progress: "bg-yellow-50 text-yellow-700",
+    replied: "bg-purple-50 text-purple-700",
+    closed: "bg-green-50 text-green-700",
+};
+
+const statusLabel: Record<string, string> = {
+    new: "New",
+    in_progress: "In Progress",
+    replied: "Replied",
+    closed: "Closed",
 };
 
 /* ─── Main Dashboard ─── */
 export default function AdminDashboard() {
+    const [analytics, setAnalytics] = useState<Analytics | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [activeCard, setActiveCard] = useState<StatKey | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
-    const stats = [
-        { id: "users" as StatKey, icon: Users, label: "Users", value: "250", trend: "+12.5% vs last month", trendUp: true, color: "bg-[#0D47A1]" },
-        { id: "inquiries" as StatKey, icon: MessageSquare, label: "Inquiries", value: "34", trend: "+33.3% vs last month", trendUp: true, color: "bg-[#0D47A1]" },
-        { id: "blogs" as StatKey, icon: BookOpen, label: "Blogs", value: "18", trend: "+2 this month", trendUp: true, color: "bg-[#0D47A1]" },
-        { id: "revenue" as StatKey, icon: PhilippinePeso, label: "Revenue", value: "₱125,000", trend: "+5.9% vs last month", trendUp: true, color: "bg-[#FFC107]" },
+    const fetchAnalytics = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
+        else setRefreshing(true);
+        setError(null);
+        try {
+            const res = await fetch("/api/analytics", { headers: authHeaders(), cache: "no-store" });
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            setAnalytics(await res.json());
+        } catch (e) {
+            setError(e instanceof Error ? e.message : "Failed to load analytics");
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
+
+    if (loading) {
+        return (
+            <section className="p-4 flex items-center justify-center min-h-[60vh]">
+                <div className="text-center space-y-3">
+                    <div className="w-10 h-10 border-4 border-[#0D47A1] border-t-transparent rounded-full animate-spin mx-auto" />
+                    <p className="text-sm text-gray-500">Loading dashboard…</p>
+                </div>
+            </section>
+        );
+    }
+
+    if (error || !analytics) {
+        return (
+            <section className="p-4 flex items-center justify-center min-h-[60vh]">
+                <div className="text-center space-y-4 max-w-sm">
+                    <AlertCircle className="w-10 h-10 text-red-400 mx-auto" />
+                    <p className="text-sm text-gray-700 font-medium">{error ?? "Could not load dashboard data."}</p>
+                    <button onClick={() => fetchAnalytics()} className="px-4 py-2 text-sm font-semibold bg-[#0D47A1] text-white rounded-xl hover:bg-[#1565C0] transition-colors">
+                        Retry
+                    </button>
+                </div>
+            </section>
+        );
+    }
+
+    const { inquiries, announcements, quotations, monthly, recent_inquiries, chat_leads } = analytics;
+
+    const inquiryPieData = Object.entries(inquiries.by_type).map(([name, value], i) => ({
+        name: formatInquiryType(name), value, color: PIE_COLORS[i % PIE_COLORS.length],
+    }));
+
+    const stats: StatCardProps[] = [
+        { id: "chat_leads", icon: Bot, label: "Chatbot Leads", value: chat_leads.total.toLocaleString(), sub: `${chat_leads.conversations} conversations · ${chat_leads.agent_requested} awaiting agent`, trendUp: chat_leads.total > 0, color: "bg-[#0D47A1]", onClick: setActiveCard },
+        { id: "inquiries", icon: MessageSquare, label: "Contact Inquiries", value: inquiries.total.toLocaleString(), sub: `${inquiries.new} new · ${inquiries.in_progress} in progress`, trendUp: inquiries.new > 0, color: "bg-[#0D47A1]", onClick: setActiveCard },
+        { id: "announcements", icon: Megaphone, label: "Announcements", value: announcements.total.toLocaleString(), sub: `${announcements.published} published · ${announcements.draft} draft`, trendUp: null, color: "bg-[#0D47A1]", onClick: setActiveCard },
+        { id: "revenue", icon: PhilippinePeso, label: "Revenue", value: formatCurrency(quotations.revenue), sub: `${quotations.total} quotation${quotations.total !== 1 ? "s" : ""} total`, trendUp: quotations.revenue > 0, color: "bg-[#FFC107]", onClick: setActiveCard },
     ];
 
     return (
         <>
             <section className="p-4 space-y-8">
 
+                {/* ── Header ── */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="text-lg font-semibold text-gray-900">Live data · {formatDate(new Date().toISOString())}</p>
+                    </div>
+                    <button
+                        onClick={() => fetchAnalytics(true)}
+                        disabled={refreshing}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-[#0D47A1] border border-[#C5D2EC] rounded-xl hover:bg-[#EEF2FB] transition-colors disabled:opacity-60"
+                    >
+                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                        Refresh
+                    </button>
+                </div>
+
                 {/* ── Stat Cards ── */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-                    {stats.map((s) => (
-                        <StatCard key={s.id} {...s} onClick={setActiveCard} />
-                    ))}
+                    {stats.map((s) => <StatCard key={s.id} {...s} />)}
                 </div>
 
                 {/* ── Charts Row ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-                    {/* Users trend */}
+                    {/* Lead generation */}
                     <div className="lg:col-span-2 bg-white rounded-2xl shadow p-5">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h3 className="text-sm font-bold text-gray-800">User Growth</h3>
-                                <p className="text-xs text-gray-400">Jan – Jun 2026</p>
+                                <h3 className="text-sm font-bold text-gray-800">Lead Generation</h3>
+                                <p className="text-xs text-gray-400">Chatbot leads captured · last 6 months</p>
                             </div>
-                            <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">↑ 12.5%</span>
+                            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">{chat_leads.total} total leads</span>
                         </div>
                         <ResponsiveContainer width="100%" height={180}>
-                            <AreaChart data={monthlyUsers} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                            <AreaChart data={monthly.chat_leads} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                                 <defs>
-                                    <linearGradient id="userGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <linearGradient id="leadGrad" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#0D47A1" stopOpacity={0.15} />
                                         <stop offset="95%" stopColor="#0D47A1" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} allowDecimals={false} />
                                 <Tooltip
                                     contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
                                     labelStyle={{ fontWeight: 700, color: "#0D47A1" }}
+                                    formatter={(v) => [Number(v ?? 0), "New Leads"]}
                                 />
-                                <Area type="monotone" dataKey="users" stroke="#0D47A1" strokeWidth={2.5} fill="url(#userGrad)" dot={{ r: 3, fill: "#0D47A1" }} />
+                                <Area type="monotone" dataKey="total" stroke="#0D47A1" strokeWidth={2.5} fill="url(#leadGrad)" dot={{ r: 3, fill: "#0D47A1" }} />
                             </AreaChart>
                         </ResponsiveContainer>
+                        {/* Mini stats strip */}
+                        <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-50">
+                            <div className="text-center">
+                                <p className="text-lg font-bold text-gray-900">{chat_leads.active}</p>
+                                <p className="text-xs text-gray-400">Active</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-lg font-bold text-amber-600">{chat_leads.agent_requested}</p>
+                                <p className="text-xs text-gray-400">Awaiting Agent</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-lg font-bold text-gray-400">{chat_leads.closed}</p>
+                                <p className="text-xs text-gray-400">Closed</p>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Inquiry by type */}
+                    {/* Inquiries by type */}
                     <div className="bg-white rounded-2xl shadow p-5">
                         <div className="mb-4">
                             <h3 className="text-sm font-bold text-gray-800">Inquiries by Type</h3>
-                            <p className="text-xs text-gray-400">Current month</p>
+                            <p className="text-xs text-gray-400">All time</p>
                         </div>
-                        <ResponsiveContainer width="100%" height={140}>
-                            <PieChart>
-                                <Pie data={inquiryByType} cx="50%" cy="50%" innerRadius={38} outerRadius={60} paddingAngle={3} dataKey="value">
-                                    {inquiryByType.map((entry, i) => (
-                                        <Cell key={i} fill={entry.color} />
+                        {inquiryPieData.length > 0 ? (
+                            <>
+                                <ResponsiveContainer width="100%" height={140}>
+                                    <PieChart>
+                                        <Pie data={inquiryPieData} cx="50%" cy="50%" innerRadius={38} outerRadius={60} paddingAngle={3} dataKey="value">
+                                            {inquiryPieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                                        </Pie>
+                                        <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 11 }} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                <div className="space-y-1.5 mt-2">
+                                    {inquiryPieData.map((item) => (
+                                        <div key={item.name} className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                                                <span className="text-xs text-gray-600 truncate max-w-27.5">{item.name}</span>
+                                            </div>
+                                            <span className="text-xs font-bold text-gray-800">{item.value}</span>
+                                        </div>
                                     ))}
-                                </Pie>
-                                <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 11 }} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        <div className="space-y-1.5 mt-2">
-                            {inquiryByType.map((item) => (
-                                <div key={item.name} className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                                        <span className="text-xs text-gray-600">{item.name}</span>
-                                    </div>
-                                    <span className="text-xs font-bold text-gray-800">{item.value}</span>
                                 </div>
-                            ))}
-                        </div>
+                            </>
+                        ) : (
+                            <div className="flex items-center justify-center h-40 text-xs text-gray-400">No inquiry data yet</div>
+                        )}
                     </div>
                 </div>
 
-                {/* ── Revenue + Blogs Row ── */}
+                {/* ── Revenue + Inquiries Trend ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-                    {/* Revenue bar chart */}
+                    {/* Revenue bar */}
                     <div className="bg-white rounded-2xl shadow p-5">
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <h3 className="text-sm font-bold text-gray-800">Monthly Revenue</h3>
-                                <p className="text-xs text-gray-400">Jan – Jun 2026 (PHP)</p>
+                                <p className="text-xs text-gray-400">Last 6 months · paid &amp; completed</p>
                             </div>
-                            <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">↑ 5.9%</span>
+                            <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">{formatCurrency(quotations.revenue)}</span>
                         </div>
                         <ResponsiveContainer width="100%" height={180}>
-                            <BarChart data={monthlyRevenue} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
+                            <BarChart data={monthly.revenue} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`} />
+                                <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={(v) => v >= 1000 ? `₱${(v / 1000).toFixed(0)}k` : `₱${v}`} />
                                 <Tooltip
                                     contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
                                     formatter={(v) => [`₱${Number(v ?? 0).toLocaleString()}`, "Revenue"]}
                                     labelStyle={{ fontWeight: 700, color: "#0D47A1" }}
                                 />
-                                <Bar dataKey="revenue" fill="#0D47A1" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                                <Bar dataKey="total" fill="#0D47A1" radius={[6, 6, 0, 0]} maxBarSize={36} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
 
-                    {/* Blog posts bar chart */}
+                    {/* Monthly inquiries bar */}
                     <div className="bg-white rounded-2xl shadow p-5">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h3 className="text-sm font-bold text-gray-800">Blog Posts Published</h3>
-                                <p className="text-xs text-gray-400">Jan – Jun 2026</p>
+                                <h3 className="text-sm font-bold text-gray-800">Monthly Inquiries</h3>
+                                <p className="text-xs text-gray-400">Last 6 months</p>
                             </div>
-                            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">18 total</span>
+                            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">{inquiries.total} total</span>
                         </div>
                         <ResponsiveContainer width="100%" height={180}>
-                            <BarChart data={monthlyBlogs} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                            <BarChart data={monthly.inquiries} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
                                 <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} allowDecimals={false} />
                                 <Tooltip
                                     contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
-                                    labelStyle={{ fontWeight: 700, color: "#FFC107" }}
+                                    labelStyle={{ fontWeight: 700, color: "#1565C0" }}
+                                    formatter={(v) => [Number(v ?? 0), "Inquiries"]}
                                 />
-                                <Bar dataKey="blogs" fill="#FFC107" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                                <Bar dataKey="total" fill="#1565C0" radius={[6, 6, 0, 0]} maxBarSize={36} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* ── Recent Inquiries Table ── */}
+                {/* ── Recent Contact Inquiries Table ── */}
                 <div className="bg-white rounded-2xl shadow overflow-hidden">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                         <div>
                             <h3 className="text-sm font-bold text-gray-800">Recent Inquiries</h3>
-                            <p className="text-xs text-gray-400">Latest 7 submissions</p>
+                            <p className="text-xs text-gray-400">Latest 7 contact submissions</p>
                         </div>
-                        <button className="text-xs font-semibold text-[#0D47A1] hover:underline">View all →</button>
+                        <a href="/admin/contact" className="text-xs font-semibold text-[#0D47A1] hover:underline">View all →</a>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-gray-50 text-left">
-                                    <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">ID</th>
-                                    <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Contact</th>
-                                    <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Type</th>
-                                    <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Branch</th>
-                                    <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Date</th>
-                                    <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {recentInquiries.map((inq) => (
-                                    <tr key={inq.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-5 py-3.5 text-xs font-mono text-gray-400">{inq.id}</td>
-                                        <td className="px-5 py-3.5">
-                                            <p className="font-semibold text-gray-800 text-xs">{inq.name}</p>
-                                            <p className="text-xs text-gray-400">{inq.company}</p>
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <span className="flex items-center gap-1.5 text-xs text-gray-700">
-                                                <Building2 className="w-3.5 h-3.5 text-[#0D47A1]" />
-                                                {inq.type}
-                                                {inq.seats && <span className="text-gray-400">· {inq.seats} seats</span>}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-3.5 text-xs text-gray-600">{inq.branch}</td>
-                                        <td className="px-5 py-3.5">
-                                            <span className="flex items-center gap-1 text-xs text-gray-400">
-                                                <Clock className="w-3 h-3" />
-                                                {inq.date}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyles[inq.status]}`}>
-                                                {inq.status}
-                                            </span>
-                                        </td>
+                    {recent_inquiries.length === 0 ? (
+                        <div className="py-16 text-center text-sm text-gray-400">No inquiries yet</div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-gray-50 text-left">
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">ID</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Contact</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Type</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Branch</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Date</th>
+                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {recent_inquiries.map((inq) => (
+                                        <tr key={inq.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-5 py-3.5 text-xs font-mono text-gray-400">#{inq.id}</td>
+                                            <td className="px-5 py-3.5">
+                                                <p className="font-semibold text-gray-800 text-xs">{inq.name}</p>
+                                                {inq.company && <p className="text-xs text-gray-400">{inq.company}</p>}
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <span className="flex items-center gap-1.5 text-xs text-gray-700">
+                                                    <Building2 className="w-3.5 h-3.5 text-[#0D47A1]" />
+                                                    {formatInquiryType(inq.inquiry_type)}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-3.5 text-xs text-gray-600">{inq.branch}</td>
+                                            <td className="px-5 py-3.5">
+                                                <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                    <Clock className="w-3 h-3" />
+                                                    {formatDate(inq.created_at)}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-3.5">
+                                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyles[inq.status] ?? "bg-gray-100 text-gray-600"}`}>
+                                                    {statusLabel[inq.status] ?? inq.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
 
             </section>
 
             {/* ── Drill-Down Modal ── */}
-            {activeCard && <DrillDownModal id={activeCard} onClose={() => setActiveCard(null)} />}
+            {activeCard && <DrillDownModal id={activeCard} data={analytics} onClose={() => setActiveCard(null)} />}
         </>
     );
 }
