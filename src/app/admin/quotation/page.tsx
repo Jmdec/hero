@@ -19,11 +19,11 @@ import {
     ChevronDown,
     CheckCircle2,
     XCircle,
-    Receipt,
     Hash,
     Sparkles,
     Pencil,
-    Download,
+    Send,
+    Link2,
 } from "lucide-react";
 
 type Status =
@@ -34,6 +34,15 @@ type Status =
     | "contract_sent"
     | "completed"
     | "cancelled";
+
+interface QuotationPriceBreakdown {
+    package_base_monthly?: number | null;
+    vat_monthly?: number | null;
+    monthly_subtotal?: number | null;
+    months?: number | null;
+    recurring_total?: number | null;
+    contract_admin_fee?: number | null;
+}
 
 interface QuotationDetail {
     full_name: string;
@@ -48,7 +57,7 @@ interface QuotationDetail {
     duration_type: string | null;
     other_requirements: string | null;
     total: string | number;
-    payment_method: "paymongo" | "gcash";
+    payment_method: "paymongo" | "gcash" | "qrph" | "online_transfer" | "bank" | null;
     transaction_id: string | null;
     receipt: string | null;
     receipt_url?: string | null;
@@ -58,6 +67,8 @@ interface QuotationDetail {
     government_id_file?: string | null;
     government_id_url?: string | null;
     government_id_path?: string | null;
+    months?: number | null;
+    price_breakdown?: QuotationPriceBreakdown | null;
 }
 
 interface Quotation {
@@ -117,8 +128,8 @@ function StatusBadge({ status }: { status: Status }) {
     );
 }
 
-function formatCurrency(value: string | number) {
-    const n = Number(value);
+function formatCurrency(value: string | number | null | undefined) {
+    const n = Number(value ?? 0);
     if (Number.isNaN(n)) return "—";
     return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(n);
 }
@@ -138,12 +149,8 @@ function getInitials(name: string | null | undefined) {
     return (first + last).toUpperCase() || "?";
 }
 
-// Resolves a stored receipt/ID path (relative storage path or already-absolute URL)
-// into a URL the <img>/<a> tags can use directly.
-function toAssetUrl(path: string | null | undefined): string | null {
-    if (!path) return null;
-    if (/^https?:\/\//i.test(path)) return path;
-    return `/storage/${path.replace(/^\/+/, "")}`;
+function isVirtualOffice(quote: Quotation) {
+    return quote.service_name?.trim().toLowerCase() === "virtual office";
 }
 
 // Toast
@@ -255,6 +262,54 @@ function InfoRow({
     return content;
 }
 
+// Price breakdown card (Virtual Office review) — replaces the old payment/receipt block.
+// Shown while the admin is verifying the request, before any payment has been collected.
+function PriceBreakdownCard({ detail }: { detail: QuotationDetail }) {
+    const b = detail.price_breakdown;
+    const months = b?.months ?? detail.months ?? 1;
+    return (
+        <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl px-4 py-3 space-y-1.5 text-sm">
+            {b ? (
+                <>
+                    <div className="flex justify-between">
+                        <span className="text-[#64748B]">Package (monthly)</span>
+                        <span className="text-[#0B1F4A] font-medium">{formatCurrency(b.package_base_monthly)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-[#64748B]">VAT (12%, monthly)</span>
+                        <span className="text-[#0B1F4A] font-medium">{formatCurrency(b.vat_monthly)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-[#64748B]">Duration</span>
+                        <span className="text-[#0B1F4A] font-medium">
+                            × {months} {months === 1 ? "month" : "months"}
+                        </span>
+                    </div>
+                    <div className="flex justify-between border-t border-[#D9E2F0] pt-1.5 mt-1.5">
+                        <span className="text-[#64748B]">Subtotal</span>
+                        <span className="text-[#0B1F4A] font-medium">{formatCurrency(b.recurring_total)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-[#64748B]">Contract & Admin Fee</span>
+                        <span className="text-[#0B1F4A] font-medium">{formatCurrency(b.contract_admin_fee)}</span>
+                    </div>
+                </>
+            ) : (
+                <div className="flex justify-between">
+                    <span className="text-[#64748B]">Duration</span>
+                    <span className="text-[#0B1F4A] font-medium">
+                        {months} {months === 1 ? "month" : "months"}
+                    </span>
+                </div>
+            )}
+            <div className="flex justify-between border-t border-[#D9E2F0] pt-2 mt-2">
+                <span className="font-bold text-[#0B1F4A]">Total</span>
+                <span className="font-bold text-[#1B3A8C]">{formatCurrency(detail.total)}</span>
+            </div>
+        </div>
+    );
+}
+
 // Page
 
 export default function AdminQuotationsPage() {
@@ -268,10 +323,13 @@ export default function AdminQuotationsPage() {
     const [deleteTarget, setDeleteTarget] = useState<Quotation | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [statusChangeTarget, setStatusChangeTarget] = useState<{ quote: Quotation; newStatus: Status } | null>(null);
-    const [previewImage, setPreviewImage] = useState<{ url: string; label: string } | null>(null);
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const [statusEditTarget, setStatusEditTarget] = useState<Quotation | null>(null);
     const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
+
+    // Email-to-client actions
+    const [sendingEmailId, setSendingEmailId] = useState<number | null>(null);
+    const [sendingPaymentLinkId, setSendingPaymentLinkId] = useState<number | null>(null);
 
     const [toasts, setToasts] = useState<ToastItem[]>([]);
     const toastIdRef = useRef(0);
@@ -415,6 +473,43 @@ export default function AdminQuotationsPage() {
             pushToast(`Couldn't delete ${who}`, "error");
         } finally {
             setDeleting(false);
+        }
+    };
+
+    // Sends the client a general status/confirmation email for this request.
+    const handleSendEmail = async (quote: Quotation) => {
+        const who = quote.detail?.full_name ?? "the client";
+        setSendingEmailId(quote.id);
+        try {
+            const res = await fetch(`/api/quotations/${quote.id}/send-email`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Accept: "application/json" },
+            });
+            if (!res.ok) throw new Error("Failed to send email.");
+            pushToast(`Email sent to ${who}`, "success");
+        } catch {
+            pushToast(`Couldn't send email to ${who}`, "error");
+        } finally {
+            setSendingEmailId(null);
+        }
+    };
+
+    // Verification step for Virtual Office: emails the client a link that takes
+    // them straight to the payment section of the quotation form.
+    const handleSendPaymentLink = async (quote: Quotation) => {
+        const who = quote.detail?.full_name ?? "the client";
+        setSendingPaymentLinkId(quote.id);
+        try {
+            const res = await fetch(`/api/quotations/${quote.id}/send-payment-link`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Accept: "application/json" },
+            });
+            if (!res.ok) throw new Error("Failed to send payment link.");
+            pushToast(`Payment link sent to ${who}`, "success");
+        } catch {
+            pushToast(`Couldn't send payment link to ${who}`, "error");
+        } finally {
+            setSendingPaymentLinkId(null);
         }
     };
 
@@ -594,13 +689,28 @@ export default function AdminQuotationsPage() {
                                     </p>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => setSelected(null)}
-                                className="p-1.5 -m-1.5 rounded-full text-[#64748B] hover:bg-[#F0F4FB] transition shrink-0"
-                                aria-label="Close"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                    onClick={() => handleSendEmail(selected)}
+                                    disabled={sendingEmailId === selected.id}
+                                    className="p-1.5 rounded-full text-[#64748B] hover:text-[#1B3A8C] hover:bg-[#F0F4FB] transition disabled:opacity-50"
+                                    aria-label="Email client"
+                                    title="Send email to client"
+                                >
+                                    {sendingEmailId === selected.id ? (
+                                        <RefreshCw className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Send className="w-4 h-4" />
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => setSelected(null)}
+                                    className="p-1.5 rounded-full text-[#64748B] hover:bg-[#F0F4FB] transition"
+                                    aria-label="Close"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="overflow-y-auto px-6 py-5 space-y-5 flex-1">
@@ -660,47 +770,35 @@ export default function AdminQuotationsPage() {
                                 </div>
                             )}
 
-                            {/* Payment — Virtual Office only */}
-                            {selected.detail && selected.service_name?.trim().toLowerCase() === "virtual office" && (
+                            {/* Review — Virtual Office only. Shows the price breakdown (no payment/receipt
+                                info here, since this is the admin's pre-payment verification step) and a
+                                one-click action to email the client a link straight to the payment section. */}
+                            {selected.detail && isVirtualOffice(selected) && (
                                 <div className="space-y-3">
-                                    <p className="text-xs font-semibold text-[#64748B]">Payment</p>
-                                    <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl px-4 py-3 flex items-center justify-between">
-                                        <div>
-                                            <p className="text-[10px] text-[#64748B]">Total</p>
-                                            <p className="text-lg font-semibold text-[#0B1F4A]">{formatCurrency(selected.detail.total)}</p>
-                                        </div>
-                                        <span className="text-xs font-medium text-[#0B1F4A] bg-white border border-[#D9E2F0] rounded-full px-2.5 py-1">
-                                            {selected.detail.payment_method.replace(/_/g, " ")}
-                                        </span>
-                                    </div>
+                                    <p className="text-xs font-semibold text-[#64748B]">Price Breakdown</p>
+                                    <PriceBreakdownCard detail={selected.detail} />
 
-                                    {selected.paid_at && <InfoRow icon={Calendar} label="Paid at" value={formatDate(selected.paid_at)} />}
-                                    {selected.detail.transaction_id && <InfoRow icon={Hash} label="Transaction ID" value={selected.detail.transaction_id} />}
-
-                                    <div className="flex gap-2">
-                                        {selected.detail.receipt && toAssetUrl(selected.detail.receipt_url ?? selected.detail.receipt_path) && (
-                                            <button
-                                                onClick={() => setPreviewImage({
-                                                    url: toAssetUrl(selected.detail!.receipt_url ?? selected.detail!.receipt_path)!,
-                                                    label: "Payment receipt",
-                                                })}
-                                                className="flex-1 flex items-center gap-1.5 justify-center py-2 rounded-lg border border-[#D9E2F0] text-xs font-medium text-[#1B3A8C] hover:bg-[#F0F4FB] transition"
-                                            >
-                                                <Receipt className="w-3.5 h-3.5" /> View receipt
-                                            </button>
+                                    <button
+                                        onClick={() => handleSendPaymentLink(selected)}
+                                        disabled={sendingPaymentLinkId === selected.id}
+                                        className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg bg-[#1B3A8C] text-white text-sm font-semibold hover:bg-[#16316F] transition disabled:opacity-60"
+                                    >
+                                        {sendingPaymentLinkId === selected.id ? (
+                                            <>
+                                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                                Sending payment link…
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Link2 className="w-4 h-4" />
+                                                Email client a payment link
+                                            </>
                                         )}
-                                        {selected.detail.government_id_file && toAssetUrl(selected.detail.government_id_url ?? selected.detail.government_id_path) && (
-                                            <button
-                                                onClick={() => setPreviewImage({
-                                                    url: toAssetUrl(selected.detail!.government_id_url ?? selected.detail!.government_id_path)!,
-                                                    label: "Government ID",
-                                                })}
-                                                className="flex-1 flex items-center gap-1.5 justify-center py-2 rounded-lg border border-[#D9E2F0] text-xs font-medium text-[#1B3A8C] hover:bg-[#F0F4FB] transition"
-                                            >
-                                                <Receipt className="w-3.5 h-3.5" /> View ID
-                                            </button>
-                                        )}
-                                    </div>
+                                    </button>
+                                    <p className="text-[11px] text-[#64748B] text-center">
+                                        Sends {selected.detail.email} a link that takes them straight to the payment
+                                        step of this quotation.
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -713,55 +811,6 @@ export default function AdminQuotationsPage() {
                             >
                                 <Trash2 className="w-4 h-4" /> Delete quotation
                             </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Receipt / ID preview lightbox */}
-            {previewImage && (
-                <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/70" onClick={() => setPreviewImage(null)} />
-                    <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col">
-                        <div className="flex items-center justify-between mb-3">
-                            <p className="text-sm font-medium text-white">{previewImage.label}</p>
-                            <div className="flex items-center gap-3">
-                                {previewImage.url && (
-                                    <a
-                                        href={previewImage.url}
-                                        download
-                                        className="text-white/70 hover:text-white"
-                                        title="Download"
-                                    >
-                                        <Download className="w-4 h-4" />
-                                    </a>
-                                )}
-                                <button
-                                    onClick={() => setPreviewImage(null)}
-                                    className="text-white/70 hover:text-white"
-                                    aria-label="Close preview"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
-                        </div>
-                        <div className="bg-white rounded-xl overflow-hidden flex items-center justify-center flex-1 min-h-50">
-                            {previewImage.url ? (
-                                <img
-                                    src={previewImage.url}
-                                    alt={previewImage.label}
-                                    className="max-w-full max-h-[80vh] object-contain"
-                                    onError={(e) => {
-                                        e.currentTarget.style.display = "none";
-                                        e.currentTarget.parentElement?.insertAdjacentHTML(
-                                            "beforeend",
-                                            '<p class="text-sm text-[#64748B] p-8">Unable to load this file.</p>'
-                                        );
-                                    }}
-                                />
-                            ) : (
-                                <p className="text-sm text-[#64748B] p-8">No file available.</p>
-                            )}
                         </div>
                     </div>
                 </div>
