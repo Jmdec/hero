@@ -251,10 +251,10 @@ export default function TestimonialPage() {
             transition={{ duration: 0.5 }}
             className="w-full text-center mx-auto"
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
               Trusted by Growing Companies in Makati
             </h1>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto text-shadow-sm">
               From international expansions to homegrown startups, our members
               choose Hero Serviced Office for the address, the service, and the
               community.

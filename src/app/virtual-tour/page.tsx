@@ -64,7 +64,7 @@ export default function VirtualTourPage() {
           "Comfortable waiting lounge",
           "Mail & package handling",
         ],
-        panoramaUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=2400&q=85",
+        panoramaUrl: "/360-view/IMG_20210318_173158_00_049.webp",
         connectsTo: ["hallway-1", "lounge"],
       },
       {
@@ -81,7 +81,7 @@ export default function VirtualTourPage() {
         name: "Hallway",
         description: "A connecting hallway providing access between the building's shared spaces and offices.",
         features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
-        panoramaUrl: "https://images.unsplash.com/photo-1600508774634-4e11d34730e2?w=2400&q=85",
+        panoramaUrl: "/360-view/IMG_20210318_174407_00_055.webp",
         connectsTo: ["reception", "lounge", "conference-room-a", "hallway-2"],
       },
       {
@@ -98,7 +98,7 @@ export default function VirtualTourPage() {
         description:
           "A fully equipped meeting room ideal for presentations, client meetings, interviews, and team collaborations.",
         features: ["High-speed Wi-Fi", "Presentation display", "Video conferencing", "Flexible seating"],
-        panoramaUrl: "/360-view/IMG_20210318_174813_00_060.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_174813_00_060.webp",
         connectsTo: ["hallway-1"],
       },
       {
@@ -107,7 +107,7 @@ export default function VirtualTourPage() {
         description:
           "A professional meeting space designed for productive discussions, presentations, and business events.",
         features: ["High-speed Wi-Fi", "Presentation display", "Video conferencing", "Flexible seating"],
-        panoramaUrl: "/360-view/IMG_20210318_173158_00_049.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_173158_00_049.webp",
         connectsTo: ["hallway-2"],
       },
       {
@@ -116,7 +116,7 @@ export default function VirtualTourPage() {
         description:
           "A modern conference room built for meetings, workshops, interviews, and collaborative sessions.",
         features: ["High-speed Wi-Fi", "Presentation display", "Video conferencing", "Flexible seating"],
-        panoramaUrl: "/360-view/IMG_20210318_171813_00_046.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_171738_00_045.webp",
         connectsTo: ["hallway-2"],
       },
       {
@@ -125,7 +125,7 @@ export default function VirtualTourPage() {
         description:
           "A shared pantry where members can enjoy complimentary refreshments and unwind throughout the day.",
         features: ["Complimentary coffee & tea", "Casual seating", "Refreshment area", "Relaxing atmosphere"],
-        panoramaUrl: "/360-view/IMG_20210318_183019_00_073.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_183019_00_073.webp",
         connectsTo: ["lounge", "brochure-lockers"],
       },
       {
@@ -158,12 +158,12 @@ export default function VirtualTourPage() {
         connectsTo: ["reception", "pantry"],
       },
       {
-        id: "meeting-box",
-        name: "Meeting Box",
+        id: "phonebooth",
+        name: "Phone Booth",
         description:
           "A private meeting space designed for focused discussions, virtual meetings, and client consultations.",
         features: ["Presentation display", "Video conferencing", "High-speed Wi-Fi", "Private setting"],
-        panoramaUrl: "/360-view/IMG_20210318_154223_00_039.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_154223_00_039.webp",
         connectsTo: ["hallway"],
       },
       {
@@ -171,8 +171,8 @@ export default function VirtualTourPage() {
         name: "Hallway",
         description: "A connecting hallway providing access between the building's shared spaces and offices.",
         features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
-        panoramaUrl: "/360-view/IMG_20210318_133045_00_019.jpg",
-        connectsTo: ["reception", "meeting-box", "conference-room-a", "conference-room-b", "mailbox"],
+        panoramaUrl: "/360-view/IMG_20210318_133045_00_019.webp",
+        connectsTo: ["reception", "phonebooth", "conference-room-a", "conference-room-b", "mailbox"],
       },
       {
         id: "conference-room-a",
@@ -180,7 +180,7 @@ export default function VirtualTourPage() {
         description:
           "A fully equipped meeting room ideal for presentations, client meetings, interviews, and team collaborations.",
         features: ["Presentation display", "Video conferencing", "High-speed Wi-Fi", "Flexible seating"],
-        panoramaUrl: "/360-view/IMG_20210318_134026_00_023.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_133348_00_021.webp",
         connectsTo: ["hallway"],
       },
       {
@@ -189,7 +189,7 @@ export default function VirtualTourPage() {
         description:
           "A professional meeting space designed for productive discussions, presentations, and business events.",
         features: ["Presentation display", "Video conferencing", "High-speed Wi-Fi", "Flexible seating"],
-        panoramaUrl: "/360-view/IMG_20210318_134026_00_023.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_133849_00_022.webp",
         connectsTo: ["hallway"],
       },
       {
@@ -198,7 +198,7 @@ export default function VirtualTourPage() {
         description:
           "A shared pantry where members can enjoy complimentary refreshments and unwind throughout the day.",
         features: ["Complimentary coffee & tea", "Casual seating", "Refreshment area", "Relaxing atmosphere"],
-        panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_155931_00_043.webp",
         connectsTo: ["lounge", "mailbox"],
       },
       {
@@ -207,7 +207,7 @@ export default function VirtualTourPage() {
         description:
           "A secure business mailing service for receiving and managing your correspondence with ease.",
         features: ["Professional business address", "Mail receiving", "Package handling", "Mail notifications"],
-        panoramaUrl: "/360-view/IMG_20210318_155931_00_043.jpg",
+        panoramaUrl: "/360-view/IMG_20210318_155931_00_043.webp",
         connectsTo: ["hallway", "pantry"],
       },
     ],
@@ -216,7 +216,7 @@ export default function VirtualTourPage() {
   // Featured rooms
   const FEATURED_ROOM_IDS: Record<BuildingId, string[]> = {
     tower6789: ["reception", "lounge", "conference-room-a", "conference-room-b", "pantry"],
-    insularLife: ["reception", "lounge", "meeting-box", "conference-room-a", "pantry"],
+    insularLife: ["reception", "lounge", "phonebooth", "conference-room-a", "conference-room-b", "pantry"],
   };
 
   const activeRooms = roomsByTab[activeTab];

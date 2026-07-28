@@ -16,20 +16,19 @@ import {
   X,
   Landmark,
   Wallet,
-  HandCoins,
+  QrCode,
   ArrowRightLeft,
-  Smartphone,
   Upload,
   Clock,
   AlertCircle,
   MapPin,
   Eye,
-  FileText,
+  ArrowRight,
 } from "lucide-react";
 
 type ServiceId = "private-office" | "virtual-office" | "coworking" | "meeting-room" | "event-space";
 type BranchId = "tower-6789" | "insular-life";
-type PaymentMethod = "bank" | "cheque" | "cash" | "online_transfer" | "gcash" | null;
+type PaymentMethod = "qrph" | "online_transfer" | "bank" | null;
 type ModalKey = "privacy" | "success" | "preview" | null;
 
 interface ContactFields {
@@ -70,6 +69,7 @@ interface PrivateOfficeFields {
 interface VirtualOfficeFields {
   package: string;
   startDate: string;
+  months: string; // NEW: Months Duration
 }
 
 interface CoworkingFields {
@@ -103,15 +103,11 @@ const SERVICES: { id: ServiceId; label: string; icon: React.ElementType }[] = [
   { id: "event-space", label: "Event Space", icon: PartyPopper },
 ];
 
-// Branch buildings the client can choose from at Step 1.
-// Max private-office seats differ per branch (see PRIVATE_OFFICE_MAX_SEATS below).
 const BRANCHES: { id: BranchId; label: string; address: string }[] = [
-  { id: "tower-6789", label: "Tower 6789", address: "6789 Ayala Avenue, Makati City" },
-  { id: "insular-life", label: "Insular Life Building", address: "6781 Ayala Avenue cor. Paseo de Roxas, Makati City" },
+  { id: "tower-6789", label: "Tower 6789", address: "23rd Floor, Tower 6789, Ayala Ave., Makati City, 1226 Metro Manila, Philippines" },
+  { id: "insular-life", label: "Insular Life Building", address: "11th Floor, Insular Life Building, 6781 Ayala Ave. cor. Paseo de Roxas, Makati City, 1226 Metro Manila, Philippines" },
 ];
 
-// Per-branch maximum seats for the Private Office service (from Services Overview: max 35 total,
-// split per branch capacity here as 25 / 30).
 const PRIVATE_OFFICE_MAX_SEATS: Record<BranchId, number> = {
   "tower-6789": 25,
   "insular-life": 30,
@@ -119,14 +115,8 @@ const PRIVATE_OFFICE_MAX_SEATS: Record<BranchId, number> = {
 
 // ─── API Config ───────────────────────────────────────────────────────────────
 
-// Goes through the Next.js API route (app/api/quotations/route.ts), which
-// proxies to the Laravel backend server-side. Avoids CORS and keeps the
-// Laravel URL out of the browser bundle.
 const API_BASE_URL = "/api";
 
-// Maps the frontend service slug to the real `services` table primary key.
-// Replace these with your actual service IDs (e.g. fetch /api/services and
-// match on a slug/name column instead of hardcoding).
 const SERVICE_IDS: Record<ServiceId, number> = {
   "private-office": 1,
   "virtual-office": 2,
@@ -139,6 +129,10 @@ const SERVICE_IDS: Record<ServiceId, number> = {
 const BASE_STEPS = ["Service", "Requirements", "Contact", "Review"];
 
 // Virtual Office flow: Service → Requirements → Contact → Review → Payment → Success Modal
+// Note: VO no longer sends a formal contract to the client at submission time —
+// admin verifies payment first, then follows up with the client directly
+// ("Formal Contact") before finalizing. The contract .docx is generated for
+// internal/admin use only (see lib/mail.ts).
 const VO_STEPS = ["Service", "Requirements", "Contact", "Review", "Payment"];
 
 const LEASE_TERMS = ["6 Months", "12 Months", "More than 12 Months"];
@@ -148,19 +142,28 @@ const TIME_SLOTS = [
   ["13:00", "1:00 PM"], ["14:00", "2:00 PM"], ["15:00", "3:00 PM"], ["16:00", "4:00 PM"],
 ];
 
+// Standard accepted government IDs (used by non-VO services / general fallback)
 const GOVERNMENT_ID_TYPES = [
-  "Philippine National ID",
+  "Philippine National ID (PhilSys ID)",
   "Passport",
   "Driver's License",
-  "Social Security System",
-  "Professional Regulation Commission",
-  "Voter's ID",
-  "PWD ID",
-  "PhilHealth ID",
-  "TIN Card",
-  "Postal ID",
+  "Professional Regulation Commission (PRC ID)",
   "Others",
 ];
+
+// Virtual Office only accepts these 4 ID types — no "Others" option
+const VO_GOVERNMENT_ID_TYPES = [
+  "Passport",
+  "Driver's License",
+  "Philippine National ID (PhilSys ID)",
+  "Professional Regulation Commission (PRC ID)",
+];
+
+// Virtual Office package base monthly fees (before VAT / fees / duration multiplier)
+const VO_PACKAGE_PRICES: Record<string, number> = { Basic: 2000, Standard: 3000, Premium: 5000 };
+const VO_VAT_RATE = 0.12; // 12% VAT
+const VO_CONTRACT_ADMIN_FEE = 500; // flat Contract & Admin Fee
+const VO_MONTHS_OPTIONS = ["1", "3", "6", "12", "24"];
 
 // ─── Validation Helpers ───────────────────────────────────────────────────────
 
@@ -170,7 +173,26 @@ const isValidEmail = (email: string) =>
 const isValidPhone = (phone: string) =>
   /^(\+?63|0)[\s-]?9\d{2}[\s-]?\d{3}[\s-]?\d{4}$/.test(phone.replace(/\s/g, ""));
 
-// ─── Shared UI ────────────────────────────────────────────────────────────────
+/** Computes VO pricing breakdown: Package + VAT + Contract & Admin Fee, multiplied by Duration (months). */
+function computeVirtualOfficeTotal(pkg: string, months: string) {
+  const base = VO_PACKAGE_PRICES[pkg] ?? 0;
+  const vat = base * VO_VAT_RATE;
+  const monthlySubtotal = base + vat; // per-month cost before admin fee
+  const numMonths = Math.max(1, Number(months) || 1);
+  const recurring = monthlySubtotal * numMonths;
+  const total = recurring + VO_CONTRACT_ADMIN_FEE; // admin fee charged once
+  return {
+    base,
+    vat,
+    monthlySubtotal,
+    numMonths,
+    recurring,
+    contractAdminFee: VO_CONTRACT_ADMIN_FEE,
+    total,
+  };
+}
+
+const peso = (n: number) => `₱${n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const inputCls =
   "w-full px-4 py-3 bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl text-[#0B1F4A] text-sm placeholder:text-[#64748B]/60 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C] focus:bg-white transition-all duration-200";
@@ -283,7 +305,7 @@ function Modal({
   );
 }
 
-// Success Modal Content 
+// Success Modal Content
 function SuccessModalContent({
   isVO,
   paymentMethod,
@@ -306,8 +328,8 @@ function SuccessModalContent({
 
       {isVO ? (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
-          Your request and payment details have been submitted. We will confirm your payment and
-          send your quotation contract to your email.
+          Your request and payment details have been submitted. Our admin team will verify your
+          payment, then reach out to you directly to formalize your contract.
         </p>
       ) : (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
@@ -321,7 +343,7 @@ function SuccessModalContent({
           ? [
             `Payment method selected: ${getPaymentMethodLabel(paymentMethod)}`,
             "We'll verify your submitted payment and supporting documents",
-            "Your quotation contract will be emailed for your reference",
+            "Our admin will formally contact you to finalize your contract",
           ]
           : [
             "We'll review your service requirements and preferences",
@@ -394,7 +416,7 @@ function StepRail({ step, steps }: { step: number; steps: string[] }) {
   );
 }
 
-// Nav Row 
+// Nav Row
 function NavRow({
   onBack,
   onNext,
@@ -479,8 +501,10 @@ function Step1({
                 : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
                 }`}
             >
-              <Icon className={`w-5 h-5 mb-2.5 transition-colors ${active ? "text-[#1B3A8C]" : "text-[#64748B] group-hover:text-[#1B3A8C]"}`} />
-              <p className={`font-semibold text-md mb-0.5 ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A] group-hover:text-[#1B3A8C]"}`}>{s.label}</p>
+              <div className="flex items-center gap-6">
+                <Icon className={`w-5 h-5 transition-colors ${active ? "text-[#1B3A8C]" : "text-[#64748B] group-hover:text-[#1B3A8C]"}`} />
+                <p className={`font-semibold text-md ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A] group-hover:text-[#1B3A8C]"}`}>{s.label}</p>
+              </div>
             </button>
           );
         })}
@@ -492,33 +516,67 @@ function Step1({
         </div>
       )}
 
-      <div className="mt-8 border-t border-gray-300">
-        <h3 className="text-3xl font-bold text-[#0B1F4A] my-5">Select a Branch</h3>
-        <p className="text-md text-[#64748B] mb-7">Choose which HERO Serviced Office location you'd like to inquire about.</p>
-        <div className="grid sm:grid-cols-2 gap-3">
+      <div className="mt-12 border-t border-slate-200 pt-10">
+        <div className="mb-8">
+
+          <h3 className="mt-4 text-3xl font-bold text-[#0B1F4A]">
+            Select Preferred Branch
+          </h3>
+
+          <p className="mt-3 text-base leading-relaxed text-slate-500">
+            Select the HERO Serviced Office location where you'd like to inquire,
+            schedule a visit, or reserve your workspace.
+          </p>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-2">
           {BRANCHES.map((b) => {
             const active = selectedBranch === b.id;
+
             return (
               <button
                 key={b.id}
                 type="button"
                 onClick={() => setSelectedBranch(b.id)}
-                className={`p-4 rounded-2xl border-[1.5px] text-left transition-all duration-200 group ${active
-                  ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C]"
-                  : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
+                className={`group relative overflow-hidden rounded-3xl border bg-white p-6 text-left transition-all duration-300 ${active
+                  ? "border-[#1B3A8C] shadow-xl shadow-blue-100 ring-2 ring-[#1B3A8C]/10"
+                  : "border-slate-200 hover:-translate-y-1 hover:border-[#1B3A8C]/40 hover:shadow-lg"
                   }`}
               >
-                <MapPin className={`w-5 h-5 mb-2.5 transition-colors ${active ? "text-[#1B3A8C]" : "text-[#64748B] group-hover:text-[#1B3A8C]"}`} />
-                <p className={`font-semibold text-md mb-0.5 ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A] group-hover:text-[#1B3A8C]"}`}>{b.label}</p>
-                <p className="text-sm text-[#64748B] leading-snug">{b.address}</p>
+                {/* Active Accent */}
+                <div
+                  className={`absolute left-0 top-0 h-full w-1 transition-all ${active ? "bg-[#C9A84C]" : "bg-transparent"
+                    }`}
+                />
+
+                <div className="flex items-start justify-between">
+                  <div className="flex flex-col">
+                    <h4
+                      className={`text-lg font-semibold transition-colors ${active
+                        ? "text-[#1B3A8C]"
+                        : "text-[#0B1F4A] group-hover:text-[#1B3A8C]"
+                        }`}
+                    >
+                      <div className="flex gap-4">
+                        <MapPin className="h-6 w-6" />
+                        {b.label}
+                      </div>
+                    </h4>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      {b.address}
+                    </p>
+                  </div>
+                </div>
               </button>
             );
           })}
         </div>
+
         {touched && !selectedBranch && (
-          <div className="mt-4 flex items-center gap-2 text-sm text-red-500">
-            <AlertCircle className="w-4 h-4" />
-            Please select a branch to continue.
+          <div className="mt-6 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            <span>Please select a branch to continue.</span>
           </div>
         )}
       </div>
@@ -528,7 +586,7 @@ function Step1({
   );
 }
 
-// Step 2: Requirements 
+// Step 2: Requirements
 function Step2PrivateOffice({
   data,
   onChange,
@@ -689,19 +747,35 @@ function Step2VirtualOffice({
         </div>
       </Field>
 
-      <Field
-        label="Preferred Start Date"
-        required
-        error={errors.startDate}
-      >
-        <input
-          type="date"
-          min={today}
-          value={data.startDate}
-          onChange={(e) => onChange({ startDate: e.target.value })}
-          className={errors.startDate ? inputErrCls : inputCls}
-        />
-      </Field>
+      <div className="grid sm:grid-cols-2 gap-5">
+        <Field label="Preferred Start Date" required error={errors.startDate}>
+          <input
+            type="date"
+            min={today}
+            value={data.startDate}
+            onChange={(e) => onChange({ startDate: e.target.value })}
+            className={errors.startDate ? inputErrCls : inputCls}
+          />
+        </Field>
+
+        {/* NEW: Months Duration */}
+        <Field label="Months Duration" required error={errors.months}>
+          <select
+            value={data.months}
+            onChange={(e) => onChange({ months: e.target.value })}
+            className={errors.months ? inputErrCls : inputCls}
+          >
+            <option value="">Select duration</option>
+            {VO_MONTHS_OPTIONS.map((m) => (
+              <option key={m} value={m}>{m} {Number(m) === 1 ? "Month" : "Months"}</option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
+      {data.package && data.months && (
+        <VOPricingBreakdown pkg={data.package} months={data.months} />
+      )}
 
       <div className="mt-5">
         <Field label="Other Requirements / Conditions">
@@ -715,6 +789,24 @@ function Step2VirtualOffice({
         </Field>
       </div>
 
+    </div>
+  );
+}
+
+/** Shared pricing breakdown card: Package + VAT + Contract & Admin Fee, × Duration */
+function VOPricingBreakdown({ pkg, months }: { pkg: string; months: string }) {
+  const b = computeVirtualOfficeTotal(pkg, months);
+  return (
+    <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
+      <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40 mb-3">Estimated Pricing Breakdown</p>
+      <div className="space-y-1.5 text-sm">
+        <div className="flex justify-between"><span className="text-[#64748B]">Package ({pkg})</span><span className="text-[#0B1F4A] font-medium">{peso(b.base)} / month</span></div>
+        <div className="flex justify-between"><span className="text-[#64748B]">VAT (12%)</span><span className="text-[#0B1F4A] font-medium">{peso(b.vat)} / month</span></div>
+        <div className="flex justify-between"><span className="text-[#64748B]">Duration</span><span className="text-[#0B1F4A] font-medium">× {b.numMonths} {b.numMonths === 1 ? "month" : "months"}</span></div>
+        <div className="flex justify-between border-t border-[#D9E2F0] pt-1.5 mt-1.5"><span className="text-[#64748B]">Subtotal</span><span className="text-[#0B1F4A] font-medium">{peso(b.recurring)}</span></div>
+        <div className="flex justify-between"><span className="text-[#64748B]">Contract & Admin Fee</span><span className="text-[#0B1F4A] font-medium">{peso(b.contractAdminFee)}</span></div>
+        <div className="flex justify-between border-t border-[#D9E2F0] pt-2 mt-2"><span className="font-bold text-[#0B1F4A]">Total</span><span className="font-bold text-[#1B3A8C]">{peso(b.total)}</span></div>
+      </div>
     </div>
   );
 }
@@ -877,6 +969,9 @@ function Step3({
   const idUploadRef = useRef<HTMLInputElement>(null);
   const signatoryUploadRef = useRef<HTMLInputElement>(null);
 
+  // VO restricts to 4 accepted ID types (no "Others"); other services keep the full list
+  const idTypeOptions = isVO ? VO_GOVERNMENT_ID_TYPES : GOVERNMENT_ID_TYPES;
+
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!contact.name.trim()) errs.name = "Full name is required.";
@@ -892,9 +987,11 @@ function Step3({
     }
 
     if (!contractIdentity.idType) {
-      errs.idType = "Please select a government ID type.";
+      errs.idType = isVO
+        ? "Please select an accepted ID type (Passport, Driver's License, PhilSys ID, or PRC ID)."
+        : "Please select a government ID type.";
     }
-    if (contractIdentity.idType === "Others" && !contractIdentity.idTypeOther.trim()) {
+    if (!isVO && contractIdentity.idType === "Others" && !contractIdentity.idTypeOther.trim()) {
       errs.idTypeOther = "Please specify your government ID type.";
     }
     if (!contractIdentity.idName.trim()) {
@@ -914,7 +1011,7 @@ function Step3({
       if (!contractIdentity.signatoryIdType) {
         errs.signatoryIdType = "Please select the signatory ID type.";
       }
-      if (contractIdentity.signatoryIdType === "Others" && !contractIdentity.signatoryIdTypeOther.trim()) {
+      if (!isVO && contractIdentity.signatoryIdType === "Others" && !contractIdentity.signatoryIdTypeOther.trim()) {
         errs.signatoryIdTypeOther = "Please specify the signatory ID type.";
       }
       if (!contractIdentity.signatoryIdName.trim()) {
@@ -931,7 +1028,6 @@ function Step3({
       }
     }
 
-    // Backend currently enforces these on Virtual Office.
     if (isVO && !contractIdentity.idName.trim()) {
       errs.idName = "Name on government ID is required for virtual office.";
     }
@@ -992,6 +1088,7 @@ function Step3({
         <h3 className="text-2xl font-bold text-[#0B1F4A] mb-2">Government ID & Signatory</h3>
         <p className="text-sm text-[#64748B] mb-5">
           These details are used for contract preparation and verification.
+          {isVO && " Accepted IDs for Virtual Office: Passport, Driver's License, Philippine National ID, or PRC ID."}
         </p>
 
         <label className="my-5 flex items-start gap-3 cursor-pointer group">
@@ -1034,13 +1131,13 @@ function Step3({
               className={errors.idType ? inputErrCls : inputCls}
             >
               <option value="">Select ID type</option>
-              {GOVERNMENT_ID_TYPES.map((idType) => (
+              {idTypeOptions.map((idType) => (
                 <option key={idType} value={idType}>{idType}</option>
               ))}
             </select>
           </Field>
 
-          {contractIdentity.idType === "Others" && (
+          {!isVO && contractIdentity.idType === "Others" && (
             <Field label="Specify ID Type" required error={errors.idTypeOther}>
               <input
                 type="text"
@@ -1135,13 +1232,13 @@ function Step3({
                   className={errors.signatoryIdType ? inputErrCls : inputCls}
                 >
                   <option value="">Select ID type</option>
-                  {GOVERNMENT_ID_TYPES.map((idType) => (
+                  {idTypeOptions.map((idType) => (
                     <option key={idType} value={idType}>{idType}</option>
                   ))}
                 </select>
               </Field>
 
-              {contractIdentity.signatoryIdType === "Others" && (
+              {!isVO && contractIdentity.signatoryIdType === "Others" && (
                 <Field label="Specify Signatory ID Type" required error={errors.signatoryIdTypeOther}>
                   <input
                     type="text"
@@ -1292,6 +1389,7 @@ function Step4({
     if (selectedService === "virtual-office") return [
       { label: "Package", value: virtualOffice.package },
       { label: "Start Date", value: virtualOffice.startDate },
+      { label: "Months Duration", value: virtualOffice.months },
     ];
     if (selectedService === "coworking") return [
       { label: "Seats", value: coworking.seats },
@@ -1331,6 +1429,12 @@ function Step4({
         {serviceRows().map((r) => <ReviewRow key={r.label} label={r.label} value={r.value} />)}
       </div>
 
+      {isVO && virtualOffice.package && virtualOffice.months && (
+        <div className="mb-4">
+          <VOPricingBreakdown pkg={virtualOffice.package} months={virtualOffice.months} />
+        </div>
+      )}
+
       <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5 mb-6">
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40 mb-3">Contact</p>
         <ReviewRow label="Name" value={contact.name} />
@@ -1355,7 +1459,8 @@ function Step4({
         <div className="bg-[#fffaec] border border-[#dbd4bd] rounded-xl px-5 py-4 mb-6 flex items-start gap-3">
           <Wallet className="w-4 h-4 text-[#FFC107]/50 shrink-0 mt-0.5" />
           <p className="text-xs text-gray-800 leading-relaxed">
-            After confirming, you'll proceed to select your payment method and complete the transaction before your virtual office is activated.
+            After confirming, you'll proceed to select your payment method and complete the transaction.
+            Our admin team will then verify your payment and formally contact you to finalize your contract.
           </p>
         </div>
       )}
@@ -1425,12 +1530,12 @@ function StepVOPayment({
   const paymentProofRef = useRef<HTMLInputElement>(null);
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
 
-  const packagePrices: Record<string, string> = {
-    Basic: "₱2,000 per Seat/Month",
-    Standard: "₱3,000 per Seat/Month",
-    Premium: "₱5,000 per Seat/Month",
-  };
+  const pricing = virtualOffice.package && virtualOffice.months
+    ? computeVirtualOfficeTotal(virtualOffice.package, virtualOffice.months)
+    : null;
 
+  // Only QRPH, Online Bank Transfer, and Bank Deposit are enabled.
+  // Cash, Cheque, and standalone GCash have been removed/disabled per updated flow.
   const paymentOptions: Array<{
     id: Exclude<PaymentMethod, null>;
     icon: React.ElementType;
@@ -1440,44 +1545,23 @@ function StepVOPayment({
     hasQr?: boolean;
   }> = [
       {
-        id: "bank",
-        icon: Landmark,
-        label: "Bank",
-        sub: "Direct bank deposit",
+        id: "qrph",
+        icon: QrCode,
+        label: "QRPH",
+        sub: "Scan to pay via any QRPH-enabled app",
         details: [
-          "Bank: BDO Unibank",
           "Account Name: HERO PH INC.",
-          "Account Number: 012345678901",
-          "Upload your validated deposit slip or transfer confirmation.",
+          "Scan the QRPH code using your preferred banking or e-wallet app.",
+          "Use your full name as payment reference.",
+          "Upload your transaction confirmation screenshot for verification.",
         ],
-      },
-      {
-        id: "cheque",
-        icon: FileText,
-        label: "Cheque",
-        sub: "Cheque payment",
-        details: [
-          "Payee: HERO PH INC.",
-          "Crossed cheque only.",
-          "Upload a clear image/scan of the issued cheque and deposit acknowledgement.",
-        ],
-      },
-      {
-        id: "cash",
-        icon: HandCoins,
-        label: "Cash",
-        sub: "In-person cash payment",
-        details: [
-          "Payment location: HERO Serviced Office Front Desk",
-          "Keep your official receipt.",
-          "Upload your signed cash receipt for verification.",
-        ],
+        hasQr: true,
       },
       {
         id: "online_transfer",
         icon: ArrowRightLeft,
-        label: "Online Transfer",
-        sub: "Online bank transfer",
+        label: "Online Bank Transfer",
+        sub: "Online bank-to-bank transfer",
         details: [
           "Transfer to: HERO PH INC. official bank account",
           "Include your full name as transfer note/reference.",
@@ -1485,17 +1569,16 @@ function StepVOPayment({
         ],
       },
       {
-        id: "gcash",
-        icon: Smartphone,
-        label: "GCash",
-        sub: "Mobile wallet transfer",
+        id: "bank",
+        icon: Landmark,
+        label: "Bank Deposit",
+        sub: "Over-the-counter bank deposit",
         details: [
-          "GCash Number: 09XX XXX XXXX",
+          "Bank: BDO Unibank",
           "Account Name: HERO PH INC.",
-          "Use your full name as payment reference.",
-          "Upload your GCash transaction screenshot for verification.",
+          "Account Number: 012345678901",
+          "Upload your validated deposit slip or transfer confirmation.",
         ],
-        hasQr: true,
       },
     ];
 
@@ -1512,16 +1595,24 @@ function StepVOPayment({
       <div className="bg-[#EEF2FB] border border-[#C5D2EC] rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold text-[#1B3A8C] uppercase tracking-wide">Virtual Office — {virtualOffice.package}</p>
-          <p className="text-xs text-[#64748B] mt-0.5">Starting {virtualOffice.startDate || "TBD"}</p>
+          <p className="text-xs text-[#64748B] mt-0.5">
+            Starting {virtualOffice.startDate || "TBD"} · {virtualOffice.months || "—"} {Number(virtualOffice.months) === 1 ? "month" : "months"}
+          </p>
         </div>
         <p className="text-md font-bold text-[#0B1F4A]">
-          {packagePrices[virtualOffice.package] ?? "—"}
+          {pricing ? peso(pricing.total) : "—"}
         </p>
       </div>
 
+      {pricing && (
+        <div className="mb-6">
+          <VOPricingBreakdown pkg={virtualOffice.package} months={virtualOffice.months} />
+        </div>
+      )}
+
       {/* Payment method selector */}
       <Field label="Payment Method" required error={!paymentMethod ? "Please select a payment method." : undefined}>
-        <div className="grid sm:grid-cols-2 gap-3 mt-1">
+        <div className="grid sm:grid-cols-3 gap-3 mt-1">
           {paymentOptions.map((opt) => {
             const Icon = opt.icon;
             const active = paymentMethod === opt.id;
@@ -1567,15 +1658,15 @@ function StepVOPayment({
 
           {selectedPaymentOption.hasQr && (
             <div className="mt-3 rounded-xl border border-[#D9E2F0] bg-white p-3">
-              <p className="text-[11px] font-semibold text-[#0B1F4A] mb-2">GCash QR</p>
+              <p className="text-[11px] font-semibold text-[#0B1F4A] mb-2">QRPH Code</p>
               <div className="flex items-center gap-3">
                 <img
-                  src="/payments/gcash-qr.svg"
-                  alt="GCash QR"
+                  src="/payments/qrph-qr.svg"
+                  alt="QRPH QR"
                   className="w-24 h-24 rounded-lg border border-[#D9E2F0] bg-white"
                 />
                 <p className="text-[11px] text-[#64748B] leading-relaxed">
-                  Scan to pay using GCash. If you need help, please contact HERO support for the official payment QR.
+                  Scan using any QRPH-enabled banking or e-wallet app. If you need help, please contact HERO support for the official payment QR.
                 </p>
               </div>
             </div>
@@ -1594,7 +1685,7 @@ function StepVOPayment({
             value={paymentReference}
             onChange={(e) => setPaymentReference(e.target.value)}
             className={!paymentReference.trim() ? inputErrCls : inputCls}
-            placeholder="e.g. GCash/Bank reference ID"
+            placeholder="e.g. Bank/QRPH transaction reference ID"
           />
         </Field>
       </div>
@@ -1642,13 +1733,18 @@ function StepVOPayment({
             <p className="text-sm text-[#64748B] mt-2">
               Reference No.: <span className="font-semibold text-[#0B1F4A]">{paymentReference || "—"}</span>
             </p>
+            {pricing && (
+              <p className="text-sm text-[#64748B] mt-2">
+                Amount Due: <span className="font-semibold text-[#0B1F4A]">{peso(pricing.total)}</span>
+              </p>
+            )}
           </div>
 
           <div className="bg-[#FFFBF0] border border-[#F0D98A] rounded-xl px-5 py-4 flex items-start gap-3">
             <Clock className="w-4 h-4 text-[#C9A84C] shrink-0 mt-0.5" />
             <div className="text-xs text-[#7A5C00] space-y-1 leading-relaxed">
-              <p className="font-semibold">Verification within 24 business hours</p>
-              <p>Our sales officer will verify your payment and send the quotation contract to your email within 24 business hours of receiving your proof of payment.</p>
+              <p className="font-semibold">Admin verification within 24 business hours</p>
+              <p>Our admin team will verify your payment within 24 business hours, then formally contact you directly to finalize your contract.</p>
             </div>
           </div>
 
@@ -1703,7 +1799,7 @@ export default function GetAQuotePage() {
       setSelectedService(service as ServiceId);
     }
   }, [searchParams]);
-  const [virtualOffice, setVirtualOffice] = useState<VirtualOfficeFields>({ package: "", startDate: "" });
+  const [virtualOffice, setVirtualOffice] = useState<VirtualOfficeFields>({ package: "", startDate: "", months: "" });
   const [coworking, setCoworking] = useState<CoworkingFields>({ seats: "", startDate: "", terms: "", otherRequirements: "" });
   const [meetingRoom, setMeetingRoom] = useState<MeetingRoomFields>({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
   const [eventSpace, setEventSpace] = useState<EventSpaceFields>({ eventDate: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
@@ -1741,6 +1837,7 @@ export default function GetAQuotePage() {
     if (selectedService === "virtual-office") {
       if (!virtualOffice.package) errs.package = "Please select a package.";
       if (!virtualOffice.startDate) errs.startDate = "Please select a preferred start date.";
+      if (!virtualOffice.months) errs.months = "Please select the months duration.";
     }
     if (selectedService === "coworking") {
       if (!coworking.seats || Number(coworking.seats) < 1) errs.seats = "Please enter a valid number of seats.";
@@ -1789,7 +1886,7 @@ export default function GetAQuotePage() {
       signatoryGovernmentIdFile: null,
     });
     setPrivateOffice({ seats: "", moveInDate: "", leaseTerm: "", otherRequirements: "" });
-    setVirtualOffice({ package: "", startDate: "" });
+    setVirtualOffice({ package: "", startDate: "", months: "" });
     setCoworking({ seats: "", startDate: "", terms: "", otherRequirements: "" });
     setMeetingRoom({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
     setEventSpace({ eventDate: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
@@ -1815,7 +1912,7 @@ export default function GetAQuotePage() {
       email: contact.email,
       phone: contact.phone,
       request: notes || null,
-      payment_method: paymentMethod ?? "cash",
+      payment_method: paymentMethod ?? null,
       transaction_id: paymentReference.trim() || null,
       receipt: paymentProof ? paymentProof.name : null,
       id_type: contractIdentity.idType === "Others" ? contractIdentity.idTypeOther : contractIdentity.idType,
@@ -1849,8 +1946,17 @@ export default function GetAQuotePage() {
       lease_term = privateOffice.leaseTerm;
     } else if (selectedService === "virtual-office") {
       detail.date = virtualOffice.startDate;
-      const packagePrices: Record<string, number> = { Basic: 2000, Standard: 3000, Premium: 5000 };
-      total = packagePrices[virtualOffice.package] ?? 0;
+      detail.months = Number(virtualOffice.months) || null;
+      const pricing = computeVirtualOfficeTotal(virtualOffice.package, virtualOffice.months);
+      detail.price_breakdown = {
+        package_base_monthly: pricing.base,
+        vat_monthly: pricing.vat,
+        monthly_subtotal: pricing.monthlySubtotal,
+        months: pricing.numMonths,
+        recurring_total: pricing.recurring,
+        contract_admin_fee: pricing.contractAdminFee,
+      };
+      total = pricing.total;
       pkg = virtualOffice.package;
     } else if (selectedService === "coworking") {
       detail.seats = Number(coworking.seats) || null;
@@ -2002,8 +2108,8 @@ export default function GetAQuotePage() {
         </div>
         <div className="px-4 sm:px-6 lg:px-8 relative z-10 text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">Get a Quote</h1>
-            <p className="text-lg text-gray-300 max-w-xl mx-auto leading-relaxed">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">Get a Quote</h1>
+            <p className="text-lg text-gray-300 max-w-xl mx-auto leading-relaxed text-shadow-sm">
               Tell us about your workspace requirements and our team will prepare a customised quotation for you.
             </p>
           </motion.div>
@@ -2218,16 +2324,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function getPaymentMethodLabel(paymentMethod: PaymentMethod | string | null | undefined) {
   switch (paymentMethod) {
-    case "gcash":
-      return "GCash";
-    case "bank":
-      return "Bank";
-    case "cheque":
-      return "Cheque";
-    case "cash":
-      return "Cash";
+    case "qrph":
+      return "QRPH";
     case "online_transfer":
-      return "Online Transfer";
+      return "Online Bank Transfer";
+    case "bank":
+      return "Bank Deposit";
     default:
       return paymentMethod || "—";
   }

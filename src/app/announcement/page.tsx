@@ -434,7 +434,7 @@ export default function AnnouncementPage() {
         <div className="absolute inset-0">
           <Image
             src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80"
-            alt="Newsletter"
+            alt="About HERO Serviced Office"
             fill
             className="object-cover"
             unoptimized
@@ -450,10 +450,10 @@ export default function AnnouncementPage() {
             transition={{ duration: 0.5 }}
             className="w-full text-center mx-auto"
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
               News, Updates & Exclusive Offers
             </h1>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto text-shadow-sm">
               Get the latest from Hero Serviced Office — new locations, events,
               member benefits, and special promotions delivered straight to your
               inbox.

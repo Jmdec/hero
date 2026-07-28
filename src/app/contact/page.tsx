@@ -1029,10 +1029,10 @@ export default function ContactPage() {
             transition={{ duration: 0.5 }}
             className="w-full text-center mx-auto"
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
               Contact Us
             </h1>
-            <p className="text-xl text-gray-300">
+            <p className="text-xl text-gray-300 text-shadow-sm">
               Reach out to us for inquiries, reservations, or support.
             </p>
           </motion.div>

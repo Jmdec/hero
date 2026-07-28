@@ -99,40 +99,40 @@ export default function Home() {
       title: "Private Offices",
       description:
         "Private offices designed for individual professionals and small teams.",
-      image: "/spaces/private-space.jpg",
+      image: "/spaces/private-space.webp",
     },
     {
       title: "Virtual Offices",
       description:
         "Remote office solutions for businesses that need flexibility and scalability.",
-      image: "/spaces/virtual-office.jpg",
+      image: "/spaces/virtual-office.webp",
     },
     {
       title: "Co-working Spaces",
       description:
         "Flexible workspaces designed for freelancers and entrepreneurs.",
-      image: "/spaces/co-working.jpg",
+      image: "/spaces/co-working.webp",
     },
     {
       title: "Meeting Rooms",
       description:
         "Professional meeting spaces equipped with the latest technology.",
-      image: "/spaces/_ARM8065.jpg",
+      image: "/spaces/meeting-room.webp",
     },
     {
       title: "Event Space",
       description:
         "Versatile event spaces ideal for seminars, workshops, networking events, and corporate gatherings.",
-      image: "/spaces/event-space.jpg",
+      image: "/spaces/event-space.webp",
     },
   ];
 
   const spacesCarousel = [
-    { image: "/spaces/_ARM8120.jpg" },
-    { image: "/spaces/_ARM7474.jpg" },
-    { image: "/spaces/_ARM7597.jpg" },
-    { image: "/spaces/_ARM7477.jpg" },
-    { image: "/spaces/_ARM7611.jpg" },
+    { image: "/spaces/_ARM8120.webp" },
+    { image: "/spaces/_ARM7474.webp" },
+    { image: "/spaces/_ARM7597.webp" },
+    { image: "/spaces/_ARM7477.webp" },
+    { image: "/spaces/_ARM7611.webp" },
   ];
 
   useEffect(() => {

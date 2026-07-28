@@ -12,9 +12,26 @@ import {
   Eye,
   Award,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 
 export default function AboutPage() {
+  const [spaceSlide, setSpaceSlide] = useState(0);
+
+  const teamCarousel = [
+    { image: "/_ARM1425.webp", title: "Our Team" },
+    { image: "/_ARM1442.webp", title: "Operations Department" },
+    { image: "/_ARM1457.webp", title: "Marketing & Sales Department" },
+    { image: "/_ARM1467.webp", title: "Accounting Department" },
+  ]
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSpaceSlide((prev) => (prev + 1) % teamCarousel.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [teamCarousel.length]);
+
   const values = [
     {
       icon: Briefcase,
@@ -91,76 +108,82 @@ export default function AboutPage() {
             transition={{ duration: 0.5 }}
             className="w-full text-center mx-auto text-shadow-4xl"
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
               About HERO Serviced Office
             </h1>
-            <p className="text-xl text-gray-300">
+            <p className="text-xl text-gray-300 text-shadow-sm">
               Your trusted partner for premium office solutions in the heart of Makati's business district
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* Company Overview */}
+      {/* Company Overview + Meet Our Team */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-            >
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-                Our Story
-              </h2>
-              <div className="space-y-4 text-gray-600 text-justify">
-                <p>
-                  HERO Serviced Office traces its roots to a Japan-based business group established with the
-                  goal of developing service-oriented enterprises that support modern commercial activity. The
-                  group initially operated across multiple business sectors, gradually building expertise in service
-                  management, operational efficiency, and client-centered solutions.
-                </p>
-                <p>
-                  In 2015, the serviced office division was formally established in response to the increasing
-                  global demand for flexible workspace solutions. At a time when businesses were shifting toward
-                  more agile and cost-efficient operating models, HERO introduced fully serviced office
-                  environments that eliminated the complexity of traditional leasing structures.
-                </p>
-                <p>
-                  Starting from its early operations in Japan, the company expanded its concept internationally,
-                  refining its offerings to suit different business cultures and market environments. Over time, its
-                  services evolved to include private offices, virtual office packages, coworking spaces, and
-                  meeting facilities—forming a complete workspace ecosystem.
-                </p>
-                <p className="font-semibold">
-                  Today, HERO Serviced Office continues to operate, focusing on service quality, operational
-                  efficiency, and business enablement across diverse industries and markets.
-                </p>
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              Our Story
+            </h2>
+            <div className="space-y-4 text-gray-600 text-justify">
+              <p>
+                HERO Serviced Office traces its roots to a Japan-based business group established with the
+                goal of developing service-oriented enterprises that support modern commercial activity. The
+                group initially operated across multiple business sectors, gradually building expertise in service
+                management, operational efficiency, and client-centered solutions.
+              </p>
+              <p>
+                In 2015, the serviced office division was formally established in response to the increasing
+                global demand for flexible workspace solutions. At a time when businesses were shifting toward
+                more agile and cost-efficient operating models, HERO introduced fully serviced office
+                environments that eliminated the complexity of traditional leasing structures.
+              </p>
+              <p>
+                Starting from its early operations in Japan, the company expanded its concept internationally,
+                refining its offerings to suit different business cultures and market environments. Over time, its
+                services evolved to include private offices, virtual office packages, coworking spaces, and
+                meeting facilities—forming a complete workspace ecosystem.
+              </p>
+              <p className="font-semibold">
+                Today, HERO Serviced Office continues to operate, focusing on service quality, operational
+                efficiency, and business enablement across diverse industries and markets.
+              </p>
+            </div>
+          </motion.div>
+
+          <div className="relative flex justify-center mt-6 h-125 w-full">
+            {teamCarousel.map((item, index) => (
+              <div
+                key={index}
+                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ${index === spaceSlide ? "opacity-100 z-10" : "opacity-0 z-0"
+                  }`}
+              >
+                <div className="relative">
+                  <Image
+                    src={item.image}
+                    alt={item.title}
+                    width={800}
+                    height={500}
+                    className="rounded-2xl object-cover max-h-125 w-auto"
+                    unoptimized
+                  />
+
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-black/60 px-4 py-2 text-white">
+                    {item.title}
+                  </div>
+                </div>
               </div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-              className="relative"
-            >
-              <div className="relative aspect-4/3 rounded-2xl overflow-hidden">
-                <Image
-                  src="/spaces/_ARM7945.jpeg"
-                  alt="Our office"
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
-              </div>
-            </motion.div>
+            ))}
           </div>
         </div>
 
         {/* Vision & Mission */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3">
           <div className="grid md:grid-cols-2 gap-12">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
