@@ -1,17 +1,5 @@
 import nodemailer from "nodemailer";
-import {
-    Document,
-    Packer,
-    Paragraph,
-    TextRun,
-    HeadingLevel,
-    AlignmentType,
-    Table,
-    TableRow,
-    TableCell,
-    WidthType,
-    BorderStyle,
-} from "docx";
+import { PDFDocument, StandardFonts, rgb, PDFFont } from "pdf-lib";
 
 export const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -201,15 +189,6 @@ export async function sendVerificationEmail(
 
 // QUOTATION EMAILS
 
-export interface QuotationPriceBreakdown {
-    package_base_monthly?: number | null;
-    vat_monthly?: number | null;
-    monthly_subtotal?: number | null;
-    months?: number | null;
-    recurring_total?: number | null;
-    contract_admin_fee?: number | null;
-}
-
 export interface QuotationDetail {
     full_name: string;
     id_type?: string | null;
@@ -234,8 +213,6 @@ export interface QuotationDetail {
     time?: string | null;
     duration_type?: string | null;
     other_requirements?: string | null;
-    months?: number | null;
-    price_breakdown?: QuotationPriceBreakdown | null;
     total?: number;
 }
 
@@ -262,31 +239,11 @@ export interface QuotationNotificationOptions {
     signatoryGovernmentIdCopy?: QuotationDocumentCopy | null;
 }
 
-const VO_PACKAGE_PRICES: Record<string, number> = { Basic: 2000, Standard: 3000, Premium: 5000 };
-const VO_VAT_RATE = 0.12;
-const VO_CONTRACT_ADMIN_FEE = 500;
-
-/** Only enabled VO payment methods. Cash / cheque are no longer accepted. */
-const VO_ENABLED_PAYMENT_METHODS = new Set(["qrph", "online_transfer", "bank"]);
-
-function peso(n: number | null | undefined): string {
-    const value = n ?? 0;
-    return `₱${value.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-/**
- * Recomputes the VO pricing breakdown server-side (Package + VAT + Contract & Admin Fee,
- * multiplied by Duration) so email/contract totals never trust unvalidated client input.
- */
-function computeVirtualOfficeTotal(pkg: string | null | undefined, months: number | null | undefined) {
-    const base = VO_PACKAGE_PRICES[pkg || ""] ?? 0;
-    const vat = base * VO_VAT_RATE;
-    const monthlySubtotal = base + vat;
-    const numMonths = Math.max(1, months || 1);
-    const recurring = monthlySubtotal * numMonths;
-    const total = recurring + VO_CONTRACT_ADMIN_FEE;
-    return { base, vat, monthlySubtotal, numMonths, recurring, contractAdminFee: VO_CONTRACT_ADMIN_FEE, total };
-}
+const VO_PACKAGE_PRICES: Record<string, string> = {
+    Basic: "₱2,000",
+    Standard: "₱3,000",
+    Premium: "₱5,000",
+};
 
 function formatDisplayDate(value?: string | null): string {
     if (!value) return "—";
@@ -303,12 +260,7 @@ function formatDisplayDate(value?: string | null): string {
 
 function formatPaymentMethodLabel(value?: string | null): string {
     if (!value) return "N/A";
-    const labels: Record<string, string> = {
-        qrph: "QRPH",
-        online_transfer: "Online Bank Transfer",
-        bank: "Bank Deposit",
-    };
-    return labels[value] ?? value
+    return value
         .replace(/_/g, " ")
         .split(" ")
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
@@ -344,24 +296,11 @@ function buildQuotationDetailRows(
     } = {}
 ): string {
     const d = q.detail;
-    const isVirtualOffice = isVirtualOfficeQuotation(q);
+    const isVirtualOffice = isVirtualOfficePaymongo(q);
     const seatsRow = options.hideSeatsForVirtualOffice && isVirtualOffice
         ? ""
         : quotationRow("Seats / Attendees", d.seats);
     const dateValue = options.formattedDate ? formatQuotationDate(d.date) : d.date;
-
-    const pricingRows = isVirtualOffice
-        ? (() => {
-            const b = computeVirtualOfficeTotal(q.package, d.months);
-            return [
-                quotationRow("Months Duration", d.months ? `${d.months} ${d.months === 1 ? "month" : "months"}` : null),
-                quotationRow("Package (Monthly)", peso(b.base)),
-                quotationRow("VAT (12%, Monthly)", peso(b.vat)),
-                quotationRow("Contract & Admin Fee", peso(b.contractAdminFee)),
-                quotationRow("Total Amount Due", peso(b.total)),
-            ].join("");
-        })()
-        : "";
 
     return [
         quotationRow("Service", q.service_name),
@@ -372,10 +311,9 @@ function buildQuotationDetailRows(
         quotationRow("Date", dateValue),
         quotationRow("Time", d.time),
         quotationRow("Duration", d.duration_type),
-        pricingRows,
         quotationRow("Other Requirements", d.other_requirements),
         quotationRow("Notes", d.request),
-        quotationRow("Payment Method", formatPaymentMethodLabel(d.payment_method)),
+        quotationRow("Payment Method", d.payment_method),
         quotationRow("ID Type", d.id_type),
         quotationRow("ID Number", d.id_number),
         quotationRow("ID Name", d.id_name),
@@ -415,7 +353,7 @@ function quotationWrapper(title: string, bodyHtml: string): string {
     </html>`;
 }
 
-function isVirtualOfficeQuotation(
+function isVirtualOfficePaymongo(
     quotation: QuotationPayload
 ): boolean {
     const service = quotation.service_name?.toLowerCase() ?? "";
@@ -512,7 +450,7 @@ function canGenerateContract(
     quotation: QuotationPayload,
     options: QuotationNotificationOptions
 ): boolean {
-    if (!isVirtualOfficeQuotation(quotation)) return false;
+    if (!isVirtualOfficePaymongo(quotation)) return false;
 
     const hasPaymentEvidence = hasPaymentCopy(options) || Boolean(quotation.detail.receipt);
     const hasGovernmentEvidence = hasGovernmentIdCopy(options) || Boolean(quotation.detail.government_id_file);
@@ -520,176 +458,160 @@ function canGenerateContract(
     return hasPaymentEvidence && hasGovernmentEvidence;
 }
 
-// ─── Virtual Office Contract (.docx) — admin/internal use only ────────────────
-//
-// Per updated workflow, the formal contract is NOT sent to the client at
-// submission time. Admin verifies payment first, then formally contacts the
-// client directly to finalize the contract. This .docx is generated solely
-// as a reference document attached to the ADMIN notification email.
+const PAGE_WIDTH = 595.28; // A4
+const PAGE_HEIGHT = 841.89;
+const MARGIN = 56;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
 
-const DOCX_COLOR_PRIMARY = "0D47A1";
-const DOCX_COLOR_MUTED = "94A3B8";
-const DOCX_COLOR_TEXT = "1E293B";
+const COLOR_PRIMARY = rgb(0.051, 0.278, 0.631); // #0D47A1
+const COLOR_TEXT = rgb(0.118, 0.161, 0.231); // #1e293b
+const COLOR_MUTED = rgb(0.58, 0.647, 0.722); // #94a3b8
 
-function sanitizeDocxText(text: string) {
+function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+    const words = sanitizePdfText(text).split(" ");
+    const lines: string[] = [];
+    let current = "";
+
+    for (const word of words) {
+        const trial = current ? `${current} ${word}` : word;
+        if (font.widthOfTextAtSize(trial, size) > maxWidth && current) {
+            lines.push(current);
+            current = word;
+        } else {
+            current = trial;
+        }
+    }
+    if (current) lines.push(current);
+    return lines;
+}
+
+function sanitizePdfText(text: string) {
     return text.replace(/₱/g, "PHP ");
 }
 
-function heading(text: string) {
-    return new Paragraph({
-        text: sanitizeDocxText(text),
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 240, after: 120 },
-        run: { color: DOCX_COLOR_PRIMARY, bold: true, size: 24 },
-    } as any);
-}
-
-function bodyLine(label: string, value: string) {
-    return new Paragraph({
-        spacing: { after: 60 },
-        children: [
-            new TextRun({ text: `${label}: `, bold: true, color: DOCX_COLOR_TEXT, size: 20 }),
-            new TextRun({ text: sanitizeDocxText(value || "—"), color: DOCX_COLOR_TEXT, size: 20 }),
-        ],
-    });
-}
-
-function paragraphText(text: string) {
-    return new Paragraph({
-        spacing: { after: 160 },
-        children: [new TextRun({ text: sanitizeDocxText(text), color: DOCX_COLOR_TEXT, size: 20 })],
-    });
-}
-
 /**
- * Generates a Virtual Office service agreement as a .docx buffer (using the
- * `docx` package) for internal admin reference. Replaces the previous
- * pdf-lib PDF generator — the client no longer receives this document.
+ * Generates a simple Virtual Office service agreement as a PDF buffer,
+ * using pdf-lib (pure JS, embedded standard fonts — no filesystem font
+ * lookups, so it works reliably in Next.js serverless/Vercel builds where
+ * pdfkit's .afm font loading tends to fail silently).
  */
-async function generateVirtualOfficeContractDocx(
+async function generateVirtualOfficeContractPdf(
     quotation: QuotationPayload
 ): Promise<Buffer> {
+    const pdfDoc = await PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    let cursorY = PAGE_HEIGHT - MARGIN;
+
+    const ensureSpace = (needed: number) => {
+        if (cursorY - needed < MARGIN) {
+            page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+            cursorY = PAGE_HEIGHT - MARGIN;
+        }
+    };
+
+    const drawLine = (
+        text: string,
+        opts: { size?: number; bold?: boolean; color?: ReturnType<typeof rgb>; gap?: number; align?: "left" | "center" } = {}
+    ) => {
+        const size = opts.size ?? 10;
+        const usedFont = opts.bold ? fontBold : font;
+        const color = opts.color ?? COLOR_TEXT;
+        const gap = opts.gap ?? size * 1.4;
+
+        ensureSpace(gap);
+
+        const sanitizedText = sanitizePdfText(text);
+        let x = MARGIN;
+        if (opts.align === "center") {
+            const textWidth = usedFont.widthOfTextAtSize(sanitizedText, size);
+            x = (PAGE_WIDTH - textWidth) / 2;
+        }
+
+        page.drawText(sanitizedText, { x, y: cursorY - size, size, font: usedFont, color });
+        cursorY -= gap;
+    };
+
+    const drawParagraph = (text: string, opts: { size?: number; color?: ReturnType<typeof rgb> } = {}) => {
+        const size = opts.size ?? 10;
+        const color = opts.color ?? COLOR_TEXT;
+        const lines = wrapText(text, font, size, CONTENT_WIDTH);
+        for (const line of lines) {
+            drawLine(line, { size, color, gap: size * 1.5 });
+        }
+    };
+
+    const sectionTitle = (title: string) => {
+        cursorY -= 8;
+        drawLine(title, { size: 12, bold: true, color: COLOR_PRIMARY, gap: 18 });
+    };
+
     const d = quotation.detail;
-    const pricing = computeVirtualOfficeTotal(quotation.package, d.months);
+    const monthlyFee = VO_PACKAGE_PRICES[quotation.package || ""] ?? "—";
     const today = new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
     const idName = d.id_name || d.full_name;
     const signatoryLabel = d.signatory_details || idName;
     const paymentMethodLabel = formatPaymentMethodLabel(d.payment_method);
     const formattedStartDate = formatDisplayDate(d.date);
 
-    const pricingTable = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: {
-            top: { style: BorderStyle.SINGLE, size: 2, color: "D9E2F0" },
-            bottom: { style: BorderStyle.SINGLE, size: 2, color: "D9E2F0" },
-            left: { style: BorderStyle.SINGLE, size: 2, color: "D9E2F0" },
-            right: { style: BorderStyle.SINGLE, size: 2, color: "D9E2F0" },
-            insideHorizontal: { style: BorderStyle.SINGLE, size: 2, color: "D9E2F0" },
-            insideVertical: { style: BorderStyle.SINGLE, size: 2, color: "D9E2F0" },
-        },
-        rows: [
-            ["Package (Monthly)", peso(pricing.base)],
-            ["VAT (12%, Monthly)", peso(pricing.vat)],
-            ["Monthly Subtotal", peso(pricing.monthlySubtotal)],
-            ["Duration", `${pricing.numMonths} ${pricing.numMonths === 1 ? "month" : "months"}`],
-            ["Recurring Subtotal", peso(pricing.recurring)],
-            ["Contract & Admin Fee", peso(pricing.contractAdminFee)],
-            ["Total Amount Due", peso(pricing.total)],
-        ].map(([label, value], i) => new TableRow({
-            children: [
-                new TableCell({
-                    width: { size: 50, type: WidthType.PERCENTAGE },
-                    children: [new Paragraph({ children: [new TextRun({ text: label, bold: i === 6, size: 20 })] })],
-                }),
-                new TableCell({
-                    width: { size: 50, type: WidthType.PERCENTAGE },
-                    children: [new Paragraph({ children: [new TextRun({ text: sanitizeDocxText(value), bold: i === 6, size: 20 })] })],
-                }),
-            ],
-        })),
-    });
+    drawLine("Hero Serviced Office", { size: 20, bold: true, color: COLOR_PRIMARY, align: "center", gap: 26 });
+    drawLine("Virtual Office Service Agreement", { size: 11, color: COLOR_MUTED, align: "center", gap: 28 });
 
-    const doc = new Document({
-        sections: [
-            {
-                properties: {},
-                children: [
-                    new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        spacing: { after: 40 },
-                        children: [new TextRun({ text: "Hero Serviced Office", bold: true, size: 36, color: DOCX_COLOR_PRIMARY })],
-                    }),
-                    new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        spacing: { after: 200 },
-                        children: [new TextRun({ text: "Virtual Office Service Agreement", size: 22, color: DOCX_COLOR_MUTED })],
-                    }),
-                    paragraphText(`Date Issued: ${today}`),
+    drawLine(`Date Issued: ${today}`, { size: 10, gap: 20 });
 
-                    heading("1. Parties"),
-                    paragraphText(
-                        `This Virtual Office Service Agreement ("Agreement") is entered into between Hero PH Inc. ("Provider") and ${d.full_name}${d.company_name ? ` of ${d.company_name}` : ""
-                        } ("Client"), effective as of the date of confirmed payment below.`
-                    ),
+    sectionTitle("1. Parties");
+    drawParagraph(
+        `This Virtual Office Service Agreement ("Agreement") is entered into between Hero PH Inc. ("Provider") and ${d.full_name}${d.company_name ? ` of ${d.company_name}` : ""
+        } ("Client"), effective as of the date of confirmed payment below.`
+    );
 
-                    heading("2. Service Details"),
-                    bodyLine("Service", quotation.service_name || "Virtual Office"),
-                    ...(quotation.branch ? [bodyLine("Branch", quotation.branch)] : []),
-                    bodyLine("Package", quotation.package || "—"),
-                    bodyLine("Start Date", formattedStartDate),
-                    bodyLine("Payment Method", paymentMethodLabel),
-                    ...(d.transaction_id ? [bodyLine("Transaction ID", d.transaction_id)] : []),
+    sectionTitle("2. Service Details");
+    drawLine(`Service: ${quotation.service_name || "Virtual Office"}`);
+    if (quotation.branch) drawLine(`Branch: ${quotation.branch}`);
+    drawLine(`Package: ${quotation.package || "—"}`);
+    drawLine(`Monthly Fee: ${monthlyFee}/month`);
+    drawLine(`Start Date: ${formattedStartDate}`);
+    drawLine(`Payment Method: ${paymentMethodLabel}`);
+    if (d.transaction_id) drawLine(`Transaction ID: ${d.transaction_id}`);
 
-                    heading("3. Pricing Breakdown"),
-                    pricingTable,
+    sectionTitle("3. Client Information");
+    drawLine(`Name: ${idName}`);
+    if (d.id_type) drawLine(`ID Type: ${d.id_type}`);
+    if (d.id_number) drawLine(`ID Number: ${d.id_number}`);
+    if (d.company_name) drawLine(`Company: ${d.company_name}`);
+    if (d.id_address) drawLine(`Address: ${d.id_address}`);
+    if (d.signatory_details) drawLine(`Signatory Details: ${d.signatory_details}`);
+    drawLine(`Email: ${d.email}`);
+    drawLine(`Phone: ${d.phone}`);
 
-                    heading("4. Client Information"),
-                    bodyLine("Name", idName),
-                    ...(d.id_type ? [bodyLine("ID Type", d.id_type)] : []),
-                    ...(d.id_number ? [bodyLine("ID Number", d.id_number)] : []),
-                    ...(d.company_name ? [bodyLine("Company", d.company_name)] : []),
-                    ...(d.id_address ? [bodyLine("Address", d.id_address)] : []),
-                    ...(d.signatory_details ? [bodyLine("Signatory Details", d.signatory_details)] : []),
-                    bodyLine("Email", d.email),
-                    bodyLine("Phone", d.phone),
+    sectionTitle("4. Terms & Conditions");
+    drawParagraph(
+        "The Client agrees to the Provider's standard terms of service, including monthly billing, renewal, and cancellation policies as outlined in the Provider's Terms of Use. This Agreement takes effect upon confirmed payment and remains in force on a month-to-month basis unless terminated by either party with thirty (30) days' written notice. All correspondence regarding this Agreement should be directed to salesofficer@heroph.net."
+    );
 
-                    heading("5. Terms & Conditions"),
-                    paragraphText(
-                        "The Client agrees to the Provider's standard terms of service, including monthly billing, renewal, and cancellation policies as outlined in the Provider's Terms of Use. This Agreement takes effect upon confirmed payment and remains in force on a month-to-month basis unless terminated by either party with thirty (30) days' written notice. All correspondence regarding this Agreement should be directed to salesofficer@heroph.net."
-                    ),
+    cursorY -= 40;
+    drawLine("Hero PH Inc.", { bold: true, gap: 40 });
+    drawLine("_______________________________", { gap: 14 });
+    drawLine("Authorized Representative", { gap: 40 });
 
-                    new Paragraph({ spacing: { before: 400, after: 200 }, children: [new TextRun({ text: "Hero PH Inc.", bold: true, size: 20 })] }),
-                    new Paragraph({ spacing: { after: 60 }, children: [new TextRun({ text: "_______________________________", size: 20 })] }),
-                    new Paragraph({ spacing: { after: 300 }, children: [new TextRun({ text: "Authorized Representative", size: 18, color: DOCX_COLOR_MUTED })] }),
+    drawLine(`${signatoryLabel}`, { bold: true, gap: 40 });
+    drawLine("_______________________________", { gap: 14 });
+    drawLine("Client Signature");
 
-                    new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: sanitizeDocxText(signatoryLabel), bold: true, size: 20 })] }),
-                    new Paragraph({ spacing: { after: 60 }, children: [new TextRun({ text: "_______________________________", size: 20 })] }),
-                    new Paragraph({ children: [new TextRun({ text: "Client Signature", size: 18, color: DOCX_COLOR_MUTED })] }),
+    ensureSpace(30);
+    drawLine(
+        "23F TOWER6789, Ayala Avenue 6789, Makati City 1209, Philippines · salesofficer@heroph.net",
+        { size: 8, color: COLOR_MUTED, align: "center" }
+    );
 
-                    new Paragraph({
-                        spacing: { before: 400 },
-                        alignment: AlignmentType.CENTER,
-                        children: [new TextRun({
-                            text: "23F TOWER6789, Ayala Avenue 6789, Makati City 1209, Philippines · salesofficer@heroph.net",
-                            size: 16,
-                            color: DOCX_COLOR_MUTED,
-                        })],
-                    }),
-                ],
-            },
-        ],
-    });
-
-    return Packer.toBuffer(doc);
+    const bytes = await pdfDoc.save();
+    return Buffer.from(bytes);
 }
 
 // ─── User & Admin Notification Emails ───────────────────────────────────────
 
-/**
- * Client-facing confirmation email. Per updated workflow, this NEVER includes
- * the formal contract — only the admin receives that document. Client still
- * gets acknowledgement of their request and (if applicable) their payment.
- */
 export async function sendQuotationUserEmail(
     quotation: QuotationPayload,
     options: QuotationNotificationOptions = {}
@@ -699,21 +621,57 @@ export async function sendQuotationUserEmail(
     }
 
     const firstName = quotation.detail.full_name.split(" ")[0] || quotation.detail.full_name;
-    const qualifiesForContract = isVirtualOfficeQuotation(quotation);
+    const qualifiesForContract = isVirtualOfficePaymongo(quotation);
+    const readyForContract = canGenerateContract(quotation, options);
     const documentCopies = getDocumentCopyAttachments(options);
 
-    // Contract .docx is intentionally NOT attached here — admin-only, per
-    // updated workflow (client is formally contacted directly by admin
-    // after payment verification instead of receiving an auto-generated contract).
-    const attachments: {
-        filename: string;
-        content: Buffer;
-        contentType: string;
-    }[] = [...documentCopies];
+    let attachments:
+        | {
+            filename: string;
+            content: Buffer;
+            contentType: string;
+        }[]
+        = [...documentCopies];
 
-    const contractLine = qualifiesForContract
-        ? `<p style="font-size:15px;line-height:1.8;color:#475569;">Our admin team will verify your submitted payment and documents, then formally contact you directly to finalize your contract.</p>`
-        : "";
+    let contractAttached = false;
+
+    console.log("===== Contract Check =====");
+    console.log("Service:", quotation.service_name);
+    console.log("Payment:", quotation.detail.payment_method);
+    console.log("Qualifies:", qualifiesForContract);
+
+    if (readyForContract) {
+        try {
+            const pdfBuffer = await generateVirtualOfficeContractPdf(quotation);
+
+            console.log(
+                "PDF generated successfully:",
+                pdfBuffer.length,
+                "bytes"
+            );
+
+            attachments.push({
+                filename: "Hero-Virtual-Office-Contract.pdf",
+                content: pdfBuffer,
+                contentType: "application/pdf",
+            });
+
+            contractAttached = true;
+        } catch (error) {
+            console.error(
+                "Failed to generate contract PDF:",
+                error
+            );
+        }
+    }
+
+    console.log("Attachments:", attachments?.length ?? 0);
+
+    const contractLine = contractAttached
+        ? `<p style="font-size:15px;line-height:1.8;color:#475569;">Attached to this email is your quotation contract in PDF format, with your submitted client information already completed for your review.</p>`
+        : qualifiesForContract
+            ? `<p style="font-size:15px;line-height:1.8;color:#475569;">Contract generation is queued. We can generate and send the contract after both your proof of payment and government ID copies are uploaded.</p>`
+            : "";
 
     const docCopyLine = documentCopies.length > 0
         ? `<p style="font-size:13px;color:#64748b;line-height:1.7;margin-top:16px;">Copies of your uploaded payment proof and ID documents are attached for your records.</p>`
@@ -761,11 +719,6 @@ export async function sendQuotationUserEmail(
     return sendQuotationMailWithErrorHandling(mailOptions);
 }
 
-/**
- * Admin/internal notification email. This is the ONLY recipient of the
- * generated Virtual Office contract, now produced as a .docx (Word)
- * document instead of PDF, once both payment proof and government ID are on file.
- */
 export async function sendQuotationAdminEmail(
     quotation: QuotationPayload,
     options: QuotationNotificationOptions = {}
@@ -776,27 +729,20 @@ export async function sendQuotationAdminEmail(
 
     const d = quotation.detail;
     const stakeholders = getCoreStakeholderRecipients(quotation);
+    const signedContractRouting = getSignedContractRouting(quotation);
     const attachments = getDocumentCopyAttachments(options);
     const readyForContract = canGenerateContract(quotation, options);
 
-    console.log("===== Contract Check (admin-only, .docx) =====");
-    console.log("Service:", quotation.service_name);
-    console.log("Payment:", quotation.detail.payment_method);
-    console.log("Ready for contract:", readyForContract);
-
     if (readyForContract) {
         try {
-            const contractBuffer = await generateVirtualOfficeContractDocx(quotation);
-
-            console.log("Contract .docx generated successfully:", contractBuffer.length, "bytes");
-
+            const contractBuffer = await generateVirtualOfficeContractPdf(quotation);
             attachments.push({
-                filename: "Hero-Virtual-Office-Contract.docx",
+                filename: "Hero-Virtual-Office-Contract-Reference.pdf",
                 content: contractBuffer,
-                contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                contentType: "application/pdf",
             });
         } catch (error) {
-            console.error("Failed to generate admin contract .docx:", error);
+            console.error("Failed to generate admin contract reference:", error);
         }
     }
 
@@ -804,10 +750,6 @@ export async function sendQuotationAdminEmail(
         <p style="font-size:15px;line-height:1.8;color:#475569;">
             A new ${quotation.service_name.toLowerCase()} quotation request has come in.
         </p>
-        ${readyForContract
-            ? `<p style="font-size:13px;color:#64748b;line-height:1.7;">The draft contract (.docx) is attached for your reference. This has NOT been sent to the client — please verify payment and formally contact the client directly.</p>`
-            : ""
-        }
         <table style="width:100%;border-collapse:collapse;margin-top:8px;">
             ${quotationRow("Name", d.full_name)}
             ${quotationRow("Company", d.company_name)}
@@ -896,17 +838,6 @@ export async function sendQuotationNotifications(
     quotation: QuotationPayload,
     options: QuotationNotificationOptions = {}
 ) {
-    // Guard: if a Virtual Office quotation somehow carries a disabled payment
-    // method (cash/cheque/etc.), don't silently accept it here — the client
-    // form should already restrict this, but the server enforces it too.
-    if (isVirtualOfficeQuotation(quotation) && quotation.detail.payment_method) {
-        if (!VO_ENABLED_PAYMENT_METHODS.has(quotation.detail.payment_method)) {
-            console.warn(
-                `Virtual Office quotation submitted with disabled payment method: ${quotation.detail.payment_method}`
-            );
-        }
-    }
-
     const [userResult, adminResult] = await Promise.allSettled([
         sendQuotationUserEmail(quotation, options),
         sendQuotationAdminEmail(quotation, options),

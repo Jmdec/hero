@@ -23,7 +23,7 @@ import {
   AlertCircle,
   MapPin,
   Eye,
-  ArrowRight,
+  ShieldAlert,
 } from "lucide-react";
 
 type ServiceId = "private-office" | "virtual-office" | "coworking" | "meeting-room" | "event-space";
@@ -69,7 +69,7 @@ interface PrivateOfficeFields {
 interface VirtualOfficeFields {
   package: string;
   startDate: string;
-  months: string; // NEW: Months Duration
+  months: string;
 }
 
 interface CoworkingFields {
@@ -125,15 +125,16 @@ const SERVICE_IDS: Record<ServiceId, number> = {
   "event-space": 5,
 };
 
-// Standard flow: Service → Requirements → Contact → Review → Submit → Success Modal
+// All services (including Virtual Office) now follow the same flow:
+// Service → Requirements → Contact → Review → Submit → Success Modal
+//
+// Payment for Virtual Office is NO LONGER part of this in-form wizard.
+// Once admin verifies the request, admin sends the client a one-time
+// payment link (?quotation=<id>&token=<token>) via email. Visiting that
+// link renders ONLY the payment step (see PaymentLinkGate below) — the
+// client can never reach payment by simply stepping through the form.
 const BASE_STEPS = ["Service", "Requirements", "Contact", "Review"];
-
-// Virtual Office flow: Service → Requirements → Contact → Review → Payment → Success Modal
-// Note: VO no longer sends a formal contract to the client at submission time —
-// admin verifies payment first, then follows up with the client directly
-// ("Formal Contact") before finalizing. The contract .docx is generated for
-// internal/admin use only (see lib/mail.ts).
-const VO_STEPS = ["Service", "Requirements", "Contact", "Review", "Payment"];
+const VO_STEPS = BASE_STEPS;
 
 const LEASE_TERMS = ["6 Months", "12 Months", "More than 12 Months"];
 const PASS_TYPES = ["Daily", "Weekly", "Monthly"];
@@ -308,11 +309,9 @@ function Modal({
 // Success Modal Content
 function SuccessModalContent({
   isVO,
-  paymentMethod,
   onClose,
 }: {
   isVO: boolean;
-  paymentMethod: PaymentMethod;
   onClose: () => void;
 }) {
   return (
@@ -328,8 +327,8 @@ function SuccessModalContent({
 
       {isVO ? (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
-          Your request and payment details have been submitted. Our admin team will verify your
-          payment, then reach out to you directly to formalize your contract.
+          Your virtual office request has been received. Our admin team will review your
+          details and, once verified, email you a secure link to complete payment.
         </p>
       ) : (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
@@ -341,9 +340,9 @@ function SuccessModalContent({
       <div className="bg-[#F4F6FB] rounded-2xl p-5 text-left mb-6 space-y-3">
         {(isVO
           ? [
-            `Payment method selected: ${getPaymentMethodLabel(paymentMethod)}`,
-            "We'll verify your submitted payment and supporting documents",
-            "Our admin will formally contact you to finalize your contract",
+            "Our admin team will review and verify your submitted request",
+            "Once verified, we'll email you a secure link to complete payment",
+            "After payment is confirmed, our admin will formally contact you to finalize your contract",
           ]
           : [
             "We'll review your service requirements and preferences",
@@ -647,6 +646,7 @@ function Step2PrivateOffice({
   );
 }
 
+// Virtual Office
 function Step2VirtualOffice({
   data,
   onChange,
@@ -758,7 +758,6 @@ function Step2VirtualOffice({
           />
         </Field>
 
-        {/* NEW: Months Duration */}
         <Field label="Months Duration" required error={errors.months}>
           <select
             value={data.months}
@@ -772,10 +771,6 @@ function Step2VirtualOffice({
           </select>
         </Field>
       </div>
-
-      {data.package && data.months && (
-        <VOPricingBreakdown pkg={data.package} months={data.months} />
-      )}
 
       <div className="mt-5">
         <Field label="Other Requirements / Conditions">
@@ -793,24 +788,7 @@ function Step2VirtualOffice({
   );
 }
 
-/** Shared pricing breakdown card: Package + VAT + Contract & Admin Fee, × Duration */
-function VOPricingBreakdown({ pkg, months }: { pkg: string; months: string }) {
-  const b = computeVirtualOfficeTotal(pkg, months);
-  return (
-    <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
-      <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40 mb-3">Estimated Pricing Breakdown</p>
-      <div className="space-y-1.5 text-sm">
-        <div className="flex justify-between"><span className="text-[#64748B]">Package ({pkg})</span><span className="text-[#0B1F4A] font-medium">{peso(b.base)} / month</span></div>
-        <div className="flex justify-between"><span className="text-[#64748B]">VAT (12%)</span><span className="text-[#0B1F4A] font-medium">{peso(b.vat)} / month</span></div>
-        <div className="flex justify-between"><span className="text-[#64748B]">Duration</span><span className="text-[#0B1F4A] font-medium">× {b.numMonths} {b.numMonths === 1 ? "month" : "months"}</span></div>
-        <div className="flex justify-between border-t border-[#D9E2F0] pt-1.5 mt-1.5"><span className="text-[#64748B]">Subtotal</span><span className="text-[#0B1F4A] font-medium">{peso(b.recurring)}</span></div>
-        <div className="flex justify-between"><span className="text-[#64748B]">Contract & Admin Fee</span><span className="text-[#0B1F4A] font-medium">{peso(b.contractAdminFee)}</span></div>
-        <div className="flex justify-between border-t border-[#D9E2F0] pt-2 mt-2"><span className="font-bold text-[#0B1F4A]">Total</span><span className="font-bold text-[#1B3A8C]">{peso(b.total)}</span></div>
-      </div>
-    </div>
-  );
-}
-
+// Co-working Space
 function Step2Coworking({
   data,
   onChange,
@@ -860,6 +838,7 @@ function Step2Coworking({
   );
 }
 
+// Meeting Room
 function Step2MeetingRoom({
   data,
   onChange,
@@ -906,6 +885,7 @@ function Step2MeetingRoom({
   );
 }
 
+// Event Space
 function Step2EventSpace({
   data,
   onChange,
@@ -1340,6 +1320,30 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Shared pricing breakdown card: Package + VAT + Contract & Admin Fee, × Duration */
+function VOPricingBreakdown({ pkg, months }: { pkg: string; months: string }) {
+  const b = computeVirtualOfficeTotal(pkg, months);
+  return (
+    <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
+      <p className="text-md font-bold tracking-[0.2em] uppercase text-[#0A1E3F] mb-3">Estimated Pricing Breakdown</p>
+      <div className="space-y-1.5 text-sm">
+        <div className="flex justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">Package ({pkg})</span><span className="text-[#0B1F4A] font-medium">{peso(b.base)} / month</span></div>
+        <div className="flex justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">VAT (12%)</span><span className="text-[#0B1F4A] font-medium">{peso(b.vat)} / month</span></div>
+        <div className="flex justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">Duration</span><span className="text-[#0B1F4A] font-medium">× {b.numMonths} {b.numMonths === 1 ? "month" : "months"}</span></div>
+        <div className="flex justify-between border-t border-[#D9E2F0] pt-1.5 mt-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">Subtotal</span><span className="text-[#0B1F4A] font-medium">{peso(b.recurring)}</span></div>
+        <div className="flex justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">Contract & Admin Fee</span><span className="text-[#0B1F4A] font-medium">{peso(b.contractAdminFee)}</span></div>
+        <div className="flex justify-between border-t border-[#D9E2F0] pt-2 mt-2">
+          <span className="font-bold text-[#0B1F4A]">Total</span><span className="font-bold text-[#1B3A8C]">{peso(b.total)}</span></div>
+      </div>
+    </div>
+  );
+}
+
 function Step4({
   selectedService,
   selectedBranch,
@@ -1354,7 +1358,6 @@ function Step4({
   consent,
   setConsent,
   onBack,
-  onNext,
   isSubmitting,
   isVO,
 }: {
@@ -1371,7 +1374,6 @@ function Step4({
   consent: boolean;
   setConsent: (v: boolean) => void;
   onBack: () => void;
-  onNext?: () => void;
   isSubmitting: boolean;
   isVO: boolean;
 }) {
@@ -1414,8 +1416,9 @@ function Step4({
     return [];
   };
 
-  // For VO flow, "Review" submits the inquiry then goes to Payment step
-  const nextLabel = isVO ? "Proceed to Payment" : "Get a Quote";
+  // Every service (including VO) submits directly from Review now.
+  // VO payment is handled entirely out-of-band via the admin-emailed payment link.
+  const nextLabel = "Get a Quote";
 
   return (
     <div>
@@ -1423,20 +1426,14 @@ function Step4({
       <p className="text-sm text-[#64748B] mb-7">Please confirm your details before submitting.</p>
 
       <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5 mb-4">
-        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40 mb-3">Service</p>
+        <p className="text-md font-bold tracking-[0.2em] uppercase text-[#0A1E3F] mb-3">Service</p>
         <ReviewRow label="Selected Service" value={serviceName} />
         <ReviewRow label="Branch" value={branchName} />
         {serviceRows().map((r) => <ReviewRow key={r.label} label={r.label} value={r.value} />)}
       </div>
 
-      {isVO && virtualOffice.package && virtualOffice.months && (
-        <div className="mb-4">
-          <VOPricingBreakdown pkg={virtualOffice.package} months={virtualOffice.months} />
-        </div>
-      )}
-
       <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5 mb-6">
-        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#0B1F4A]/40 mb-3">Contact</p>
+        <p className="text-md font-bold tracking-[0.2em] uppercase text-[#0A1E3F] mb-3">Contact</p>
         <ReviewRow label="Name" value={contact.name} />
         <ReviewRow label="Company" value={contact.company} />
         <ReviewRow label="Email" value={contact.email} />
@@ -1455,12 +1452,18 @@ function Step4({
         <ReviewRow label="Other Requirements / Conditions" value={notes} />
       </div>
 
+      {isVO && virtualOffice.package && virtualOffice.months && (
+        <div className="mb-4">
+          <VOPricingBreakdown pkg={virtualOffice.package} months={virtualOffice.months} />
+        </div>
+      )}
+
       {isVO && (
         <div className="bg-[#fffaec] border border-[#dbd4bd] rounded-xl px-5 py-4 mb-6 flex items-start gap-3">
           <Wallet className="w-4 h-4 text-[#FFC107]/50 shrink-0 mt-0.5" />
           <p className="text-xs text-gray-800 leading-relaxed">
-            After confirming, you'll proceed to select your payment method and complete the transaction.
-            Our admin team will then verify your payment and formally contact you to finalize your contract.
+            Payment is not collected at this step. Once our team verifies your request, we'll
+            email you a secure link to complete payment for your virtual office service.
           </p>
         </div>
       )}
@@ -1492,9 +1495,8 @@ function Step4({
         onBack={onBack}
         nextLabel={nextLabel}
         nextDisabled={!consent}
-        isSubmit={!isVO}
+        isSubmit={true}
         isSubmitting={isSubmitting}
-        onNext={onNext}
       />
 
       <Modal open={modal === "privacy"} onClose={() => setModal(null)} title="Privacy Policy">
@@ -1504,7 +1506,10 @@ function Step4({
   );
 }
 
-// Step 5 (Virtual Office only): Payment & Contract
+// Standalone Payment Step (Virtual Office only)
+// Rendered ONLY when the client arrives via a valid, admin-issued payment link
+// (?quotation=<id>&token=<token>). It is a self-contained submit step, not part
+// of the numbered wizard — there is no "Back" into the requirements/contact steps.
 
 function StepVOPayment({
   virtualOffice,
@@ -1514,8 +1519,8 @@ function StepVOPayment({
   setPaymentReference,
   paymentProof,
   setPaymentProof,
-  onBack,
   isSubmitting,
+  onSubmit,
 }: {
   virtualOffice: VirtualOfficeFields;
   paymentMethod: PaymentMethod;
@@ -1524,8 +1529,8 @@ function StepVOPayment({
   setPaymentReference: (value: string) => void;
   paymentProof: File | null;
   setPaymentProof: (f: File | null) => void;
-  onBack: () => void;
   isSubmitting: boolean;
+  onSubmit: () => void;
 }) {
   const paymentProofRef = useRef<HTMLInputElement>(null);
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
@@ -1535,7 +1540,6 @@ function StepVOPayment({
     : null;
 
   // Only QRPH, Online Bank Transfer, and Bank Deposit are enabled.
-  // Cash, Cheque, and standalone GCash have been removed/disabled per updated flow.
   const paymentOptions: Array<{
     id: Exclude<PaymentMethod, null>;
     icon: React.ElementType;
@@ -1594,8 +1598,8 @@ function StepVOPayment({
       {/* Summary pill */}
       <div className="bg-[#EEF2FB] border border-[#C5D2EC] rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold text-[#1B3A8C] uppercase tracking-wide">Virtual Office — {virtualOffice.package}</p>
-          <p className="text-xs text-[#64748B] mt-0.5">
+          <p className="text-sm font-semibold text-[#1B3A8C] uppercase tracking-wide">Virtual Office — {virtualOffice.package}</p>
+          <p className="text-sm text-[#64748B] mt-0.5">
             Starting {virtualOffice.startDate || "TBD"} · {virtualOffice.months || "—"} {Number(virtualOffice.months) === 1 ? "month" : "months"}
           </p>
         </div>
@@ -1751,21 +1755,212 @@ function StepVOPayment({
         </div>
       )}
 
-      <NavRow
-        onBack={onBack}
-        nextLabel="Confirm & Submit"
-        nextDisabled={!canProceed}
-        isSubmit={true}
-        isSubmitting={isSubmitting}
-      />
+      <div className="flex justify-end items-center mt-8 pt-6 border-t border-[#D9E2F0]">
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={!canProceed || isSubmitting}
+          className="flex items-center gap-2 px-7 py-3 bg-[#FFC107] text-[#1B3A8C] text-sm font-bold rounded-full hover:bg-[#FFC107]/80 disabled:bg-[#D9E2F0] disabled:text-[#64748B] disabled:cursor-not-allowed transition-all duration-200"
+        >
+          {isSubmitting ? (
+            <>
+              <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              Submitting…
+            </>
+          ) : (
+            <>Confirm & Submit<ChevronRight className="w-4 h-4" /></>
+          )}
+        </button>
+      </div>
 
       <FilePreviewModal target={previewTarget} onClose={() => setPreviewTarget(null)} />
     </div>
   );
 }
 
+// ─── Payment Link Gate ────────────────────────────────────────────────────
+// Handles the ?quotation=<id>&token=<token> flow. Validates the token against
+// the backend BEFORE ever showing the payment form, so a guessed/expired
+// token never grants access. See API contract notes below the component.
+
+type GateStatus = "checking" | "valid" | "invalid";
+
+interface PaymentLinkContext {
+  quotationId: string;
+  token: string;
+  virtualOffice: VirtualOfficeFields;
+}
+
+function usePaymentLinkGate() {
+  const searchParams = useSearchParams();
+  const quotationId = searchParams.get("quotation");
+  const token = searchParams.get("token");
+
+  const [status, setStatus] = useState<GateStatus>(quotationId && token ? "checking" : "invalid");
+  const [context, setContext] = useState<PaymentLinkContext | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!quotationId || !token) {
+      setStatus("invalid");
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // GET /api/quotations/:id/payment-link?token=...
+        // Expected 200 response: { valid: true, virtual_office: { package, startDate, months } }
+        // Expected 4xx response: { valid: false, message?: string }
+        const res = await fetch(
+          `${API_BASE_URL}/quotations/${encodeURIComponent(quotationId)}/payment-link?token=${encodeURIComponent(token)}`,
+          { cache: "no-store" }
+        );
+        const data = await res.json().catch(() => null);
+
+        if (cancelled) return;
+
+        if (!res.ok || !data?.valid) {
+          setErrorMessage(data?.message ?? null);
+          setStatus("invalid");
+          return;
+        }
+
+        setContext({
+          quotationId,
+          token,
+          virtualOffice: {
+            package: data.virtual_office?.package ?? "",
+            startDate: data.virtual_office?.startDate ?? "",
+            months: String(data.virtual_office?.months ?? ""),
+          },
+        });
+        setStatus("valid");
+      } catch {
+        if (!cancelled) {
+          setErrorMessage(null);
+          setStatus("invalid");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [quotationId, token]);
+
+  return { status, context, errorMessage, hasLinkParams: Boolean(quotationId && token) };
+}
+
+function PaymentLinkInvalid({ message }: { message?: string | null }) {
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
+      <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5">
+        <ShieldAlert className="w-8 h-8 text-red-500" />
+      </div>
+      <h2 className="text-2xl font-bold text-[#0B1F4A] mb-2">This payment link is invalid or has expired</h2>
+      <p className="text-sm text-[#64748B] max-w-md mx-auto leading-relaxed">
+        {message ??
+          "Please check your email for the most recent payment link, or contact our sales team if you believe this is a mistake."}
+      </p>
+      <a
+        href="mailto:salesofficer@heroph.net"
+        className="inline-block mt-6 px-7 py-3 bg-[#FFC107] text-[#1B3A8C] text-sm font-bold rounded-full hover:bg-[#FFC107]/80 transition-all duration-200"
+      >
+        Contact Sales
+      </a>
+    </div>
+  );
+}
+
+function PaymentLinkLoading() {
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
+      <span className="inline-block w-8 h-8 rounded-full border-2 border-[#D9E2F0] border-t-[#1B3A8C] animate-spin" />
+      <p className="mt-4 text-sm text-[#64748B]">Verifying your payment link…</p>
+    </div>
+  );
+}
+
+function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!paymentMethod || !paymentReference.trim() || !paymentProof) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const formData = new FormData();
+      formData.append("token", context.token);
+      formData.append("payment_method", paymentMethod);
+      formData.append("transaction_id", paymentReference.trim());
+      formData.append("payment_proof", paymentProof);
+
+      // POST /api/quotations/:id/pay
+      // Server MUST re-validate the token server-side before accepting payment.
+      const res = await fetch(
+        `${API_BASE_URL}/quotations/${encodeURIComponent(context.quotationId)}/pay`,
+        { method: "POST", body: formData }
+      );
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        throw new Error(errBody?.message ?? `Request failed with status ${res.status}`);
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+        <div className="bg-white rounded-3xl p-8 md:p-10 shadow-[0_4px_24px_rgba(11,31,74,0.06)] border border-[#D9E2F0]">
+          <SuccessModalContent isVO onClose={() => { }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+      <div className="bg-white rounded-3xl p-8 md:p-10 shadow-[0_4px_24px_rgba(11,31,74,0.06)] border border-[#D9E2F0]">
+        {submitError && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-300 bg-[#FFF5F5] px-4 py-3 text-sm text-red-600">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {submitError}
+          </div>
+        )}
+        <StepVOPayment
+          virtualOffice={context.virtualOffice}
+          paymentMethod={paymentMethod}
+          setPaymentMethod={setPaymentMethod}
+          paymentReference={paymentReference}
+          setPaymentReference={setPaymentReference}
+          paymentProof={paymentProof}
+          setPaymentProof={setPaymentProof}
+          isSubmitting={isSubmitting}
+          onSubmit={handleSubmit}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function GetAQuotePage() {
   const searchParams = useSearchParams();
+  const paymentGate = usePaymentLinkGate();
+
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<ServiceId | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<BranchId | null>(null);
@@ -1788,6 +1983,10 @@ export default function GetAQuotePage() {
   const [privateOffice, setPrivateOffice] = useState<PrivateOfficeFields>({ seats: "", moveInDate: "", leaseTerm: "", otherRequirements: "" });
 
   useEffect(() => {
+    // Skip service/branch prefill when a payment-link is present — that flow
+    // renders its own standalone view and never touches the wizard state.
+    if (paymentGate.hasLinkParams) return;
+
     const branch = searchParams.get("branch");
     const service = searchParams.get("service");
 
@@ -1798,14 +1997,11 @@ export default function GetAQuotePage() {
     if (service && SERVICES.some((s) => s.id === service)) {
       setSelectedService(service as ServiceId);
     }
-  }, [searchParams]);
+  }, [searchParams, paymentGate.hasLinkParams]);
   const [virtualOffice, setVirtualOffice] = useState<VirtualOfficeFields>({ package: "", startDate: "", months: "" });
   const [coworking, setCoworking] = useState<CoworkingFields>({ seats: "", startDate: "", terms: "", otherRequirements: "" });
   const [meetingRoom, setMeetingRoom] = useState<MeetingRoomFields>({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
   const [eventSpace, setEventSpace] = useState<EventSpaceFields>({ eventDate: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
-  const [paymentReference, setPaymentReference] = useState("");
-  const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1816,8 +2012,7 @@ export default function GetAQuotePage() {
   const [step2Errors, setStep2Errors] = useState<Record<string, string>>({});
 
   const isVO = selectedService === "virtual-office";
-  // Standard: Service(1) → Requirements(2) → Contact(3) → Review(4)
-  // Virtual Office: Service(1) → Requirements(2) → Contact(3) → Review(4) → Payment(5)
+  // All services (including Virtual Office) follow the same 4-step wizard now.
   const steps = isVO ? VO_STEPS : BASE_STEPS;
 
   useEffect(() => {
@@ -1890,9 +2085,6 @@ export default function GetAQuotePage() {
     setCoworking({ seats: "", startDate: "", terms: "", otherRequirements: "" });
     setMeetingRoom({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
     setEventSpace({ eventDate: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
-    setPaymentMethod(null);
-    setPaymentReference("");
-    setPaymentProof(null);
     setNotes("");
     setConsent(false);
     setStep2Errors({});
@@ -1912,9 +2104,12 @@ export default function GetAQuotePage() {
       email: contact.email,
       phone: contact.phone,
       request: notes || null,
-      payment_method: paymentMethod ?? null,
-      transaction_id: paymentReference.trim() || null,
-      receipt: paymentProof ? paymentProof.name : null,
+      // Payment fields intentionally omitted at initial submission — Virtual
+      // Office no longer collects payment info in this flow. They are filled
+      // in later via the separate /pay endpoint once admin sends the link.
+      payment_method: null,
+      transaction_id: null,
+      receipt: null,
       id_type: contractIdentity.idType === "Others" ? contractIdentity.idTypeOther : contractIdentity.idType,
       id_name: contractIdentity.idName || null,
       id_number: contractIdentity.idNumber || null,
@@ -1998,7 +2193,7 @@ export default function GetAQuotePage() {
 
     try {
       const payload = buildPayload();
-      const hasFileUploads = !!paymentProof || !!contractIdentity.governmentIdFile || !!contractIdentity.signatoryGovernmentIdFile;
+      const hasFileUploads = !!contractIdentity.governmentIdFile || !!contractIdentity.signatoryGovernmentIdFile;
       const headers: HeadersInit = {
         Accept: "application/json",
       };
@@ -2008,9 +2203,6 @@ export default function GetAQuotePage() {
         const formData = new FormData();
         formData.append("payload", JSON.stringify(payload));
 
-        if (paymentProof) {
-          formData.append("payment_proof", paymentProof);
-        }
         if (contractIdentity.governmentIdFile) {
           formData.append("government_id", contractIdentity.governmentIdFile);
         }
@@ -2089,6 +2281,15 @@ export default function GetAQuotePage() {
     );
     return null;
   };
+
+  // ── Payment-link mode: short-circuit the entire wizard ──
+  if (paymentGate.hasLinkParams) {
+    if (paymentGate.status === "checking") return <PaymentLinkLoading />;
+    if (paymentGate.status === "invalid" || !paymentGate.context) {
+      return <PaymentLinkInvalid message={paymentGate.errorMessage} />;
+    }
+    return <PaymentLinkFlow context={paymentGate.context} />;
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -2175,7 +2376,9 @@ export default function GetAQuotePage() {
                   />
                 )}
 
-                {/* Step 4: Review — for all services */}
+                {/* Step 4: Review — final step, submits directly, for all services
+                    including Virtual Office. Payment is handled later via the
+                    admin-issued payment link, never here. */}
                 {step === 4 && (
                   <Step4
                     selectedService={selectedService}
@@ -2191,30 +2394,9 @@ export default function GetAQuotePage() {
                     consent={consent}
                     setConsent={setConsent}
                     onBack={() => setStep(3)}
-                    onNext={() => setStep(5)}
                     isSubmitting={isSubmitting}
                     isVO={isVO}
                   />
-                )}
-
-                {/* Step 5 (VO only): Payment — this is the final submit step for VO */}
-                {step === 5 && isVO && (
-                  <StepVOPayment
-                    virtualOffice={virtualOffice}
-                    paymentMethod={paymentMethod}
-                    setPaymentMethod={setPaymentMethod}
-                    paymentReference={paymentReference}
-                    setPaymentReference={setPaymentReference}
-                    paymentProof={paymentProof}
-                    setPaymentProof={setPaymentProof}
-                    onBack={() => setStep(4)}
-                    isSubmitting={isSubmitting}
-                  />
-                )}
-
-                {/* Hidden submit trigger for step 4 (non-VO): advances to Success */}
-                {step === 4 && !isVO && (
-                  <input type="submit" className="hidden" />
                 )}
               </motion.div>
             </AnimatePresence>
@@ -2231,7 +2413,6 @@ export default function GetAQuotePage() {
       >
         <SuccessModalContent
           isVO={isVO}
-          paymentMethod={paymentMethod}
           onClose={handleSuccessClose}
         />
       </Modal>

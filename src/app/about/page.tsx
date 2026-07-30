@@ -11,12 +11,43 @@ import {
   Gauge,
   Eye,
   Award,
+  Building2,
+  Users,
+  Globe2,
+  Landmark,
+  ArrowUpRight,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+// Strip common corporate prefixes/suffixes so the logo badge shows the
+// part of the name people actually recognize a company by.
+function getCompanyInitial(name: string) {
+  const stripped = name
+    .replace(/^株式会社|^有限会社|^医療法人社団\s*/g, "")
+    .replace(/株式会社$|Co\.,\s*Ltd\.?$|Inc\.?$/gi, "")
+    .trim();
+  const source = stripped || name;
+  return source.charAt(0).toUpperCase();
+}
+
+// Deterministic accent from a small palette so the same company always
+// gets the same badge color across renders.
+const BADGE_PALETTE = [
+  "#1B3A8C",
+  "#0D6E6E",
+  "#B5541F",
+  "#5B4B8A",
+  "#1E7A46",
+  "#8C2F4B",
+];
+function getBadgeColor(name: string) {
+  const sum = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return BADGE_PALETTE[sum % BADGE_PALETTE.length];
+}
 
 export default function AboutPage() {
   const [spaceSlide, setSpaceSlide] = useState(0);
+  const [activeRegion, setActiveRegion] = useState(0);
 
   const teamCarousel = [
     { image: "/_ARM1425.webp", title: "Our Team" },
@@ -68,6 +99,99 @@ export default function AboutPage() {
       title: "Efficiency",
       description:
         "We simplify the way businesses work by providing complete workspace solutions that reduce operational burden and improve productivity.",
+    },
+  ];
+
+  // HERO Group of Companies — sourced from ヒーローグループ企業一覧
+  const groupCompanies = [
+    {
+      area: "Kanto Area",
+      icon: Building2,
+      companies: [
+        { name: "株式会社ヒーロー", website: "https://www.hero-super.jp" },
+        {
+          name: "株式会社ヒーロープラス",
+          website: "https://www.tsubasa-ushiku.jp/",
+        },
+        { name: "HMソリューション株式会社", website: null },
+        { name: "株式会社モードツー", website: "https://www.mode2.co.jp/" },
+        { name: "株式会社アイモ", website: "https://imo-inc.co.jp/" },
+        {
+          name: "イーコンビニ株式会社",
+          website: "https://www.rakuten.ne.jp/gold/e-convini/",
+        },
+        { name: "株式会社ジョイフローラ", website: null },
+        { name: "日本窯炉株式会社", website: "https://nihon-youro.jp/" },
+        { name: "ブライトン株式会社", website: null },
+        {
+          name: "株式会社ユナイテッド",
+          website: "https://www.united-keibi.co.jp/",
+        },
+        { name: "株式会社LIZ LISA", website: "https://www.lizlisa.com/" },
+        { name: "株式会社テクノ", website: "https://www.techno-co.jp/" },
+        {
+          name: "奥本建設工業株式会社",
+          website: "https://www.okumoto-kensetsu.co.jp/",
+        },
+      ],
+    },
+    {
+      area: "Hokkaido Area",
+      icon: Globe2,
+      companies: [
+        {
+          name: "ジャスマックプラザ株式会社",
+          website: "https://www.jasmacplaza.jp/",
+        },
+        {
+          name: "医療法人社団 光星",
+          website: "https://www.medical-plaza.jp/",
+        },
+        {
+          name: "株式会社イー・サポート",
+          website: "https://heroes-school.jp/",
+        },
+        {
+          name: "ボーダレス・ビジョン株式会社",
+          website: "https://blv.co.jp/",
+        },
+      ],
+    },
+    {
+      area: "Hokuriku Area",
+      icon: Landmark,
+      companies: [
+        {
+          name: "Kanazawa Marukoshi Department Store Co., Ltd.（株式会社 金沢丸越百貨店）",
+          website: "https://www.kmza.jp/",
+        },
+        {
+          name: "Kanazawa Sky Hotel Co., Ltd.（株式会社 金沢スカイホテル）",
+          website: "https://www.anahikanazawasky.com/",
+        },
+        {
+          name: "Marushin Gravure Co., Ltd.（丸新グラビア株式会社）",
+          website: "https://marushin-gravure.co.jp/",
+        },
+        { name: "有限会社ホビーロード", website: "https://www.hobbyroad.jp/" },
+      ],
+    },
+    {
+      area: "Nishinihon Area",
+      icon: Users,
+      companies: [
+        {
+          name: "品川窯材 株式会社",
+          website: "https://shinagawayozai.co.jp/",
+        },
+      ],
+    },
+    {
+      area: "Overseas",
+      icon: Building2,
+      companies: [
+        { name: "Hero PH Serviced Offices", website: "https://heroph.net/jp/" },
+      ],
     },
   ];
 
@@ -265,20 +389,103 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Meet Our Team */}
-
       {/* Message from the President */}
 
       {/* Message from the Chairman */}
 
       {/* HERO Group of Companies */}
+      <section className="pt-10 pb-20 bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+            className="text-center max-w-3xl mx-auto mb-10"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              HERO Group of Companies
+            </h2>
+            <p className="text-lg text-gray-600">
+              One group, working across borders to bring reliable, service-first
+              business solutions to companies operating in Japan and the Philippines.
+            </p>
+          </motion.div>
+
+          {/* Region tabs — keeps 23 companies from turning into an endless scroll */}
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
+            {groupCompanies.map((region, index) => {
+              const isActive = index === activeRegion;
+              return (
+                <button
+                  key={region.area}
+                  onClick={() => setActiveRegion(index)}
+                  className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                    isActive
+                      ? "bg-[#1B3A8C] text-white shadow-md"
+                      : "bg-white text-gray-600 border border-gray-200 hover:border-[#1B3A8C]/40 hover:text-[#1B3A8C]"
+                  }`}
+                >
+                  <region.icon className="w-4 h-4" />
+                  {region.area}
+                  <span
+                    className={`ml-1 rounded-full px-1.5 text-xs ${
+                      isActive ? "bg-white/20" : "bg-gray-100"
+                    }`}
+                  >
+                    {region.companies.length}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active region's companies */}
+          <motion.div
+            key={activeRegion}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+          >
+            {groupCompanies[activeRegion].companies.map((company) => (
+              <div
+                key={company.name}
+                className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 hover:border-[#1B3A8C]/30 hover:shadow-sm transition-all"
+              >
+                <div
+                  className="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center text-white font-bold text-sm"
+                  style={{ backgroundColor: getBadgeColor(company.name) }}
+                >
+                  {getCompanyInitial(company.name)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-sm font-semibold text-gray-900 leading-snug truncate">
+                    {company.name}
+                  </h4>
+                  {company.website ? (
+                    <a
+                      href={company.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-0.5 text-xs text-[#1B3A8C] font-medium hover:underline"
+                    >
+                      Visit site
+                      <ArrowUpRight className="w-3 h-3" />
+                    </a>
+                  ) : (
+                    <span className="text-xs text-gray-400">No website listed</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
 
       {/* Why Choose HERO */}
       <section className="relative overflow-hidden bg-linear-to-r from-[#0A1E3F] to-[#1565C0] px-14 py-20">
-        {/* Decorative Circle */}
-
         <div className="relative z-10">
-
           <h2 className="mb-12 text-center text-4xl font-extrabold leading-[1.2] tracking-[-0.01em] text-white">
             Why Choose HERO?
           </h2>
