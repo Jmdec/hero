@@ -2,7 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowRightLeft, CheckCircle2, ChevronRight, Clock, Landmark, QrCode, Upload } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRightLeft,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Landmark,
+  QrCode,
+  Receipt,
+  Upload,
+  User,
+} from "lucide-react";
 
 type PaymentMethod = "qrph" | "online_transfer" | "bank" | null;
 
@@ -12,12 +23,23 @@ interface VirtualOfficeFields {
   package: string;
   startDate: string;
   months: string;
+  branch: string;
+}
+
+interface ClientInfo {
+  fullName: string;
+  companyName: string | null;
+  email: string;
+  phone: string;
+  idType: string | null;
+  idName: string | null;
 }
 
 interface PaymentLinkContext {
   quotationId: string;
   token: string;
   virtualOffice: VirtualOfficeFields;
+  client: ClientInfo;
 }
 
 const API_BASE_URL = "/api";
@@ -75,7 +97,6 @@ function usePaymentLinkGate() {
 
   useEffect(() => {
     if (!quotationId || !token) {
-      setStatus("invalid");
       return;
     }
 
@@ -104,6 +125,15 @@ function usePaymentLinkGate() {
             package: data.virtual_office?.package ?? "",
             startDate: data.virtual_office?.startDate ?? "",
             months: String(data.virtual_office?.months ?? ""),
+            branch: data.virtual_office?.branch ?? "",
+          },
+          client: {
+            fullName: data.client?.full_name ?? "",
+            companyName: data.client?.company_name ?? null,
+            email: data.client?.email ?? "",
+            phone: data.client?.phone ?? "",
+            idType: data.client?.id_type ?? null,
+            idName: data.client?.id_name ?? null,
           },
         });
         setStatus("valid");
@@ -136,6 +166,135 @@ function VOPricingBreakdown({ pkg, months }: { pkg: string; months: string }) {
         <div className="flex justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Contract & Admin Fee</span><span className="text-[#0B1F4A] font-medium">{peso(b.contractAdminFee)}</span></div>
         <div className="flex justify-between border-t border-[#D9E2F0] pt-2 mt-2"><span className="font-bold text-[#0B1F4A]">Total</span><span className="font-bold text-[#1B3A8C]">{peso(b.total)}</span></div>
       </div>
+    </div>
+  );
+}
+
+function FloatingReceipt({
+  context,
+  paymentMethod,
+  paymentReference,
+}: {
+  context: PaymentLinkContext;
+  paymentMethod: PaymentMethod;
+  paymentReference: string;
+}) {
+  const pricing = context.virtualOffice.package && context.virtualOffice.months
+    ? computeVirtualOfficeTotal(context.virtualOffice.package, context.virtualOffice.months)
+    : null;
+
+  const { client } = context;
+
+  return (
+    <div className="lg:sticky lg:top-8">
+      <div className="bg-white rounded-3xl border border-[#D9E2F0] shadow-[0_4px_24px_rgba(11,31,74,0.08)] overflow-hidden">
+        {/* Header */}
+        <div className="bg-[#0B1F4A] px-6 py-5 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+            <Receipt className="w-4.5 h-4.5 text-[#FFC107]" />
+          </div>
+          <div>
+            <p className="text-[10px] tracking-[0.2em] uppercase text-white/60 font-semibold">Quotation Summary</p>
+            <p className="text-sm font-bold text-white">Virtual Office</p>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Client Information */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <User className="w-3.5 h-3.5 text-[#64748B]" />
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#64748B]">Client Information</p>
+            </div>
+            <div className="space-y-2">
+              <ReceiptRow label="Name" value={client.fullName} />
+              <ReceiptRow label="Company" value={client.companyName ?? undefined} />
+              <ReceiptRow label="Email" value={client.email} />
+              <ReceiptRow label="Phone" value={client.phone} />
+              {client.idType && <ReceiptRow label="ID Type" value={client.idType} />}
+            </div>
+          </div>
+
+          {/* Service Details */}
+          <div className="pt-4 border-t border-dashed border-[#D9E2F0]">
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#64748B] mb-3">Service Details</p>
+            <div className="space-y-2">
+              <ReceiptRow label="Service" value="Virtual Office" />
+              <ReceiptRow label="Package" value={context.virtualOffice.package} />
+              <ReceiptRow label="Start Date" value={context.virtualOffice.startDate} />
+              <ReceiptRow
+                label="Duration"
+                value={
+                  context.virtualOffice.months
+                    ? `${context.virtualOffice.months} ${Number(context.virtualOffice.months) === 1 ? "month" : "months"}`
+                    : undefined
+                }
+                />
+              <ReceiptRow label="Branch" value={context.virtualOffice.branch} />
+            </div>
+          </div>
+
+          {/* Price Breakdown */}
+          {pricing && (
+            <div className="pt-4 border-t border-dashed border-[#D9E2F0]">
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#64748B] mb-3">Price Breakdown</p>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-[#64748B]">Package fee</span>
+                  <span className="text-[#0B1F4A] font-medium">{peso(pricing.base)} / mo</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#64748B]">VAT (12%)</span>
+                  <span className="text-[#0B1F4A] font-medium">{peso(pricing.vat)} / mo</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#64748B]">Duration</span>
+                  <span className="text-[#0B1F4A] font-medium">
+                    x {pricing.numMonths} {pricing.numMonths === 2 ? "month" : "months"}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-[#F0F4FB]">
+                  <span className="text-[#64748B]">Subtotal</span>
+                  <span className="text-[#0B1F4A] font-medium">{peso(pricing.recurring)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#64748B]">Contract & Admin Fee</span>
+                  <span className="text-[#0B1F4A] font-medium">{peso(pricing.contractAdminFee)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Payment selection (live preview) */}
+          {paymentMethod && (
+            <div className="pt-4 border-t border-dashed border-[#D9E2F0]">
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#64748B] mb-3">Payment</p>
+              <div className="space-y-2">
+                <ReceiptRow label="Method" value={getPaymentMethodLabel(paymentMethod)} />
+                <ReceiptRow label="Reference" value={paymentReference || undefined} />
+              </div>
+            </div>
+          )}
+
+          {/* Total */}
+          {pricing && (
+            <div className="pt-4 border-t-2 border-[#0B1F4A]/10 flex items-center justify-between">
+              <span className="text-sm font-bold text-[#0B1F4A]">Amount Due</span>
+              <span className="text-xl font-extrabold text-[#1B3A8C]">{peso(pricing.total)}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReceiptRow({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+  return (
+    <div className="flex justify-between items-start gap-3 text-sm">
+      <span className="text-[#64748B] shrink-0">{label}</span>
+      <span className="text-[#0B1F4A] font-medium text-right break-words">{value}</span>
     </div>
   );
 }
@@ -264,142 +423,6 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
         <div className="bg-white rounded-3xl p-8 md:p-10 shadow-[0_4px_24px_rgba(11,31,74,0.06)] border border-[#D9E2F0] text-center">
-          <div className="w-16 h-16 bg-[#EEF2FB] rounded-full flex items-center justify-center mx-auto mb-5">
-            <CheckCircle2 className="w-8 h-8 text-[#1B3A8C]" />
-          </div>
-          <h2 className="text-2xl font-bold text-[#0B1F4A] mb-3">Payment Submitted</h2>
-          <p className="text-[#64748B] text-sm leading-relaxed">
-            Thank you. Our admin team will verify your payment within 24 business hours and contact you for the next steps.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-      <div className="bg-white rounded-3xl p-8 md:p-10 shadow-[0_4px_24px_rgba(11,31,74,0.06)] border border-[#D9E2F0] space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[#0B1F4A] mb-2">Virtual Office Payment</h1>
-          <p className="text-sm text-[#64748B]">Use this secure page to complete your quotation payment.</p>
-        </div>
-
-        {submitError && (
-          <div className="flex items-center gap-2 rounded-xl border border-red-300 bg-[#FFF5F5] px-4 py-3 text-sm text-red-600">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            {submitError}
-          </div>
-        )}
-
-        {pricing && <VOPricingBreakdown pkg={context.virtualOffice.package} months={context.virtualOffice.months} />}
-
-        <div className="grid sm:grid-cols-3 gap-3">
-          {paymentOptions.map((opt) => {
-            const Icon = opt.icon;
-            const active = paymentMethod === opt.id;
-            return (
-              <button
-                type="button"
-                key={opt.id}
-                onClick={() => setPaymentMethod(opt.id)}
-                className={`rounded-2xl border-[1.5px] transition-all duration-200 ${active
-                  ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C]"
-                  : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C]"
-                  } p-4 text-left`}
-                aria-pressed={active}
-              >
-                <Icon className={`w-5 h-5 mb-2 ${active ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
-                <p className={`font-bold text-sm ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A]"}`}>{opt.label}</p>
-                <p className="text-xs text-[#64748B]">{opt.sub}</p>
-              </button>
-            );
-          })}
-        </div>
-
-        {selectedPaymentOption && (
-          <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
-            <p className="text-sm font-bold uppercase tracking-wide text-[#0B1F4A] mb-3">Payment Details</p>
-            <ul className="space-y-1.5">
-              {selectedPaymentOption.details.map((detail) => (
-                <li key={detail} className="text-xs text-[#64748B] leading-relaxed flex items-start gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#C9A84C] shrink-0" />
-                  <span>{detail}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div>
-          <label className="block text-xs font-semibold tracking-wide text-[#0B1F4A] mb-2 uppercase">Reference Number</label>
-          <input
-            type="text"
-            value={paymentReference}
-            onChange={(e) => setPaymentReference(e.target.value)}
-            className={!paymentReference.trim() ? inputErrCls : inputCls}
-            placeholder="e.g. Bank/QRPH transaction reference ID"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold tracking-wide text-[#0B1F4A] mb-2 uppercase">Upload Receipt</label>
-          <button
-            type="button"
-            onClick={() => paymentProofRef.current?.click()}
-            className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${paymentProof ? "border-[#1B3A8C] bg-[#EEF2FB]" : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"}`}
-          >
-            <Upload className={`w-5 h-5 ${paymentProof ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
-            <span className={`text-sm font-semibold ${paymentProof ? "text-[#1B3A8C]" : "text-[#64748B]"}`}>
-              {paymentProof ? paymentProof.name : "Click to upload receipt image or PDF"}
-            </span>
-          </button>
-          <input ref={paymentProofRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setPaymentProof(e.target.files?.[0] ?? null)} />
-          <p className="text-xs text-[#64748B] mt-2">Accepted: JPG, PNG, PDF - Max 10 MB</p>
-        </div>
-
-        {paymentMethod && (
-          <div className="bg-[#FFFBF0] border border-[#F0D98A] rounded-xl px-5 py-4 flex items-start gap-3">
-            <Clock className="w-4 h-4 text-[#C9A84C] shrink-0 mt-0.5" />
-            <div className="text-xs text-[#7A5C00] space-y-1 leading-relaxed">
-              <p className="font-semibold">Payment Summary</p>
-              <p>Selected: {getPaymentMethodLabel(paymentMethod)}</p>
-              <p>Reference: {paymentReference || "-"}</p>
-              {pricing && <p>Amount Due: {peso(pricing.total)}</p>}
-            </div>
-          </div>
-        )}
-
-        <div className="flex justify-end items-center pt-3">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canProceed || isSubmitting}
-            className="flex items-center gap-2 px-7 py-3 bg-[#FFC107] text-[#1B3A8C] text-sm font-bold rounded-full hover:bg-[#FFC107]/80 disabled:bg-[#D9E2F0] disabled:text-[#64748B] disabled:cursor-not-allowed transition-all duration-200"
-          >
-            {isSubmitting ? (
-              <>
-                <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                Submitting...
-              </>
-            ) : (
-              <>Confirm and Submit<ChevronRight className="w-4 h-4" /></>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function QuotationPaymentPage() {
-  const { status, context, errorMessage } = usePaymentLinkGate();
-
-  if (status === "checking") return <PaymentLinkLoading />;
-  if (status === "invalid" || !context) return <PaymentLinkInvalid message={errorMessage} />;
-
-  return <PaymentLinkFlow context={context} />;
-}
-10 shadow-[0_4px_24px_rgba(11,31,74,0.06)] border border-[#D9E2F0] text-center">
           <div className="w-16 h-16 bg-[#EEF2FB] rounded-full flex items-center justify-center mx-auto mb-5">
             <CheckCircle2 className="w-8 h-8 text-[#1B3A8C]" />
           </div>
