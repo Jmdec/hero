@@ -11,13 +11,21 @@ import {
     AlertCircle,
     Loader2,
     UserRound,
+    ExternalLink,
+    Mail,
 } from "lucide-react";
 import { chatApi } from "../lib/chatApi";
+
+interface CTA {
+    label: string;
+    href: string;
+}
 
 interface Message {
     type: "bot" | "user";
     text: string;
     time: string;
+    cta?: CTA;
 }
 
 const SESSION_STORAGE_KEY = "hero_chat_session_id";
@@ -354,6 +362,12 @@ const WELCOME_MESSAGE: Message = {
 const AGENT_ENDED_MESSAGE =
     "🔴 The live agent ended the chat. You're back with our AI assistant — feel free to keep chatting or pick a quick reply below.";
 
+// Shown immediately after a successful agent request, separate from the
+// longer "here's how to reach us in the meantime" reply, so the visitor
+// gets an unambiguous confirmation that a human is on the way.
+const AGENT_CONNECTING_MESSAGE =
+    "🔄 You'll be connected to an agent shortly. Please stay on this chat — we'll notify you the moment someone joins.";
+
 /* ------------------------------------------------------------------ */
 /*  Business hours                                                     */
 /*  Tower 6789 runs a Mon–Fri, 8AM–8PM live-chat desk. Insular Life is  */
@@ -385,26 +399,54 @@ const OUT_OF_HOURS_MESSAGE =
 const PREFERRED_CONTACT_RECEIVED_MESSAGE =
     "Got it, thank you! We've saved your preferred contact details and someone from the team will reach out. Feel free to keep chatting with me in the meantime. 😊";
 
-const PREDEFINED_REPLIES: Record<string, string> = {
-    "Our Services":
-        "We offer a range of workspace solutions:\n\n• Private Offices\n• Virtual Offices\n• Co-working Spaces\n• Meeting & Conference Rooms\n• Business Support Services\n\nAll designed to help your business operate professionally and efficiently!",
-    "Contact Info":
-        "HERO Serviced Office provides premium, fully-equipped workspaces for businesses of all sizes in the Philippines. With 2+ years of experience and 20+ completed projects, we help companies scale without the overhead of a traditional office.\n\n📍 Tower 6789\n23F Tower6789, 6789 Ayala Avenue, Makati City 1209, Metro Manila, Philippines\n🕐 Mon–Fri, 8AM–8PM\n\n📍 Insular Life Building\n11F Insular Life Building, 6781 Ayala Avenue, Corner Paseo de Roxas, Makati City, Metro Manila, Philippines\n🕐 Open 24/7\n\n📧 Email: info@heroph.net\n\nFeel free to reach out — we'd love to hear from you!",
-    "Private Office":
-        "Our private offices are fully furnished and ready to move in — whether you need a space for 1 person or a whole team. Flexible terms, all-inclusive pricing, no fit-out hassle.",
-    "Virtual Office":
-        "Our virtual office plans give your business a prestigious Makati address, mail handling, and call answering — without the cost of a physical lease. Great for remote or early-stage teams.",
-    "Co-working Space":
-        "Our co-working spaces are shared, flexible desks with high-speed Wi-Fi, communal areas, and networking opportunities — perfect for freelancers, startups, and small teams.",
-    "Meeting Rooms":
-        "Our meeting rooms are equipped with high-speed Wi-Fi, presentation displays, and video conferencing tools — perfect for client meetings, interviews, and team sessions. Available by the hour or day.",
-    "Get a Quote":
-        "We'd love to put together a quote for you! Please email us at info@heroph.net with your requirements (team size, duration, space type), and our team will get back to you promptly.",
+// -------------------------------------------------------------------
+// CTA links: update these paths to match your actual site routes.
+// -------------------------------------------------------------------
+const CTA_LINKS = {
+    quote: { label: "Get a Quote", href: "/get-a-quote" },
+    privateOffice: { label: "View Private Offices", href: "/spaces/private-office" },
+    virtualOffice: { label: "View Virtual Office Plans", href: "/spaces/virtual-office" },
+    coworking: { label: "View Co-working Space", href: "/spaces/co-working" },
+    meetingRooms: { label: "Book a Meeting Room", href: "/spaces/meeting-rooms" },
+    services: { label: "See All Services", href: "/services" },
+    contact: { label: "Contact Us", href: "/contact" },
+} as const;
+
+const PREDEFINED_REPLIES: Record<string, { text: string; cta?: CTA }> = {
+    "Our Services": {
+        text: "We offer a range of workspace solutions:\n\n• Private Offices\n• Virtual Offices\n• Co-working Spaces\n• Meeting & Conference Rooms\n• Business Support Services\n\nAll designed to help your business operate professionally and efficiently!",
+        cta: CTA_LINKS.services,
+    },
+    "Contact Info": {
+        text: "HERO Serviced Office provides premium, fully-equipped workspaces for businesses of all sizes in the Philippines. With 2+ years of experience and 20+ completed projects, we help companies scale without the overhead of a traditional office.\n\n📍 Tower 6789\n23F Tower6789, 6789 Ayala Avenue, Makati City 1209, Metro Manila, Philippines\n🕐 Mon–Fri, 8AM–8PM\n\n📍 Insular Life Building\n11F Insular Life Building, 6781 Ayala Avenue, Corner Paseo de Roxas, Makati City, Metro Manila, Philippines\n🕐 Open 24/7\n\n📧 Email: info@heroph.net\n\nFeel free to reach out — we'd love to hear from you!",
+        cta: CTA_LINKS.contact,
+    },
+    "Private Office": {
+        text: "Our private offices are fully furnished and ready to move in — whether you need a space for 1 person or a whole team. Flexible terms, all-inclusive pricing, no fit-out hassle.",
+        cta: CTA_LINKS.privateOffice,
+    },
+    "Virtual Office": {
+        text: "Our virtual office plans give your business a prestigious Makati address, mail handling, and call answering — without the cost of a physical lease. Great for remote or early-stage teams.",
+        cta: CTA_LINKS.virtualOffice,
+    },
+    "Co-working Space": {
+        text: "Our co-working spaces are shared, flexible desks with high-speed Wi-Fi, communal areas, and networking opportunities — perfect for freelancers, startups, and small teams.",
+        cta: CTA_LINKS.coworking,
+    },
+    "Meeting Rooms": {
+        text: "Our meeting rooms are equipped with high-speed Wi-Fi, presentation displays, and video conferencing tools — perfect for client meetings, interviews, and team sessions. Available by the hour or day.",
+        cta: CTA_LINKS.meetingRooms,
+    },
+    "Get a Quote": {
+        text: "We'd love to put together a quote for you! Please email us at info@heroph.net with your requirements (team size, duration, space type), and our team will get back to you promptly.",
+        cta: CTA_LINKS.quote,
+    },
 };
 
 type BotRule = {
     keywords: string[];
     reply: string;
+    cta?: CTA;
 };
 
 const BOT_RULES: BotRule[] = [
@@ -431,11 +473,13 @@ const BOT_RULES: BotRule[] = [
     },
     {
         keywords: ["service", "services", "what do you offer", "offer"],
-        reply: PREDEFINED_REPLIES["Our Services"],
+        reply: PREDEFINED_REPLIES["Our Services"].text,
+        cta: PREDEFINED_REPLIES["Our Services"].cta,
     },
     {
         keywords: ["about", "who are you", "company"],
-        reply: PREDEFINED_REPLIES["Contact Info"],
+        reply: PREDEFINED_REPLIES["Contact Info"].text,
+        cta: PREDEFINED_REPLIES["Contact Info"].cta,
     },
     {
         keywords: [
@@ -447,23 +491,28 @@ const BOT_RULES: BotRule[] = [
             "location",
             "where are you",
         ],
-        reply: PREDEFINED_REPLIES["Contact Info"],
+        reply: PREDEFINED_REPLIES["Contact Info"].text,
+        cta: PREDEFINED_REPLIES["Contact Info"].cta,
     },
     {
         keywords: ["private office", "office space", "desk space"],
-        reply: PREDEFINED_REPLIES["Private Office"],
+        reply: PREDEFINED_REPLIES["Private Office"].text,
+        cta: PREDEFINED_REPLIES["Private Office"].cta,
     },
     {
         keywords: ["virtual office", "virtual address", "mail handling"],
-        reply: PREDEFINED_REPLIES["Virtual Office"],
+        reply: PREDEFINED_REPLIES["Virtual Office"].text,
+        cta: PREDEFINED_REPLIES["Virtual Office"].cta,
     },
     {
         keywords: ["co-working", "coworking", "shared desk", "hot desk"],
-        reply: PREDEFINED_REPLIES["Co-working Space"],
+        reply: PREDEFINED_REPLIES["Co-working Space"].text,
+        cta: PREDEFINED_REPLIES["Co-working Space"].cta,
     },
     {
         keywords: ["meeting room", "conference room", "boardroom"],
-        reply: PREDEFINED_REPLIES["Meeting Rooms"],
+        reply: PREDEFINED_REPLIES["Meeting Rooms"].text,
+        cta: PREDEFINED_REPLIES["Meeting Rooms"].cta,
     },
     {
         keywords: [
@@ -475,7 +524,8 @@ const BOT_RULES: BotRule[] = [
             "quotation",
             "how much",
         ],
-        reply: PREDEFINED_REPLIES["Get a Quote"],
+        reply: PREDEFINED_REPLIES["Get a Quote"].text,
+        cta: PREDEFINED_REPLIES["Get a Quote"].cta,
     },
     {
         keywords: ["agent", "human", "representative", "real person"],
@@ -487,25 +537,56 @@ const BOT_RULES: BotRule[] = [
         reply:
             "Tower 6789's live-chat desk is available Mon–Fri, 8AM–6PM (PHT). Our Insular Life location is staffed 24/7 on-site. You can also email us anytime at info@heroph.net.",
     },
+    {
+        keywords: [
+            "email me this",
+            "email me the chat",
+            "send me this chat",
+            "chat history",
+            "transcript",
+            "copy of this conversation",
+            "copy of our chat",
+        ],
+        reply:
+            "Sure — I'll email a copy of this conversation to the address you gave us. It should land in your inbox shortly. 📧",
+    },
 ];
 
 const FALLBACK_REPLY =
     "Thanks for your message! I'm not sure I fully understood that, but here's what I can help with — our services, private offices, virtual offices, co-working spaces, meeting rooms, pricing, or contact details. You can also tap one of the quick replies below, or tap \"Talk to an Agent\" for a live team member.";
 
+// Keywords that trigger an on-demand transcript email mid-chat (separate
+// from the BOT_RULES text match above, so we can also fire the actual API
+// call, not just a canned reply).
+const HISTORY_REQUEST_KEYWORDS = [
+    "email me this",
+    "email me the chat",
+    "send me this chat",
+    "chat history",
+    "transcript",
+    "copy of this conversation",
+    "copy of our chat",
+];
+
 /**
  * Matches free-typed user text against BOT_RULES and returns a canned reply.
  * Fully local — no network request, no API key, no OpenAI dependency.
  */
-function getLocalBotReply(userText: string): string {
+function getLocalBotReply(userText: string): { text: string; cta?: CTA } {
     const text = userText.toLowerCase();
 
     for (const rule of BOT_RULES) {
         if (rule.keywords.some((kw) => text.includes(kw))) {
-            return rule.reply;
+            return { text: rule.reply, cta: rule.cta };
         }
     }
 
-    return FALLBACK_REPLY;
+    return { text: FALLBACK_REPLY };
+}
+
+function wantsChatHistory(userText: string): boolean {
+    const text = userText.toLowerCase();
+    return HISTORY_REQUEST_KEYWORDS.some((kw) => text.includes(kw));
 }
 
 const Chatbot = () => {
@@ -557,6 +638,14 @@ const Chatbot = () => {
     // ADJUST THE FIELD NAME / VALUES below to match your actual chatApi contract
     // (e.g. `status`, `agent_status`, a boolean `agent_active`, etc.)
     const previousStatusRef = useRef<string | null>(null);
+
+    // Synchronous guard against double-firing "Talk to an Agent" (or any
+    // action that pushes a user + bot message pair). React state updates
+    // are async, so relying on `agentRequested` alone leaves a window where
+    // a fast double-tap/double-click fires the handler twice before the
+    // state re-render disables the button — this ref closes that window
+    // immediately, before the first `await` even runs.
+    const agentRequestInFlightRef = useRef(false);
 
     // AI handles every inquiry first; "Talk to an Agent" is just one of the
     // quick replies below, not a gate the visitor has to pass through
@@ -662,6 +751,7 @@ const Chatbot = () => {
                     // Loop back to AI mode: clear the agent-requested flag and any
                     // stale error state so the assistant flow resumes cleanly.
                     setAgentRequested(false);
+                    agentRequestInFlightRef.current = false;
                     setSendError("");
                 }
             } catch {
@@ -675,10 +765,32 @@ const Chatbot = () => {
     const humanDelay = () =>
         new Promise((res) => setTimeout(res, 1200 + Math.random() * 1300));
 
+    // Fires the "email me the transcript" request against the backend.
+    // Non-blocking / best-effort: failures don't interrupt the chat flow,
+    // they just don't get a confirmation email.
+    const requestTranscriptEmail = useCallback(
+        async (conversationId: number | undefined) => {
+            if (!conversationId) return;
+            try {
+                await chatApi.emailChatHistory(conversationId);
+            } catch {
+                // Swallow — the visitor already got a "sure, I'll email it"
+                // bot reply; a silent backend failure shouldn't surface as
+                // a scary error in the chat window.
+            }
+        },
+        [],
+    );
+
     const handleCloseChat = async () => {
         if (leadSubmitted && conversation?.id && !conversationClosed) {
             try {
+                // closeConversationOnExit also flags the backend to email the
+                // visitor their transcript (see chatApi.ts) — reused here for
+                // the explicit "X" close as well as the real tab-exit case
+                // below, so however the visitor leaves, they get a copy.
                 await chatApi.closeConversation(conversation.id);
+                void requestTranscriptEmail(conversation.id);
             } catch {
                 // Ignore close failures and still mark the conversation ended locally.
             }
@@ -688,7 +800,7 @@ const Chatbot = () => {
                 ...prev,
                 {
                     type: "bot",
-                    text: "This conversation has ended.",
+                    text: "This conversation has ended. We've emailed you a copy of this chat for your records. 📧",
                     time: formatTime(),
                 },
             ]);
@@ -696,6 +808,25 @@ const Chatbot = () => {
 
         setIsChatOpen(false);
     };
+
+    // Real browser/tab exit — separate from the in-widget "X" close above,
+    // since this has to survive page teardown (sendBeacon/keepalive), and
+    // fires the same "email transcript" flag server-side.
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            if (leadSubmitted && conversation?.id && !conversationClosed) {
+                chatApi.closeConversationOnExit(conversation.id);
+            }
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        window.addEventListener("pagehide", handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+            window.removeEventListener("pagehide", handleBeforeUnload);
+        };
+    }, [leadSubmitted, conversation?.id, conversationClosed]);
 
     const ensureConversation = useCallback(async (): Promise<{
         id: number;
@@ -763,16 +894,31 @@ const Chatbot = () => {
         setIsTyping(false);
 
         // Quick reply buttons always map straight to their predefined answer.
-        const replyText = PREDEFINED_REPLIES[reply] ?? getLocalBotReply(reply);
+        const predefined = PREDEFINED_REPLIES[reply];
+        const { text: replyText, cta } = predefined
+            ? { text: predefined.text, cta: predefined.cta }
+            : getLocalBotReply(reply);
+
         setMessages((prev) => [
             ...prev,
-            { type: "bot", text: replyText, time: formatTime() },
+            { type: "bot", text: replyText, time: formatTime(), cta },
         ]);
         void persistMessage(activeConversation, "assistant", replyText);
     };
 
     const handleTalkToAgent = async () => {
-        if (conversationClosed || agentRequested || awaitingPreferredContact) return;
+        // Synchronous guard closes the race window a plain state check can't:
+        // if this fires twice before the first `await` resolves and flips
+        // `agentRequested` to true, the ref stops the second call cold.
+        if (
+            conversationClosed ||
+            agentRequested ||
+            awaitingPreferredContact ||
+            agentRequestInFlightRef.current
+        ) {
+            return;
+        }
+        agentRequestInFlightRef.current = true;
 
         const time = formatTime();
         const userText = "I'd like to talk to a live agent.";
@@ -796,6 +942,7 @@ const Chatbot = () => {
             ]);
             void persistMessage(activeConversation, "assistant", OUT_OF_HOURS_MESSAGE);
             setAwaitingPreferredContact(true);
+            agentRequestInFlightRef.current = false;
             return;
         }
 
@@ -811,8 +958,18 @@ const Chatbot = () => {
                 previousStatusRef.current = "agent_requested";
             }
 
+            // Confirmation message fires first and on its own, so the visitor
+            // gets an unambiguous "you're being connected" the moment the
+            // request succeeds — instead of only surfacing inside the longer
+            // "here's how to reach us" paragraph below.
+            setMessages((prev) => [
+                ...prev,
+                { type: "bot", text: AGENT_CONNECTING_MESSAGE, time: formatTime() },
+            ]);
+            void persistMessage(activeConversation, "assistant", AGENT_CONNECTING_MESSAGE);
+
             const agentReply =
-                "Sure thing! 🙋 One of our team members will be with you shortly.\n\nIn the meantime, you can also reach us directly:\n\n📧 info@heroph.net\n📞 Mon–Fri, 8AM–8PM (Tower 6789) or 24/7 (Insular Life)\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
+                "In the meantime, you can also reach us directly:\n\n📧 info@heroph.net\n📞 Mon–Fri, 8AM–8PM (Tower 6789) or 24/7 (Insular Life)\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
 
             setMessages((prev) => [
                 ...prev,
@@ -832,6 +989,8 @@ const Chatbot = () => {
                 },
             ]);
             setAgentRequested(false);
+        } finally {
+            agentRequestInFlightRef.current = false;
         }
     };
 
@@ -889,13 +1048,21 @@ const Chatbot = () => {
         await humanDelay();
 
         // Fully local reply — no fetch, no API, no OpenAI dependency.
-        const replyText = getLocalBotReply(userMessage.text);
+        const { text: replyText, cta } = getLocalBotReply(userMessage.text);
         setIsTyping(false);
         setMessages((prev) => [
             ...prev,
-            { type: "bot", text: replyText, time: formatTime() },
+            { type: "bot", text: replyText, time: formatTime(), cta },
         ]);
         void persistMessage(activeConversation, "assistant", replyText);
+
+        // If the visitor explicitly asked for a copy of the chat, actually
+        // trigger the backend email send (the reply text above just
+        // acknowledges it locally).
+        if (wantsChatHistory(userMessage.text)) {
+            const targetId = conversation?.id ?? activeConversation?.id;
+            void requestTranscriptEmail(targetId);
+        }
     };
 
     const handleFieldChange = (key: LeadField, value: string) => {
@@ -1190,14 +1357,22 @@ const Chatbot = () => {
                                 )}
 
                                 <button
-                                    className="w-full py-2.5 rounded-xl bg-[#1B3A8C] text-white text-sm font-medium hover:bg-[#16318a] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
+                                    type="button"
                                     onClick={handleContinue}
                                     disabled={isSubmittingLead}
+                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1B3A8C] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#16318a] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
                                 >
-                                    {isSubmittingLead && (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    {isSubmittingLead ? (
+                                        <>
+                                            <Loader2
+                                                className="h-4 w-4 shrink-0 animate-spin"
+                                                aria-hidden="true"
+                                            />
+                                            <span>Submitting...</span>
+                                        </>
+                                    ) : (
+                                        <span>Continue</span>
                                     )}
-                                    {isSubmittingLead ? "Submitting…" : "Continue"}
                                 </button>
                                 <p className="text-[11px] text-gray-400 text-center">
                                     Powered by HERO Serviced Office
@@ -1227,6 +1402,20 @@ const Chatbot = () => {
                                             <p className="text-sm whitespace-pre-line leading-relaxed">
                                                 {msg.text}
                                             </p>
+                                            {msg.cta && (
+                                                <a
+                                                    href={msg.cta.href}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className={`mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${msg.type === "user"
+                                                        ? "bg-white/15 text-white hover:bg-white/25"
+                                                        : "bg-[#1B3A8C] text-white hover:bg-[#16318a]"
+                                                        }`}
+                                                >
+                                                    {msg.cta.label}
+                                                    <ExternalLink className="w-3 h-3" />
+                                                </a>
+                                            )}
                                             <p
                                                 className={`text-[10px] mt-1 ${msg.type === "user" ? "text-blue-200 text-right" : "text-gray-400"}`}
                                             >
@@ -1305,7 +1494,8 @@ const Chatbot = () => {
                                                         key={idx}
                                                         onClick={() => handleQuickReply(reply)}
                                                         disabled={
-                                                            reply === "Talk to an Agent" && agentRequested
+                                                            reply === "Talk to an Agent" &&
+                                                            (agentRequested || agentRequestInFlightRef.current)
                                                         }
                                                         className="px-3 py-1.5 text-xs border border-[#1B3A8C] text-[#1B3A8C] rounded-full hover:bg-[#1B3A8C] hover:text-white active:scale-95 transition-all font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#1B3A8C] inline-flex items-center gap-1"
                                                     >
@@ -1366,6 +1556,25 @@ const Chatbot = () => {
                                     className="hover:text-[#1565C0] transition-colors cursor-pointer"
                                 >
                                     Terms of Service
+                                </button>
+                                <span className="text-gray-200">·</span>
+                                <button
+                                    onClick={() => {
+                                        const targetId = conversation?.id;
+                                        void requestTranscriptEmail(targetId);
+                                        setMessages((prev) => [
+                                            ...prev,
+                                            {
+                                                type: "bot",
+                                                text: "Sure — I'll email a copy of this conversation to the address you gave us. 📧",
+                                                time: formatTime(),
+                                            },
+                                        ]);
+                                    }}
+                                    className="inline-flex items-center gap-1 hover:text-[#1565C0] transition-colors cursor-pointer"
+                                >
+                                    <Mail className="w-2.5 h-2.5" />
+                                    Email me this chat
                                 </button>
                             </div>
                             <p className="text-[10px] text-gray-300 text-center mt-1">

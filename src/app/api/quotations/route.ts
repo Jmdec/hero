@@ -103,6 +103,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const contentType = request.headers.get("content-type") ?? "";
+        const shouldSendFrontendEmails = request.headers.get("x-send-quotation-email") === "true";
         let notificationPayload: QuotationPayload;
         let res: Response;
         let paymentProofCopy: QuotationDocumentCopy | null = null;
@@ -204,13 +205,15 @@ export async function POST(request: NextRequest) {
 
         // Fire-and-forget — quotation is already saved, so a mail failure
         // shouldn't block the user's response. Errors are logged internally.
-        sendQuotationNotifications(savedQuotation, {
-            paymentProofCopy,
-            governmentIdCopy,
-            signatoryGovernmentIdCopy,
-        }).catch((err) => {
-            console.error("Quotation email notification error:", err);
-        });
+        if (shouldSendFrontendEmails) {
+            sendQuotationNotifications(savedQuotation, {
+                paymentProofCopy,
+                governmentIdCopy,
+                signatoryGovernmentIdCopy,
+            }).catch((err) => {
+                console.error("Quotation email notification error:", err);
+            });
+        }
 
         return NextResponse.json(data, { status: 201 });
     } catch (error) {

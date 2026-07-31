@@ -82,8 +82,7 @@ export default function LoginPage() {
 
     try {
       const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST",        credentials: "same-origin",        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
@@ -105,7 +104,8 @@ export default function LoginPage() {
         return;
       }
 
-      login(data.user, data.token);
+      const token = data.token ?? (data as any).access_token
+      login(data.user, token)
       showToast("Login successful!", "success");
 
       const role = data.user.role;

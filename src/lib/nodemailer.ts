@@ -322,7 +322,7 @@ function buildQuotationDetailRows(
     ].join("");
 }
 
-function quotationWrapper(title: string, bodyHtml: string): string {
+function quotationWrapper(bodyHtml: string): string {
     return `
     <!DOCTYPE html>
     <html>
@@ -340,7 +340,6 @@ function quotationWrapper(title: string, bodyHtml: string): string {
           <p style="margin-top:6px;color:#64748b;font-size:13px;">Your Workspace for Success.</p>
         </div>
         <div style="padding:16px 40px 40px;">
-          <h2 style="margin:0 0 16px;color:#1e293b;font-size:20px;">${title}</h2>
           ${bodyHtml}
         </div>
         <div style="background:#f8fafc;padding:20px;text-align:center;font-size:12px;color:#94a3b8;">
@@ -362,6 +361,7 @@ function isVirtualOfficePaymongo(
 }
 
 const RECIPIENTS = {
+    chairman: process.env.QUOTATION_CHAIRMAN_EMAIL || process.env.CONTACT_INQUIRY_CHAIRMAN_EMAIL || process.env.CHAIRMAN_EMAIL || "chairman.mock@hero-office.test",
     salesOfficer: process.env.SALES_OFFICER_EMAIL || "sales.officer.mock@hero-office.test",
     digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "digital.marketing.mock@hero-office.test",
     generalManager: process.env.GENERAL_MANAGER_EMAIL || "general.manager.mock@hero-office.test",
@@ -395,35 +395,32 @@ function parseRecipientList(input: string | undefined): string[] {
         .filter(Boolean);
 }
 
-function resolveBranchCode(branch: string | null | undefined): "S01" | "S02" {
+function getBranchManagerRecipients(branch: string | null | undefined): string[] {
     const normalized = (branch || "").toLowerCase();
-    if (
-        normalized.includes("insular") ||
-        normalized.includes("s02")
-    ) {
-        return "S02";
+
+    if (normalized.includes("insular")) {
+        return [RECIPIENTS.branchManagers.S02];
     }
-    return "S01";
-}
 
-function getSignedContractRouting(quotation: QuotationPayload) {
-    const branchCode = resolveBranchCode(quotation.branch);
-    const to = RECIPIENTS.branchManagers[branchCode];
-    const cc = toUniqueEmails([
-        RECIPIENTS.salesOfficer,
-        RECIPIENTS.digitalMarketing,
-    ]);
+    if (normalized.includes("tower") || normalized.includes("6789")) {
+        return [RECIPIENTS.branchManagers.S01];
+    }
 
-    return { branchCode, to, cc };
+    if (normalized.includes("both")) {
+        return [RECIPIENTS.branchManagers.S01, RECIPIENTS.branchManagers.S02];
+    }
+
+    return [RECIPIENTS.branchManagers.S01];
 }
 
 function getCoreStakeholderRecipients(quotation: QuotationPayload): string[] {
-    const routing = getSignedContractRouting(quotation);
     return toUniqueEmails([
-        routing.to,
+        RECIPIENTS.chairman,
+        RECIPIENTS.generalManager,
+        ...getBranchManagerRecipients(quotation.branch),
         RECIPIENTS.salesOfficer,
         RECIPIENTS.digitalMarketing,
-        RECIPIENTS.generalManager,
+        RECIPIENTS.accounting,
     ]);
 }
 
@@ -625,13 +622,11 @@ export async function sendQuotationUserEmail(
     const readyForContract = canGenerateContract(quotation, options);
     const documentCopies = getDocumentCopyAttachments(options);
 
-    let attachments:
-        | {
-            filename: string;
-            content: Buffer;
-            contentType: string;
-        }[]
-        = [...documentCopies];
+    const attachments: {
+        filename: string;
+        content: Buffer;
+        contentType: string;
+    }[] = [...documentCopies];
 
     let contractAttached = false;
 
@@ -707,12 +702,66 @@ export async function sendQuotationUserEmail(
             `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
         to: quotation.detail.email,
         subject: `We've received your ${quotation.service_name} request`,
-        html: quotationWrapper("Thank You!", body),
+        html: quotationWrapper(body),
         text: `Hi ${firstName},
 
         Thank you for your ${quotation.service_name} request. Our team will get back to you within 24 business hours.
 
 © ${new Date().getFullYear()} Hero Serviced Office`,
+        attachments,
+    };
+
+    return sendQuotationMailWithErrorHandling(mailOptions);
+}
+
+export async function sendQuotationContractEmail(
+    quotation: QuotationPayload,
+    options: QuotationNotificationOptions = {}
+) {
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        throw new Error("SMTP credentials are not configured.");
+    }
+
+    const d = quotation.detail;
+    const firstName = d.full_name.split(" ")[0] || d.full_name;
+    const attachments = [...getDocumentCopyAttachments(options)];
+    const shouldAttachContract = isVirtualOfficePaymongo(quotation);
+
+    if (shouldAttachContract) {
+        try {
+            const contractBuffer = await generateVirtualOfficeContractPdf(quotation);
+            attachments.push({
+                filename: "Hero-Virtual-Office-Contract.pdf",
+                content: contractBuffer,
+                contentType: "application/pdf",
+            });
+        } catch (error) {
+            console.error("Failed to generate contract email attachment:", error);
+        }
+    }
+
+    const body = `
+        <p style="font-size:15px;line-height:1.8;color:#475569;">Hi ${firstName},</p>
+        <p style="font-size:15px;line-height:1.8;color:#475569;">
+            Your ${quotation.service_name.toLowerCase()} contract is ready to review. We have attached the latest contract document for your reference.
+        </p>
+        <p style="font-size:15px;line-height:1.8;color:#475569;">
+            Please review the PDF carefully and reply to this email if you need any updates before we proceed.
+        </p>
+        <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+            ${buildQuotationDetailRows(quotation, {
+                hideSeatsForVirtualOffice: true,
+                formattedDate: true,
+            })}
+        </table>`;
+
+    const mailOptions = {
+        from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
+        to: d.email,
+        replyTo: d.email,
+        subject: `Your ${quotation.service_name} contract`,
+        html: quotationWrapper(body),
+        text: `Hi ${firstName},\n\nYour ${quotation.service_name} contract is ready to review. Please reply if you need anything changed.`,
         attachments,
     };
 
@@ -728,8 +777,6 @@ export async function sendQuotationAdminEmail(
     }
 
     const d = quotation.detail;
-    const stakeholders = getCoreStakeholderRecipients(quotation);
-    const signedContractRouting = getSignedContractRouting(quotation);
     const attachments = getDocumentCopyAttachments(options);
     const readyForContract = canGenerateContract(quotation, options);
 
@@ -746,9 +793,22 @@ export async function sendQuotationAdminEmail(
         }
     }
 
-    const body = `
+    const configuredAdmins = parseRecipientList(process.env.ADMIN_NOTIFICATION_EMAILS);
+    const stakeholders = getCoreStakeholderRecipients(quotation);
+    const allAdminRecipients = configuredAdmins.length > 0
+        ? toUniqueEmails([...configuredAdmins, ...stakeholders])
+        : toUniqueEmails(stakeholders);
+    const chairmanRecipient = RECIPIENTS.chairman.trim();
+    const englishRecipients = chairmanRecipient
+        ? allAdminRecipients.filter((email) => email.toLowerCase() !== chairmanRecipient.toLowerCase())
+        : allAdminRecipients;
+
+    const englishBody = `
         <p style="font-size:15px;line-height:1.8;color:#475569;">
             A new ${quotation.service_name.toLowerCase()} quotation request has come in.
+        </p>
+        <p style="font-size:14px;line-height:1.7;color:#64748b;">
+            This notification is being routed to the relevant team members for follow-up, including the branch manager, general manager, sales officer, and digital marketing.
         </p>
         <table style="width:100%;border-collapse:collapse;margin-top:8px;">
             ${quotationRow("Name", d.full_name)}
@@ -765,19 +825,105 @@ export async function sendQuotationAdminEmail(
             ${quotationRow("Signatory ID File", d.signatory_id_file)}
         </table>`;
 
-    const configuredAdmins = parseRecipientList(process.env.ADMIN_NOTIFICATION_EMAILS);
-    const adminEmails = configuredAdmins.length > 0
-        ? toUniqueEmails([...configuredAdmins, ...stakeholders])
-        : toUniqueEmails(stakeholders);
+    const japaneseBody = `
+        <p style="font-size:15px;line-height:1.8;color:#475569;">
+            新しい${quotation.service_name}の見積依頼が届きました。
+        </p>
+        <p style="font-size:14px;line-height:1.7;color:#64748b;">
+            こちらは担当チームへの通知メールです。支店マネージャー、総務、営業、デジタルマーケティング担当者が確認に入ります。
+        </p>
+        <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+            ${quotationRow("お客様名", d.full_name)}
+            ${quotationRow("会社名", d.company_name)}
+            ${quotationRow("メール", d.email)}
+            ${quotationRow("電話", d.phone)}
+            ${quotationRow("支店", quotation.branch)}
+            ${buildQuotationDetailRows(quotation, {
+                formattedDate: true,
+            })}
+            ${quotationRow("取引ID", d.transaction_id)}
+            ${quotationRow("領収書ファイル", d.receipt)}
+            ${quotationRow("政府発行IDファイル", d.government_id_file)}
+            ${quotationRow("署名者IDファイル", d.signatory_id_file)}
+        </table>`;
+
+    const tasks: Promise<unknown>[] = [];
+
+    if (englishRecipients.length > 0) {
+        tasks.push(sendQuotationMailWithErrorHandling({
+            from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
+            to: englishRecipients,
+            replyTo: d.email,
+            subject: `New ${quotation.service_name} request from ${d.full_name}`,
+            html: quotationWrapper(englishBody),
+            text: `New ${quotation.service_name} request from ${d.full_name} (${d.email}, ${d.phone}).`,
+            attachments,
+        }));
+    }
+
+    if (chairmanRecipient) {
+        tasks.push(sendQuotationMailWithErrorHandling({
+            from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
+            to: chairmanRecipient,
+            replyTo: d.email,
+            subject: `【新規見積】${quotation.service_name} の依頼が届きました`,
+            html: quotationWrapper(japaneseBody),
+            text: `新しい${quotation.service_name}の見積依頼が届きました。`,
+            attachments,
+        }));
+    }
+
+    return Promise.allSettled(tasks).then((results) => {
+        const rejected = results.filter((result) => result.status === "rejected");
+        if (rejected.length > 0) {
+            const reasons = rejected.map((result) => result.reason);
+            throw new Error(reasons.join("; "));
+        }
+
+        return {
+            success: true,
+            message: "Quotation notification emails sent.",
+        };
+    });
+}
+
+export async function sendQuotationPaymentLinkEmail(
+    quotation: QuotationPayload,
+    paymentUrl: string,
+    options: { expiresInDays?: number } = {}
+) {
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        throw new Error("SMTP credentials are not configured.");
+    }
+
+    const d = quotation.detail;
+    const fullName = d.full_name;
+    const expiresInDays = options.expiresInDays ?? 3;
+
+    const body = `
+        <p style="font-size:15px;line-height:1.8;color:#475569;">Good Day Mr./Ms. ${fullName},</p>
+        <p style="font-size:15px;line-height:1.8;color:#475569;">
+            Your quotation has been reviewed and is now ready for payment.
+            Click the button below to proceed to your dedicated payment page.
+        </p>
+        <p style="text-align:center;margin:20px 0;">
+            <a href="${paymentUrl}" style="display:inline-block;padding:12px 20px;background:#0D47A1;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:700;">
+                Pay Now
+            </a>
+        </p>
+        <p style="font-size:13px;color:#64748b;line-height:1.7;">
+            This secure link expires in ${expiresInDays} day${expiresInDays === 1 ? "" : "s"}. If it expires,
+            please reply to this email and we will send you a new payment link.
+        </p>
+        <p style="font-size:12px;color:#64748b;word-break:break-all;margin-top:10px;">${paymentUrl}</p>
+    `;
 
     const mailOptions = {
         from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
-        to: adminEmails,
-        replyTo: d.email,
-        subject: `New ${quotation.service_name} request from ${d.full_name}`,
-        html: quotationWrapper("New Quotation Request", body),
-        text: `New ${quotation.service_name} request from ${d.full_name} (${d.email}, ${d.phone}).`,
-        attachments,
+        to: d.email,
+        subject: `Payment link — ${quotation.service_name}`,
+        html: quotationWrapper(body),
+        text: `Good Day Mr./Ms. ${fullName},\n\nYour quotation is now ready for payment. Open this secure link: ${paymentUrl}\n\nThis link expires in ${expiresInDays} day${expiresInDays === 1 ? "" : "s"}.`,
     };
 
     return sendQuotationMailWithErrorHandling(mailOptions);
@@ -838,6 +984,42 @@ export async function sendQuotationNotifications(
     quotation: QuotationPayload,
     options: QuotationNotificationOptions = {}
 ) {
+    // If configured, delegate email sending to the Laravel backend endpoints
+    const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND_EMAIL === 'true' || process.env.USE_BACKEND_EMAIL === 'true';
+
+    if (useBackend) {
+        const backendBase = (process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || '').replace(/\/$/, '') || undefined;
+        if (!backendBase) {
+            console.warn('BACKEND URL not configured; falling back to local nodemailer.');
+        } else {
+            try {
+                // If the quotation payload includes an `id`, tell the backend to send emails for that quotation
+                // otherwise attempt to POST the payload to /api/quotations and ask the backend to send notifications.
+                const id = (quotation as QuotationPayload & { id?: number | string }).id;
+                if (id) {
+                    const res = await fetch(`${backendBase}/api/quotations/${encodeURIComponent(String(id))}/send-email`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+                    if (res.ok) return { userSent: true, adminSent: true };
+                    console.warn('Backend send-email returned', res.status);
+                } else {
+                    // POST the quotation payload and let backend create record + send notifications
+                    const res = await fetch(`${backendBase}/api/quotations`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(quotation),
+                    });
+                    if (res.ok) return { userSent: true, adminSent: true };
+                    console.warn('Backend create-quotation returned', res.status);
+                }
+            } catch (err) {
+                console.error('Backend email delegation failed:', err);
+            }
+        }
+    }
+
+    // Fallback: send directly using nodemailer from this server
     const [userResult, adminResult] = await Promise.allSettled([
         sendQuotationUserEmail(quotation, options),
         sendQuotationAdminEmail(quotation, options),
@@ -854,4 +1036,19 @@ export async function sendQuotationNotifications(
         userSent: userResult.status === "fulfilled",
         adminSent: adminResult.status === "fulfilled",
     };
+}
+
+// Helpers for directly requesting backend actions
+export async function requestBackendSendPaymentLink(quotationId: string | number) {
+    const backendBase = (process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || '').replace(/\/$/, '');
+    if (!backendBase) throw new Error('BACKEND_URL not configured');
+    const res = await fetch(`${backendBase}/api/quotations/${encodeURIComponent(String(quotationId))}/send-payment-link`, { method: 'POST' });
+    return res.json();
+}
+
+export async function requestBackendSendEmail(quotationId: string | number) {
+    const backendBase = (process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || '').replace(/\/$/, '');
+    if (!backendBase) throw new Error('BACKEND_URL not configured');
+    const res = await fetch(`${backendBase}/api/quotations/${encodeURIComponent(String(quotationId))}/send-email`, { method: 'POST' });
+    return res.json();
 }

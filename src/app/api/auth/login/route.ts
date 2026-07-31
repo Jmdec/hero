@@ -1,5 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 
+const COOKIE_NAME = "session"
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
+
+function createSessionCookie(token: string) {
+  const secure = process.env.NODE_ENV === "production" ? "Secure; " : ""
+  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; ${secure}Max-Age=${COOKIE_MAX_AGE}`
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -86,12 +94,16 @@ export async function POST(request: NextRequest) {
       }, { status: 403 })
     }
 
-    // Return the response with the same status code
+    // Set session cookie only for successful authentication
+    const token = data?.token ?? data?.access_token
+    const headers = new Headers({ "Content-Type": "application/json" })
+    if (response.ok && token) {
+      headers.append("Set-Cookie", createSessionCookie(token))
+    }
+
     return NextResponse.json(data, {
       status: response.status,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     })
   } catch (error: unknown) {
     console.error("=== LOGIN ERROR ===")

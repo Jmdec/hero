@@ -22,6 +22,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { Loading } from "@/components/Loading";
+import { useAuth } from "@/contexts/AuthContext";
 
 const menuItems = [
   {
@@ -44,7 +45,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isOpen, setIsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const { user, isAuthenticated, isAdmin, isAuthReady, logout } = useAuth();
 
   const handleLogout = async () => {
     // Clear the server-side cookie so middleware also denies access
@@ -53,8 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } catch {
       // proceed with client cleanup regardless
     }
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    logout();
     router.replace("/");
   };
 
@@ -62,30 +62,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // NOTE: middleware.ts is the actual security boundary — it runs server-side
     // before this component ever mounts. This client-side check exists only
     // to populate `user` for the UI and avoid a flash of admin content while
-    // localStorage is read. There is no dev-mode bypass here anymore.
-    try {
-      const storedUser = localStorage.getItem("user");
+    // auth is hydrated.
+    if (!isAuthReady) return;
 
-      if (!storedUser) {
-        router.replace("/login");
-        return;
-      }
-
-      const parsedUser = JSON.parse(storedUser);
-
-      if (parsedUser.role !== "admin") {
-        router.replace("/");
-        return;
-      }
-
-      setUser(parsedUser);
-      setLoading(false);
-    } catch {
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
+    if (!isAuthenticated || !user) {
       router.replace("/login");
+      return;
     }
-  }, [router]);
+
+    if (!isAdmin) {
+      router.replace("/");
+      return;
+    }
+
+    setLoading(false);
+  }, [isAuthReady, isAuthenticated, isAdmin, router, user]);
 
   if (loading) {
     return (

@@ -9,6 +9,7 @@ import {
     Headset,
     Inbox,
     Mail,
+    MailCheck,
     Menu,
     RefreshCw,
     Search,
@@ -18,10 +19,6 @@ import {
     XCircle,
 } from "lucide-react";
 import { chatApi, type ChatConversation, type ConversationResponse } from "@/lib/chatApi";
-
-/* ---------------------------------------------------------------------- */
-/*  Status system                                                          */
-/* ---------------------------------------------------------------------- */
 
 type StatusKey = "active" | "waiting_admin" | "agent_requested" | "agent_active" | "agent_closed" | "closed";
 
@@ -34,26 +31,31 @@ const STATUS: Record<StatusKey, { label: string; rail: string; dot: string; chip
     closed: { label: "Ended", rail: "bg-slate-300", dot: "bg-slate-400", chip: "bg-slate-100 text-slate-500 ring-slate-500/10", ended: true },
 };
 
-// Statuses where the visitor is waiting on a human, and no one has taken
-// ownership yet. Used to (a) show the "needs you" pulse and (b) let the
-// admin reply straight away without a separate "take over" click first.
 const NEEDS_ADMIN: StatusKey[] = ["waiting_admin", "agent_requested"];
 
-// Statuses where a human owns (or has been asked to own) the conversation.
-// While in one of these, the admin panel is the only one that should be
-// replying — this mirrors AGENT_OWNED_STATUSES on the widget side so the
-// two surfaces can't disagree about who's supposed to be talking.
 const AGENT_OWNED: StatusKey[] = ["waiting_admin", "agent_requested", "agent_active"];
 
-// Client-side filter for the "addressed" workflow — orthogonal to chat
-// status, since a conversation can be closed without anyone having
-// confirmed the inquiry was actually handled (or vice versa: still open
-// but already answered and just waiting on the visitor).
+const HISTORY_REQUEST_KEYWORDS = [
+    "email me this",
+    "email me the chat",
+    "send me this chat",
+    "chat history",
+    "transcript",
+    "copy of this conversation",
+    "copy of our chat",
+];
+
+function messagesRequestedHistory(messages: { sender: string; message: string }[]) {
+    return messages.some(
+        (m) =>
+            m.sender !== "admin" &&
+            m.sender !== "assistant" &&
+            HISTORY_REQUEST_KEYWORDS.some((kw) => m.message.toLowerCase().includes(kw)),
+    );
+}
+
 type AddressedFilter = "all" | "needs_response" | "addressed";
 
-// Sender color scheme for message bubbles — keeps the three roles visually
-// distinct at a glance (admin / AI assistant / client), independent of the
-// left/right alignment used to separate "us" (admin) from "them".
 type SenderKey = "admin" | "assistant" | "client";
 
 const SENDER_STYLE: Record<SenderKey, { bubble: string; label: string; icon: typeof User }> = {
@@ -77,8 +79,6 @@ const SENDER_STYLE: Record<SenderKey, { bubble: string; label: string; icon: typ
 function senderKeyOf(sender: string): SenderKey {
     if (sender === "admin") return "admin";
     if (sender === "assistant") return "assistant";
-    // Anything else (the visitor's own role string, whatever the backend
-    // calls it) is treated as the client.
     return "client";
 }
 
@@ -90,8 +90,6 @@ function isAddressed(c: ChatConversation) {
     return Boolean(c.addressed_at);
 }
 
-/** A live-indicator dot with a proper radiating ping ring, used instead of
- *  a plain opacity pulse so "needs you" actually reads as urgent at a glance. */
 function LiveDot({ className = "" }: { className?: string }) {
     return (
         <span className={`relative flex h-2 w-2 ${className}`}>
@@ -144,9 +142,6 @@ function durationSince(iso: string) {
     return `${hrs}h ${rem}m`;
 }
 
-/** Skeleton shown in the thread pane while a newly-selected conversation is
- *  still being fetched (or the admin hit refresh), so switching threads or
- *  refreshing doesn't show stale messages or a blank pane mid-request. */
 function ConversationSkeleton() {
     return (
         <div className="flex h-full flex-col">
@@ -169,8 +164,6 @@ function ConversationSkeleton() {
     );
 }
 
-/** Skeleton rows for the conversation list, shown on first load and while a
- *  manual refresh is in flight. */
 function ConversationListSkeleton() {
     return (
         <div className="space-y-1.5 p-1">
@@ -181,33 +174,29 @@ function ConversationListSkeleton() {
     );
 }
 
-/* ---------------------------------------------------------------------- */
-
 export default function AdminChatsPage() {
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
     const [selectedConversation, setSelectedConversation] = useState<ConversationResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [conversationLoading, setConversationLoading] = useState(false);
-    // NEW: separate from `loading` (which drives the list skeleton on first
-    // paint) so the manual refresh button can show its own spinner without
-    // re-triggering the full-page skeleton every click.
+
     const [refreshing, setRefreshing] = useState(false);
     const [reply, setReply] = useState("");
     const [sending, setSending] = useState(false);
     const [markingAddressed, setMarkingAddressed] = useState(false);
+
+    const [sendingHistory, setSendingHistory] = useState(false);
+    const [historySentNotice, setHistorySentNotice] = useState<string | null>(null);
     const [error, setError] = useState("");
     const [query, setQuery] = useState("");
     const [addressedFilter, setAddressedFilter] = useState<AddressedFilter>("all");
     const [agentRequestNotice, setAgentRequestNotice] = useState<string | null>(null);
-    // Controls the off-canvas conversation list on mobile/tablet, where the
-    // sidebar collapses into a menu button instead of a permanent column.
+
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Tracks which conversation ids we've already surfaced an "agent requested"
-    // notice for, so polling doesn't re-announce the same request every 2s.
     const notifiedRequestIds = useRef<Set<number>>(new Set());
 
     const loadConversations = async () => {
@@ -230,13 +219,6 @@ export default function AdminChatsPage() {
         }
     };
 
-    // Client-side heads-up when a visitor asks for a human. The actual email
-    // to the admin inbox should be triggered server-side the moment a
-    // conversation's status flips to "waiting_admin" / "agent_requested" —
-    // that's the reliable place to send it, since it fires even if no admin
-    // has this page open. Hook it into whatever transitions the status in
-    // your backend (e.g. the endpoint the widget calls for "Talk to an agent"
-    // or the new out-of-hours "preferred contact" submission).
     const checkForNewAgentRequests = (items: ChatConversation[]) => {
         for (const c of items) {
             const needsAdmin = NEEDS_ADMIN.includes(c.status as StatusKey);
@@ -257,8 +239,12 @@ export default function AdminChatsPage() {
         return () => clearTimeout(t);
     }, [agentRequestNotice]);
 
-    // Fetch the newly-selected conversation right away instead of waiting on
-    // the 2s poll below, and show a skeleton for the duration of the request.
+    useEffect(() => {
+        if (!historySentNotice) return;
+        const t = setTimeout(() => setHistorySentNotice(null), 5000);
+        return () => clearTimeout(t);
+    }, [historySentNotice]);
+
     useEffect(() => {
         if (!selectedConversationId) return;
 
@@ -295,9 +281,6 @@ export default function AdminChatsPage() {
                         return conversation;
                     }
 
-                    // Also refresh when just the status changed (e.g. visitor
-                    // requested an agent) even if the message count is the
-                    // same, so the header/composer gating stays current.
                     if (prev.status !== conversation.status) {
                         return conversation;
                     }
@@ -333,13 +316,6 @@ export default function AdminChatsPage() {
         }
     };
 
-    // Manual refresh button handler — same underlying work as `refresh()`,
-    // but tracked with its own spinner state and always clears any stale
-    // error banner so a successful manual refresh visibly resolves it.
-    // Also flips `conversationLoading` on for the duration, so the thread
-    // pane shows its skeleton alongside the list skeleton (which already
-    // reacts to `loading` inside loadConversations) instead of sitting
-    // there with stale messages while the list clearly refreshes.
     const handleManualRefresh = async () => {
         if (refreshing) return;
         setRefreshing(true);
@@ -408,9 +384,6 @@ export default function AdminChatsPage() {
         }
     };
 
-    // Marks (or unmarks) an inquiry as handled so it's clear at a glance
-    // which conversations still need a first response, preventing two team
-    // members from replying to the same visitor.
     const handleToggleAddressed = async () => {
         if (!selectedConversationId || !selectedConversation) return;
 
@@ -428,8 +401,24 @@ export default function AdminChatsPage() {
         }
     };
 
-    // Selecting a conversation from the mobile drawer should also close it,
-    // so tapping a chat takes the admin straight to the thread.
+    const handleSendHistory = async () => {
+        if (!selectedConversationId || !selectedConversation) return;
+
+        setSendingHistory(true);
+        setError("");
+
+        try {
+            const result = await chatApi.emailChatHistory(selectedConversationId);
+            setHistorySentNotice(
+                `Chat history sent to ${result?.to ?? selectedConversation.inquiry?.email_address ?? "the visitor"}.`,
+            );
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Unable to send chat history.");
+        } finally {
+            setSendingHistory(false);
+        }
+    };
+
     const handleSelectConversation = (id: number) => {
         setSelectedConversationId(id);
         setSidebarOpen(false);
@@ -441,10 +430,6 @@ export default function AdminChatsPage() {
         });
     }, [selectedConversation?.messages]);
 
-    // Auto-grow the reply box as the admin types — starts at the same
-    // height as the old fixed 3-row textarea, expands with content, and
-    // caps out (then scrolls internally) so a long paste can't push the
-    // send button off-screen or shrink the thread above it.
     const REPLY_MIN_HEIGHT = 72; // px, ~3 rows
     const REPLY_MAX_HEIGHT = 200; // px, ~8-9 rows before it scrolls
 
@@ -497,18 +482,15 @@ export default function AdminChatsPage() {
     const selectedIsAgentOwned = selectedConversation
         ? AGENT_OWNED.includes(selectedConversation.status as StatusKey)
         : false;
+    const selectedRequestedHistory = selectedConversation
+        ? messagesRequestedHistory(selectedConversation.messages)
+        : false;
+    const selectedHasEmail = Boolean(selectedConversation?.inquiry?.email_address);
 
-    // True while we're waiting on the thread for the currently-selected id —
-    // covers the in-flight fetch, the moment right after a click (before the
-    // effect above has swapped selectedConversation over), and a manual
-    // refresh (which also flips conversationLoading on).
     const isSwitchingConversation =
         selectedConversationId !== null &&
         (conversationLoading || selectedConversation?.id !== selectedConversationId);
 
-    // Shared list header (search box) and list body (skeleton / empty state /
-    // conversation rows), rendered once for the desktop sidebar column and
-    // once for the mobile off-canvas drawer so both stay in sync.
     const sidebarSearchHeader = (
         <div className="shrink-0 space-y-2 border-b border-slate-100 p-3">
             <div className="relative">
@@ -599,6 +581,14 @@ export default function AdminChatsPage() {
                             <Mail className="h-3.5 w-3.5" />
                             Email sent
                         </span>
+                    </div>
+                ) : null}
+
+                {/* History-sent toast */}
+                {historySentNotice ? (
+                    <div className="flex shrink-0 items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+                        <MailCheck className="h-4 w-4" />
+                        {historySentNotice}
                     </div>
                 ) : null}
 
@@ -700,6 +690,15 @@ export default function AdminChatsPage() {
                                                     </p>
                                                     <StatusChip status={selectedConversation.status} />
                                                     {selectedIsAddressed ? <AddressedChip /> : null}
+                                                    {selectedRequestedHistory ? (
+                                                        <span
+                                                            title="Visitor asked for a copy of this chat"
+                                                            className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20"
+                                                        >
+                                                            <Mail className="h-3 w-3" />
+                                                            Requested history
+                                                        </span>
+                                                    ) : null}
                                                 </div>
                                                 <p className="flex items-center gap-1.5 text-xs text-slate-500">
                                                     <Mail className="h-3 w-3" />
@@ -722,6 +721,22 @@ export default function AdminChatsPage() {
                                             >
                                                 <CheckCircle2 className="h-3.5 w-3.5" />
                                                 {selectedIsAddressed ? "Addressed" : "Mark as addressed"}
+                                            </button>
+                                            <button
+                                                onClick={() => void handleSendHistory()}
+                                                disabled={sendingHistory || !selectedHasEmail}
+                                                title={
+                                                    selectedHasEmail
+                                                        ? "Email the full chat transcript to the visitor"
+                                                        : "No email on file for this visitor"
+                                                }
+                                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedRequestedHistory
+                                                    ? "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                                                    : "border-slate-200 text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                                                    }`}
+                                            >
+                                                <Mail className="h-3.5 w-3.5" />
+                                                {sendingHistory ? "Sending…" : "Send history"}
                                             </button>
                                             <button
                                                 onClick={() => void handleTakeOver()}
@@ -765,9 +780,6 @@ export default function AdminChatsPage() {
                                             </div>
                                         ) : (
                                             selectedConversation.messages.map((message) => {
-                                                // "system" messages (e.g. "Visitor requested an agent",
-                                                // "Chat ended") render as a centered note, not a bubble
-                                                // belonging to either side of the conversation.
                                                 if (message.sender === "system") {
                                                     return (
                                                         <div key={message.id} className="flex justify-center">
@@ -778,8 +790,6 @@ export default function AdminChatsPage() {
                                                     );
                                                 }
 
-                                                // Color-coded by role: admin (blue, right), AI assistant
-                                                // (violet, left), client/visitor (white, left).
                                                 const senderKey = senderKeyOf(message.sender);
                                                 const style = SENDER_STYLE[senderKey];
                                                 const SenderIcon = style.icon;
@@ -806,9 +816,6 @@ export default function AdminChatsPage() {
                                     </div>
 
                                     {selectedIsEnded ? (
-                                        // Chat-ended indicator: replaces the composer once a
-                                        // conversation is closed, so it's obvious there's nothing
-                                        // left to reply to here.
                                         <div className="mt-3 flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
                                             <CheckCircle2 className="h-4 w-4 text-slate-400" />
                                             This conversation has ended.
@@ -824,6 +831,12 @@ export default function AdminChatsPage() {
                                                 <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#0D47A1]">
                                                     <Headset className="h-3.5 w-3.5" />
                                                     You own this chat — the AI assistant is paused here.
+                                                </p>
+                                            ) : null}
+                                            {selectedRequestedHistory ? (
+                                                <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-sky-600">
+                                                    <Mail className="h-3.5 w-3.5" />
+                                                    This visitor asked for a copy of the chat — use &quot;Send history&quot; above.
                                                 </p>
                                             ) : null}
                                             {!selectedIsAddressed ? (

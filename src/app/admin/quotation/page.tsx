@@ -24,6 +24,8 @@ import {
     Pencil,
     Send,
     Link2,
+    FileText,
+    CreditCard,
 } from "lucide-react";
 
 type Status =
@@ -115,6 +117,25 @@ const STATUS_DOT: Record<Status, string> = {
     completed: "bg-green-500",
     cancelled: "bg-red-500",
 };
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+    paymongo: "PayMongo",
+    gcash: "GCash",
+    qrph: "QR Ph",
+    online_transfer: "Online Transfer",
+    bank: "Bank Transfer",
+};
+
+// A payment is considered "collected" once the request has moved past
+// verification into paid/contract/completed, or a paid_at timestamp exists.
+function hasPaid(quote: Quotation) {
+    return (
+        quote.status === "paid" ||
+        quote.status === "contract_sent" ||
+        quote.status === "completed" ||
+        Boolean(quote.paid_at)
+    );
+}
 
 function StatusBadge({ status }: { status: Status }) {
     const label = STATUSES.find((s) => s.value === status)?.label ?? status;
@@ -254,7 +275,7 @@ function InfoRow({
     );
     if (href) {
         return (
-            <a href={href} className="block hover:opacity-70 transition">
+            <a href={href} target="_blank" rel="noopener noreferrer" className="block hover:opacity-70 transition">
                 {content}
             </a>
         );
@@ -310,6 +331,56 @@ function PriceBreakdownCard({ detail }: { detail: QuotationDetail }) {
     );
 }
 
+// Signatory section — the government ID captured for the person signing the
+// contract. Shown for any request that has an ID on file.
+function SignatoryCard({ detail }: { detail: QuotationDetail }) {
+    const idLine = [detail.id_type, detail.id_number].filter(Boolean).join(" · ");
+    const idDocUrl = detail.government_id_url ?? detail.government_id_path ?? detail.government_id_file ?? null;
+
+    if (!idLine && !idDocUrl) return null;
+
+    return (
+        <div className="space-y-2.5">
+            <p className="text-xs font-semibold text-[#64748B]">Signatory Document</p>
+            {idLine && <InfoRow icon={Hash} label="ID" value={idLine} />}
+            {idDocUrl && (
+                <InfoRow
+                    icon={FileText}
+                    label="Government ID"
+                    value="View uploaded document"
+                    href={idDocUrl}
+                />
+            )}
+        </div>
+    );
+}
+
+// Payment section — only relevant once the client has actually paid
+// (status has moved to paid/contract_sent/completed, or paid_at is set).
+function PaymentCard({ quote }: { quote: Quotation }) {
+    const detail = quote.detail;
+    if (!detail) return null;
+
+    const receiptUrl = detail.receipt_url ?? detail.receipt_path ?? detail.receipt ?? null;
+    const methodLabel = detail.payment_method
+        ? PAYMENT_METHOD_LABELS[detail.payment_method] ?? detail.payment_method
+        : null;
+
+    if (!methodLabel && !detail.transaction_id && !quote.paid_at && !receiptUrl) return null;
+
+    return (
+        <div className="space-y-2.5">
+            <p className="text-xs font-semibold text-[#64748B]">Payment</p>
+            {methodLabel && <InfoRow icon={CreditCard} label="Payment method" value={methodLabel} />}
+            {detail.transaction_id && <InfoRow icon={Hash} label="Transaction ID" value={detail.transaction_id} />}
+            {quote.paid_at && <InfoRow icon={Calendar} label="Paid on" value={formatDate(quote.paid_at)} />}
+            {receiptUrl && (
+                <InfoRow icon={FileText} label="Receipt" value="View uploaded receipt" href={receiptUrl} />
+            )}
+        </div>
+    );
+}
+
 // Page
 
 export default function AdminQuotationsPage() {
@@ -330,6 +401,7 @@ export default function AdminQuotationsPage() {
     // Email-to-client actions
     const [sendingEmailId, setSendingEmailId] = useState<number | null>(null);
     const [sendingPaymentLinkId, setSendingPaymentLinkId] = useState<number | null>(null);
+    const [sendingContractId, setSendingContractId] = useState<number | null>(null);
 
     const [toasts, setToasts] = useState<ToastItem[]>([]);
     const toastIdRef = useRef(0);
@@ -347,7 +419,11 @@ export default function AdminQuotationsPage() {
     };
 
     const fetchQuotations = useCallback(async (background = false) => {
-        background ? setRefreshing(true) : setLoading(true);
+        if (background) {
+            setRefreshing(true);
+        } else {
+            setLoading(true);
+        }
         setError(null);
         try {
             const res = await fetch("/api/quotations", { cache: "no-store" });
@@ -357,12 +433,20 @@ export default function AdminQuotationsPage() {
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load quotations.");
         } finally {
-            background ? setRefreshing(false) : setLoading(false);
+            if (background) {
+                setRefreshing(false);
+            } else {
+                setLoading(false);
+            }
         }
     }, []);
 
     useEffect(() => {
-        fetchQuotations();
+        const timeoutId = window.setTimeout(() => {
+            void fetchQuotations();
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
     }, [fetchQuotations]);
 
     const filtered = useMemo(() => {
@@ -485,10 +569,15 @@ export default function AdminQuotationsPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Accept: "application/json" },
             });
-            if (!res.ok) throw new Error("Failed to send email.");
+            const payload = await res.json().catch(() => null);
+            if (!res.ok) {
+                const message = payload?.message || "Failed to send email.";
+                throw new Error(message);
+            }
             pushToast(`Email sent to ${who}`, "success");
-        } catch {
-            pushToast(`Couldn't send email to ${who}`, "error");
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : "Couldn't send email to the client.";
+            pushToast(msg, "error");
         } finally {
             setSendingEmailId(null);
         }
@@ -504,12 +593,42 @@ export default function AdminQuotationsPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Accept: "application/json" },
             });
-            if (!res.ok) throw new Error("Failed to send payment link.");
+            const payload = await res.json().catch(() => null);
+            if (!res.ok) {
+                const message = payload?.message || "Failed to send payment link.";
+                throw new Error(message);
+            }
             pushToast(`Payment link sent to ${who}`, "success");
-        } catch {
-            pushToast(`Couldn't send payment link to ${who}`, "error");
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : "Couldn't send payment link to the client.";
+            pushToast(msg, "error");
         } finally {
             setSendingPaymentLinkId(null);
+        }
+    };
+
+    const handleSendContract = async (quote: Quotation) => {
+        const who = quote.detail?.full_name ?? "the client";
+        setSendingContractId(quote.id);
+        try {
+            const res = await fetch(`/api/quotations/${quote.id}/send-contract`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Accept: "application/json" },
+            });
+            const payload = await res.json().catch(() => null);
+            if (!res.ok) {
+                const message = payload?.message || "Failed to send contract.";
+                throw new Error(message);
+            }
+
+            setQuotations((previous) => previous.map((item) => item.id === quote.id ? { ...item, status: "contract_sent" } : item));
+            setSelected((current) => current && current.id === quote.id ? { ...current, status: "contract_sent" } : current);
+            pushToast(`Contract sent to ${who}`, "success");
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : "Couldn't send the contract to the client.";
+            pushToast(msg, "error");
+        } finally {
+            setSendingContractId(null);
         }
     };
 
@@ -739,7 +858,6 @@ export default function AdminQuotationsPage() {
                                 {selected.detail?.company_name && <InfoRow icon={Building2} label="Company" value={selected.detail.company_name} />}
                                 {selected.detail?.email && <InfoRow icon={Mail} label="Email" value={selected.detail.email} href={`mailto:${selected.detail.email}`} />}
                                 {selected.detail?.phone && <InfoRow icon={Phone} label="Phone" value={selected.detail.phone} href={`tel:${selected.detail.phone}`} />}
-                                {selected.detail?.id_number && <InfoRow icon={Hash} label="ID" value={`${selected.detail.id_type ?? ""} ${selected.detail.id_number}`} />}
                             </div>
 
                             {/* Booking details */}
@@ -770,9 +888,7 @@ export default function AdminQuotationsPage() {
                                 </div>
                             )}
 
-                            {/* Review — Virtual Office only. Shows the price breakdown (no payment/receipt
-                                info here, since this is the admin's pre-payment verification step) and a
-                                one-click action to email the client a link straight to the payment section. */}
+                            {/* 1. Price breakdown (Virtual Office review, before payment is collected) */}
                             {selected.detail && isVirtualOffice(selected) && (
                                 <div className="space-y-3">
                                     <p className="text-xs font-semibold text-[#64748B]">Price Breakdown</p>
@@ -796,11 +912,42 @@ export default function AdminQuotationsPage() {
                                         )}
                                     </button>
                                     <p className="text-[11px] text-[#64748B] text-center">
-                                        Sends {selected.detail.email} a link that takes them straight to the payment
-                                        step of this quotation.
+                                        Sends {selected.detail.email} a link to the dedicated payment page for this quotation.
                                     </p>
                                 </div>
                             )}
+
+                            {selected.detail && isVirtualOffice(selected) && (selected.status === "payment_verification" || hasPaid(selected)) && (
+                                <div className="space-y-2.5">
+                                    <p className="text-xs font-semibold text-[#64748B]">Contract</p>
+                                    <button
+                                        onClick={() => handleSendContract(selected)}
+                                        disabled={sendingContractId === selected.id || selected.status === "contract_sent" || selected.status === "completed"}
+                                        className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg bg-[#1B3A8C] text-white text-sm font-semibold hover:bg-[#16316F] transition disabled:opacity-60"
+                                    >
+                                        {sendingContractId === selected.id ? (
+                                            <>
+                                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                                Sending contract…
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FileText className="w-4 h-4" />
+                                                {selected.status === "contract_sent" ? "Contract sent" : "Send contract"}
+                                            </>
+                                        )}
+                                    </button>
+                                    <p className="text-[11px] text-[#64748B] text-center">
+                                        Sends the contract PDF directly to {selected.detail.email}.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* 2. Signatory document and details */}
+                            {selected.detail && <SignatoryCard detail={selected.detail} />}
+
+                            {/* 3. Payment — only shown once the client has actually paid */}
+                            {hasPaid(selected) && <PaymentCard quote={selected} />}
                         </div>
 
                         {/* Footer */}

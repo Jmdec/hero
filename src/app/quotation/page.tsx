@@ -28,7 +28,6 @@ import {
 
 type ServiceId = "private-office" | "virtual-office" | "coworking" | "meeting-room" | "event-space";
 type BranchId = "tower-6789" | "insular-life";
-type PaymentMethod = "qrph" | "online_transfer" | "bank" | null;
 type ModalKey = "privacy" | "success" | "preview" | null;
 
 interface ContactFields {
@@ -113,8 +112,6 @@ const PRIVATE_OFFICE_MAX_SEATS: Record<BranchId, number> = {
   "insular-life": 30,
 };
 
-// ─── API Config ───────────────────────────────────────────────────────────────
-
 const API_BASE_URL = "/api";
 
 const SERVICE_IDS: Record<ServiceId, number> = {
@@ -125,19 +122,11 @@ const SERVICE_IDS: Record<ServiceId, number> = {
   "event-space": 5,
 };
 
-// All services (including Virtual Office) now follow the same flow:
-// Service → Requirements → Contact → Review → Submit → Success Modal
-//
-// Payment for Virtual Office is NO LONGER part of this in-form wizard.
-// Once admin verifies the request, admin sends the client a one-time
-// payment link (?quotation=<id>&token=<token>) via email. Visiting that
-// link renders ONLY the payment step (see PaymentLinkGate below) — the
-// client can never reach payment by simply stepping through the form.
 const BASE_STEPS = ["Service", "Requirements", "Contact", "Review"];
 const VO_STEPS = BASE_STEPS;
 
-const LEASE_TERMS = ["6 Months", "12 Months", "More than 12 Months"];
-const PASS_TYPES = ["Daily", "Weekly", "Monthly"];
+const PRIVATE_TERMS = ["3 Months", "6 Months", "9 Months", "12 Months"];
+const COWORKING_TERMS = ["Daily", "Weekly", "Monthly", "Yearly"];
 const TIME_SLOTS = [
   ["09:00", "9:00 AM"], ["10:00", "10:00 AM"], ["11:00", "11:00 AM"],
   ["13:00", "1:00 PM"], ["14:00", "2:00 PM"], ["15:00", "3:00 PM"], ["16:00", "4:00 PM"],
@@ -152,19 +141,11 @@ const GOVERNMENT_ID_TYPES = [
   "Others",
 ];
 
-// Virtual Office only accepts these 4 ID types — no "Others" option
-const VO_GOVERNMENT_ID_TYPES = [
-  "Passport",
-  "Driver's License",
-  "Philippine National ID (PhilSys ID)",
-  "Professional Regulation Commission (PRC ID)",
-];
-
 // Virtual Office package base monthly fees (before VAT / fees / duration multiplier)
 const VO_PACKAGE_PRICES: Record<string, number> = { Basic: 2000, Standard: 3000, Premium: 5000 };
 const VO_VAT_RATE = 0.12; // 12% VAT
 const VO_CONTRACT_ADMIN_FEE = 500; // flat Contract & Admin Fee
-const VO_MONTHS_OPTIONS = ["1", "3", "6", "12", "24"];
+const VO_MONTHS_OPTIONS = ["1", "3", "6", "12"];
 
 // ─── Validation Helpers ───────────────────────────────────────────────────────
 
@@ -631,7 +612,7 @@ function Step2PrivateOffice({
         </Field>
       </div>
       <Field label="Lease Term" required error={errors.leaseTerm}>
-        <PillSelect options={LEASE_TERMS} value={data.leaseTerm} onChange={(v) => onChange({ leaseTerm: v })} />
+        <PillSelect options={PRIVATE_TERMS} value={data.leaseTerm} onChange={(v) => onChange({ leaseTerm: v })} />
       </Field>
       <Field label="Other Requirements / Conditions">
         <textarea
@@ -823,7 +804,7 @@ function Step2Coworking({
         </Field>
       </div>
       <Field label="Terms" required error={errors.terms}>
-        <PillSelect options={PASS_TYPES} value={data.terms} onChange={(v) => onChange({ terms: v })} />
+        <PillSelect options={COWORKING_TERMS} value={data.terms} onChange={(v) => onChange({ terms: v })} />
       </Field>
       <Field label="Other Requirements">
         <textarea
@@ -950,7 +931,7 @@ function Step3({
   const signatoryUploadRef = useRef<HTMLInputElement>(null);
 
   // VO restricts to 4 accepted ID types (no "Others"); other services keep the full list
-  const idTypeOptions = isVO ? VO_GOVERNMENT_ID_TYPES : GOVERNMENT_ID_TYPES;
+  const idTypeOptions = GOVERNMENT_ID_TYPES;
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -1462,8 +1443,7 @@ function Step4({
         <div className="bg-[#fffaec] border border-[#dbd4bd] rounded-xl px-5 py-4 mb-6 flex items-start gap-3">
           <Wallet className="w-4 h-4 text-[#FFC107]/50 shrink-0 mt-0.5" />
           <p className="text-xs text-gray-800 leading-relaxed">
-            Payment is not collected at this step. Once our team verifies your request, we'll
-            email you a secure link to complete payment for your virtual office service.
+            Once our team verifies your request, we'll email you a secure link to complete payment for your virtual office service.
           </p>
         </div>
       )}
@@ -1502,278 +1482,6 @@ function Step4({
       <Modal open={modal === "privacy"} onClose={() => setModal(null)} title="Privacy Policy">
         <PrivacyPolicyContent />
       </Modal>
-    </div>
-  );
-}
-
-// Standalone Payment Step (Virtual Office only)
-// Rendered ONLY when the client arrives via a valid, admin-issued payment link
-// (?quotation=<id>&token=<token>). It is a self-contained submit step, not part
-// of the numbered wizard — there is no "Back" into the requirements/contact steps.
-
-function StepVOPayment({
-  virtualOffice,
-  paymentMethod,
-  setPaymentMethod,
-  paymentReference,
-  setPaymentReference,
-  paymentProof,
-  setPaymentProof,
-  isSubmitting,
-  onSubmit,
-}: {
-  virtualOffice: VirtualOfficeFields;
-  paymentMethod: PaymentMethod;
-  setPaymentMethod: (m: PaymentMethod) => void;
-  paymentReference: string;
-  setPaymentReference: (value: string) => void;
-  paymentProof: File | null;
-  setPaymentProof: (f: File | null) => void;
-  isSubmitting: boolean;
-  onSubmit: () => void;
-}) {
-  const paymentProofRef = useRef<HTMLInputElement>(null);
-  const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
-
-  const pricing = virtualOffice.package && virtualOffice.months
-    ? computeVirtualOfficeTotal(virtualOffice.package, virtualOffice.months)
-    : null;
-
-  // Only QRPH, Online Bank Transfer, and Bank Deposit are enabled.
-  const paymentOptions: Array<{
-    id: Exclude<PaymentMethod, null>;
-    icon: React.ElementType;
-    label: string;
-    sub: string;
-    details: string[];
-    hasQr?: boolean;
-  }> = [
-      {
-        id: "qrph",
-        icon: QrCode,
-        label: "QRPH",
-        sub: "Scan to pay via any QRPH-enabled app",
-        details: [
-          "Account Name: HERO PH INC.",
-          "Scan the QRPH code using your preferred banking or e-wallet app.",
-          "Use your full name as payment reference.",
-          "Upload your transaction confirmation screenshot for verification.",
-        ],
-        hasQr: true,
-      },
-      {
-        id: "online_transfer",
-        icon: ArrowRightLeft,
-        label: "Online Bank Transfer",
-        sub: "Online bank-to-bank transfer",
-        details: [
-          "Transfer to: HERO PH INC. official bank account",
-          "Include your full name as transfer note/reference.",
-          "Upload the transfer reference screenshot or PDF receipt.",
-        ],
-      },
-      {
-        id: "bank",
-        icon: Landmark,
-        label: "Bank Deposit",
-        sub: "Over-the-counter bank deposit",
-        details: [
-          "Bank: BDO Unibank",
-          "Account Name: HERO PH INC.",
-          "Account Number: 012345678901",
-          "Upload your validated deposit slip or transfer confirmation.",
-        ],
-      },
-    ];
-
-  const selectedPaymentOption = paymentOptions.find((opt) => opt.id === paymentMethod) ?? null;
-  const canProceed =
-    paymentMethod !== null && paymentReference.trim() !== "" && paymentProof !== null;
-
-  return (
-    <div>
-      <h2 className="text-2xl font-bold text-[#0B1F4A] mb-2">Payment & Contract</h2>
-      <p className="text-sm text-[#64748B] mb-6">Choose how you'd like to pay for your virtual office service.</p>
-
-      {/* Summary pill */}
-      <div className="bg-[#EEF2FB] border border-[#C5D2EC] rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-[#1B3A8C] uppercase tracking-wide">Virtual Office — {virtualOffice.package}</p>
-          <p className="text-sm text-[#64748B] mt-0.5">
-            Starting {virtualOffice.startDate || "TBD"} · {virtualOffice.months || "—"} {Number(virtualOffice.months) === 1 ? "month" : "months"}
-          </p>
-        </div>
-        <p className="text-md font-bold text-[#0B1F4A]">
-          {pricing ? peso(pricing.total) : "—"}
-        </p>
-      </div>
-
-      {pricing && (
-        <div className="mb-6">
-          <VOPricingBreakdown pkg={virtualOffice.package} months={virtualOffice.months} />
-        </div>
-      )}
-
-      {/* Payment method selector */}
-      <Field label="Payment Method" required error={!paymentMethod ? "Please select a payment method." : undefined}>
-        <div className="grid sm:grid-cols-3 gap-3 mt-1">
-          {paymentOptions.map((opt) => {
-            const Icon = opt.icon;
-            const active = paymentMethod === opt.id;
-            return (
-              <button
-                type="button"
-                key={opt.id}
-                onClick={() => {
-                  const isAlreadySelected = paymentMethod === opt.id;
-                  setPaymentMethod(opt.id);
-                  if (!isAlreadySelected) {
-                    setPaymentProof(null);
-                  }
-                }}
-                className={`rounded-2xl border-[1.5px] transition-all duration-200 ${active
-                  ? "border-[#1B3A8C] bg-[#EEF2FB] shadow-[inset_3px_0_0_#C9A84C] text-left"
-                  : "border-[#D9E2F0] bg-white hover:border-[#1B3A8C]"
-                  } p-4 text-left`}
-                aria-pressed={active}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <Icon className={`w-5 h-5 ${active ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
-                </div>
-                <p className={`font-bold text-sm ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A]"}`}>{opt.label}</p>
-                <p className="text-xs text-[#64748B]">{opt.sub}</p>
-              </button>
-            );
-          })}
-        </div>
-      </Field>
-
-      {selectedPaymentOption && (
-        <div className="mt-6 bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
-          <p className="text-sm font-bold uppercase tracking-wide text-[#0B1F4A] mb-3">Payment Details</p>
-          <ul className="space-y-1.5">
-            {selectedPaymentOption.details.map((detail) => (
-              <li key={detail} className="text-xs text-[#64748B] leading-relaxed flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#C9A84C] shrink-0" />
-                <span>{detail}</span>
-              </li>
-            ))}
-          </ul>
-
-          {selectedPaymentOption.hasQr && (
-            <div className="mt-3 rounded-xl border border-[#D9E2F0] bg-white p-3">
-              <p className="text-[11px] font-semibold text-[#0B1F4A] mb-2">QRPH Code</p>
-              <div className="flex items-center gap-3">
-                <img
-                  src="/payments/qrph-qr.svg"
-                  alt="QRPH QR"
-                  className="w-24 h-24 rounded-lg border border-[#D9E2F0] bg-white"
-                />
-                <p className="text-[11px] text-[#64748B] leading-relaxed">
-                  Scan using any QRPH-enabled banking or e-wallet app. If you need help, please contact HERO support for the official payment QR.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="mt-6">
-        <Field
-          label="Reference Number"
-          required
-          error={!paymentReference.trim() ? "Please enter your payment reference number." : undefined}
-        >
-          <input
-            type="text"
-            value={paymentReference}
-            onChange={(e) => setPaymentReference(e.target.value)}
-            className={!paymentReference.trim() ? inputErrCls : inputCls}
-            placeholder="e.g. Bank/QRPH transaction reference ID"
-          />
-        </Field>
-      </div>
-
-      <div className="mt-6">
-        <Field label="Upload Receipt" required error={!paymentProof ? "Please upload your receipt." : undefined}>
-          <button
-            type="button"
-            onClick={() => paymentProofRef.current?.click()}
-            className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${paymentProof ? "border-[#1B3A8C] bg-[#EEF2FB]" : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"}`}
-          >
-            <Upload className={`w-5 h-5 ${paymentProof ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
-            <span className={`text-sm font-semibold ${paymentProof ? "text-[#1B3A8C]" : "text-[#64748B]"}`}>
-              {paymentProof ? paymentProof.name : "Click to upload receipt image or PDF"}
-            </span>
-          </button>
-          <input ref={paymentProofRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setPaymentProof(e.target.files?.[0] ?? null)} />
-          <p className="text-xs text-[#64748B] mt-2">Accepted: JPG, PNG, PDF · Max 10 MB</p>
-          {paymentProof && isPreviewableFile(paymentProof) && (
-            <div className="mt-3 rounded-xl border border-[#D9E2F0] bg-white px-3 py-2 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-[#0B1F4A]">Preview uploaded payment proof</p>
-                <p className="text-[11px] text-[#64748B] truncate">{paymentProof.name}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreviewTarget({ title: "Payment Proof Preview", file: paymentProof })}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1B3A8C] hover:underline shrink-0"
-              >
-                <Eye className="w-3.5 h-3.5" />
-                View
-              </button>
-            </div>
-          )}
-        </Field>
-      </div>
-
-      {paymentMethod && (
-        <div className="mt-6 space-y-4">
-          <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
-            <p className="text-sm font-bold uppercase tracking-wide text-[#0B1F4A] mb-2">Payment Summary</p>
-            <p className="text-sm text-[#64748B] leading-relaxed">
-              Selected: <span className="font-semibold text-[#0B1F4A]">{getPaymentMethodLabel(paymentMethod)}</span>
-            </p>
-            <p className="text-sm text-[#64748B] mt-2">
-              Reference No.: <span className="font-semibold text-[#0B1F4A]">{paymentReference || "—"}</span>
-            </p>
-            {pricing && (
-              <p className="text-sm text-[#64748B] mt-2">
-                Amount Due: <span className="font-semibold text-[#0B1F4A]">{peso(pricing.total)}</span>
-              </p>
-            )}
-          </div>
-
-          <div className="bg-[#FFFBF0] border border-[#F0D98A] rounded-xl px-5 py-4 flex items-start gap-3">
-            <Clock className="w-4 h-4 text-[#C9A84C] shrink-0 mt-0.5" />
-            <div className="text-xs text-[#7A5C00] space-y-1 leading-relaxed">
-              <p className="font-semibold">Admin verification within 24 business hours</p>
-              <p>Our admin team will verify your payment within 24 business hours, then formally contact you directly to finalize your contract.</p>
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      <div className="flex justify-end items-center mt-8 pt-6 border-t border-[#D9E2F0]">
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={!canProceed || isSubmitting}
-          className="flex items-center gap-2 px-7 py-3 bg-[#FFC107] text-[#1B3A8C] text-sm font-bold rounded-full hover:bg-[#FFC107]/80 disabled:bg-[#D9E2F0] disabled:text-[#64748B] disabled:cursor-not-allowed transition-all duration-200"
-        >
-          {isSubmitting ? (
-            <>
-              <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              Submitting…
-            </>
-          ) : (
-            <>Confirm & Submit<ChevronRight className="w-4 h-4" /></>
-          )}
-        </button>
-      </div>
-
-      <FilePreviewModal target={previewTarget} onClose={() => setPreviewTarget(null)} />
     </div>
   );
 }
@@ -1874,92 +1582,17 @@ function PaymentLinkInvalid({ message }: { message?: string | null }) {
   );
 }
 
-function PaymentLinkLoading() {
-  return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
-      <span className="inline-block w-8 h-8 rounded-full border-2 border-[#D9E2F0] border-t-[#1B3A8C] animate-spin" />
-      <p className="mt-4 text-sm text-[#64748B]">Verifying your payment link…</p>
-    </div>
-  );
-}
-
-function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
-  const [paymentReference, setPaymentReference] = useState("");
-  const [paymentProof, setPaymentProof] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
-
-  const handleSubmit = async () => {
-    if (!paymentMethod || !paymentReference.trim() || !paymentProof) return;
-    setIsSubmitting(true);
-    setSubmitError(null);
-    try {
-      const formData = new FormData();
-      formData.append("token", context.token);
-      formData.append("payment_method", paymentMethod);
-      formData.append("transaction_id", paymentReference.trim());
-      formData.append("payment_proof", paymentProof);
-
-      // POST /api/quotations/:id/pay
-      // Server MUST re-validate the token server-side before accepting payment.
-      const res = await fetch(
-        `${API_BASE_URL}/quotations/${encodeURIComponent(context.quotationId)}/pay`,
-        { method: "POST", body: formData }
-      );
-
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => null);
-        throw new Error(errBody?.message ?? `Request failed with status ${res.status}`);
-      }
-
-      setSubmitted(true);
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (submitted) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        <div className="bg-white rounded-3xl p-8 md:p-10 shadow-[0_4px_24px_rgba(11,31,74,0.06)] border border-[#D9E2F0]">
-          <SuccessModalContent isVO onClose={() => { }} />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-      <div className="bg-white rounded-3xl p-8 md:p-10 shadow-[0_4px_24px_rgba(11,31,74,0.06)] border border-[#D9E2F0]">
-        {submitError && (
-          <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-300 bg-[#FFF5F5] px-4 py-3 text-sm text-red-600">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            {submitError}
-          </div>
-        )}
-        <StepVOPayment
-          virtualOffice={context.virtualOffice}
-          paymentMethod={paymentMethod}
-          setPaymentMethod={setPaymentMethod}
-          paymentReference={paymentReference}
-          setPaymentReference={setPaymentReference}
-          paymentProof={paymentProof}
-          setPaymentProof={setPaymentProof}
-          isSubmitting={isSubmitting}
-          onSubmit={handleSubmit}
-        />
-      </div>
-    </div>
-  );
-}
-
 export default function GetAQuotePage() {
   const searchParams = useSearchParams();
-  const paymentGate = usePaymentLinkGate();
+
+  useEffect(() => {
+    const quotationId = searchParams.get("quotation");
+    const token = searchParams.get("token");
+    if (!quotationId || !token) return;
+
+    const nextUrl = `/quotation/payment?quotation=${encodeURIComponent(quotationId)}&token=${encodeURIComponent(token)}`;
+    window.location.replace(nextUrl);
+  }, [searchParams]);
 
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<ServiceId | null>(null);
@@ -1983,10 +1616,6 @@ export default function GetAQuotePage() {
   const [privateOffice, setPrivateOffice] = useState<PrivateOfficeFields>({ seats: "", moveInDate: "", leaseTerm: "", otherRequirements: "" });
 
   useEffect(() => {
-    // Skip service/branch prefill when a payment-link is present — that flow
-    // renders its own standalone view and never touches the wizard state.
-    if (paymentGate.hasLinkParams) return;
-
     const branch = searchParams.get("branch");
     const service = searchParams.get("service");
 
@@ -1997,7 +1626,7 @@ export default function GetAQuotePage() {
     if (service && SERVICES.some((s) => s.id === service)) {
       setSelectedService(service as ServiceId);
     }
-  }, [searchParams, paymentGate.hasLinkParams]);
+  }, [searchParams]);
   const [virtualOffice, setVirtualOffice] = useState<VirtualOfficeFields>({ package: "", startDate: "", months: "" });
   const [coworking, setCoworking] = useState<CoworkingFields>({ seats: "", startDate: "", terms: "", otherRequirements: "" });
   const [meetingRoom, setMeetingRoom] = useState<MeetingRoomFields>({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
@@ -2104,9 +1733,6 @@ export default function GetAQuotePage() {
       email: contact.email,
       phone: contact.phone,
       request: notes || null,
-      // Payment fields intentionally omitted at initial submission — Virtual
-      // Office no longer collects payment info in this flow. They are filled
-      // in later via the separate /pay endpoint once admin sends the link.
       payment_method: null,
       transaction_id: null,
       receipt: null,
@@ -2132,6 +1758,7 @@ export default function GetAQuotePage() {
     let pkg: string | null = null;
     let event_type: string | null = null;
     let total = 0;
+    let paymentBreakdown: Record<string, number | string | null> | null = null;
 
     if (selectedService === "private-office") {
       detail.seats = Number(privateOffice.seats) || null;
@@ -2143,14 +1770,23 @@ export default function GetAQuotePage() {
       detail.date = virtualOffice.startDate;
       detail.months = Number(virtualOffice.months) || null;
       const pricing = computeVirtualOfficeTotal(virtualOffice.package, virtualOffice.months);
-      detail.price_breakdown = {
-        package_base_monthly: pricing.base,
-        vat_monthly: pricing.vat,
-        monthly_subtotal: pricing.monthlySubtotal,
-        months: pricing.numMonths,
-        recurring_total: pricing.recurring,
+      paymentBreakdown = {
+        package_price: pricing.base,
+        vat_percentage: VO_VAT_RATE * 100,
+        vat_amount: pricing.vat,
+        duration: pricing.numMonths,
+        subtotal: pricing.recurring,
         contract_admin_fee: pricing.contractAdminFee,
+        total: pricing.total,
       };
+      detail.package_name = virtualOffice.package;
+      detail.package_price = pricing.base;
+      detail.vat_percentage = VO_VAT_RATE * 100;
+      detail.vat_amount = pricing.vat;
+      detail.duration = pricing.numMonths;
+      detail.subtotal = pricing.recurring;
+      detail.contract_admin_fee = pricing.contractAdminFee;
+      detail.total = pricing.total;
       total = pricing.total;
       pkg = virtualOffice.package;
     } else if (selectedService === "coworking") {
@@ -2170,6 +1806,13 @@ export default function GetAQuotePage() {
       detail.duration_type = eventSpace.duration;
       detail.other_requirements = eventSpace.otherRequirements || null;
       event_type = eventSpace.eventType;
+    }
+
+    if (!paymentBreakdown && selectedService) {
+      detail.subtotal = total;
+      detail.total = total;
+      detail.contract_admin_fee = 0;
+      detail.duration = 1;
     }
 
     detail.total = total;
@@ -2196,6 +1839,7 @@ export default function GetAQuotePage() {
       const hasFileUploads = !!contractIdentity.governmentIdFile || !!contractIdentity.signatoryGovernmentIdFile;
       const headers: HeadersInit = {
         Accept: "application/json",
+        "x-send-quotation-email": "true",
       };
 
       let body: BodyInit;
@@ -2282,15 +1926,6 @@ export default function GetAQuotePage() {
     return null;
   };
 
-  // ── Payment-link mode: short-circuit the entire wizard ──
-  if (paymentGate.hasLinkParams) {
-    if (paymentGate.status === "checking") return <PaymentLinkLoading />;
-    if (paymentGate.status === "invalid" || !paymentGate.context) {
-      return <PaymentLinkInvalid message={paymentGate.errorMessage} />;
-    }
-    return <PaymentLinkFlow context={paymentGate.context} />;
-  }
-
   return (
     <div className="min-h-screen bg-white">
 
@@ -2363,7 +1998,7 @@ export default function GetAQuotePage() {
                   </div>
                 )}
 
-                {/* Step 3: Contact (both flows) */}
+                {/* Step 3: Contact */}
                 {step === 3 && (
                   <Step3
                     isVO={isVO}
@@ -2376,9 +2011,7 @@ export default function GetAQuotePage() {
                   />
                 )}
 
-                {/* Step 4: Review — final step, submits directly, for all services
-                    including Virtual Office. Payment is handled later via the
-                    admin-issued payment link, never here. */}
+                {/* Step 4: Review */}
                 {step === 4 && (
                   <Step4
                     selectedService={selectedService}
@@ -2501,19 +2134,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <div className="text-gray-600">{children}</div>
     </div>
   );
-}
-
-function getPaymentMethodLabel(paymentMethod: PaymentMethod | string | null | undefined) {
-  switch (paymentMethod) {
-    case "qrph":
-      return "QRPH";
-    case "online_transfer":
-      return "Online Bank Transfer";
-    case "bank":
-      return "Bank Deposit";
-    default:
-      return paymentMethod || "—";
-  }
 }
 
 function isPreviewableFile(file: File) {

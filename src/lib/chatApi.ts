@@ -68,9 +68,10 @@ export class ChatApiError extends Error {
 
 async function request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    baseUrl: string | null = API_URL
 ): Promise<T> {
-    const url = `${API_URL}/api${endpoint}`;
+    const url = baseUrl ? `${baseUrl}/api${endpoint}` : `/api${endpoint}`;
 
     let response: Response;
 
@@ -92,17 +93,19 @@ async function request<T>(
         );
     }
 
-    let body: any = null;
+    let body: unknown = null;
 
     try {
         body = await response.json();
     } catch { }
 
     if (!response.ok) {
+        const errorBody = body as { message?: string; errors?: Record<string, string[]> } | null;
+
         throw new ChatApiError(
-            body?.message ?? "Request failed.",
+            errorBody?.message ?? "Request failed.",
             response.status,
-            body?.errors
+            errorBody?.errors
         );
     }
 
@@ -190,12 +193,28 @@ export const chatApi = {
      * and can't accept a beacon (which is always a POST), add a
      * `POST /api/chat/{conversation}/close-beacon` route server-side that
      * does the same thing as the PATCH close and swap the URL below.
+     *
+     * NOTE: this also triggers the "email me the transcript on exit" flow.
+     * The actual email send should happen SERVER-SIDE inside the close
+     * handler (so it's reliable even though the browser tab is dying and
+     * can't wait around for a response) — see emailChatHistoryOnExit()
+     * below for the beacon that carries the "please email this" flag.
+     * Required backend route (not present in this repo, needs to be added
+     * to your Laravel API):
+     *   POST /api/chat/{conversation}/close
+     *   -> on close, if inquiry.email_address exists, send the full
+     *      transcript (all ChatMessage rows for that conversation) to
+     *      that email via a Mailable/queued job.
      */
     closeConversationOnExit(conversationId: number) {
         const url = `${API_URL}/api/chat/${conversationId}/close`;
 
+        // send_transcript=1 tells the backend close handler to also email
+        // the visitor their chat history, since this is the exit path.
+        const payload = { send_transcript: true };
+
         if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
-            const blob = new Blob([JSON.stringify({})], {
+            const blob = new Blob([JSON.stringify(payload)], {
                 type: "application/json",
             });
             const ok = navigator.sendBeacon(url, blob);
@@ -206,12 +225,39 @@ export const chatApi = {
             fetch(url, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({}),
+                body: JSON.stringify(payload),
                 keepalive: true,
             }).catch(() => {});
         } catch {
             // Best-effort only — nothing more we can do during teardown.
         }
+    },
+
+    /**
+     * Explicitly (re-)emails the full transcript for a conversation to the
+     * visitor's inquiry email. Used by:
+     *   - the widget, if the visitor asks for a copy mid-chat ("can you
+     *     email me this conversation?")
+     *   - the admin panel, so a team member can resend the history to the
+     *     client on request.
+     *
+     * REQUIRED BACKEND ROUTE (add to Laravel, not present in this repo):
+     *   POST /api/chat/{conversation}/email-history
+     *   Body: { to？: string } // optional override, else uses inquiry.email_address
+     *   -> loads all ChatMessage rows ordered by sent_at, renders a simple
+     *      transcript (sender + timestamp + message), and sends via
+     *      Mail::to($email)->send(new ChatTranscriptMail($conversation, $messages))
+     *   Response: { sent: true, to: "someone@example.com" }
+     */
+    emailChatHistory(conversationId: number, to?: string) {
+        return request<{ sent: boolean; to: string }>(
+            `/chat/${conversationId}/email-history`,
+            {
+                method: "POST",
+                body: JSON.stringify(to ? { to } : {}),
+            },
+            typeof window !== "undefined" ? null : API_URL
+        );
     },
 
     listConversations() {
