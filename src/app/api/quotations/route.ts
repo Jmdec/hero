@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     try {
         const contentType = request.headers.get("content-type") ?? "";
         const shouldSendFrontendEmails = request.headers.get("x-send-quotation-email") === "true";
-        let notificationPayload: QuotationPayload;
+        let notificationPayload: QuotationPayload | null = null;
         let res: Response;
         let paymentProofCopy: QuotationDocumentCopy | null = null;
         let governmentIdCopy: QuotationDocumentCopy | null = null;
@@ -112,36 +112,14 @@ export async function POST(request: NextRequest) {
 
         if (contentType.includes("multipart/form-data")) {
             const formData = await request.formData();
-            const rawPayload = formData.get("payload");
+            const backendFormData = new FormData();
 
-            if (typeof rawPayload !== "string") {
-                return NextResponse.json(
-                    { message: "Missing payload in multipart request." },
-                    { status: 400 }
-                );
-            }
-
-            notificationPayload = JSON.parse(rawPayload) as QuotationPayload;
-
-            const forwardForm = new FormData();
-            forwardForm.append("payload", rawPayload);
-
-            const paymentProof = formData.get("payment_proof");
-            if (paymentProof instanceof File) {
-                paymentProofCopy = await fileToDocumentCopy(paymentProof);
-                forwardForm.append("payment_proof", paymentProof, paymentProof.name);
-            }
-
-            const governmentId = formData.get("government_id");
-            if (governmentId instanceof File) {
-                governmentIdCopy = await fileToDocumentCopy(governmentId);
-                forwardForm.append("government_id", governmentId, governmentId.name);
-            }
-
-            const signatoryGovernmentId = formData.get("signatory_government_id");
-            if (signatoryGovernmentId instanceof File) {
-                signatoryGovernmentIdCopy = await fileToDocumentCopy(signatoryGovernmentId);
-                forwardForm.append("signatory_government_id", signatoryGovernmentId, signatoryGovernmentId.name);
+            for (const [key, value] of formData.entries()) {
+                if (value instanceof File) {
+                    backendFormData.append(key, value, value.name);
+                } else {
+                    backendFormData.append(key, value);
+                }
             }
 
             res = await fetch(`${LARAVEL_API_URL}/quotations`, {
@@ -149,7 +127,7 @@ export async function POST(request: NextRequest) {
                 headers: {
                     Accept: "application/json",
                 },
-                body: forwardForm,
+                body: backendFormData,
             });
         } else {
             const body = await request.json();
@@ -175,7 +153,9 @@ export async function POST(request: NextRequest) {
         }
 
         const data = await res.json().catch(() => null);
-        const savedQuotation = (data as QuotationPayload | null) ?? notificationPayload;
+        const savedQuotation = ((data && typeof data === "object" && "data" in data)
+            ? (data as any).data
+            : data) as QuotationPayload | null ?? (notificationPayload ?? null);
 
         // Fallback: when in-memory multipart File copies are missing, pull the persisted
         // files from Laravel storage URLs so client/admin emails still include attachments.
@@ -205,14 +185,18 @@ export async function POST(request: NextRequest) {
 
         // Fire-and-forget — quotation is already saved, so a mail failure
         // shouldn't block the user's response. Errors are logged internally.
-        if (shouldSendFrontendEmails) {
-            sendQuotationNotifications(savedQuotation, {
-                paymentProofCopy,
-                governmentIdCopy,
-                signatoryGovernmentIdCopy,
-            }).catch((err) => {
-                console.error("Quotation email notification error:", err);
-            });
+        if (shouldSendFrontendEmails && savedQuotation) {
+            void (async () => {
+                try {
+                    await sendQuotationNotifications(savedQuotation, {
+                        paymentProofCopy,
+                        governmentIdCopy,
+                        signatoryGovernmentIdCopy,
+                    });
+                } catch (err) {
+                    console.error("Quotation email notification error:", err);
+                }
+            })();
         }
 
         return NextResponse.json(data, { status: 201 });

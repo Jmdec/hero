@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import {
     MessageCircle,
     X,
@@ -12,7 +12,6 @@ import {
     Loader2,
     UserRound,
     ExternalLink,
-    Mail,
 } from "lucide-react";
 import { chatApi } from "../lib/chatApi";
 
@@ -22,6 +21,7 @@ interface CTA {
 }
 
 interface Message {
+    id: string;
     type: "bot" | "user";
     text: string;
     time: string;
@@ -352,30 +352,25 @@ type ConversationWithStatus = ConversationState & {
 const formatTime = () =>
     new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+// Stable, collision-safe id for React keys / animation identity.
+const makeId = () =>
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
 const WELCOME_MESSAGE: Message = {
+    id: "welcome",
     type: "bot",
     text: "Hi there! 👋 I'm your HERO assistant. We deliver premium serviced offices and flexible workspace solutions in the Philippines. How can I help you today?",
     time: formatTime(),
 };
 
-// Text shown when a live agent ends the conversation and control returns to the AI assistant.
 const AGENT_ENDED_MESSAGE =
     "🔴 The live agent ended the chat. You're back with our AI assistant — feel free to keep chatting or pick a quick reply below.";
 
-// Shown immediately after a successful agent request, separate from the
-// longer "here's how to reach us in the meantime" reply, so the visitor
-// gets an unambiguous confirmation that a human is on the way.
 const AGENT_CONNECTING_MESSAGE =
-    "🔄 You'll be connected to an agent shortly. Please stay on this chat — we'll notify you the moment someone joins.";
+    "You will be connected to an agent. Please stay on this chat — we'll notify you the moment someone joins.";
 
-/* ------------------------------------------------------------------ */
-/*  Business hours                                                     */
-/*  Tower 6789 runs a Mon–Fri, 8AM–8PM live-chat desk. Insular Life is  */
-/*  staffed 24/7 on-site, but until the two teams share one chat queue  */
-/*  the widget checks against Tower 6789's hours for live-agent chat.   */
-/*  Update WINDOW below (or wire in a location switch) if Insular's     */
-/*  24/7 desk should also answer the widget directly.                   */
-/* ------------------------------------------------------------------ */
 const BUSINESS_HOURS_WINDOW = {
     days: [1, 2, 3, 4, 5], // Mon–Fri
     openHour: 8,
@@ -403,7 +398,7 @@ const PREFERRED_CONTACT_RECEIVED_MESSAGE =
 // CTA links: update these paths to match your actual site routes.
 // -------------------------------------------------------------------
 const CTA_LINKS = {
-    quote: { label: "Get a Quote", href: "/get-a-quote" },
+    quote: { label: "Request a Quotation", href: "/quotation" },
     privateOffice: { label: "View Private Offices", href: "/spaces/private-office" },
     virtualOffice: { label: "View Virtual Office Plans", href: "/spaces/virtual-office" },
     coworking: { label: "View Co-working Space", href: "/spaces/co-working" },
@@ -555,9 +550,6 @@ const BOT_RULES: BotRule[] = [
 const FALLBACK_REPLY =
     "Thanks for your message! I'm not sure I fully understood that, but here's what I can help with — our services, private offices, virtual offices, co-working spaces, meeting rooms, pricing, or contact details. You can also tap one of the quick replies below, or tap \"Talk to an Agent\" for a live team member.";
 
-// Keywords that trigger an on-demand transcript email mid-chat (separate
-// from the BOT_RULES text match above, so we can also fire the actual API
-// call, not just a canned reply).
 const HISTORY_REQUEST_KEYWORDS = [
     "email me this",
     "email me the chat",
@@ -568,26 +560,72 @@ const HISTORY_REQUEST_KEYWORDS = [
     "copy of our chat",
 ];
 
-/**
- * Matches free-typed user text against BOT_RULES and returns a canned reply.
- * Fully local — no network request, no API key, no OpenAI dependency.
- */
 function getLocalBotReply(userText: string): { text: string; cta?: CTA } {
     const text = userText.toLowerCase();
 
     for (const rule of BOT_RULES) {
         if (rule.keywords.some((kw) => text.includes(kw))) {
-            return { text: rule.reply, cta: rule.cta };
+            return {
+                text: rule.reply,
+                cta: rule.cta ?? getContextualCta(userText),
+            };
         }
     }
 
-    return { text: FALLBACK_REPLY };
+    return {
+        text: FALLBACK_REPLY,
+        cta: getContextualCta(userText) ?? CTA_LINKS.services,
+    };
 }
 
 function wantsChatHistory(userText: string): boolean {
     const text = userText.toLowerCase();
     return HISTORY_REQUEST_KEYWORDS.some((kw) => text.includes(kw));
 }
+
+function getContextualCta(userText: string): CTA | undefined {
+    const text = userText.toLowerCase();
+
+    if (/(quote|quotation|pricing|price|cost|estimate|how much)/.test(text)) {
+        return CTA_LINKS.quote;
+    }
+
+    if (/(private office|office space|desk space)/.test(text)) {
+        return CTA_LINKS.privateOffice;
+    }
+
+    if (/(virtual office|virtual address|mail handling)/.test(text)) {
+        return CTA_LINKS.virtualOffice;
+    }
+
+    if (/(coworking|co-working|shared desk|hot desk)/.test(text)) {
+        return CTA_LINKS.coworking;
+    }
+
+    if (/(meeting room|conference room|boardroom)/.test(text)) {
+        return CTA_LINKS.meetingRooms;
+    }
+
+    if (/(service|services|what do you offer|offer)/.test(text)) {
+        return CTA_LINKS.services;
+    }
+
+    if (/(contact|email|phone number|reach you|address|location|where are you)/.test(text)) {
+        return CTA_LINKS.contact;
+    }
+
+    return undefined;
+}
+
+const humanDelay = (replyLength = 0) => {
+    const base = 450;
+    const variance = Math.random() * 350; // 0–350ms jitter
+    const lengthBump = Math.min(replyLength * 3, 500); // cap the length bonus
+    return new Promise((res) => setTimeout(res, base + variance + lengthBump));
+};
+
+const quickReplyDelay = () =>
+    new Promise((res) => setTimeout(res, 350 + Math.random() * 200));
 
 const Chatbot = () => {
     const [isStarted, setIsStarted] = useState(false);
@@ -625,31 +663,20 @@ const Chatbot = () => {
     const [agreedToPolicy, setAgreedToPolicy] = useState(false);
     const [agreementTouched, setAgreementTouched] = useState(false);
     const [agentRequested, setAgentRequested] = useState(false);
+    const [agentRequestInFlight, setAgentRequestInFlight] = useState(false);
     const [conversationClosed, setConversationClosed] = useState(false);
-    // True while we've asked an out-of-hours visitor for their preferred
-    // contact time/method and are waiting on their reply.
     const [awaitingPreferredContact, setAwaitingPreferredContact] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Tracks the conversation's last known status between polls, so we can
-    // detect the transition "agent was handling this chat" -> "agent ended it".
-    // ADJUST THE FIELD NAME / VALUES below to match your actual chatApi contract
-    // (e.g. `status`, `agent_status`, a boolean `agent_active`, etc.)
     const previousStatusRef = useRef<string | null>(null);
 
-    // Synchronous guard against double-firing "Talk to an Agent" (or any
-    // action that pushes a user + bot message pair). React state updates
-    // are async, so relying on `agentRequested` alone leaves a window where
-    // a fast double-tap/double-click fires the handler twice before the
-    // state re-render disables the button — this ref closes that window
-    // immediately, before the first `await` even runs.
     const agentRequestInFlightRef = useRef(false);
+    const isClosingChatRef = useRef(false);
 
-    // AI handles every inquiry first; "Talk to an Agent" is just one of the
-    // quick replies below, not a gate the visitor has to pass through
-    // before they can chat at all.
+    const scrollRafRef = useRef<number | null>(null);
+
     const quickReplies = [
         "Private Office",
         "Virtual Office",
@@ -660,13 +687,19 @@ const Chatbot = () => {
         "Talk to an Agent",
     ];
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
+    const scrollToBottom = useCallback(() => {
+        if (scrollRafRef.current !== null) {
+            cancelAnimationFrame(scrollRafRef.current);
+        }
+        scrollRafRef.current = requestAnimationFrame(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+            scrollRafRef.current = null;
+        });
+    }, []);
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, isTyping]);
+    }, [messages, isTyping, scrollToBottom]);
 
     useEffect(() => {
         if (isChatOpen && leadSubmitted) {
@@ -685,7 +718,8 @@ const Chatbot = () => {
 
                 const mappedMessages: Message[] = (
                     latestConversation.messages ?? []
-                ).map((message) => ({
+                ).map((message, idx) => ({
+                    id: `remote-${conversation.id}-${idx}-${message.sent_at}`,
                     type: message.sender === "user" ? "user" : "bot",
                     text: message.message,
                     time: new Date(message.sent_at).toLocaleTimeString([], {
@@ -694,11 +728,6 @@ const Chatbot = () => {
                     }),
                 }));
 
-                // NOTE: this reads `status` (falling back to `agent_status`) off the
-                // conversation payload. Expected values: 'agent_requested' | 'agent_active'
-                // while a live agent owns the chat, and 'agent_closed' (or 'ai' / 'closed')
-                // once the admin ends it and control returns to the AI assistant.
-                // Update these strings to match whatever your backend actually sends.
                 const latestConversationWithStatus =
                     latestConversation as ConversationWithStatus;
 
@@ -733,6 +762,7 @@ const Chatbot = () => {
                         ? [
                             ...mappedMessages,
                             {
+                                id: makeId(),
                                 type: "bot" as const,
                                 text: AGENT_ENDED_MESSAGE,
                                 time: formatTime(),
@@ -748,8 +778,6 @@ const Chatbot = () => {
                 });
 
                 if (agentJustEnded) {
-                    // Loop back to AI mode: clear the agent-requested flag and any
-                    // stale error state so the assistant flow resumes cleanly.
                     setAgentRequested(false);
                     agentRequestInFlightRef.current = false;
                     setSendError("");
@@ -762,12 +790,6 @@ const Chatbot = () => {
         return () => window.clearInterval(interval);
     }, [conversation?.id, leadSubmitted]);
 
-    const humanDelay = () =>
-        new Promise((res) => setTimeout(res, 1200 + Math.random() * 1300));
-
-    // Fires the "email me the transcript" request against the backend.
-    // Non-blocking / best-effort: failures don't interrupt the chat flow,
-    // they just don't get a confirmation email.
     const requestTranscriptEmail = useCallback(
         async (conversationId: number | undefined) => {
             if (!conversationId) return;
@@ -783,14 +805,13 @@ const Chatbot = () => {
     );
 
     const handleCloseChat = async () => {
+        isClosingChatRef.current = true;
+
         if (leadSubmitted && conversation?.id && !conversationClosed) {
             try {
-                // closeConversationOnExit also flags the backend to email the
-                // visitor their transcript (see chatApi.ts) — reused here for
-                // the explicit "X" close as well as the real tab-exit case
-                // below, so however the visitor leaves, they get a copy.
+                // Closing the chat should automatically email the transcript to the
+                // visitor without requiring a separate manual trigger.
                 await chatApi.closeConversation(conversation.id);
-                void requestTranscriptEmail(conversation.id);
             } catch {
                 // Ignore close failures and still mark the conversation ended locally.
             }
@@ -799,6 +820,7 @@ const Chatbot = () => {
             setMessages((prev) => [
                 ...prev,
                 {
+                    id: makeId(),
                     type: "bot",
                     text: "This conversation has ended. We've emailed you a copy of this chat for your records. 📧",
                     time: formatTime(),
@@ -807,24 +829,27 @@ const Chatbot = () => {
         }
 
         setIsChatOpen(false);
+
+        window.setTimeout(() => {
+            isClosingChatRef.current = false;
+        }, 0);
     };
 
-    // Real browser/tab exit — separate from the in-widget "X" close above,
-    // since this has to survive page teardown (sendBeacon/keepalive), and
-    // fires the same "email transcript" flag server-side.
     useEffect(() => {
         const handleBeforeUnload = () => {
+            if (isClosingChatRef.current) {
+                return;
+            }
+
             if (leadSubmitted && conversation?.id && !conversationClosed) {
                 chatApi.closeConversationOnExit(conversation.id);
             }
         };
 
         window.addEventListener("beforeunload", handleBeforeUnload);
-        window.addEventListener("pagehide", handleBeforeUnload);
 
         return () => {
             window.removeEventListener("beforeunload", handleBeforeUnload);
-            window.removeEventListener("pagehide", handleBeforeUnload);
         };
     }, [leadSubmitted, conversation?.id, conversationClosed]);
 
@@ -870,6 +895,10 @@ const Chatbot = () => {
         [],
     );
 
+    const handleCtaClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+        event.stopPropagation();
+    };
+
     const handleQuickReply = async (reply: string) => {
         if (conversationClosed) return;
 
@@ -883,14 +912,19 @@ const Chatbot = () => {
 
         const time = formatTime();
 
-        setMessages((prev) => [...prev, { type: "user", text: reply, time }]);
+        setMessages((prev) => [
+            ...prev,
+            { id: makeId(), type: "user", text: reply, time },
+        ]);
         setIsTyping(true);
         setSendError("");
 
         const activeConversation = await ensureConversation();
         await persistMessage(activeConversation, "user", reply);
 
-        await humanDelay();
+        // Quick replies are deterministic — no need to wait as long as a
+        // "the bot is thinking" free-text reply.
+        await quickReplyDelay();
         setIsTyping(false);
 
         // Quick reply buttons always map straight to their predefined answer.
@@ -901,7 +935,7 @@ const Chatbot = () => {
 
         setMessages((prev) => [
             ...prev,
-            { type: "bot", text: replyText, time: formatTime(), cta },
+            { id: makeId(), type: "bot", text: replyText, time: formatTime(), cta },
         ]);
         void persistMessage(activeConversation, "assistant", replyText);
     };
@@ -914,23 +948,27 @@ const Chatbot = () => {
             conversationClosed ||
             agentRequested ||
             awaitingPreferredContact ||
-            agentRequestInFlightRef.current
+            agentRequestInFlight
         ) {
             return;
         }
+        setAgentRequestInFlight(true);
         agentRequestInFlightRef.current = true;
 
         const time = formatTime();
         const userText = "I'd like to talk to a live agent.";
 
-        setMessages((prev) => [...prev, { type: "user", text: userText, time }]);
+        setMessages((prev) => [
+            ...prev,
+            { id: makeId(), type: "user", text: userText, time },
+        ]);
         setIsTyping(true);
         setSendError("");
 
         const activeConversation = await ensureConversation();
         void persistMessage(activeConversation, "user", userText);
 
-        await humanDelay();
+        await quickReplyDelay();
         setIsTyping(false);
 
         // Outside business hours: collect a preferred contact time/method
@@ -938,10 +976,17 @@ const Chatbot = () => {
         if (!isAgentAvailableNow()) {
             setMessages((prev) => [
                 ...prev,
-                { type: "bot", text: OUT_OF_HOURS_MESSAGE, time: formatTime() },
+                {
+                    id: makeId(),
+                    type: "bot",
+                    text: OUT_OF_HOURS_MESSAGE,
+                    time: formatTime(),
+                    cta: CTA_LINKS.contact,
+                },
             ]);
             void persistMessage(activeConversation, "assistant", OUT_OF_HOURS_MESSAGE);
             setAwaitingPreferredContact(true);
+            setAgentRequestInFlight(false);
             agentRequestInFlightRef.current = false;
             return;
         }
@@ -964,16 +1009,33 @@ const Chatbot = () => {
             // "here's how to reach us" paragraph below.
             setMessages((prev) => [
                 ...prev,
-                { type: "bot", text: AGENT_CONNECTING_MESSAGE, time: formatTime() },
+                {
+                    id: makeId(),
+                    type: "bot",
+                    text: AGENT_CONNECTING_MESSAGE,
+                    time: formatTime(),
+                    cta: CTA_LINKS.contact,
+                },
             ]);
             void persistMessage(activeConversation, "assistant", AGENT_CONNECTING_MESSAGE);
+
+            // Small beat before the follow-up message lands, so the two bot
+            // bubbles don't appear in the same instant (feels more like two
+            // real thoughts rather than one message that got split).
+            await new Promise((res) => setTimeout(res, 500));
 
             const agentReply =
                 "In the meantime, you can also reach us directly:\n\n📧 info@heroph.net\n📞 Mon–Fri, 8AM–8PM (Tower 6789) or 24/7 (Insular Life)\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
 
             setMessages((prev) => [
                 ...prev,
-                { type: "bot", text: agentReply, time: formatTime() },
+                {
+                    id: makeId(),
+                    type: "bot",
+                    text: agentReply,
+                    time: formatTime(),
+                    cta: CTA_LINKS.contact,
+                },
             ]);
             void persistMessage(activeConversation, "assistant", agentReply);
         } catch {
@@ -983,6 +1045,7 @@ const Chatbot = () => {
             setMessages((prev) => [
                 ...prev,
                 {
+                    id: makeId(),
                     type: "bot",
                     text: "⚠️ We could not connect you to an agent right now. Please try again.",
                     time: formatTime(),
@@ -990,6 +1053,7 @@ const Chatbot = () => {
             ]);
             setAgentRequested(false);
         } finally {
+            setAgentRequestInFlight(false);
             agentRequestInFlightRef.current = false;
         }
     };
@@ -999,7 +1063,12 @@ const Chatbot = () => {
         if (!message.trim()) return;
 
         const time = formatTime();
-        const userMessage: Message = { type: "user", text: message, time };
+        const userMessage: Message = {
+            id: makeId(),
+            type: "user",
+            text: message,
+            time,
+        };
 
         setMessages((prev) => [...prev, userMessage]);
         setMessage("");
@@ -1013,7 +1082,7 @@ const Chatbot = () => {
         // agent request), the next thing the visitor types is treated as
         // that answer instead of routed through the local bot rules.
         if (awaitingPreferredContact) {
-            await humanDelay();
+            await quickReplyDelay();
             setIsTyping(false);
             setAwaitingPreferredContact(false);
 
@@ -1032,9 +1101,11 @@ const Chatbot = () => {
             setMessages((prev) => [
                 ...prev,
                 {
+                    id: makeId(),
                     type: "bot",
                     text: PREFERRED_CONTACT_RECEIVED_MESSAGE,
                     time: formatTime(),
+                    cta: CTA_LINKS.contact,
                 },
             ]);
             void persistMessage(
@@ -1045,14 +1116,16 @@ const Chatbot = () => {
             return;
         }
 
-        await humanDelay();
-
         // Fully local reply — no fetch, no API, no OpenAI dependency.
         const { text: replyText, cta } = getLocalBotReply(userMessage.text);
+
+        // Length-aware delay makes longer answers feel like they took a
+        // moment longer to "type" without ever stalling.
+        await humanDelay(replyText.length);
         setIsTyping(false);
         setMessages((prev) => [
             ...prev,
-            { type: "bot", text: replyText, time: formatTime(), cta },
+            { id: makeId(), type: "bot", text: replyText, time: formatTime(), cta },
         ]);
         void persistMessage(activeConversation, "assistant", replyText);
 
@@ -1127,7 +1200,15 @@ const Chatbot = () => {
             }
 
             const greeting = `Thanks, ${leadInfo.name.trim()}! Your details have been received. How can I help you today?`;
-            setMessages([{ type: "bot", text: greeting, time: formatTime() }]);
+            setMessages([
+                {
+                    id: makeId(),
+                    type: "bot",
+                    text: greeting,
+                    time: formatTime(),
+                    cta: CTA_LINKS.services,
+                },
+            ]);
             await persistMessage(newConversation, "assistant", greeting);
 
             // AI handles the inquiry immediately — no extra step needed before chatting.
@@ -1163,427 +1244,464 @@ const Chatbot = () => {
             )}
 
             {/* Chat window */}
-            {isChatOpen && (
-                <div
-                    role="dialog"
-                    aria-label="HERO Serviced Office chat"
-                    className="fixed bottom-6 right-5 z-1000 w-[calc(100vw-40px)] h-140 lg:h-145 md:w-100 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-100 animate-[chatIn_0.2s_ease-out]"                >
-                    <style>{`
-                        @keyframes chatIn {
-                            from { opacity: 0; transform: translateY(12px) scale(0.98); }
-                            to { opacity: 1; transform: translateY(0) scale(1); }
-                        }
-                        @media (prefers-reduced-motion: reduce) {
-                            * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-                        }
-                    `}</style>
+            <AnimatePresence>
+                {isChatOpen && (
+                    <motion.div
+                        role="dialog"
+                        aria-label="HERO Serviced Office chat"
+                        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 12, scale: 0.98 }}
+                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                        className="fixed bottom-6 right-5 z-1000 w-[calc(100vw-40px)] h-140 lg:h-145 md:w-100 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-100"
+                    >
+                        <style>{`
+                            @media (prefers-reduced-motion: reduce) {
+                                * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+                            }
+                        `}</style>
 
-                    {/* Header */}
-                    <div className="bg-[#1B3A8C] px-4 py-3 flex items-center justify-between shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-                                <Image
-                                    src="/header_logo_icon.png"
-                                    alt="HERO Serviced Office Logo"
-                                    width={24}
-                                    height={24}
-                                    className="w-6 h-6 object-contain"
-                                />
-                            </div>
-
-                            <div>
-                                <p className="text-white font-semibold text-md leading-tight">
-                                    HERO Serviced Office
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={handleCloseChat}
-                            className="text-white/70 hover:text-white hover:bg-white/15 rounded-full p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-white"
-                            aria-label="Close chat"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
-
-                    {/* Body */}
-                    <div className="flex-1 overflow-y-auto bg-gray-50">
-                        {/* Resuming previous session */}
-                        {isResumingSession && (
-                            <div className="h-full flex flex-col items-center justify-center gap-3 text-gray-400">
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                <p className="text-xs">Loading your conversation…</p>
-                            </div>
-                        )}
-
-                        {/* Welcome screen */}
-                        {!isResumingSession && !isStarted && (
-                            <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-5">
-                                <div className="w-16 h-16 rounded-2xl bg-[#1B3A8C] flex items-center justify-center shadow-lg">
-                                    <span className="text-white text-2xl font-bold">H</span>
+                        {/* Header */}
+                        <div className="bg-[#1B3A8C] px-4 py-3 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+                                    <Image
+                                        src="/header_logo_icon.png"
+                                        alt="HERO Serviced Office Logo"
+                                        width={24}
+                                        height={24}
+                                        className="w-6 h-6 object-contain"
+                                    />
                                 </div>
+
                                 <div>
-                                    <h2 className="text-lg font-bold text-gray-900">
-                                        Welcome to HERO
-                                    </h2>
-                                    <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                                        I&apos;m your HERO Assistant. Before we begin, we&apos;ll
-                                        collect a few details so we can better serve you.
+                                    <p className="text-white font-semibold text-md leading-tight">
+                                        HERO Serviced Office
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => setIsStarted(true)}
-                                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#1B3A8C] text-white text-sm font-medium hover:bg-[#16318a] active:scale-95 transition-all shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
-                                >
-                                    Get started <ChevronRight className="w-4 h-4" />
-                                </button>
-                                <p className="text-xs text-gray-400">
-                                    Powered by HERO Serviced Office
-                                </p>
                             </div>
-                        )}
+                            <button
+                                onClick={handleCloseChat}
+                                className="text-white/70 hover:text-white hover:bg-white/15 rounded-full p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-white"
+                                aria-label="Close chat"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
 
-                        {/* Lead form */}
-                        {!isResumingSession && isStarted && !leadSubmitted && (
-                            <div className="p-5 space-y-3">
-                                <div className="text-center mb-4">
-                                    <h2 className="text-lg font-bold text-gray-900">
-                                        Your contact details
-                                    </h2>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Please fill in your details before continuing.
-                                    </p>
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto bg-gray-50">
+                            {/* Resuming previous session */}
+                            {isResumingSession && (
+                                <div className="h-full flex flex-col items-center justify-center gap-3 text-gray-400">
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <p className="text-xs">Loading your conversation…</p>
                                 </div>
+                            )}
 
-                                {(
-                                    [
-                                        { key: "name", placeholder: "Full name", type: "text" },
-                                        {
-                                            key: "email",
-                                            placeholder: "Email address",
-                                            type: "email",
-                                        },
-                                        { key: "phone", placeholder: "Phone number", type: "tel" },
-                                        {
-                                            key: "company",
-                                            placeholder: "Company name (optional)",
-                                            type: "text",
-                                        },
-                                    ] as { key: LeadField; placeholder: string; type: string }[]
-                                ).map((field) => {
-                                    const hasError = touched[field.key] && fieldErrors[field.key];
-                                    return (
-                                        <div key={field.key} className="space-y-1">
+                            {/* Welcome screen */}
+                            {!isResumingSession && !isStarted && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="h-full flex flex-col items-center justify-center text-center px-6 gap-5"
+                                >
+                                    <div className="w-16 h-16 rounded-2xl bg-[#1B3A8C] flex items-center justify-center shadow-lg">
+                                        <span className="text-white text-2xl font-bold">H</span>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg font-bold text-gray-900">
+                                            Welcome to HERO
+                                        </h2>
+                                        <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                                            I&apos;m your HERO Assistant. Before we begin, we&apos;ll
+                                            collect a few details so we can better serve you.
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsStarted(true)}
+                                        className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#1B3A8C] text-white text-sm font-medium hover:bg-[#16318a] active:scale-95 transition-all shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
+                                    >
+                                        Get started <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                    <p className="text-xs text-gray-400">
+                                        Powered by HERO Serviced Office
+                                    </p>
+                                </motion.div>
+                            )}
+
+                            {/* Lead form */}
+                            {!isResumingSession && isStarted && !leadSubmitted && (
+                                <motion.div
+                                    initial={{ opacity: 0, x: 12 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                                    className="p-5 space-y-3"
+                                >
+                                    <div className="text-center mb-4">
+                                        <h2 className="text-lg font-bold text-gray-900">
+                                            Your contact details
+                                        </h2>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Please fill in your details before continuing.
+                                        </p>
+                                    </div>
+
+                                    {(
+                                        [
+                                            { key: "name", placeholder: "Full name", type: "text" },
+                                            {
+                                                key: "email",
+                                                placeholder: "Email address",
+                                                type: "email",
+                                            },
+                                            { key: "phone", placeholder: "Phone number", type: "tel" },
+                                            {
+                                                key: "company",
+                                                placeholder: "Company name (optional)",
+                                                type: "text",
+                                            },
+                                        ] as { key: LeadField; placeholder: string; type: string }[]
+                                    ).map((field) => {
+                                        const hasError = touched[field.key] && fieldErrors[field.key];
+                                        return (
+                                            <div key={field.key} className="space-y-1">
+                                                <input
+                                                    type={field.type}
+                                                    placeholder={field.placeholder}
+                                                    value={leadInfo[field.key]}
+                                                    onChange={(e) =>
+                                                        handleFieldChange(field.key, e.target.value)
+                                                    }
+                                                    onBlur={() => handleFieldBlur(field.key)}
+                                                    aria-invalid={Boolean(hasError)}
+                                                    aria-describedby={
+                                                        hasError ? `${field.key}-error` : undefined
+                                                    }
+                                                    disabled={isSubmittingLead}
+                                                    className={`w-full border rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${hasError
+                                                        ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-200"
+                                                        : touched[field.key] &&
+                                                            !fieldErrors[field.key] &&
+                                                            leadInfo[field.key]
+                                                            ? "border-emerald-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100"
+                                                            : "border-gray-200 focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20"
+                                                        }`}
+                                                />
+                                                <AnimatePresence>
+                                                    {hasError && (
+                                                        <motion.p
+                                                            initial={{ opacity: 0, height: 0 }}
+                                                            animate={{ opacity: 1, height: "auto" }}
+                                                            exit={{ opacity: 0, height: 0 }}
+                                                            transition={{ duration: 0.15 }}
+                                                            id={`${field.key}-error`}
+                                                            className="text-[11px] text-red-500 pl-1 flex items-center gap-1"
+                                                        >
+                                                            <AlertCircle className="w-3 h-3 shrink-0" />{" "}
+                                                            {fieldErrors[field.key]}
+                                                        </motion.p>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        );
+                                    })}
+
+                                    <div className="space-y-1.5 py-3">
+                                        <label className="flex items-start gap-2 text-[11px] text-gray-500 cursor-pointer">
                                             <input
-                                                type={field.type}
-                                                placeholder={field.placeholder}
-                                                value={leadInfo[field.key]}
-                                                onChange={(e) =>
-                                                    handleFieldChange(field.key, e.target.value)
-                                                }
-                                                onBlur={() => handleFieldBlur(field.key)}
-                                                aria-invalid={Boolean(hasError)}
-                                                aria-describedby={
-                                                    hasError ? `${field.key}-error` : undefined
-                                                }
+                                                type="checkbox"
+                                                checked={agreedToPolicy}
+                                                onChange={(e) => {
+                                                    setAgreedToPolicy(e.target.checked);
+                                                    setAgreementTouched(true);
+                                                }}
                                                 disabled={isSubmittingLead}
-                                                className={`w-full border rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${hasError
-                                                    ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-200"
-                                                    : touched[field.key] &&
-                                                        !fieldErrors[field.key] &&
-                                                        leadInfo[field.key]
-                                                        ? "border-emerald-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100"
-                                                        : "border-gray-200 focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20"
-                                                    }`}
+                                                aria-invalid={agreementTouched && !agreedToPolicy}
+                                                className="mt-0.5 w-3.5 h-3.5 rounded border-gray-300 text-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/40 shrink-0"
                                             />
-                                            {hasError && (
-                                                <p
-                                                    id={`${field.key}-error`}
+                                            <span>
+                                                I agree to the{" "}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setModal("privacy")}
+                                                    className="text-[#1565C0] underline hover:text-[#1B3A8C] transition-colors"
+                                                >
+                                                    Privacy Policy
+                                                </button>{" "}
+                                                and{" "}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setModal("terms")}
+                                                    className="text-[#1565C0] underline hover:text-[#1B3A8C] transition-colors"
+                                                >
+                                                    Terms of Service
+                                                </button>
+                                                .
+                                            </span>
+                                        </label>
+                                        <AnimatePresence>
+                                            {agreementTouched && !agreedToPolicy && (
+                                                <motion.p
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: "auto" }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    transition={{ duration: 0.15 }}
                                                     className="text-[11px] text-red-500 pl-1 flex items-center gap-1"
                                                 >
-                                                    <AlertCircle className="w-3 h-3 shrink-0" />{" "}
-                                                    {fieldErrors[field.key]}
-                                                </p>
+                                                    <AlertCircle className="w-3 h-3 shrink-0" /> Please accept
+                                                    the Privacy Policy and Terms of Service to continue.
+                                                </motion.p>
                                             )}
-                                        </div>
-                                    );
-                                })}
+                                        </AnimatePresence>
+                                    </div>
 
-                                <div className="space-y-1.5 py-3">
-                                    <label className="flex items-start gap-2 text-[11px] text-gray-500 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={agreedToPolicy}
-                                            onChange={(e) => {
-                                                setAgreedToPolicy(e.target.checked);
-                                                setAgreementTouched(true);
-                                            }}
-                                            disabled={isSubmittingLead}
-                                            aria-invalid={agreementTouched && !agreedToPolicy}
-                                            className="mt-0.5 w-3.5 h-3.5 rounded border-gray-300 text-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/40 shrink-0"
-                                        />
-                                        <span>
-                                            I agree to the{" "}
-                                            <button
-                                                type="button"
-                                                onClick={() => setModal("privacy")}
-                                                className="text-[#1565C0] underline hover:text-[#1B3A8C] transition-colors"
-                                            >
-                                                Privacy Policy
-                                            </button>{" "}
-                                            and{" "}
-                                            <button
-                                                type="button"
-                                                onClick={() => setModal("terms")}
-                                                className="text-[#1565C0] underline hover:text-[#1B3A8C] transition-colors"
-                                            >
-                                                Terms of Service
-                                            </button>
-                                            .
-                                        </span>
-                                    </label>
-                                    {agreementTouched && !agreedToPolicy && (
-                                        <p className="text-[11px] text-red-500 pl-1 flex items-center gap-1">
-                                            <AlertCircle className="w-3 h-3 shrink-0" /> Please accept
-                                            the Privacy Policy and Terms of Service to continue.
+                                    {leadError && (
+                                        <p className="text-[11px] text-red-500 text-center flex items-center justify-center gap-1">
+                                            <AlertCircle className="w-3 h-3 shrink-0" /> {leadError}
                                         </p>
                                     )}
-                                </div>
 
-                                {leadError && (
-                                    <p className="text-[11px] text-red-500 text-center flex items-center justify-center gap-1">
-                                        <AlertCircle className="w-3 h-3 shrink-0" /> {leadError}
+                                    <button
+                                        type="button"
+                                        onClick={handleContinue}
+                                        disabled={isSubmittingLead}
+                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1B3A8C] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#16318a] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
+                                    >
+                                        {isSubmittingLead ? (
+                                            <>
+                                                <Loader2
+                                                    className="h-4 w-4 shrink-0 animate-spin"
+                                                    aria-hidden="true"
+                                                />
+                                                <span>Submitting...</span>
+                                            </>
+                                        ) : (
+                                            <span>Continue</span>
+                                        )}
+                                    </button>
+                                    <p className="text-[11px] text-gray-400 text-center">
+                                        Powered by HERO Serviced Office
                                     </p>
-                                )}
+                                </motion.div>
+                            )}
 
-                                <button
-                                    type="button"
-                                    onClick={handleContinue}
-                                    disabled={isSubmittingLead}
-                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1B3A8C] py-2.5 text-sm font-medium text-white transition-all hover:bg-[#16318a] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
-                                >
-                                    {isSubmittingLead ? (
-                                        <>
-                                            <Loader2
-                                                className="h-4 w-4 shrink-0 animate-spin"
-                                                aria-hidden="true"
-                                            />
-                                            <span>Submitting...</span>
-                                        </>
-                                    ) : (
-                                        <span>Continue</span>
-                                    )}
-                                </button>
-                                <p className="text-[11px] text-gray-400 text-center">
+                            {/* Messages */}
+                            {!isResumingSession && leadSubmitted && (
+                                <LayoutGroup>
+                                    <div className="p-4 space-y-3">
+                                        <AnimatePresence initial={false}>
+                                            {messages.map((msg) => (
+                                                <motion.div
+                                                    key={msg.id}
+                                                    layout="position"
+                                                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                                                    className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
+                                                >
+                                                    {msg.type === "bot" && (
+                                                        <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0 mr-2 mt-1">
+                                                            <span className="text-white text-xs font-bold">H</span>
+                                                        </div>
+                                                    )}
+                                                    <div
+                                                        className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${msg.type === "user"
+                                                            ? "bg-[#1B3A8C] text-white rounded-br-sm"
+                                                            : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
+                                                            }`}
+                                                    >
+                                                        <p className="text-sm whitespace-pre-line leading-relaxed">
+                                                            {msg.text}
+                                                        </p>
+                                                        {msg.cta && (
+                                                            <a
+                                                                href={msg.cta.href}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                onClick={handleCtaClick}
+                                                                className={`mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${msg.type === "user"
+                                                                    ? "bg-white/15 text-white hover:bg-white/25"
+                                                                    : "bg-[#1B3A8C] text-white hover:bg-[#16318a]"
+                                                                    }`}
+                                                            >
+                                                                {msg.cta.label}
+                                                                <ExternalLink className="w-3 h-3" />
+                                                            </a>
+                                                        )}
+                                                        <p
+                                                            className={`text-[10px] mt-1 ${msg.type === "user" ? "text-blue-200 text-right" : "text-gray-400"}`}
+                                                        >
+                                                            {msg.time}
+                                                        </p>
+                                                    </div>
+                                                </motion.div>
+                                            ))}
+                                        </AnimatePresence>
+
+                                        {/* Typing indicator — same easing/duration family as message
+                                            bubbles above so the handoff between "typing" and "message
+                                            landed" doesn't visibly change speed. */}
+                                        <AnimatePresence>
+                                            {isTyping && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                    exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                                                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                                                    className="flex justify-start items-end gap-2"
+                                                >
+                                                    <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0">
+                                                        <span className="text-white text-xs font-bold">H</span>
+                                                    </div>
+
+                                                    <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+                                                        <div className="flex gap-1">
+                                                            {[0, 1, 2].map((i) => (
+                                                                <motion.div
+                                                                    key={i}
+                                                                    className="w-1.5 h-1.5 rounded-full bg-gray-400"
+                                                                    animate={{
+                                                                        y: [0, -4, 0],
+                                                                        opacity: [0.4, 1, 0.4],
+                                                                        scale: [0.8, 1, 0.8],
+                                                                    }}
+                                                                    transition={{
+                                                                        duration: 1,
+                                                                        repeat: Infinity,
+                                                                        ease: "easeInOut",
+                                                                        delay: i * 0.18,
+                                                                    }}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+
+                                        {/* Send error */}
+                                        {sendError && !isTyping && (
+                                            <p className="text-[11px] text-red-500 text-center flex items-center justify-center gap-1 pt-1">
+                                                <AlertCircle className="w-3 h-3 shrink-0" /> {sendError}
+                                            </p>
+                                        )}
+
+                                        {/* Preferred-contact prompt hint (out of business hours) */}
+                                        <AnimatePresence>
+                                            {awaitingPreferredContact && !isTyping && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: "auto" }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 ml-9"
+                                                >
+                                                    Type your preferred day/time and contact method (email or
+                                                    phone) below, then hit send.
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+
+                                        {/* Quick replies — animated in/out as a group so they don't
+                                            hard-cut the layout the instant a new bot message (with its
+                                            own CTA button) lands and shifts scroll position. */}
+                                        <AnimatePresence>
+                                            {!conversationClosed &&
+                                                !isTyping &&
+                                                !awaitingPreferredContact &&
+                                                messages[messages.length - 1]?.type === "bot" && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 6 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -4 }}
+                                                        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                                                        className="pt-1"
+                                                    >
+                                                        <p className="text-[11px] text-gray-400 mb-2 pl-9">
+                                                            Quick replies
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-1.5 pl-9">
+                                                            {quickReplies.map((reply, idx) => (
+                                                                <button
+                                                                    key={idx}
+                                                                    onClick={() => handleQuickReply(reply)}
+                                                                    disabled={
+                                                                        reply === "Talk to an Agent" &&
+                                                                        (agentRequested || agentRequestInFlight)
+                                                                    }
+                                                                    className="px-3 py-1.5 text-xs border border-[#1B3A8C] text-[#1B3A8C] rounded-full hover:bg-[#1B3A8C] hover:text-white active:scale-95 transition-all font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#1B3A8C] inline-flex items-center gap-1"
+                                                                >
+                                                                    {reply === "Talk to an Agent" && (
+                                                                        <UserRound className="w-3 h-3" />
+                                                                    )}
+                                                                    {reply === "Talk to an Agent" && agentRequested
+                                                                        ? "Agent requested"
+                                                                        : reply}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                        </AnimatePresence>
+
+                                        <div ref={messagesEndRef} />
+                                    </div>
+                                </LayoutGroup>
+                            )}
+                        </div>
+
+                        {/* Input area */}
+                        {!isResumingSession && leadSubmitted && !conversationClosed && (
+                            <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        ref={inputRef}
+                                        type="text"
+                                        value={message}
+                                        onChange={(e) => setMessage(e.target.value)}
+                                        onKeyDown={handleKeyPress}
+                                        placeholder={
+                                            awaitingPreferredContact
+                                                ? "e.g. Weekdays after 6PM, reach me by phone…"
+                                                : "Type a message…"
+                                        }
+                                        aria-label="Type a message"
+                                        className="flex-1 px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20 bg-gray-50 transition-colors"
+                                    />
+                                    <button
+                                        onClick={handleSendMessage}
+                                        disabled={!message.trim()}
+                                        className="w-9 h-9 rounded-full bg-[#1B3A8C] hover:bg-[#16318a] active:scale-95 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
+                                        aria-label="Send message"
+                                    >
+                                        <Send className="w-4 h-4 text-white" />
+                                    </button>
+                                </div>
+                                <div className="flex items-center justify-center gap-4 text-[10px] text-gray-400 mt-2">
+                                    <button
+                                        onClick={() => setModal("privacy")}
+                                        className="hover:text-[#1565C0] transition-colors cursor-pointer"
+                                    >
+                                        Privacy Policy
+                                    </button>
+                                    <span className="text-gray-200">·</span>
+                                    <button
+                                        onClick={() => setModal("terms")}
+                                        className="hover:text-[#1565C0] transition-colors cursor-pointer"
+                                    >
+                                        Terms of Service
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-gray-300 text-center mt-1">
                                     Powered by HERO Serviced Office
                                 </p>
                             </div>
                         )}
-
-                        {/* Messages */}
-                        {!isResumingSession && leadSubmitted && (
-                            <div className="p-4 space-y-3">
-                                {messages.map((msg, idx) => (
-                                    <div
-                                        key={idx}
-                                        className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"} animate-[msgIn_0.2s_ease-out]`}
-                                    >
-                                        {msg.type === "bot" && (
-                                            <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0 mr-2 mt-1">
-                                                <span className="text-white text-xs font-bold">H</span>
-                                            </div>
-                                        )}
-                                        <div
-                                            className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${msg.type === "user"
-                                                ? "bg-[#1B3A8C] text-white rounded-br-sm"
-                                                : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
-                                                }`}
-                                        >
-                                            <p className="text-sm whitespace-pre-line leading-relaxed">
-                                                {msg.text}
-                                            </p>
-                                            {msg.cta && (
-                                                <a
-                                                    href={msg.cta.href}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className={`mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${msg.type === "user"
-                                                        ? "bg-white/15 text-white hover:bg-white/25"
-                                                        : "bg-[#1B3A8C] text-white hover:bg-[#16318a]"
-                                                        }`}
-                                                >
-                                                    {msg.cta.label}
-                                                    <ExternalLink className="w-3 h-3" />
-                                                </a>
-                                            )}
-                                            <p
-                                                className={`text-[10px] mt-1 ${msg.type === "user" ? "text-blue-200 text-right" : "text-gray-400"}`}
-                                            >
-                                                {msg.time}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {/* Typing indicator */}
-                                <AnimatePresence>
-                                    {isTyping && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 8 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: 8 }}
-                                            transition={{ duration: 0.2 }}
-                                            className="flex justify-start items-end gap-2"
-                                        >
-                                            <div className="w-7 h-7 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0">
-                                                <span className="text-white text-xs font-bold">H</span>
-                                            </div>
-
-                                            <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                                                <div className="flex gap-1">
-                                                    {[0, 1, 2].map((i) => (
-                                                        <motion.div
-                                                            key={i}
-                                                            className="w-1.5 h-1.5 rounded-full bg-gray-400"
-                                                            animate={{
-                                                                y: [0, -4, 0],
-                                                                opacity: [0.4, 1, 0.4],
-                                                                scale: [0.8, 1, 0.8],
-                                                            }}
-                                                            transition={{
-                                                                duration: 1,
-                                                                repeat: Infinity,
-                                                                ease: "easeInOut",
-                                                                delay: i * 0.18,
-                                                            }}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-
-                                {/* Send error */}
-                                {sendError && !isTyping && (
-                                    <p className="text-[11px] text-red-500 text-center flex items-center justify-center gap-1 pt-1">
-                                        <AlertCircle className="w-3 h-3 shrink-0" /> {sendError}
-                                    </p>
-                                )}
-
-                                {/* Preferred-contact prompt hint (out of business hours) */}
-                                {awaitingPreferredContact && !isTyping && (
-                                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 ml-9">
-                                        Type your preferred day/time and contact method (email or
-                                        phone) below, then hit send.
-                                    </div>
-                                )}
-
-                                {/* Quick replies */}
-                                {!conversationClosed &&
-                                    !isTyping &&
-                                    !awaitingPreferredContact &&
-                                    messages[messages.length - 1]?.type === "bot" && (
-                                        <div className="pt-1">
-                                            <p className="text-[11px] text-gray-400 mb-2 pl-9">
-                                                Quick replies
-                                            </p>
-                                            <div className="flex flex-wrap gap-1.5 pl-9">
-                                                {quickReplies.map((reply, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        onClick={() => handleQuickReply(reply)}
-                                                        disabled={
-                                                            reply === "Talk to an Agent" &&
-                                                            (agentRequested || agentRequestInFlightRef.current)
-                                                        }
-                                                        className="px-3 py-1.5 text-xs border border-[#1B3A8C] text-[#1B3A8C] rounded-full hover:bg-[#1B3A8C] hover:text-white active:scale-95 transition-all font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#1B3A8C] inline-flex items-center gap-1"
-                                                    >
-                                                        {reply === "Talk to an Agent" && (
-                                                            <UserRound className="w-3 h-3" />
-                                                        )}
-                                                        {reply === "Talk to an Agent" && agentRequested
-                                                            ? "Agent requested"
-                                                            : reply}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                <div ref={messagesEndRef} />
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Input area */}
-                    {!isResumingSession && leadSubmitted && !conversationClosed && (
-                        <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
-                            <div className="flex items-center gap-2">
-                                <input
-                                    ref={inputRef}
-                                    type="text"
-                                    value={message}
-                                    onChange={(e) => setMessage(e.target.value)}
-                                    onKeyDown={handleKeyPress}
-                                    placeholder={
-                                        awaitingPreferredContact
-                                            ? "e.g. Weekdays after 6PM, reach me by phone…"
-                                            : "Type a message…"
-                                    }
-                                    aria-label="Type a message"
-                                    className="flex-1 px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20 bg-gray-50 transition-colors"
-                                />
-                                <button
-                                    onClick={handleSendMessage}
-                                    disabled={!message.trim()}
-                                    className="w-9 h-9 rounded-full bg-[#1B3A8C] hover:bg-[#16318a] active:scale-95 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
-                                    aria-label="Send message"
-                                >
-                                    <Send className="w-4 h-4 text-white" />
-                                </button>
-                            </div>
-                            <div className="flex items-center justify-center gap-4 text-[10px] text-gray-400 mt-2">
-                                <button
-                                    onClick={() => setModal("privacy")}
-                                    className="hover:text-[#1565C0] transition-colors cursor-pointer"
-                                >
-                                    Privacy Policy
-                                </button>
-                                <span className="text-gray-200">·</span>
-                                <button
-                                    onClick={() => setModal("terms")}
-                                    className="hover:text-[#1565C0] transition-colors cursor-pointer"
-                                >
-                                    Terms of Service
-                                </button>
-                                <span className="text-gray-200">·</span>
-                                <button
-                                    onClick={() => {
-                                        const targetId = conversation?.id;
-                                        void requestTranscriptEmail(targetId);
-                                        setMessages((prev) => [
-                                            ...prev,
-                                            {
-                                                type: "bot",
-                                                text: "Sure — I'll email a copy of this conversation to the address you gave us. 📧",
-                                                time: formatTime(),
-                                            },
-                                        ]);
-                                    }}
-                                    className="inline-flex items-center gap-1 hover:text-[#1565C0] transition-colors cursor-pointer"
-                                >
-                                    <Mail className="w-2.5 h-2.5" />
-                                    Email me this chat
-                                </button>
-                            </div>
-                            <p className="text-[10px] text-gray-300 text-center mt-1">
-                                Powered by HERO Serviced Office
-                            </p>
-                        </div>
-                    )}
-                </div>
-            )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Modals */}
             <Modal
@@ -1601,19 +1719,6 @@ const Chatbot = () => {
             >
                 <TermsOfServiceContent />
             </Modal>
-
-            <style jsx global>{`
-        @keyframes msgIn {
-          from {
-            opacity: 0;
-            transform: translateY(6px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
         </>
     );
 };

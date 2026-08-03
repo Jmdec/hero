@@ -1,5 +1,3 @@
-// lib/chatApi.ts
-
 const API_URL =
     process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
@@ -179,6 +177,7 @@ export const chatApi = {
     closeConversation(conversationId: number) {
         return request(`/chat/${conversationId}/close`, {
             method: "PATCH",
+            body: JSON.stringify({ send_transcript: true }),
         });
     },
 

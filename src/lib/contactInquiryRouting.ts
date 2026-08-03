@@ -1,11 +1,11 @@
 export type ContactBranchInterest = "tower-6789" | "insular-life" | "both";
 
 const RECIPIENTS = {
-    president: process.env.CONTACT_INQUIRY_PRESIDENT_EMAIL || process.env.PRESIDENT_EMAIL || "armilla.eirenegrace@gmail.com",
+    president: process.env.CONTACT_INQUIRY_PRESIDENT_EMAIL || process.env.PRESIDENT_EMAIL || "infinitech.eirene@gmail.com",
     chairman: process.env.CONTACT_INQUIRY_CHAIRMAN_EMAIL || process.env.CHAIRMAN_EMAIL || "chairman.mock@hero-office.test",
     generalManager: process.env.CONTACT_INQUIRY_GENERAL_MANAGER_EMAIL || process.env.GENERAL_MANAGER_EMAIL || "general.manager.mock@hero-office.test",
     salesOfficer: process.env.CONTACT_INQUIRY_SALES_OFFICER_EMAIL || process.env.SALES_OFFICER_EMAIL || "sales.officer.mock@hero-office.test",
-    digitalMarketing: process.env.CONTACT_INQUIRY_DIGITAL_MARKETING_EMAIL || process.env.DIGITAL_MARKETING_EMAIL || "digital.marketing.mock@hero-office.test",
+    digitalMarketing: process.env.CONTACT_INQUIRY_DIGITAL_MARKETING_EMAIL || process.env.DIGITAL_MARKETING_EMAIL || "eirenegrc.armilla@gmail.com",
     branchManagers: {
         "tower-6789": process.env.CONTACT_INQUIRY_BRANCH_MANAGER_S01_EMAIL || process.env.BRANCH_MANAGER_S01_EMAIL || "tower6789.manager.mock@hero-office.test",
         "insular-life": process.env.CONTACT_INQUIRY_BRANCH_MANAGER_S02_EMAIL || process.env.BRANCH_MANAGER_S02_EMAIL || "insular.manager.mock@hero-office.test",

@@ -5,12 +5,6 @@ import {
     Search,
     RefreshCw,
     X,
-    Mail,
-    Phone,
-    Building2,
-    Calendar,
-    Clock,
-    Users,
     Banknote,
     Trash2,
     Eye,
@@ -19,13 +13,10 @@ import {
     ChevronDown,
     CheckCircle2,
     XCircle,
-    Hash,
     Sparkles,
     Pencil,
-    Send,
     Link2,
     FileText,
-    CreditCard,
 } from "lucide-react";
 
 type Status =
@@ -37,6 +28,12 @@ type Status =
     | "completed"
     | "cancelled";
 
+// Kept for backwards compatibility with any records that DO have a nested
+// price_breakdown object (older records / other clients). The quote form
+// (get-a-quote page) does NOT send this shape — it sends flat fields on the
+// detail object instead (package_name, package_price, vat_percentage,
+// vat_amount, subtotal, contract_admin_fee, total, months/duration). See
+// QuotationDetail below and the receipt sections, which read both shapes.
 interface QuotationPriceBreakdown {
     package_base_monthly?: number | null;
     vat_monthly?: number | null;
@@ -62,14 +59,35 @@ interface QuotationDetail {
     payment_method: "paymongo" | "gcash" | "qrph" | "online_transfer" | "bank" | null;
     transaction_id: string | null;
     receipt: string | null;
+    payment_link_send_count?: number | null;
     receipt_url?: string | null;
     receipt_path?: string | null;
     id_type?: string | null;
     id_number?: string | null;
+    id_name?: string | null;
+    id_address?: string | null;
     government_id_file?: string | null;
     government_id_url?: string | null;
     government_id_path?: string | null;
+    signatory_details?: string | null;
+    signatory_id_name?: string | null;
+    signatory_id_number?: string | null;
+    signatory_id_address?: string | null;
+    signatory_id_type?: string | null;
+    signatory_id_file?: string | null;
+    signatory_id_url?: string | null;
+    signatory_id_path?: string | null;
+    signatory_same_as_id_holder?: boolean | null;
     months?: number | null;
+    // Flat pricing fields — this is what the get-a-quote Virtual Office flow
+    // actually submits (see buildPayload() in the quote form).
+    package_name?: string | null;
+    package_price?: number | string | null;
+    vat_percentage?: number | string | null;
+    vat_amount?: number | string | null;
+    subtotal?: number | string | null;
+    contract_admin_fee?: number | string | null;
+    // Legacy/alternate nested shape, kept for compatibility.
     price_breakdown?: QuotationPriceBreakdown | null;
 }
 
@@ -81,6 +99,7 @@ interface Quotation {
     lease_term: string | null;
     package: string | null;
     event_type: string | null;
+    branch?: string | null;
     status: Status;
     paid_at: string | null;
     created_at: string;
@@ -126,8 +145,6 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
     bank: "Bank Transfer",
 };
 
-// A payment is considered "collected" once the request has moved past
-// verification into paid/contract/completed, or a paid_at timestamp exists.
 function hasPaid(quote: Quotation) {
     return (
         quote.status === "paid" ||
@@ -172,6 +189,15 @@ function getInitials(name: string | null | undefined) {
 
 function isVirtualOffice(quote: Quotation) {
     return quote.service_name?.trim().toLowerCase() === "virtual office";
+}
+
+function hasPricingData(detail: QuotationDetail) {
+    return Boolean(
+        detail.price_breakdown ||
+        detail.package_name ||
+        detail.package_price != null ||
+        (Number(detail.total) || 0) > 0
+    );
 }
 
 // Toast
@@ -251,113 +277,207 @@ function StatCard({
     );
 }
 
-function InfoRow({
-    icon: Icon,
+function ReceiptHeading({ children }: { children: React.ReactNode }) {
+    return (
+        <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#8B96AB] mb-3">
+            {children}
+        </p>
+    );
+}
+
+function ReceiptRow({
     label,
     value,
     href,
+    strong,
 }: {
-    icon: React.ComponentType<{ className?: string }>;
     label: string;
     value: React.ReactNode;
     href?: string;
+    strong?: boolean;
 }) {
-    const content = (
-        <div className="flex items-start gap-3">
-            <span className="w-8 h-8 rounded-lg bg-[#F0F4FB] flex items-center justify-center shrink-0 mt-0.5">
-                <Icon className="w-3.5 h-3.5 text-[#1B3A8C]" />
+    if (value === null || value === undefined || value === "") return null;
+    const valueClasses = strong
+        ? "text-base font-bold text-[#1B3A8C]"
+        : "text-sm font-semibold text-[#0B1F4A]";
+
+    return (
+        <div className="flex items-baseline justify-between gap-4 py-1.5">
+            <span className={strong ? "text-sm font-bold text-[#0B1F4A]" : "text-sm text-[#64748B]"}>
+                {label}
             </span>
-            <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B]">{label}</p>
-                <p className="text-sm font-medium text-[#0B1F4A] wrap-break-word">{value}</p>
-            </div>
-        </div>
-    );
-    if (href) {
-        return (
-            <a href={href} target="_blank" rel="noopener noreferrer" className="block hover:opacity-70 transition">
-                {content}
-            </a>
-        );
-    }
-    return content;
-}
-
-// Price breakdown card (Virtual Office review) — replaces the old payment/receipt block.
-// Shown while the admin is verifying the request, before any payment has been collected.
-function PriceBreakdownCard({ detail }: { detail: QuotationDetail }) {
-    const b = detail.price_breakdown;
-    const months = b?.months ?? detail.months ?? 1;
-    return (
-        <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl px-4 py-3 space-y-1.5 text-sm">
-            {b ? (
-                <>
-                    <div className="flex justify-between">
-                        <span className="text-[#64748B]">Package (monthly)</span>
-                        <span className="text-[#0B1F4A] font-medium">{formatCurrency(b.package_base_monthly)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-[#64748B]">VAT (12%, monthly)</span>
-                        <span className="text-[#0B1F4A] font-medium">{formatCurrency(b.vat_monthly)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-[#64748B]">Duration</span>
-                        <span className="text-[#0B1F4A] font-medium">
-                            × {months} {months === 1 ? "month" : "months"}
-                        </span>
-                    </div>
-                    <div className="flex justify-between border-t border-[#D9E2F0] pt-1.5 mt-1.5">
-                        <span className="text-[#64748B]">Subtotal</span>
-                        <span className="text-[#0B1F4A] font-medium">{formatCurrency(b.recurring_total)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-[#64748B]">Contract & Admin Fee</span>
-                        <span className="text-[#0B1F4A] font-medium">{formatCurrency(b.contract_admin_fee)}</span>
-                    </div>
-                </>
+            {href ? (
+                <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`text-right shrink-0 max-w-[65%] wrap-break-word hover:underline ${valueClasses}`}
+                >
+                    {value}
+                </a>
             ) : (
-                <div className="flex justify-between">
-                    <span className="text-[#64748B]">Duration</span>
-                    <span className="text-[#0B1F4A] font-medium">
-                        {months} {months === 1 ? "month" : "months"}
-                    </span>
-                </div>
+                <span className={`text-right shrink-0 max-w-[65%] wrap-break-word ${valueClasses}`}>{value}</span>
             )}
-            <div className="flex justify-between border-t border-[#D9E2F0] pt-2 mt-2">
-                <span className="font-bold text-[#0B1F4A]">Total</span>
-                <span className="font-bold text-[#1B3A8C]">{formatCurrency(detail.total)}</span>
-            </div>
         </div>
     );
 }
 
-// Signatory section — the government ID captured for the person signing the
-// contract. Shown for any request that has an ID on file.
-function SignatoryCard({ detail }: { detail: QuotationDetail }) {
-    const idLine = [detail.id_type, detail.id_number].filter(Boolean).join(" · ");
-    const idDocUrl = detail.government_id_url ?? detail.government_id_path ?? detail.government_id_file ?? null;
+function ReceiptDivider() {
+    return <div className="border-t border-dashed border-[#D9E2F0] my-4" />;
+}
 
-    if (!idLine && !idDocUrl) return null;
+function ReceiptSection({ children }: { children: React.ReactNode }) {
+    return <div>{children}</div>;
+}
+
+// Client Information — mirrors the quote form's "Contact" review block.
+function ClientInfoSection({ detail }: { detail: QuotationDetail }) {
+    return (
+        <ReceiptSection>
+            <ReceiptHeading>Client Information</ReceiptHeading>
+            {detail.company_name && <ReceiptRow label="Company" value={detail.company_name} />}
+            <ReceiptRow label="Name" value={detail.full_name} />
+            <ReceiptRow label="Email" value={detail.email} href={detail.email ? `mailto:${detail.email}` : undefined} />
+            <ReceiptRow label="Phone" value={detail.phone} href={detail.phone ? `tel:${detail.phone}` : undefined} />
+        </ReceiptSection>
+    );
+}
+
+// Service Details — service, package, date, duration, branch.
+function ServiceDetailsSection({ quote }: { quote: Quotation }) {
+    const detail = quote.detail;
+    const durationLabel =
+        detail?.duration != null && detail?.duration_type
+            ? `${detail.duration} ${detail.duration_type}`
+            : detail?.duration_type ??
+            (detail?.duration != null ? `${detail.duration} ${detail.duration === 1 ? "month" : "months"}` : null);
 
     return (
-        <div className="space-y-2.5">
-            <p className="text-xs font-semibold text-[#64748B]">Signatory Document</p>
-            {idLine && <InfoRow icon={Hash} label="ID" value={idLine} />}
-            {idDocUrl && (
-                <InfoRow
-                    icon={FileText}
-                    label="Government ID"
-                    value="View uploaded document"
-                    href={idDocUrl}
+        <ReceiptSection>
+            <ReceiptHeading>Service Details</ReceiptHeading>
+            <ReceiptRow label="Service" value={quote.service_name} />
+            {(quote.package || detail?.package_name) && (
+                <ReceiptRow label="Package" value={quote.package ?? detail?.package_name} />
+            )}
+            {detail?.date && (
+                <ReceiptRow
+                    label={detail.time ? "Date & Time" : "Start Date"}
+                    value={`${formatDate(detail.date)}${detail.time ? ` · ${detail.time}` : ""}`}
                 />
             )}
-        </div>
+            {detail?.seats != null && (
+                <ReceiptRow label="Seats / Attendees" value={`${detail.seats} ${detail.seats === 1 ? "person" : "people"}`} />
+            )}
+            {durationLabel && <ReceiptRow label="Duration" value={durationLabel} />}
+            {quote.lease_term && <ReceiptRow label="Lease Term" value={quote.lease_term} />}
+            {quote.event_type && <ReceiptRow label="Event Type" value={quote.event_type} />}
+            {quote.branch && <ReceiptRow label="Branch" value={quote.branch} />}
+            {(detail?.request || detail?.other_requirements) && (
+                <div className="mt-2.5 pt-2.5 border-t border-[#F0F4FB] flex justify-between items-start">
+                    <p className="text-sm text-[#64748B]">Notes</p>
+                    <div className="text-sm font-bold text-[#0B1F4A]">
+                    {detail?.request && <p className="text-sm text-[#0B1F4A]">{detail.request}</p>}
+                    {detail?.other_requirements && <p className="text-sm text-[#0B1F4A]">{detail.other_requirements}</p>}
+                </div>
+                </div>
+            )}
+        </ReceiptSection>
     );
 }
 
-// Payment section — only relevant once the client has actually paid
-// (status has moved to paid/contract_sent/completed, or paid_at is set).
-function PaymentCard({ quote }: { quote: Quotation }) {
+// Price breakdown
+
+function PriceBreakdownSection({ detail }: { detail: QuotationDetail }) {
+    const nested = detail.price_breakdown;
+
+    if (!hasPricingData(detail)) {
+        return (
+            <ReceiptSection>
+                <ReceiptHeading>Price Breakdown</ReceiptHeading>
+                <p className="text-sm text-[#64748B]">
+                    No fixed pricing yet — our team will prepare a custom quotation for this request.
+                </p>
+            </ReceiptSection>
+        );
+    }
+
+    const months = nested?.months ?? detail.months ?? detail.duration ?? 1;
+    const packageBase = nested?.package_base_monthly ?? detail.package_price;
+    const vat = nested?.vat_monthly ?? detail.vat_amount;
+    const vatPct = detail.vat_percentage != null ? Number(detail.vat_percentage) : null;
+    const recurringTotal = nested?.recurring_total ?? detail.subtotal;
+    const adminFee = nested?.contract_admin_fee ?? detail.contract_admin_fee;
+
+    return (
+        <ReceiptSection>
+            <ReceiptHeading>Price Breakdown</ReceiptHeading>
+            {detail.package_name && <ReceiptRow label="Package" value={detail.package_name} />}
+            {packageBase != null && (
+                <ReceiptRow label="Package fee" value={`${formatCurrency(packageBase)} / mo`} />
+            )}
+            {vat != null && (
+                <ReceiptRow label={`VAT${vatPct != null ? ` (${vatPct}%)` : ""}`} value={`${formatCurrency(vat)} / mo`} />
+            )}
+            <ReceiptRow label="Duration" value={`x ${months} ${Number(months) === 1 ? "month" : "months"}`} />
+
+            <div className="mt-2 pt-2 border-t border-[#F0F4FB]" />
+
+            {recurringTotal != null && <ReceiptRow label="Subtotal" value={formatCurrency(recurringTotal)} />}
+            {adminFee != null && <ReceiptRow label="Contract & Admin Fee" value={formatCurrency(adminFee)} />}
+
+            <div className="mt-3 pt-3 border-t border-[#D9E2F0]">
+                <ReceiptRow label="Amount Due" value={formatCurrency(detail.total)} strong />
+            </div>
+        </ReceiptSection>
+    );
+}
+
+// Signatory Details 
+
+function isLinkableValue(value: string | null | undefined): value is string {
+    if (!value) return false;
+    return /^https?:\/\//i.test(value) || value.startsWith("/");
+}
+
+function SignatoryDetailsSection({ detail }: { detail: QuotationDetail }) {
+    const sameAsHolder = Boolean(detail.signatory_same_as_id_holder);
+
+    const idType = sameAsHolder ? detail.id_type : detail.signatory_id_type;
+    const idName = sameAsHolder ? detail.id_name : detail.signatory_id_name;
+    const idNumber = sameAsHolder ? detail.id_number : detail.signatory_id_number;
+    const idAddress = sameAsHolder ? detail.id_address : detail.signatory_id_address;
+
+    const rawDocValue = sameAsHolder
+        ? detail.government_id_url ?? detail.government_id_path ?? detail.government_id_file ?? null
+        : detail.signatory_id_url ?? detail.signatory_id_path ?? detail.signatory_id_file ?? null;
+
+    const idDocUrl = isLinkableValue(rawDocValue) ? rawDocValue : null;
+    const idDocFilename = !idDocUrl && rawDocValue ? rawDocValue : null;
+
+    const hasContent = [idType, idName, idNumber, idAddress, rawDocValue, detail.signatory_details].some(Boolean);
+
+    // TEMP DEBUG — remove once confirmed
+    if (!hasContent) {
+        console.warn("SignatoryDetailsSection: no content found, raw detail was:", detail);
+        return null;
+    }
+
+    return (
+        <ReceiptSection>
+            <ReceiptHeading>Signatory Details</ReceiptHeading>
+            <ReceiptRow label="Same as ID holder" value={sameAsHolder ? "Yes" : "No"} />
+            {idName && <ReceiptRow label="Name" value={idName} />}
+            {idType && <ReceiptRow label="ID Type" value={idType} />}
+            {idNumber && <ReceiptRow label="ID Number" value={idNumber} />}
+            {idAddress && <ReceiptRow label="Address" value={idAddress} />}
+            {idDocUrl && <ReceiptRow label="ID Document" value="View uploaded document" href={idDocUrl} />}
+            {idDocFilename && <ReceiptRow label="ID Document" value={idDocFilename} />}
+        </ReceiptSection>
+    );
+}
+
+// Payment Details — payment method, transaction id, paid date, receipt.
+function PaymentDetailsSection({ quote }: { quote: Quotation }) {
     const detail = quote.detail;
     if (!detail) return null;
 
@@ -365,19 +485,25 @@ function PaymentCard({ quote }: { quote: Quotation }) {
     const methodLabel = detail.payment_method
         ? PAYMENT_METHOD_LABELS[detail.payment_method] ?? detail.payment_method
         : null;
+    const hasContent = Boolean(methodLabel || detail.transaction_id || quote.paid_at || receiptUrl);
 
-    if (!methodLabel && !detail.transaction_id && !quote.paid_at && !receiptUrl) return null;
+    if (!hasContent) {
+        return (
+            <ReceiptSection>
+                <ReceiptHeading>Payment Details</ReceiptHeading>
+                <p className="text-sm text-[#64748B]">No payment recorded yet.</p>
+            </ReceiptSection>
+        );
+    }
 
     return (
-        <div className="space-y-2.5">
-            <p className="text-xs font-semibold text-[#64748B]">Payment</p>
-            {methodLabel && <InfoRow icon={CreditCard} label="Payment method" value={methodLabel} />}
-            {detail.transaction_id && <InfoRow icon={Hash} label="Transaction ID" value={detail.transaction_id} />}
-            {quote.paid_at && <InfoRow icon={Calendar} label="Paid on" value={formatDate(quote.paid_at)} />}
-            {receiptUrl && (
-                <InfoRow icon={FileText} label="Receipt" value="View uploaded receipt" href={receiptUrl} />
-            )}
-        </div>
+        <ReceiptSection>
+            <ReceiptHeading>Payment Details</ReceiptHeading>
+            {methodLabel && <ReceiptRow label="Payment Method" value={methodLabel} />}
+            {detail.transaction_id && <ReceiptRow label="Transaction ID" value={detail.transaction_id} />}
+            {quote.paid_at && <ReceiptRow label="Paid On" value={formatDate(quote.paid_at)} />}
+            {receiptUrl && <ReceiptRow label="Receipt" value="View uploaded receipt" href={receiptUrl} />}
+        </ReceiptSection>
     );
 }
 
@@ -399,7 +525,6 @@ export default function AdminQuotationsPage() {
     const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
 
     // Email-to-client actions
-    const [sendingEmailId, setSendingEmailId] = useState<number | null>(null);
     const [sendingPaymentLinkId, setSendingPaymentLinkId] = useState<number | null>(null);
     const [sendingContractId, setSendingContractId] = useState<number | null>(null);
 
@@ -485,10 +610,9 @@ export default function AdminQuotationsPage() {
     }, [quotations]);
 
     const needsAttention = counts.pending + counts.awaiting_payment + counts.payment_verification;
-
     const paidRevenue = useMemo(() => {
         return quotations
-            .filter((q) => q.status === "paid" || q.status === "completed")
+            .filter((q) => (q.status === "paid" || q.status === "completed") && q.detail && hasPricingData(q.detail))
             .reduce((sum, q) => sum + (q.detail ? Number(q.detail.total) || 0 : 0), 0);
     }, [quotations]);
 
@@ -560,32 +684,14 @@ export default function AdminQuotationsPage() {
         }
     };
 
-    // Sends the client a general status/confirmation email for this request.
-    const handleSendEmail = async (quote: Quotation) => {
-        const who = quote.detail?.full_name ?? "the client";
-        setSendingEmailId(quote.id);
-        try {
-            const res = await fetch(`/api/quotations/${quote.id}/send-email`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Accept: "application/json" },
-            });
-            const payload = await res.json().catch(() => null);
-            if (!res.ok) {
-                const message = payload?.message || "Failed to send email.";
-                throw new Error(message);
-            }
-            pushToast(`Email sent to ${who}`, "success");
-        } catch (error) {
-            const msg = error instanceof Error ? error.message : "Couldn't send email to the client.";
-            pushToast(msg, "error");
-        } finally {
-            setSendingEmailId(null);
-        }
-    };
-
-    // Verification step for Virtual Office: emails the client a link that takes
-    // them straight to the payment section of the quotation form.
+    // Verification step for Virtual Office
     const handleSendPaymentLink = async (quote: Quotation) => {
+        const currentCount = quote.detail?.payment_link_send_count ?? 0;
+        if (currentCount >= 3) {
+            pushToast("This payment link has reached the 3-send limit.", "error");
+            return;
+        }
+
         const who = quote.detail?.full_name ?? "the client";
         setSendingPaymentLinkId(quote.id);
         try {
@@ -598,6 +704,16 @@ export default function AdminQuotationsPage() {
                 const message = payload?.message || "Failed to send payment link.";
                 throw new Error(message);
             }
+
+            const nextCount = Number(payload?.payment_link_send_count ?? currentCount + 1);
+            setQuotations((previous) => previous.map((item) => item.id === quote.id ? {
+                ...item,
+                detail: item.detail ? { ...item.detail, payment_link_send_count: nextCount } : item.detail,
+            } : item));
+            setSelected((current) => current && current.id === quote.id ? {
+                ...current,
+                detail: current.detail ? { ...current.detail, payment_link_send_count: nextCount } : current.detail,
+            } : current);
             pushToast(`Payment link sent to ${who}`, "success");
         } catch (error) {
             const msg = error instanceof Error ? error.message : "Couldn't send payment link to the client.";
@@ -657,7 +773,7 @@ export default function AdminQuotationsPage() {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <StatCard label="Total requests" value={String(counts.all)} icon={Inbox} tone="neutral" />
                     <StatCard label="Needs attention" value={String(needsAttention)} icon={AlertCircle} tone="amber" />
-                    <StatCard label="Paid revenue" value={formatCurrency(paidRevenue)} icon={Banknote} tone="green" />
+                    <StatCard label="Quotation value" value={formatCurrency(paidRevenue)} icon={Banknote} tone="green" />
                     <StatCard label="Cancelled" value={String(counts.cancelled)} icon={XCircle} tone="red" />
                 </div>
 
@@ -727,6 +843,7 @@ export default function AdminQuotationsPage() {
                                         <th className="px-5 py-3 text-left">Customer</th>
                                         <th className="px-5 py-3 text-left">Service</th>
                                         <th className="px-5 py-3 text-left">Date</th>
+                                        <th className="px-5 py-3 text-left">Total</th>
                                         <th className="px-5 py-3 text-left">Status</th>
                                         <th className="px-5 py-3 text-left">Actions</th>
                                     </tr>
@@ -744,6 +861,9 @@ export default function AdminQuotationsPage() {
                                             </td>
                                             <td className="px-5 py-4 text-[#0B1F4A]">{quote.service_name}</td>
                                             <td className="px-5 py-4 text-[#64748B] whitespace-nowrap">{formatDate(quote.created_at)}</td>
+                                            <td className="px-5 py-4 text-[#0B1F4A] whitespace-nowrap">
+                                                {quote.detail && hasPricingData(quote.detail) ? formatCurrency(quote.detail.total) : "—"}
+                                            </td>
                                             <td className="px-5 py-4">
                                                 <button
                                                     onClick={(e) => {
@@ -787,7 +907,7 @@ export default function AdminQuotationsPage() {
                 </div>
             </div>
 
-            {/* Detail modal */}
+            {/* Detail modal — receipt-style layout */}
             {selected && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/50" onClick={() => setSelected(null)} />
@@ -807,24 +927,10 @@ export default function AdminQuotationsPage() {
                                         {selected.detail?.company_name ?? "Submitted"} · {formatDate(selected.created_at)}
                                     </p>
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                                <button
-                                    onClick={() => handleSendEmail(selected)}
-                                    disabled={sendingEmailId === selected.id}
-                                    className="p-1.5 rounded-full text-[#64748B] hover:text-[#1B3A8C] hover:bg-[#F0F4FB] transition disabled:opacity-50"
-                                    aria-label="Email client"
-                                    title="Send email to client"
-                                >
-                                    {sendingEmailId === selected.id ? (
-                                        <RefreshCw className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                        <Send className="w-4 h-4" />
-                                    )}
-                                </button>
+
                                 <button
                                     onClick={() => setSelected(null)}
-                                    className="p-1.5 rounded-full text-[#64748B] hover:bg-[#F0F4FB] transition"
+                                    className="p-1.5 rounded-full text-[#64748B] hover:bg-[#F0F4FB] transition items-end justify-end absolute right-3.5 top-3.5"
                                     aria-label="Close"
                                 >
                                     <X className="w-4 h-4" />
@@ -852,51 +958,26 @@ export default function AdminQuotationsPage() {
                                 </select>
                             </div>
 
-                            {/* Contact */}
-                            <div className="space-y-2.5">
-                                <p className="text-xs font-semibold text-[#64748B]">Contact</p>
-                                {selected.detail?.company_name && <InfoRow icon={Building2} label="Company" value={selected.detail.company_name} />}
-                                {selected.detail?.email && <InfoRow icon={Mail} label="Email" value={selected.detail.email} href={`mailto:${selected.detail.email}`} />}
-                                {selected.detail?.phone && <InfoRow icon={Phone} label="Phone" value={selected.detail.phone} href={`tel:${selected.detail.phone}`} />}
-                            </div>
-
-                            {/* Booking details */}
-                            <div className="space-y-2.5">
-                                <p className="text-xs font-semibold text-[#64748B]">Booking</p>
-                                <InfoRow
-                                    icon={Building2}
-                                    label="Service"
-                                    value={[selected.service_name, selected.lease_term, selected.package, selected.event_type].filter(Boolean).join(" · ")}
-                                />
-                                {selected.detail?.date && (
-                                    <InfoRow icon={Clock} label="Date & time" value={`${formatDate(selected.detail.date)}${selected.detail.time ? ` · ${selected.detail.time}` : ""}`} />
-                                )}
-                                {selected.detail?.seats != null && (
-                                    <InfoRow icon={Users} label="Seats" value={`${selected.detail.seats} seat${selected.detail.seats === 1 ? "" : "s"}`} />
-                                )}
-                                {selected.detail?.duration_type && (
-                                    <InfoRow icon={Clock} label="Duration" value={selected.detail.duration ? `${selected.detail.duration} ${selected.detail.duration_type}` : selected.detail.duration_type} />
-                                )}
-                            </div>
-
-                            {/* Notes */}
-                            {(selected.detail?.request || selected.detail?.other_requirements) && (
-                                <div className="space-y-2.5">
-                                    <p className="text-xs font-semibold text-[#64748B]">Notes</p>
-                                    {selected.detail?.request && <p className="text-sm text-[#0B1F4A]">{selected.detail.request}</p>}
-                                    {selected.detail?.other_requirements && <p className="text-sm text-[#0B1F4A]">{selected.detail.other_requirements}</p>}
+                            {/* Receipt */}
+                            {selected.detail && (
+                                <div>
+                                    <ClientInfoSection detail={selected.detail} />
+                                    <ReceiptDivider />
+                                    <SignatoryDetailsSection detail={selected.detail} />
+                                    <ReceiptDivider />
+                                    <ServiceDetailsSection quote={selected} />
+                                    <ReceiptDivider />
+                                    <PriceBreakdownSection detail={selected.detail} />
+                                    <ReceiptDivider />
+                                    <PaymentDetailsSection quote={selected} />
                                 </div>
                             )}
 
-                            {/* 1. Price breakdown (Virtual Office review, before payment is collected) */}
                             {selected.detail && isVirtualOffice(selected) && (
                                 <div className="space-y-3">
-                                    <p className="text-xs font-semibold text-[#64748B]">Price Breakdown</p>
-                                    <PriceBreakdownCard detail={selected.detail} />
-
                                     <button
                                         onClick={() => handleSendPaymentLink(selected)}
-                                        disabled={sendingPaymentLinkId === selected.id}
+                                        disabled={sendingPaymentLinkId === selected.id || (selected.detail?.payment_link_send_count ?? 0) >= 3}
                                         className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg bg-[#1B3A8C] text-white text-sm font-semibold hover:bg-[#16316F] transition disabled:opacity-60"
                                     >
                                         {sendingPaymentLinkId === selected.id ? (
@@ -907,12 +988,14 @@ export default function AdminQuotationsPage() {
                                         ) : (
                                             <>
                                                 <Link2 className="w-4 h-4" />
-                                                Email client a payment link
+                                                {(selected.detail?.payment_link_send_count ?? 0) >= 3 ? "Payment link limit reached" : "Send Payment Link"}
                                             </>
                                         )}
                                     </button>
                                     <p className="text-[11px] text-[#64748B] text-center">
-                                        Sends {selected.detail.email} a link to the dedicated payment page for this quotation.
+                                        {(selected.detail?.payment_link_send_count ?? 0) >= 3
+                                            ? "This quotation already reached its 3-send limit."
+                                            : `Sends ${selected.detail.email} a link to the dedicated payment page for this quotation.`}
                                     </p>
                                 </div>
                             )}
@@ -942,12 +1025,6 @@ export default function AdminQuotationsPage() {
                                     </p>
                                 </div>
                             )}
-
-                            {/* 2. Signatory document and details */}
-                            {selected.detail && <SignatoryCard detail={selected.detail} />}
-
-                            {/* 3. Payment — only shown once the client has actually paid */}
-                            {hasPaid(selected) && <PaymentCard quote={selected} />}
                         </div>
 
                         {/* Footer */}
@@ -1119,7 +1196,7 @@ export default function AdminQuotationsPage() {
                                 <button
                                     onClick={() => setDeleteTarget(null)}
                                     disabled={deleting}
-                                    className="flex-1 rounded-xl border border-[#D9E2F0] py-3 font-medium hover:bg-gray-50 transition disabled:opacity-50"
+                                    className="flex-1 rounded-xl border border-[#D9E2F0] py-3 font-medium hover:bg-gray-50 transition"
                                 >
                                     Cancel
                                 </button>

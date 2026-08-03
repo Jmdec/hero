@@ -212,8 +212,16 @@ export interface QuotationDetail {
     date?: string | null;
     time?: string | null;
     duration_type?: string | null;
+    duration?: number | string | null;
     other_requirements?: string | null;
     total?: number;
+    subtotal?: number | string | null;
+    months?: number | string | null;
+    package_name?: string | null;
+    package_price?: number | string | null;
+    vat_percentage?: number | string | null;
+    vat_amount?: number | string | null;
+    contract_admin_fee?: number | string | null;
 }
 
 export interface QuotationPayload {
@@ -223,6 +231,7 @@ export interface QuotationPayload {
     lease_term?: string | null;
     package?: string | null;
     event_type?: string | null;
+    duration?: number | string | null;
     status?: string;
     detail: QuotationDetail;
 }
@@ -237,6 +246,8 @@ export interface QuotationNotificationOptions {
     paymentProofCopy?: QuotationDocumentCopy | null;
     governmentIdCopy?: QuotationDocumentCopy | null;
     signatoryGovernmentIdCopy?: QuotationDocumentCopy | null;
+    contractSendUrl?: string;
+    verifyPaymentUrl?: string;
 }
 
 const VO_PACKAGE_PRICES: Record<string, string> = {
@@ -276,6 +287,55 @@ function quotationRow(label: string, value?: string | number | null): string {
         </tr>`;
 }
 
+function formatCurrency(value: string | number | null | undefined): string {
+    const numeric = Number(value ?? 0);
+    if (Number.isNaN(numeric)) return "—";
+    return new Intl.NumberFormat("en-PH", {
+        style: "currency",
+        currency: "PHP",
+    }).format(numeric);
+}
+
+function buildQuotationPriceBreakdownRows(quotation: QuotationPayload): string {
+    const d = quotation.detail;
+    const hasPrice =
+        d.package_price != null ||
+        d.vat_amount != null ||
+        d.subtotal != null ||
+        d.contract_admin_fee != null ||
+        d.total != null;
+
+    if (!hasPrice) {
+        return "";
+    }
+
+    const rows = [
+        quotationRow(
+            "Package Price",
+            d.package_price != null
+                ? `${formatCurrency(d.package_price)}${d.months ? ` / month × ${d.months}` : " / month"}`
+                : undefined
+        ),
+        quotationRow(
+            "VAT",
+            d.vat_amount != null
+                ? `${formatCurrency(d.vat_amount)}${d.vat_percentage != null ? ` (${d.vat_percentage}%)` : ""}`
+                : undefined
+        ),
+        quotationRow("Subtotal", d.subtotal != null ? formatCurrency(d.subtotal) : undefined),
+        quotationRow("Contract & Admin Fee", d.contract_admin_fee != null ? formatCurrency(d.contract_admin_fee) : undefined),
+        quotationRow("Total", d.total != null ? formatCurrency(d.total) : undefined)
+    ].join("");
+
+    if (!rows) return "";
+
+    return `
+        <tr>
+            <td colspan="2" style="padding:16px 0 6px 0;font-size:15px;font-weight:700;color:#0D47A1;">Price Breakdown</td>
+        </tr>
+        ${rows}`;
+}
+
 function formatQuotationDate(value?: string | null): string | null {
     if (!value) return null;
     const parsed = new Date(value);
@@ -313,7 +373,6 @@ function buildQuotationDetailRows(
         quotationRow("Duration", d.duration_type),
         quotationRow("Other Requirements", d.other_requirements),
         quotationRow("Notes", d.request),
-        quotationRow("Payment Method", d.payment_method),
         quotationRow("ID Type", d.id_type),
         quotationRow("ID Number", d.id_number),
         quotationRow("ID Name", d.id_name),
@@ -361,9 +420,10 @@ function isVirtualOfficePaymongo(
 }
 
 const RECIPIENTS = {
-    chairman: process.env.QUOTATION_CHAIRMAN_EMAIL || process.env.CONTACT_INQUIRY_CHAIRMAN_EMAIL || process.env.CHAIRMAN_EMAIL || "chairman.mock@hero-office.test",
+    chairman: process.env.QUOTATION_CHAIRMAN_EMAIL || process.env.CONTACT_INQUIRY_CHAIRMAN_EMAIL || process.env.CHAIRMAN_EMAIL || "infinitech.eirene@gmail.com",
+    president: process.env.QUOTATION_PRESIDENT_EMAIL || process.env.CONTACT_INQUIRY_PRESIDENT_EMAIL || process.env.PRESIDENT_EMAIL || "president.mock@hero-office.test",
     salesOfficer: process.env.SALES_OFFICER_EMAIL || "sales.officer.mock@hero-office.test",
-    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "digital.marketing.mock@hero-office.test",
+    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "eirenegrc.armilla@gmail.com",
     generalManager: process.env.GENERAL_MANAGER_EMAIL || "general.manager.mock@hero-office.test",
     accounting: process.env.ACCOUNTING_EMAIL || "accounting.mock@hero-office.test",
     branchManagers: {
@@ -371,6 +431,15 @@ const RECIPIENTS = {
         S02: process.env.BRANCH_MANAGER_S02_EMAIL || "insular.manager.mock@hero-office.test",
     },
 };
+
+function getPublicAppBaseUrl(): string {
+    const configuredBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL;
+    if (!configuredBaseUrl) {
+        return "http://localhost:3000";
+    }
+
+    return configuredBaseUrl.replace(/\/$/, "");
+}
 
 function toUniqueEmails(values: Array<string | null | undefined>): string[] {
     const seen = new Set<string>();
@@ -553,6 +622,32 @@ async function generateVirtualOfficeContractPdf(
     const paymentMethodLabel = formatPaymentMethodLabel(d.payment_method);
     const formattedStartDate = formatDisplayDate(d.date);
 
+    // --- VAT / subtotal computation ---
+    const VAT_RATE = 0.12; // 12% PH VAT
+    const parseAmount = (value: string): number | null => {
+        const numeric = Number(String(value).replace(/[^0-9.]/g, ""));
+        return Number.isFinite(numeric) ? numeric : null;
+    };
+    const formatCurrency = (value: number): string =>
+        `₱${value.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    const monthlyFeeAmount = parseAmount(monthlyFee);
+    let vatAmountLabel = "—";
+    let subtotalLabel = "—";
+    let totalPerMonthLabel = "—";
+
+    if (monthlyFeeAmount !== null) {
+        // Treat the listed package price as VAT-inclusive; back out the subtotal and VAT.
+        const subtotal = monthlyFeeAmount / (1 + VAT_RATE);
+        const vatAmount = monthlyFeeAmount - subtotal;
+
+        subtotalLabel = formatCurrency(subtotal);
+        vatAmountLabel = formatCurrency(vatAmount);
+        totalPerMonthLabel = formatCurrency(monthlyFeeAmount);
+    }
+
+    const durationLabel = d.duration || quotation.duration || "Month-to-month";
+
     drawLine("Hero Serviced Office", { size: 20, bold: true, color: COLOR_PRIMARY, align: "center", gap: 26 });
     drawLine("Virtual Office Service Agreement", { size: 11, color: COLOR_MUTED, align: "center", gap: 28 });
 
@@ -568,10 +663,13 @@ async function generateVirtualOfficeContractPdf(
     drawLine(`Service: ${quotation.service_name || "Virtual Office"}`);
     if (quotation.branch) drawLine(`Branch: ${quotation.branch}`);
     drawLine(`Package: ${quotation.package || "—"}`);
-    drawLine(`Monthly Fee: ${monthlyFee}/month`);
+    drawLine(`Duration: ${durationLabel}`);
     drawLine(`Start Date: ${formattedStartDate}`);
+    drawLine(`Subtotal (Monthly, VAT-exclusive): ${subtotalLabel}`);
+    drawLine(`VAT (12%): ${vatAmountLabel}`);
+    drawLine(`Monthly Fee (VAT-inclusive): ${totalPerMonthLabel}`);
     drawLine(`Payment Method: ${paymentMethodLabel}`);
-    if (d.transaction_id) drawLine(`Transaction ID: ${d.transaction_id}`);
+    if (d.transaction_id) drawLine(`Reference No: ${d.transaction_id}`);
 
     sectionTitle("3. Client Information");
     drawLine(`Name: ${idName}`);
@@ -607,7 +705,7 @@ async function generateVirtualOfficeContractPdf(
     return Buffer.from(bytes);
 }
 
-// ─── User & Admin Notification Emails ───────────────────────────────────────
+// User & Admin Notification Emails 
 
 export async function sendQuotationUserEmail(
     quotation: QuotationPayload,
@@ -618,62 +716,28 @@ export async function sendQuotationUserEmail(
     }
 
     const firstName = quotation.detail.full_name.split(" ")[0] || quotation.detail.full_name;
-    const qualifiesForContract = isVirtualOfficePaymongo(quotation);
-    const readyForContract = canGenerateContract(quotation, options);
-    const documentCopies = getDocumentCopyAttachments(options);
+
+    const idAttachments = [
+        options.governmentIdCopy,
+        options.signatoryGovernmentIdCopy,
+    ].filter(
+        (attachment): attachment is QuotationDocumentCopy => Boolean(attachment)
+    );
 
     const attachments: {
         filename: string;
         content: Buffer;
         contentType: string;
-    }[] = [...documentCopies];
-
-    let contractAttached = false;
-
-    console.log("===== Contract Check =====");
-    console.log("Service:", quotation.service_name);
-    console.log("Payment:", quotation.detail.payment_method);
-    console.log("Qualifies:", qualifiesForContract);
-
-    if (readyForContract) {
-        try {
-            const pdfBuffer = await generateVirtualOfficeContractPdf(quotation);
-
-            console.log(
-                "PDF generated successfully:",
-                pdfBuffer.length,
-                "bytes"
-            );
-
-            attachments.push({
-                filename: "Hero-Virtual-Office-Contract.pdf",
-                content: pdfBuffer,
-                contentType: "application/pdf",
-            });
-
-            contractAttached = true;
-        } catch (error) {
-            console.error(
-                "Failed to generate contract PDF:",
-                error
-            );
-        }
-    }
+    }[] = [...idAttachments];
 
     console.log("Attachments:", attachments?.length ?? 0);
 
-    const contractLine = contractAttached
-        ? `<p style="font-size:15px;line-height:1.8;color:#475569;">Attached to this email is your quotation contract in PDF format, with your submitted client information already completed for your review.</p>`
-        : qualifiesForContract
-            ? `<p style="font-size:15px;line-height:1.8;color:#475569;">Contract generation is queued. We can generate and send the contract after both your proof of payment and government ID copies are uploaded.</p>`
-            : "";
-
-    const docCopyLine = documentCopies.length > 0
-        ? `<p style="font-size:13px;color:#64748b;line-height:1.7;margin-top:16px;">Copies of your uploaded payment proof and ID documents are attached for your records.</p>`
+    const docCopyLine = idAttachments.length > 0
+        ? `<p style="font-size:13px;color:#64748b;line-height:1.7;margin-top:16px;">Copies of your uploaded ID documents are attached for your records.</p>`
         : "";
 
-    const paymentAcknowledgementLine = hasPaymentCopy(options)
-        ? `<p style="font-size:15px;line-height:1.8;color:#475569;">We acknowledge receipt of your submitted payment proof. Our team will verify it and proceed with your request.</p>`
+    const signatoryLine = quotation.detail.signatory_details
+        ? `<p style="font-size:15px;line-height:1.8;color:#475569;">Signatory Details: <strong>${quotation.detail.signatory_details}</strong></p>`
         : "";
 
     const body = `
@@ -683,8 +747,7 @@ export async function sendQuotationUserEmail(
             ${quotation.service_name.toLowerCase()} request and our team will get back
             to you within <strong>24 business hours</strong>.
         </p>
-        ${paymentAcknowledgementLine}
-        ${contractLine}
+        ${signatoryLine}
         ${docCopyLine}
         <table style="width:100%;border-collapse:collapse;margin-top:16px;">
             ${buildQuotationDetailRows(quotation, {
@@ -768,6 +831,125 @@ export async function sendQuotationContractEmail(
     return sendQuotationMailWithErrorHandling(mailOptions);
 }
 
+export async function sendQuotationPaymentVerificationEmail(
+    quotation: QuotationPayload,
+    options: QuotationNotificationOptions = {}
+) {
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        throw new Error("SMTP credentials are not configured.");
+    }
+
+    const d = quotation.detail;
+    const recipients = toUniqueEmails([
+        RECIPIENTS.accounting,
+        ...parseRecipientList(process.env.ACCOUNTING_NOTIFICATION_EMAILS),
+    ]);
+    const attachments = [...getDocumentCopyAttachments(options)];
+    const quoteId = (quotation as QuotationPayload & { id?: string | number }).id;
+    const verifyPaymentUrl = options.verifyPaymentUrl || options.contractSendUrl || (
+        quoteId !== undefined && quoteId !== null
+            ? `${getPublicAppBaseUrl()}/api/quotations/${encodeURIComponent(String(quoteId))}/payment-approved?source=payment-verification`
+            : undefined
+    );
+
+    const priceBreakdownRows = buildQuotationPriceBreakdownRows(quotation);
+
+    const body = `
+        <p style="font-size:15px;line-height:1.8;color:#475569;">Hi Accounting Team,</p>
+        <p style="font-size:15px;line-height:1.8;color:#475569;">
+            A payment proof has been submitted for <strong>${d.full_name}</strong> for the <strong>${quotation.service_name}</strong> quotation.
+            Please review the payment details below and confirm that the payment is correct and verified.
+        </p>
+        ${verifyPaymentUrl ? `
+        <p style="text-align:center;margin:24px 0;">
+            <a href="${verifyPaymentUrl}" style="display:inline-block;padding:14px 24px;background:#0D47A1;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:700;">
+                Payment Verified
+            </a>
+        </p>
+        <p style="font-size:12px;color:#94a3b8;text-align:center;line-height:1.6;">
+            This will notify the admin department that payment has been verified and is correct. The contract will still need to be sent manually by an admin.
+        </p>` : ""}
+        <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+            ${quotationRow("Client", d.full_name)}
+            ${quotationRow("Email", d.email)}
+            ${quotationRow("Phone", d.phone)}
+            ${quotationRow("Branch", quotation.branch)}
+            ${quotationRow("Payment Method", d.payment_method)}
+            ${quotationRow("Reference No", d.transaction_id)}
+            ${priceBreakdownRows}
+        </table>`;
+
+    const mailOptions = {
+        from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
+        to: recipients,
+        replyTo: d.email,
+        subject: `Payment verification for ${quotation.service_name} quotation`,
+        html: quotationWrapper(body),
+        text: `Payment verification for ${quotation.service_name} quotation from ${d.full_name}. Please review the attached payment proof and confirm it is correct.`,
+        attachments,
+    };
+
+    return sendQuotationMailWithErrorHandling(mailOptions);
+}
+
+export async function sendQuotationPaymentVerifiedAdminEmail(
+    quotation: QuotationPayload,
+    options: QuotationNotificationOptions = {}
+) {
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        throw new Error("SMTP credentials are not configured.");
+    }
+
+    const d = quotation.detail;
+    const recipients = toUniqueEmails([
+        ...getCoreStakeholderRecipients(quotation),
+        ...parseRecipientList(process.env.ADMIN_NOTIFICATION_EMAILS),
+    ]);
+    const attachments = [...getDocumentCopyAttachments(options)];
+    const priceBreakdownRows = buildQuotationPriceBreakdownRows(quotation);
+    const quoteId = (quotation as QuotationPayload & { id?: string | number }).id;
+    const dashboardUrl = options.contractSendUrl || (
+        quoteId !== undefined && quoteId !== null
+            ? `${getPublicAppBaseUrl()}/admin/quotation?status=paid&search=${encodeURIComponent(String(quoteId))}`
+            : `${getPublicAppBaseUrl()}/admin/quotation?status=paid`
+    );
+
+    const body = `
+        <p style="font-size:15px;line-height:1.8;color:#475569;">Hi Admin Team,</p>
+        <p style="font-size:15px;line-height:1.8;color:#475569;">
+            Payment for <strong>${d.full_name}</strong> for the <strong>${quotation.service_name}</strong> quotation has been verified and confirmed to be correct and true.
+        </p>
+        <p style="text-align:center;margin:24px 0;">
+            <a href="${dashboardUrl}" style="display:inline-block;padding:14px 24px;background:#0D47A1;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:700;">
+                Go to Quotation Dashboard
+            </a>
+        </p>
+        <p style="font-size:14px;line-height:1.7;color:#64748b;">
+            The contract is still required to be sent manually by an admin to the client. Use the dashboard link above to open the quotation queue and send the contract.
+        </p>
+        <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+            ${quotationRow("Client", d.full_name)}
+            ${quotationRow("Email", d.email)}
+            ${quotationRow("Phone", d.phone)}
+            ${quotationRow("Branch", quotation.branch)}
+            ${quotationRow("Payment Method", d.payment_method)}
+            ${quotationRow("Reference No", d.transaction_id)}
+            ${priceBreakdownRows}
+        </table>`;
+
+    const mailOptions = {
+        from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
+        to: recipients,
+        replyTo: d.email,
+        subject: `Payment verified for ${quotation.service_name} quotation`,
+        html: quotationWrapper(body),
+        text: `Payment for ${d.full_name} (${quotation.service_name}) has been verified and marked as paid. The contract must still be sent manually by an admin.`,
+        attachments,
+    };
+
+    return sendQuotationMailWithErrorHandling(mailOptions);
+}
+
 export async function sendQuotationAdminEmail(
     quotation: QuotationPayload,
     options: QuotationNotificationOptions = {}
@@ -819,7 +1001,7 @@ export async function sendQuotationAdminEmail(
             ${buildQuotationDetailRows(quotation, {
                 formattedDate: true,
             })}
-            ${quotationRow("Transaction ID", d.transaction_id)}
+            ${quotationRow("Reference No", d.transaction_id)}
             ${quotationRow("Receipt File", d.receipt)}
             ${quotationRow("Government ID File", d.government_id_file)}
             ${quotationRow("Signatory ID File", d.signatory_id_file)}

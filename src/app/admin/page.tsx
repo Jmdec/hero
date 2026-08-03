@@ -163,9 +163,9 @@ function DrillDownModal({ id, data, onClose }: { id: StatKey; data: Analytics; o
             ],
         },
         revenue: {
-            title: "Revenue Breakdown",
+            title: "Quotation Summary",
             items: [
-                { label: "Total Revenue", value: `₱${data.quotations.revenue.toLocaleString()}` },
+                { label: "Total Quotation Value", value: `₱${data.quotations.revenue.toLocaleString()}` },
                 { label: "Total Quotations", value: String(data.quotations.total) },
                 ...Object.entries(data.quotations.by_status).map(([k, v]) => ({
                     label: k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()), value: String(v),
@@ -245,7 +245,13 @@ export default function AdminDashboard() {
         }
     }, []);
 
-    useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
+    useEffect(() => {
+        const timeoutId = window.setTimeout(() => {
+            void fetchAnalytics();
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [fetchAnalytics]);
 
     if (loading) {
         return (
@@ -282,7 +288,7 @@ export default function AdminDashboard() {
         { id: "chat_leads", icon: Bot, label: "Chatbot Leads", value: chat_leads.total.toLocaleString(), sub: `${chat_leads.conversations} conversations · ${chat_leads.agent_requested} awaiting agent`, trendUp: chat_leads.total > 0, color: "bg-[#0D47A1]", onClick: setActiveCard },
         { id: "inquiries", icon: MessageSquare, label: "Contact Inquiries", value: inquiries.total.toLocaleString(), sub: `${inquiries.new} new · ${inquiries.in_progress} in progress`, trendUp: inquiries.new > 0, color: "bg-[#0D47A1]", onClick: setActiveCard },
         { id: "announcements", icon: Megaphone, label: "Announcements", value: announcements.total.toLocaleString(), sub: `${announcements.published} published · ${announcements.draft} draft`, trendUp: null, color: "bg-[#0D47A1]", onClick: setActiveCard },
-        { id: "revenue", icon: PhilippinePeso, label: "Revenue", value: formatCurrency(quotations.revenue), sub: `${quotations.total} quotation${quotations.total !== 1 ? "s" : ""} total`, trendUp: quotations.revenue > 0, color: "bg-[#FFC107]", onClick: setActiveCard },
+        { id: "revenue", icon: PhilippinePeso, label: "Quotation Value", value: formatCurrency(quotations.revenue), sub: `${quotations.total} quotation${quotations.total !== 1 ? "s" : ""} total`, trendUp: quotations.revenue > 0, color: "bg-[#FFC107]", onClick: setActiveCard },
     ];
 
     return (
@@ -398,7 +404,7 @@ export default function AdminDashboard() {
                     <div className="bg-white rounded-2xl shadow p-5">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h3 className="text-sm font-bold text-gray-800">Monthly Revenue</h3>
+                                <h3 className="text-sm font-bold text-gray-800">Monthly Quotation Value</h3>
                                 <p className="text-xs text-gray-400">Last 6 months · paid &amp; completed</p>
                             </div>
                             <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">{formatCurrency(quotations.revenue)}</span>
@@ -410,7 +416,7 @@ export default function AdminDashboard() {
                                 <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={(v) => v >= 1000 ? `₱${(v / 1000).toFixed(0)}k` : `₱${v}`} />
                                 <Tooltip
                                     contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
-                                    formatter={(v) => [`₱${Number(v ?? 0).toLocaleString()}`, "Revenue"]}
+                                    formatter={(v) => [`₱${Number(v ?? 0).toLocaleString()}`, "Quotation Value"]}
                                     labelStyle={{ fontWeight: 700, color: "#0D47A1" }}
                                 />
                                 <Bar dataKey="total" fill="#0D47A1" radius={[6, 6, 0, 0]} maxBarSize={36} />

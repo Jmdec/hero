@@ -14,7 +14,6 @@ import {
   ChevronLeft,
   CheckCircle2,
   X,
-  Landmark,
   Wallet,
   QrCode,
   ArrowRightLeft,
@@ -1486,7 +1485,7 @@ function Step4({
   );
 }
 
-// ─── Payment Link Gate ────────────────────────────────────────────────────
+// Payment Link Gate
 // Handles the ?quotation=<id>&token=<token> flow. Validates the token against
 // the backend BEFORE ever showing the payment form, so a guessed/expired
 // token never grants access. See API contract notes below the component.
@@ -1518,9 +1517,6 @@ function usePaymentLinkGate() {
 
     (async () => {
       try {
-        // GET /api/quotations/:id/payment-link?token=...
-        // Expected 200 response: { valid: true, virtual_office: { package, startDate, months } }
-        // Expected 4xx response: { valid: false, message?: string }
         const res = await fetch(
           `${API_BASE_URL}/quotations/${encodeURIComponent(quotationId)}/payment-link?token=${encodeURIComponent(token)}`,
           { cache: "no-store" }
@@ -1559,27 +1555,6 @@ function usePaymentLinkGate() {
   }, [quotationId, token]);
 
   return { status, context, errorMessage, hasLinkParams: Boolean(quotationId && token) };
-}
-
-function PaymentLinkInvalid({ message }: { message?: string | null }) {
-  return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
-      <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5">
-        <ShieldAlert className="w-8 h-8 text-red-500" />
-      </div>
-      <h2 className="text-2xl font-bold text-[#0B1F4A] mb-2">This payment link is invalid or has expired</h2>
-      <p className="text-sm text-[#64748B] max-w-md mx-auto leading-relaxed">
-        {message ??
-          "Please check your email for the most recent payment link, or contact our sales team if you believe this is a mistake."}
-      </p>
-      <a
-        href="mailto:salesofficer@heroph.net"
-        className="inline-block mt-6 px-7 py-3 bg-[#FFC107] text-[#1B3A8C] text-sm font-bold rounded-full hover:bg-[#FFC107]/80 transition-all duration-200"
-      >
-        Contact Sales
-      </a>
-    </div>
-  );
 }
 
 export default function GetAQuotePage() {

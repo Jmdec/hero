@@ -16,6 +16,7 @@ import {
   Globe2,
   Landmark,
   ArrowUpRight,
+  Quote,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -45,9 +46,134 @@ function getBadgeColor(name: string) {
   return BADGE_PALETTE[sum % BADGE_PALETTE.length];
 }
 
+const companyLogoMap: Record<string, string> = {
+  "株式会社ヒーロー": "/company-logo/hero-jp-logo.png",
+  "株式会社ヒーロープラス": "/company-logo/hero-plus-logo.png",
+  "HMソリューション株式会社": "/company-logo/hm-txt-logo.png",
+  "株式会社モードツー": "/company-logo/mode2-logo.png",
+  "株式会社アイモ": "/company-logo/imo-logo.png",
+  "イーコンビニ株式会社": "/company-logo/e-convenience-logo.png",
+  "株式会社ジョイフローラ": "/company-logo/joyflora-logo.png",
+  "日本窯炉株式会社": "/company-logo/nihonyouro-logo.png",
+  "ブライトン株式会社": "/company-logo/brighton-txt-logo.png",
+  "株式会社ユナイテッド": "/company-logo/united-logo.png",
+  "株式会社LIZ LISA": "/company-logo/lizlisa-logo.png",
+  "株式会社テクノ": "/company-logo/techno-logo.png",
+  "奥本建設工業株式会社": "/company-logo/okumoto-logo.png",
+  "ジャスマックプラザ株式会社": "/company-logo/jasmac-logo.png",
+  "医療法人社団 光星": "/company-logo/kousei-logo.png",
+  "株式会社イー・サポート": "/company-logo/e-support-logo.png",
+  "ボーダレス・ビジョン株式会社": "/company-logo/borderless-logo.png",
+  "Kanazawa Marukoshi Department Store Co., Ltd.（株式会社 金沢丸越百貨店）": "/company-logo/kanazawa-mza-logo.png",
+  "Kanazawa Sky Hotel Co., Ltd.（株式会社 金沢スカイホテル）": "/company-logo/sky-hotel-logo.png",
+  "Marushin Gravure Co., Ltd.（丸新グラビア株式会社）": "/company-logo/marushin-logo.png",
+  "有限会社ホビーロード": "/company-logo/hobby-road-logo.png",
+  "品川窯材 株式会社": "/company-logo/shinagawa-logo.png",
+};
+
+function getCompanyLogo(name: string) {
+  return companyLogoMap[name] ?? null;
+}
+
+// HERO Group of Companies — sourced from ヒーローグループ企業一覧
+const groupCompanies = [
+  {
+    area: "Kanto Area",
+    icon: Building2,
+    companies: [
+      { name: "株式会社ヒーロー", website: "https://www.hero-super.jp" },
+      {
+        name: "株式会社ヒーロープラス",
+        website: "https://www.tsubasa-ushiku.jp/",
+      },
+      { name: "HMソリューション株式会社", website: null },
+      { name: "株式会社モードツー", website: "https://www.mode2.co.jp/" },
+      { name: "株式会社アイモ", website: "https://imo-inc.co.jp/" },
+      {
+        name: "イーコンビニ株式会社",
+        website: "https://www.rakuten.ne.jp/gold/e-convini/",
+      },
+      { name: "株式会社ジョイフローラ", website: null },
+      { name: "日本窯炉株式会社", website: "https://nihon-youro.jp/" },
+      { name: "ブライトン株式会社", website: null },
+      {
+        name: "株式会社ユナイテッド",
+        website: "https://www.united-keibi.co.jp/",
+      },
+      { name: "株式会社LIZ LISA", website: "https://www.lizlisa.com/" },
+      { name: "株式会社テクノ", website: "https://www.techno-co.jp/" },
+      {
+        name: "奥本建設工業株式会社",
+        website: "https://www.okumoto-kensetsu.co.jp/",
+      },
+    ],
+  },
+  {
+    area: "Hokkaido Area",
+    icon: Globe2,
+    companies: [
+      {
+        name: "ジャスマックプラザ株式会社",
+        website: "https://www.jasmacplaza.jp/",
+      },
+      {
+        name: "医療法人社団 光星",
+        website: "https://www.medical-plaza.jp/",
+      },
+      {
+        name: "株式会社イー・サポート",
+        website: "https://heroes-school.jp/",
+      },
+      {
+        name: "ボーダレス・ビジョン株式会社",
+        website: "https://blv.co.jp/",
+      },
+    ],
+  },
+  {
+    area: "Hokuriku Area",
+    icon: Landmark,
+    companies: [
+      {
+        name: "Kanazawa Marukoshi Department Store Co., Ltd.（株式会社 金沢丸越百貨店）",
+        website: "https://www.kmza.jp/",
+      },
+      {
+        name: "Kanazawa Sky Hotel Co., Ltd.（株式会社 金沢スカイホテル）",
+        website: "https://www.anahikanazawasky.com/",
+      },
+      {
+        name: "Marushin Gravure Co., Ltd.（丸新グラビア株式会社）",
+        website: "https://marushin-gravure.co.jp/",
+      },
+      { name: "有限会社ホビーロード", website: "https://www.hobbyroad.jp/" },
+    ],
+  },
+  {
+    area: "Nishinihon Area",
+    icon: Users,
+    companies: [
+      {
+        name: "品川窯材 株式会社",
+        website: "https://shinagawayozai.co.jp/",
+      },
+    ],
+  },
+  {
+    area: "Overseas",
+    icon: Building2,
+    companies: [
+      { name: "Hero PH Serviced Offices", website: "https://heroph.net/jp/" },
+    ],
+  },
+];
+
+// Flattened list of every company across all regions, used to drive the
+// single logo carousel on the About page.
+const allCompanies = groupCompanies.flatMap((region) => region.companies);
+
 export default function AboutPage() {
   const [spaceSlide, setSpaceSlide] = useState(0);
-  const [activeRegion, setActiveRegion] = useState(0);
 
   const teamCarousel = [
     { image: "/_ARM1425.webp", title: "Our Team" },
@@ -99,99 +225,6 @@ export default function AboutPage() {
       title: "Efficiency",
       description:
         "We simplify the way businesses work by providing complete workspace solutions that reduce operational burden and improve productivity.",
-    },
-  ];
-
-  // HERO Group of Companies — sourced from ヒーローグループ企業一覧
-  const groupCompanies = [
-    {
-      area: "Kanto Area",
-      icon: Building2,
-      companies: [
-        { name: "株式会社ヒーロー", website: "https://www.hero-super.jp" },
-        {
-          name: "株式会社ヒーロープラス",
-          website: "https://www.tsubasa-ushiku.jp/",
-        },
-        { name: "HMソリューション株式会社", website: null },
-        { name: "株式会社モードツー", website: "https://www.mode2.co.jp/" },
-        { name: "株式会社アイモ", website: "https://imo-inc.co.jp/" },
-        {
-          name: "イーコンビニ株式会社",
-          website: "https://www.rakuten.ne.jp/gold/e-convini/",
-        },
-        { name: "株式会社ジョイフローラ", website: null },
-        { name: "日本窯炉株式会社", website: "https://nihon-youro.jp/" },
-        { name: "ブライトン株式会社", website: null },
-        {
-          name: "株式会社ユナイテッド",
-          website: "https://www.united-keibi.co.jp/",
-        },
-        { name: "株式会社LIZ LISA", website: "https://www.lizlisa.com/" },
-        { name: "株式会社テクノ", website: "https://www.techno-co.jp/" },
-        {
-          name: "奥本建設工業株式会社",
-          website: "https://www.okumoto-kensetsu.co.jp/",
-        },
-      ],
-    },
-    {
-      area: "Hokkaido Area",
-      icon: Globe2,
-      companies: [
-        {
-          name: "ジャスマックプラザ株式会社",
-          website: "https://www.jasmacplaza.jp/",
-        },
-        {
-          name: "医療法人社団 光星",
-          website: "https://www.medical-plaza.jp/",
-        },
-        {
-          name: "株式会社イー・サポート",
-          website: "https://heroes-school.jp/",
-        },
-        {
-          name: "ボーダレス・ビジョン株式会社",
-          website: "https://blv.co.jp/",
-        },
-      ],
-    },
-    {
-      area: "Hokuriku Area",
-      icon: Landmark,
-      companies: [
-        {
-          name: "Kanazawa Marukoshi Department Store Co., Ltd.（株式会社 金沢丸越百貨店）",
-          website: "https://www.kmza.jp/",
-        },
-        {
-          name: "Kanazawa Sky Hotel Co., Ltd.（株式会社 金沢スカイホテル）",
-          website: "https://www.anahikanazawasky.com/",
-        },
-        {
-          name: "Marushin Gravure Co., Ltd.（丸新グラビア株式会社）",
-          website: "https://marushin-gravure.co.jp/",
-        },
-        { name: "有限会社ホビーロード", website: "https://www.hobbyroad.jp/" },
-      ],
-    },
-    {
-      area: "Nishinihon Area",
-      icon: Users,
-      companies: [
-        {
-          name: "品川窯材 株式会社",
-          website: "https://shinagawayozai.co.jp/",
-        },
-      ],
-    },
-    {
-      area: "Overseas",
-      icon: Building2,
-      companies: [
-        { name: "Hero PH Serviced Offices", website: "https://heroph.net/jp/" },
-      ],
     },
   ];
 
@@ -280,7 +313,56 @@ export default function AboutPage() {
             </div>
           </motion.div>
 
-          <div className="relative flex justify-center mt-6 h-125 w-full">
+
+          {/* Vision & Mission */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div className="grid md:grid-cols-2 gap-12">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                viewport={{ once: true }}
+                className="p-8 bg-[#C5D2EC]/30 rounded-2xl"
+              >
+                <div className="flex items-center gap-5">
+                  <div className="w-14 h-14 bg-[#0D47A1] rounded-xl flex items-center justify-center mb-6">
+                    <Eye className="w-7 h-7 text-white" />
+                  </div>
+                  <h3 className="text-3xl font-bold text-gray-900 mb-4">
+                    Our Vision
+                  </h3>
+                </div>
+                <p className="text-gray-600 leading-relaxed text-justify">
+                  To be one of the most trusted serviced office providers in the Philippines, recognized for
+                  delivering reliable workspace solutions that support business growth and redefine how modern
+                  companies work in dynamic urban environments.
+                </p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                viewport={{ once: true }}
+                className="p-8 bg-[#8FA8D6]/20 rounded-2xl"
+              >
+                <div className="flex items-center gap-5">
+                  <div className="w-14 h-14 bg-[#0D47A1] rounded-xl flex items-center justify-center mb-6">
+                    <Award className="w-7 h-7 text-white" />
+                  </div>
+                  <h3 className="text-3xl font-bold text-gray-900 mb-4">
+                    Our Mission
+                  </h3>
+                </div>
+                <p className="text-gray-600 leading-relaxed text-justify">
+                  To provide accessible, flexible, and fully serviced workspace solutions that empower
+                  businesses to operate efficiently, grow confidently, and establish a strong professional presence
+                  in the heart of Makati Citys
+                </p>
+              </motion.div>
+            </div>
+          </div>
+
+          <div className="relative flex justify-center mt-10 h-135 w-full">
             {teamCarousel.map((item, index) => (
               <div
                 key={index}
@@ -293,7 +375,7 @@ export default function AboutPage() {
                     alt={item.title}
                     width={800}
                     height={500}
-                    className="rounded-2xl object-cover max-h-125 w-auto"
+                    className="rounded-2xl object-cover max-h-135 w-auto"
                     unoptimized
                   />
 
@@ -303,54 +385,6 @@ export default function AboutPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* Vision & Mission */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3">
-          <div className="grid md:grid-cols-2 gap-12">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-              className="p-8 bg-[#C5D2EC]/30 rounded-2xl"
-            >
-              <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-[#0D47A1] rounded-xl flex items-center justify-center mb-6">
-                  <Eye className="w-7 h-7 text-white" />
-                </div>
-                <h3 className="text-3xl font-bold text-gray-900 mb-4">
-                  Our Vision
-                </h3>
-              </div>
-              <p className="text-gray-600 leading-relaxed text-justify">
-                To be one of the most trusted serviced office providers in the Philippines, recognized for
-                delivering reliable workspace solutions that support business growth and redefine how modern
-                companies work in dynamic urban environments.
-              </p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              viewport={{ once: true }}
-              className="p-8 bg-[#8FA8D6]/20 rounded-2xl"
-            >
-              <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-[#0D47A1] rounded-xl flex items-center justify-center mb-6">
-                  <Award className="w-7 h-7 text-white" />
-                </div>
-                <h3 className="text-3xl font-bold text-gray-900 mb-4">
-                  Our Mission
-                </h3>
-              </div>
-              <p className="text-gray-600 leading-relaxed text-justify">
-                To provide accessible, flexible, and fully serviced workspace solutions that empower
-                businesses to operate efficiently, grow confidently, and establish a strong professional presence
-                in the heart of Makati Citys
-              </p>
-            </motion.div>
           </div>
         </div>
       </section>
@@ -389,11 +423,90 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Message from the President */}
+      {/* Leadership Messages — mock/sample copy */}
+      <section className="py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+            className="text-center max-w-2xl mx-auto mb-14"
+          >
+            <h2 className="mt-3 text-3xl md:text-4xl font-bold text-gray-900">
+              A Message From Our Leadership
+            </h2>
+          </motion.div>
 
-      {/* Message from the Chairman */}
+          <div className="space-y-8">
+            {/* Message from the President */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+              className="grid gap-8 rounded-3xl border border-[#1B3A8C]/10 bg-white p-8 shadow-sm md:grid-cols-[160px_1fr] md:p-10"
+            >
+              <div className="flex flex-row items-center gap-4 md:flex-col md:items-start md:gap-3">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[#1B3A8C] text-xl font-bold tracking-wide text-white">
+                  RC
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">Ramon Castillo</p>
+                  <p className="text-sm text-[#1B3A8C]">President</p>
+                  <p className="text-xs uppercase tracking-wide text-gray-400 py-1">
+                    HERO Serviced Office
+                  </p>
+                </div>
+              </div>
+              <div className="relative">
+                <Quote className="absolute -top-1 -left-1 h-8 w-8 text-[#B8935A]/35" />
+                <p className="pl-9 font-serif text-lg italic leading-relaxed text-gray-700 text-justify">
+                  Every business that walks through our doors is at a different stage of its journey—some
+                  are opening their first office in the Philippines, others are scaling a team that has
+                  outgrown its space. Our job is to remove the friction from that moment, so our clients can
+                  focus on their work instead of their walls. That commitment, more than any amenity, is what
+                  I hope people feel the second they step into a HERO office.
+                </p>
+              </div>
+            </motion.div>
 
-      {/* HERO Group of Companies */}
+            {/* Message from the Chairman */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              viewport={{ once: true }}
+              className="grid gap-8 rounded-3xl border border-[#1B3A8C]/10 bg-white p-8 shadow-sm md:grid-cols-[1fr_160px] md:p-10"
+            >
+              <div className="relative md:order-1">
+                <Quote className="absolute -top-1 -right-1 h-8 w-8 text-[#B8935A]/35" />
+                <p className="pr-9 font-serif text-lg italic leading-relaxed text-gray-700 text-justify">
+                  When we brought the serviced office concept from Japan to Makati, we made a deliberate
+                  choice to carry over one principle above all others: hospitality that anticipates a need
+                  before it is spoken. It is a small thing on any single day, and it compounds into something
+                  our clients notice over years. We are still guided by that same principle as the group
+                  continues to grow across new markets.
+                  </p>
+              </div>
+              <div className="flex flex-row items-center gap-4 md:order-2 md:flex-col md:items-start md:gap-3">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[#0F2557] text-xl font-bold tracking-wide text-white">
+                  KY
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">Kenji Yamashita</p>
+                  <p className="text-sm text-[#1B3A8C]">Chairman</p>
+                  <p className="text-xs uppercase tracking-wide text-gray-400 py-1">
+                    HERO Group of Companies
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Group of Companies — auto-rotating carousel; hover pauses rotation */}
       <section className="pt-10 pb-20 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -404,116 +517,136 @@ export default function AboutPage() {
             className="text-center max-w-3xl mx-auto mb-10"
           >
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              HERO Group of Companies
+              One Group, Working across Borders
             </h2>
             <p className="text-lg text-gray-600">
-              One group, working across borders to bring reliable, service-first
+              Bringing reliable, service-first
               business solutions to companies operating in Japan and the Philippines.
             </p>
           </motion.div>
 
-          {/* Region tabs — keeps 23 companies from turning into an endless scroll */}
-          <div className="flex flex-wrap justify-center gap-2 mb-8">
-            {groupCompanies.map((region, index) => {
-              const isActive = index === activeRegion;
-              return (
-                <button
-                  key={region.area}
-                  onClick={() => setActiveRegion(index)}
-                  className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                    isActive
-                      ? "bg-[#1B3A8C] text-white shadow-md"
-                      : "bg-white text-gray-600 border border-gray-200 hover:border-[#1B3A8C]/40 hover:text-[#1B3A8C]"
-                  }`}
-                >
-                  <region.icon className="w-4 h-4" />
-                  {region.area}
-                  <span
-                    className={`ml-1 rounded-full px-1.5 text-xs ${
-                      isActive ? "bg-white/20" : "bg-gray-100"
-                    }`}
-                  >
-                    {region.companies.length}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Active region's companies */}
-          <motion.div
-            key={activeRegion}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+          <div
+            className="hero-logo-marquee-wrap overflow-hidden rounded-3xl border border-[#1B3A8C]/15 bg-white p-6 shadow-sm"
+            style={{
+              maskImage:
+                "linear-gradient(to right, transparent, black 32px, black calc(100% - 32px), transparent)",
+              WebkitMaskImage:
+                "linear-gradient(to right, transparent, black 32px, black calc(100% - 32px), transparent)",
+            }}
           >
-            {groupCompanies[activeRegion].companies.map((company) => (
-              <div
-                key={company.name}
-                className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 hover:border-[#1B3A8C]/30 hover:shadow-sm transition-all"
-              >
-                <div
-                  className="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                  style={{ backgroundColor: getBadgeColor(company.name) }}
-                >
-                  {getCompanyInitial(company.name)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-semibold text-gray-900 leading-snug truncate">
-                    {company.name}
-                  </h4>
-                  {company.website ? (
-                    <a
-                      href={company.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-0.5 text-xs text-[#1B3A8C] font-medium hover:underline"
-                    >
-                      Visit site
-                      <ArrowUpRight className="w-3 h-3" />
-                    </a>
-                  ) : (
-                    <span className="text-xs text-gray-400">No website listed</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </motion.div>
+            <div className="hero-logo-marquee flex w-max gap-4 py-1">
+              {[...allCompanies, ...allCompanies].map((company, i) => {
+                const Tile: any = company.website ? "a" : "div";
+                const tileProps = company.website
+                  ? {
+                    href: company.website,
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                  }
+                  : {};
+                return (
+                  <Tile
+                    key={`${company.name}-${i}`}
+                    {...tileProps}
+                    className={`relative flex h-60 w-72 shrink-0 flex-col items-center justify-center gap-3 ${company.website ? "cursor-pointer" : "cursor-default"
+                      }`}
+                  >
+                    {getCompanyLogo(company.name) ? (
+                      <div className="group relative flex h-64 w-64 shrink-0 items-center justify-center overflow-hidden">
+                        <Image
+                          src={getCompanyLogo(company.name)!}
+                          alt={`${company.name} logo`}
+                          width={200}
+                          height={200}
+                          className="object-contain"
+                          unoptimized
+                        />
+
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-md bg-black/75 px-3 py-1 text-sm text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                          {company.name}
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="flex h-32 w-32 shrink-0 items-center justify-center rounded-2xl text-2xl font-bold text-white"
+                        style={{ backgroundColor: getBadgeColor(company.name) }}
+                      >
+                        {getCompanyInitial(company.name)}
+                      </div>
+                    )}
+
+                    {/* Hover overlay: full name + Visit site link */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-[#0F2557]/95 p-3 text-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                      <p className="line-clamp-2 text-xs font-semibold text-white">
+                        {company.name}
+                      </p>
+                      {company.website ? (
+                        <span className="inline-flex items-center gap-0.5 text-xs font-medium text-[#B8935A] group-hover:underline">
+                          Visit site
+                          <ArrowUpRight className="h-3 w-3" />
+                        </span>
+                      ) : (
+                        <span className="text-xs text-blue-100/70">Unlisted</span>
+                      )}
+                    </div>
+                  </Tile>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Why Choose HERO */}
-      <section className="relative overflow-hidden bg-linear-to-r from-[#0A1E3F] to-[#1565C0] px-14 py-20">
-        <div className="relative z-10">
-          <h2 className="mb-12 text-center text-4xl font-extrabold leading-[1.2] tracking-[-0.01em] text-white">
-            Why Choose HERO?
-          </h2>
+      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#0A1E3F_0%,#1565C0_100%)] py-20">
+        <div className="absolute -left-16 top-10 h-52 w-52 rounded-full bg-blue-400/20 blur-3xl" />
+        <div className="absolute -right-8 bottom-8 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-10 text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-200">
+              Why Choose HERO
+            </p>
+            <h2 className="mt-3 text-3xl font-black tracking-[-0.01em] text-white md:text-4xl">
+              A workspace experience designed for progress
+            </h2>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {whyHero.map(({ num, title, desc }) => (
               <div
                 key={num}
-                className="rounded bg-white/5 border border-white/10 p-6"
+                className="rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-sm"
               >
                 <div className="flex items-center gap-5">
-                  <div className="mb-2 text-[28px] font-extrabold leading-none tracking-[-0.02em] text-[#64B5F6]/35">
+                  <div className="text-[28px] font-black leading-none tracking-[-0.04em] text-blue-200/55">
                     {num}
                   </div>
-
-                  <h3 className="mb-2 text-lg font-bold text-white">
-                    {title}
-                  </h3>
+                  <h3 className="text-lg font-bold text-white">{title}</h3>
                 </div>
-
-                <p className="text-sm leading-relaxed text-white/70">
-                  {desc}
-                </p>
+                <p className="mt-4 text-sm leading-7 text-slate-200">{desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
+
+      <style jsx global>{`
+        @keyframes hero-logo-marquee-scroll {
+          from {
+            transform: translateX(0);
+          }
+          to {
+            transform: translateX(-50%);
+          }
+        }
+        .hero-logo-marquee {
+          animation: hero-logo-marquee-scroll 70s linear infinite;
+        }
+        .hero-logo-marquee-wrap:hover .hero-logo-marquee {
+          animation-play-state: paused;
+        }
+      `}</style>
     </div>
   );
 }
