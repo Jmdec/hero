@@ -904,16 +904,10 @@ const Chatbot = () => {
                 const targetId = conversation.remoteConversationId ?? conversation.id;
 
                 try {
-                    // Close the conversation on the server and request transcript
+                    // Close the conversation on the server and request transcript once.
                     await chatApi.closeConversation(targetId, true);
                 } catch {
                     // ignore errors — best-effort
-                }
-
-                try {
-                    await chatApi.emailChatHistory(targetId);
-                } catch {
-                    // ignore email errors — already best-effort
                 }
 
                 conversationClosedRef.current = true;

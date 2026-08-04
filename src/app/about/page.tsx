@@ -168,8 +168,6 @@ const groupCompanies = [
   },
 ];
 
-// Flattened list of every company across all regions, used to drive the
-// single logo carousel on the About page.
 const allCompanies = groupCompanies.flatMap((region) => region.companies);
 
 export default function AboutPage() {
@@ -249,14 +247,14 @@ export default function AboutPage() {
       <section className="relative text-white py-20 lg:py-32 overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80"
+            src="/header.webp"
             alt="About HERO Serviced Office"
             fill
             className="object-cover"
             unoptimized
             priority
           />
-          <div className="absolute inset-0 bg-linear-to-r from-[#1B3A8C]/90 to-[#1B3A8C]/60" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
         </div>
         <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
@@ -268,7 +266,7 @@ export default function AboutPage() {
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
               About HERO Serviced Office
             </h1>
-            <p className="text-xl text-gray-300 text-shadow-sm">
+            <p className="text-xl text-gray-300 text-semibold text-shadow-sm">
               Your trusted partner for premium office solutions in the heart of Makati's business district
             </p>
           </motion.div>
@@ -487,7 +485,7 @@ export default function AboutPage() {
                   before it is spoken. It is a small thing on any single day, and it compounds into something
                   our clients notice over years. We are still guided by that same principle as the group
                   continues to grow across new markets.
-                  </p>
+                </p>
               </div>
               <div className="flex flex-row items-center gap-4 md:order-2 md:flex-col md:items-start md:gap-3">
                 <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[#0F2557] text-xl font-bold tracking-wide text-white">

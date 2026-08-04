@@ -35,7 +35,8 @@ interface Announcement {
   excerpt: string;
   content: string;
   image?: string | string[] | null;
-  status: "draft" | "published" | "archived";
+  status: "draft" | "scheduled" | "posted" | "published" | "archived";
+  scheduled_at?: string | null;
   social_platforms?: string[] | null;
   social_links?: Array<string | null> | null;
   created_at: string;
@@ -50,12 +51,16 @@ interface Announcement {
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200",
-  published:
-    "bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+  scheduled: "bg-blue-100 text-blue-700 ring-1 ring-inset ring-blue-200",
+  posted: "bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+  published: "bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-200",
   archived: "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200",
 };
 
-const STATUS_OPTIONS = ["draft", "published", "archived"] as const;
+const STATUS_OPTIONS = ["draft", "scheduled", "posted", "published", "archived"] as const;
+const TAG_OPTIONS = ["Blog", "Announcement", "Event", "News", "Promo", "Others"] as const;
+
+type TagOption = (typeof TAG_OPTIONS)[number];
 
 const SOCIAL_MEDIA_OPTIONS = [
   { value: "", label: "None" },
@@ -77,11 +82,14 @@ const PLATFORM_LINK_TEMPLATES: Record<string, string> = {
 };
 
 const EMPTY_FORM = {
-  tag: "",
+  tag: "Blog",
+  tag_option: "Blog" as TagOption,
+  other_tag: "",
   date: "",
   title: "",
   content: "",
   status: "draft" as Announcement["status"],
+  scheduled_at: "",
   social_media: [] as SocialMediaEntry[],
   publish_to_social: true,
 };
@@ -119,10 +127,6 @@ function formatSocialMedia(
   });
 }
 
-// The listing excerpt is derived from the content, but the API still
-// expects `excerpt` to be present in the create/update payload — it isn't
-// generated server-side. Truncate on a word boundary so it doesn't cut
-// off mid-word.
 function generateExcerpt(content: string, maxLength = 160) {
   const clean = content.trim().replace(/\s+/g, " ");
   if (clean.length <= maxLength) return clean;
@@ -434,13 +438,20 @@ export default function AnnouncementsAdmin() {
   }
 
   function openEdit(a: Announcement) {
+    const matchedTagOption = TAG_OPTIONS.includes(a.tag as TagOption)
+      ? (a.tag as TagOption)
+      : "Others";
+
     setEditing(a);
     setForm({
       tag: a.tag,
+      tag_option: matchedTagOption,
+      other_tag: matchedTagOption === "Others" ? a.tag : "",
       date: a.date?.slice(0, 10) ?? "",
       title: a.title,
       content: a.content,
       status: a.status,
+      scheduled_at: a.scheduled_at ? a.scheduled_at.slice(0, 16) : "",
       social_media: normalizeSocialMedia(a.social_platforms, a.social_links),
       publish_to_social: true,
     });
@@ -471,6 +482,23 @@ export default function AnnouncementsAdmin() {
       social_media: prev.social_media.map((item, currentIndex) =>
         currentIndex === index ? { ...item, [field]: value } : item,
       ),
+    }));
+  }
+
+  function updateCategory(option: TagOption) {
+    setForm((prev) => ({
+      ...prev,
+      tag_option: option,
+      tag: option === "Others" ? prev.other_tag || "" : option,
+      other_tag: option === "Others" ? prev.other_tag : "",
+    }));
+  }
+
+  function updateOtherTag(value: string) {
+    setForm((prev) => ({
+      ...prev,
+      other_tag: value,
+      tag: prev.tag_option === "Others" ? value : prev.tag,
     }));
   }
 
@@ -521,6 +549,7 @@ export default function AnnouncementsAdmin() {
     const payload = {
       ...form,
       excerpt: generateExcerpt(form.content),
+      scheduled_at: form.scheduled_at,
       social_platforms: form.social_media
         .filter((entry) => entry.platform)
         .map((entry) => entry.platform),
@@ -544,6 +573,7 @@ export default function AnnouncementsAdmin() {
       formData.append("content", form.content);
       formData.append("excerpt", payload.excerpt);
       formData.append("status", form.status);
+      formData.append("scheduled_at", form.scheduled_at);
       formData.append("publish_to_social", String(form.publish_to_social));
 
       payload.social_platforms.forEach((platform) => {
@@ -731,6 +761,8 @@ export default function AnnouncementsAdmin() {
           >
             <option value="">All Status</option>
             <option value="draft">Draft</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="posted">Posted</option>
             <option value="published">Published</option>
             <option value="archived">Archived</option>
           </select>
@@ -1028,15 +1060,15 @@ export default function AnnouncementsAdmin() {
                 viewTarget.social_platforms,
                 viewTarget.social_links,
               ).length > 0 && (
-                <div>
-                  <dt className="mb-1.5 text-xs font-medium text-slate-400">
-                    Social media
-                  </dt>
-                  <dd className="space-y-1.5">
-                    {formatSocialMedia(
-                      viewTarget.social_platforms,
-                      viewTarget.social_links,
-                    ).map((entry, i) => (
+                  <div>
+                    <dt className="mb-1.5 text-xs font-medium text-slate-400">
+                      Social media
+                    </dt>
+                    <dd className="space-y-1.5">
+                      {formatSocialMedia(
+                        viewTarget.social_platforms,
+                        viewTarget.social_links,
+                      ).map((entry, i) => (
                         <div
                           key={`${entry.label}-${i}`}
                           className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2"
@@ -1061,10 +1093,10 @@ export default function AnnouncementsAdmin() {
                           )}
                         </div>
                       ),
-                    )}
-                  </dd>
-                </div>
-              )}
+                      )}
+                    </dd>
+                  </div>
+                )}
             </div>
           </div>
         </ModalBackdrop>
@@ -1096,14 +1128,29 @@ export default function AnnouncementsAdmin() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-600">
-                    Tag
+                    Category
                   </label>
-                  <input
-                    value={form.tag}
-                    onChange={(e) => updateField("tag", e.target.value)}
-                    placeholder="e.g. Promo, Event"
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  />
+                  <select
+                    value={form.tag_option}
+                    onChange={(e) => updateCategory(e.target.value as TagOption)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  >
+                    {TAG_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {form.tag_option === "Others" && (
+                    <div className="mt-3">
+                      <input
+                        value={form.other_tag}
+                        onChange={(e) => updateOtherTag(e.target.value)}
+                        placeholder="Please specify"
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      />
+                    </div>
+                  )}
                   {formErrors.tag && (
                     <p className="mt-1 text-xs text-red-600">
                       {formErrors.tag}
@@ -1120,7 +1167,22 @@ export default function AnnouncementsAdmin() {
                     <input
                       type="date"
                       value={form.date}
-                      onChange={(e) => updateField("date", e.target.value)}
+                      onChange={(e) => {
+                        const dateValue = e.target.value;
+                        const selectedDate = new Date(dateValue);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+
+                        setForm((prev) => ({
+                          ...prev,
+                          date: dateValue,
+                          status:
+                            !Number.isNaN(selectedDate.getTime()) &&
+                            selectedDate > today
+                              ? "scheduled"
+                              : prev.status,
+                        }));
+                      }}
                       className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     />
                   </div>
@@ -1130,6 +1192,46 @@ export default function AnnouncementsAdmin() {
                     </p>
                   )}
                 </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">
+                    Status
+                  </label>
+
+                  <select
+                    value={form.status}
+                    onChange={(e) => updateField("status", e.target.value as Announcement["status"])}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  >
+                    {STATUS_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {form.status === "scheduled" && (
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">
+                      Publish date & time
+                    </label>
+                    <div className="relative">
+                      <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="datetime-local"
+                        value={form.scheduled_at}
+                        onChange={(e) => updateField("scheduled_at", e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      />
+                    </div>
+                    {formErrors.scheduled_at && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {formErrors.scheduled_at}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1155,7 +1257,7 @@ export default function AnnouncementsAdmin() {
                 </label>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept=".webp,.jpeg,.jpg"
                   multiple
                   onChange={(event) => {
                     const files = Array.from(event.target.files ?? []);
@@ -1168,15 +1270,15 @@ export default function AnnouncementsAdmin() {
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     {imagePreviews.length > 0
                       ? imagePreviews.map((preview, index) => (
-                          <div key={`${preview}-${index}`} className="overflow-hidden rounded-lg border border-slate-200">
-                            <img src={preview} alt={`Announcement preview ${index + 1}`} className="h-32 w-full object-cover" />
-                          </div>
-                        ))
+                        <div key={`${preview}-${index}`} className="overflow-hidden rounded-lg border border-slate-200">
+                          <img src={preview} alt={`Announcement preview ${index + 1}`} className="h-32 w-full object-cover" />
+                        </div>
+                      ))
                       : getAnnouncementImageUrls(editing?.image).map((preview, index) => (
-                          <div key={`${preview}-${index}`} className="overflow-hidden rounded-lg border border-slate-200">
-                            <img src={preview} alt={`Announcement image ${index + 1}`} className="h-32 w-full object-cover" />
-                          </div>
-                        ))}
+                        <div key={`${preview}-${index}`} className="overflow-hidden rounded-lg border border-slate-200">
+                          <img src={preview} alt={`Announcement image ${index + 1}`} className="h-32 w-full object-cover" />
+                        </div>
+                      ))}
                   </div>
                 )}
               </div>
@@ -1203,9 +1305,6 @@ export default function AnnouncementsAdmin() {
                 )}
               </div>
 
-              {/* Social media — each row is a platform + the link to that
-                  specific post, since the same announcement can go out to
-                  several platforms with a different URL on each one. */}
               <div>
                 <div className="mb-1 flex items-center justify-between gap-2">
                   <label className="block text-xs font-medium text-slate-600">
@@ -1249,16 +1348,6 @@ export default function AnnouncementsAdmin() {
                       </div>
 
                       <div className="flex gap-1.5 sm:self-stretch">
-                        {/* {entry.platform && !entry.link && (
-                          <button
-                            type="button"
-                            onClick={() => fillPlatformLink(index)}
-                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50"
-                            title="Auto-fill with template"
-                          >
-                            Generate
-                          </button>
-                        )} */}
                         <button
                           type="button"
                           onClick={() => removeSocialMedia(index)}
@@ -1283,11 +1372,6 @@ export default function AnnouncementsAdmin() {
                     {formErrors.social_media}
                   </p>
                 )}
-                {form.social_media.length > 0 && (
-                  <p className="mt-2 text-xs text-slate-400">
-                    Click "Generate" to auto-fill a template link for that platform, then replace the placeholders with actual IDs or URLs.
-                  </p>
-                )}
 
                 <button
                   type="button"
@@ -1299,44 +1383,7 @@ export default function AnnouncementsAdmin() {
                 </button>
               </div>
 
-              {/* <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-                <label className="mb-2 block text-xs font-medium text-slate-600">
-                  Publishing
-                </label>
-                <label className="flex items-center justify-between gap-3 text-sm text-slate-700">
-                  <span>Publish this announcement to connected social platforms</span>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(form.publish_to_social)}
-                    onChange={(e) => updateField("publish_to_social", e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                </label>
-                <p className="mt-2 text-xs text-slate-400">
-                  If no webhook is configured for a selected platform, the save will still succeed and that platform will be skipped.
-                </p>
-              </div> */}
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Status
-                </label>
-                <div className="flex gap-2">
-                  {STATUS_OPTIONS.map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => updateField("status", opt)}
-                      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium capitalize transition ${form.status === opt
-                        ? "border-blue-400 bg-blue-50 text-blue-700"
-                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                        }`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
             <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">

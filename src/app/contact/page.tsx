@@ -68,10 +68,10 @@ function StepProgress({ step }: { step: 1 | 2 }) {
             <div className="flex items-center gap-2.5">
               <span
                 className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0 transition-colors ${isDone
+                  ? "bg-[#1B3A8C] text-white"
+                  : isActive
                     ? "bg-[#1B3A8C] text-white"
-                    : isActive
-                      ? "bg-[#1B3A8C] text-white"
-                      : "bg-gray-100 text-gray-400"
+                    : "bg-gray-100 text-gray-400"
                   }`}
               >
                 {isDone ? <Check className="w-3.5 h-3.5" /> : s.n}
@@ -1013,14 +1013,14 @@ export default function ContactPage() {
       <section className="relative text-white py-20 lg:py-32 overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80"
+            src="/header.webp"
             alt="About HERO Serviced Office"
             fill
             className="object-cover"
             unoptimized
             priority
           />
-          <div className="absolute inset-0 bg-linear-to-r from-[#1B3A8C]/90 to-[#1B3A8C]/60" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
         </div>
         <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
@@ -1032,7 +1032,7 @@ export default function ContactPage() {
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
               Contact Us
             </h1>
-            <p className="text-xl text-gray-300 text-shadow-sm">
+            <p className="text-xl text-gray-300 font-semibold text-shadow-sm">
               Reach out to us for inquiries, reservations, or support.
             </p>
           </motion.div>

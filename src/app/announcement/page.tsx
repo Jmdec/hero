@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
@@ -345,6 +345,10 @@ export default function AnnouncementPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterStatus, setNewsletterStatus] = useState<string | null>(null);
+  const [newsletterError, setNewsletterError] = useState<string | null>(null);
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
 
   // Search / filter / pagination
   const [query, setQuery] = useState("");
@@ -433,14 +437,14 @@ export default function AnnouncementPage() {
       <section className="relative text-white py-20 lg:py-32 overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80"
+            src="/header.webp"
             alt="About HERO Serviced Office"
             fill
             className="object-cover"
             unoptimized
             priority
           />
-          <div className="absolute inset-0 bg-linear-to-r from-[#1B3A8C]/90 to-[#1B3A8C]/60" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
         </div>
 
         <div className="px-4 sm:px-6 lg:px-8 relative z-10">
@@ -453,7 +457,7 @@ export default function AnnouncementPage() {
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
               News, Updates & Exclusive Offers
             </h1>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto text-shadow-sm">
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto font-semibold text-shadow-sm">
               Get the latest from Hero Serviced Office — new locations, events,
               member benefits, and special promotions delivered straight to your
               inbox.
@@ -701,7 +705,7 @@ export default function AnnouncementPage() {
               </span>
 
               <h2 className="mt-4 text-2xl lg:text-5xl font-bold text-white leading-tight">
-                Subscribe to the Hero monthly
+                Subscribe to the Hero
               </h2>
 
               <p className="mt-5 text-md text-blue-100 leading-relaxed max-w-xl">
@@ -733,9 +737,35 @@ export default function AnnouncementPage() {
             <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-8 shadow-2xl">
               <form
                 className="space-y-5"
-                onSubmit={(e) => {
+                onSubmit={async (e: FormEvent<HTMLFormElement>) => {
                   e.preventDefault();
-                  // TODO: wire up newsletter subscription endpoint
+                  setNewsletterStatus(null);
+                  setNewsletterError(null);
+                  setNewsletterSubmitting(true);
+
+                  try {
+                    const res = await fetch("/api/newsletter/subscribe", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({ email: newsletterEmail }),
+                    });
+
+                    const data = await res.json();
+
+                    if (!res.ok) {
+                      setNewsletterError(data.message || "Unable to subscribe right now.");
+                      return;
+                    }
+
+                    setNewsletterStatus(data.message || "Subscribed successfully. Thank you!");
+                    setNewsletterEmail("");
+                  } catch {
+                    setNewsletterError("Unable to subscribe right now.");
+                  } finally {
+                    setNewsletterSubmitting(false);
+                  }
                 }}
               >
                 <div>
@@ -744,17 +774,21 @@ export default function AnnouncementPage() {
                   </label>
 
                   <input
+                    value={newsletterEmail}
+                    onChange={(e) => setNewsletterEmail(e.target.value)}
                     type="email"
                     placeholder="you@company.com"
                     className="w-full rounded-xl bg-white px-5 py-4 text-gray-800 placeholder:text-gray-400 outline-none focus:ring-4 focus:ring-white/20"
+                    required
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full rounded-xl bg-white py-4 font-semibold text-[#0D47A1] hover:bg-gray-100 transition flex items-center justify-center gap-2"
+                  disabled={newsletterSubmitting || newsletterEmail.trim() === ""}
+                  className="w-full rounded-xl bg-white py-4 font-semibold text-[#0D47A1] hover:bg-gray-100 transition flex items-center justify-center gap-2 disabled:opacity-60"
                 >
-                  Subscribe
+                  {newsletterSubmitting ? "Subscribing..." : "Subscribe"}
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
@@ -762,6 +796,13 @@ export default function AnnouncementPage() {
                   By subscribing you agree to receive marketing emails from Hero
                   Serviced Office.
                 </p>
+
+                {newsletterStatus && (
+                  <p className="text-sm text-emerald-100">{newsletterStatus}</p>
+                )}
+                {newsletterError && (
+                  <p className="text-sm text-red-100">{newsletterError}</p>
+                )}
               </form>
             </div>
           </div>

@@ -179,6 +179,17 @@ export default function AnnouncementPopup() {
           className="fixed inset-0 z-1000 flex items-center justify-center overflow-y-auto bg-[#0A1E3F]/70 p-4 py-8 backdrop-blur-sm"
           onClick={handleClose}
         >
+          {/* Chibi mascot, pinned to the bottom-left of the viewport, behind the dialog */}
+          <div className="pointer-events-none fixed bottom-4 left-4 z-10 hidden sm:block">
+            <Image
+              src="/hero-chibi.webp"
+              alt="HERO Serviced Office"
+              width={340}
+              height={340}
+              unoptimized
+            />
+          </div>
+
           <motion.div
             role="dialog"
             aria-modal="true"
@@ -204,7 +215,7 @@ export default function AnnouncementPopup() {
                 : { type: "spring", stiffness: 280, damping: 26 }
             }
             onClick={(e) => e.stopPropagation()}
-            className="relative flex max-h-[90vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:max-w-lg md:max-w-3xl md:flex-row"
+            className="relative z-20 flex max-h-[90vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:max-w-lg md:max-w-3xl md:flex-row"
           >
             {/* Close button — consistent placement regardless of column layout */}
             <button
@@ -216,7 +227,7 @@ export default function AnnouncementPopup() {
             </button>
 
             {/* Signature: a document-tab / directory-plaque spine, brand gradient.
-                Runs along the top on mobile, the left edge on desktop. */}
+            Runs along the top on mobile, the left edge on desktop. */}
             <motion.div
               initial={shouldReduceMotion ? { opacity: 0 } : { scaleX: 0 }}
               animate={shouldReduceMotion ? { opacity: 1 } : { scaleX: 1 }}
@@ -244,32 +255,15 @@ export default function AnnouncementPopup() {
                   onError={() => setImageFailed(true)}
                 />
                 <div className="absolute inset-x-0 top-0 h-16 bg-linear-to-b from-black/35 to-transparent" />
-
-                <motion.span
-                  initial={
-                    shouldReduceMotion
-                      ? { opacity: 0 }
-                      : { opacity: 0, y: -6 }
-                  }
-                  animate={
-                    shouldReduceMotion
-                      ? { opacity: 1 }
-                      : { opacity: 1, y: 0 }
-                  }
-                  transition={{ delay: 0.3, duration: 0.3 }}
-                  className="absolute left-3 top-3 rounded-md bg-[#FFC107] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#1B3A8C] shadow-sm"
-                >
-                  New announcement
-                </motion.span>
               </div>
 
               {/* Content column */}
               <div className="flex flex-1 flex-col gap-3 p-5 sm:p-6 md:p-7">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-md font-medium text-blue-700">
                     {announcement.tag}
                   </span>
-                  <div className="flex items-center gap-1.5 text-sm text-gray-400">
+                  <div className="flex items-center gap-1.5 text-md text-gray-400">
                     <Calendar className="h-3.5 w-3.5" />
                     {formatDate(announcement.date)}
                   </div>
@@ -277,12 +271,12 @@ export default function AnnouncementPopup() {
 
                 <h3
                   id="announcement-title"
-                  className="text-xl font-bold leading-tight tracking-tight text-gray-900 sm:text-2xl"
+                  className="text-2xl font-bold leading-tight tracking-tight text-gray-900 sm:text-2xl"
                 >
                   {announcement.title}
                 </h3>
 
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600 sm:text-[15px]">
+                <p className="whitespace-pre-wrap text-lg leading-relaxed text-gray-600 sm:text-[15px]">
                   {announcement.content}
                 </p>
 

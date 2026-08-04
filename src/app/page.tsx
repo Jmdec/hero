@@ -81,11 +81,11 @@ export default function Home() {
 
   const heroSlides = [
     {
-      image: "/tower6789.jpg",
+      image: "/tower_6789.webp",
       location: "Tower 6789, Ayala Avenue, Makati City",
     },
     {
-      image: "/insular_life.jpg",
+      image: "/insular_life.webp",
       location: "Insular Life Building, Ayala Avenue, Makati City",
     },
   ];
@@ -129,7 +129,7 @@ export default function Home() {
       title: "Private Offices",
       description:
         "Private offices designed for individual professionals and small teams.",
-      image: "/spaces/private-space.webp",
+      image: "/spaces/private-office.webp",
     },
     {
       title: "Virtual Offices",
@@ -141,7 +141,7 @@ export default function Home() {
       title: "Co-working Spaces",
       description:
         "Flexible workspaces designed for freelancers and entrepreneurs.",
-      image: "/spaces/co-working.webp",
+      image: "/spaces/co-working-space.webp",
     },
     {
       title: "Meeting Rooms",
@@ -158,11 +158,9 @@ export default function Home() {
   ];
 
   const spacesCarousel = [
-    { image: "/spaces/_ARM8120.webp" },
-    { image: "/spaces/_ARM7474.webp" },
-    { image: "/spaces/_ARM7597.webp" },
-    { image: "/spaces/_ARM7477.webp" },
-    { image: "/spaces/_ARM7611.webp" },
+    { image: "/insular-life.webp" },
+    { image: "/tower6789.webp" },
+    { image: "/community-engagement.webp" },
   ];
 
   useEffect(() => {
@@ -611,7 +609,7 @@ export default function Home() {
                   <div className="absolute inset-0 bg-black/10" />
                 </div>
 
-                <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl max-w-lg z-10">
+                <div className="absolute -bottom-10 -left-9 bg-white p-6 rounded-2xl shadow-xl max-w-lg z-10">
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#C5D2EC]/50">
                       <CheckCircle2 className="h-6 w-6 text-[#1B3A8C]" />

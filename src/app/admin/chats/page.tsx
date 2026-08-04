@@ -384,7 +384,7 @@ export default function AdminChatsPage() {
         if (!selectedConversationId) return;
 
         try {
-            await chatApi.closeConversation(selectedConversationId);
+            await chatApi.closeConversation(selectedConversationId, false);
             await refresh();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Unable to close conversation.");

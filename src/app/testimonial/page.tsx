@@ -235,14 +235,14 @@ export default function TestimonialPage() {
       <section className="relative text-white py-20 lg:py-32 overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80"
-            alt="Client's Stories"
+            src="/header.webp"
+            alt="About HERO Serviced Office"
             fill
             className="object-cover"
             unoptimized
             priority
           />
-          <div className="absolute inset-0 bg-linear-to-r from-[#1B3A8C]/90 to-[#1B3A8C]/60" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
         </div>
         <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
@@ -254,7 +254,7 @@ export default function TestimonialPage() {
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
               Trusted by Growing Companies in Makati
             </h1>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto text-shadow-sm">
+            <p className="text-xl text-gray-300 max-w-4xl mx-auto font-semibold text-shadow-sm">
               From international expansions to homegrown startups, our members
               choose Hero Serviced Office for the address, the service, and the
               community.
@@ -282,11 +282,10 @@ export default function TestimonialPage() {
               <div className="relative shrink-0">
                 <button
                   onClick={() => setFiltersOpen((v) => !v)}
-                  className={`inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-medium transition-colors w-full sm:w-auto ${
-                    filtersOpen || ratingFilter !== 0
+                  className={`inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-medium transition-colors w-full sm:w-auto ${filtersOpen || ratingFilter !== 0
                       ? "border-[#1B3A8C] bg-[#1B3A8C] text-white"
                       : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                   {ratingFilter === 0 ? (
@@ -299,9 +298,8 @@ export default function TestimonialPage() {
                     </span>
                   )}
                   <ChevronDown
-                    className={`h-4 w-4 transition-transform ${
-                      filtersOpen ? "rotate-180" : ""
-                    }`}
+                    className={`h-4 w-4 transition-transform ${filtersOpen ? "rotate-180" : ""
+                      }`}
                   />
                 </button>
 
@@ -325,11 +323,10 @@ export default function TestimonialPage() {
                             setRatingFilter(0);
                             setFiltersOpen(false);
                           }}
-                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${
-                            ratingFilter === 0
+                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${ratingFilter === 0
                               ? "bg-[#1B3A8C]/5 text-[#1B3A8C] font-medium"
                               : "text-gray-600 hover:bg-gray-50"
-                          }`}
+                            }`}
                         >
                           All ratings
                         </button>
@@ -340,21 +337,19 @@ export default function TestimonialPage() {
                               setRatingFilter(r as RatingFilter);
                               setFiltersOpen(false);
                             }}
-                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${
-                              ratingFilter === r
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${ratingFilter === r
                                 ? "bg-[#1B3A8C]/5 text-[#1B3A8C] font-medium"
                                 : "text-gray-600 hover:bg-gray-50"
-                            }`}
+                              }`}
                           >
                             <span className="inline-flex items-center gap-1.5">
                               {r} {r === 1 ? "star" : "stars"}
                             </span>
                             <Star
-                              className={`h-3.5 w-3.5 ${
-                                ratingFilter === r
+                              className={`h-3.5 w-3.5 ${ratingFilter === r
                                   ? "fill-[#1B3A8C] text-[#1B3A8C]"
                                   : "fill-[#FFC107] text-[#FFC107]"
-                              }`}
+                                }`}
                             />
                           </button>
                         ))}
@@ -542,11 +537,10 @@ export default function TestimonialPage() {
                           <button
                             key={p}
                             onClick={() => setPage(p)}
-                            className={`h-9 w-9 rounded-lg text-sm font-medium transition-colors ${
-                              currentPage === p
+                            className={`h-9 w-9 rounded-lg text-sm font-medium transition-colors ${currentPage === p
                                 ? "bg-[#1B3A8C] text-white"
                                 : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                            }`}
+                              }`}
                           >
                             {p}
                           </button>
@@ -698,11 +692,10 @@ export default function TestimonialPage() {
                                 onClick={() => set("rating", s)}
                               >
                                 <Star
-                                  className={`h-7 w-7 transition-colors ${
-                                    s <= (hoveredStar || form.rating)
+                                  className={`h-7 w-7 transition-colors ${s <= (hoveredStar || form.rating)
                                       ? "fill-[#FFC107] text-[#FFC107]"
                                       : "fill-gray-100 text-gray-200"
-                                  }`}
+                                    }`}
                                 />
                               </button>
                             ))}
