@@ -23,9 +23,9 @@ import { chatApi, type ChatConversation, type ConversationResponse } from "@/lib
 type StatusKey = "active" | "waiting_admin" | "agent_requested" | "agent_active" | "agent_closed" | "closed";
 
 const STATUS: Record<StatusKey, { label: string; rail: string; dot: string; chip: string; live?: boolean; ended?: boolean }> = {
-    active: { label: "AI handling", rail: "bg-emerald-500", dot: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" },
-    waiting_admin: { label: "Needs you", rail: "bg-amber-500", dot: "bg-amber-500", chip: "bg-amber-50 text-amber-700 ring-amber-600/20", live: true },
-    agent_requested: { label: "Needs you", rail: "bg-amber-500", dot: "bg-amber-500", chip: "bg-amber-50 text-amber-700 ring-amber-600/20", live: true },
+    active: { label: "AI Assistant", rail: "bg-emerald-500", dot: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" },
+    waiting_admin: { label: "Agent Requested", rail: "bg-amber-500", dot: "bg-amber-500", chip: "bg-amber-50 text-amber-700 ring-amber-600/20", live: true },
+    agent_requested: { label: "Agent Requested", rail: "bg-amber-500", dot: "bg-amber-500", chip: "bg-amber-50 text-amber-700 ring-amber-600/20", live: true },
     agent_active: { label: "You're live", rail: "bg-[#0D47A1]", dot: "bg-[#0D47A1]", chip: "bg-blue-50 text-[#0D47A1] ring-blue-600/20" },
     agent_closed: { label: "Ended", rail: "bg-slate-300", dot: "bg-slate-400", chip: "bg-slate-100 text-slate-500 ring-slate-500/10", ended: true },
     closed: { label: "Ended", rail: "bg-slate-300", dot: "bg-slate-400", chip: "bg-slate-100 text-slate-500 ring-slate-500/10", ended: true },
@@ -704,13 +704,11 @@ export default function AdminChatsPage() {
                                                         </span>
                                                     ) : null}
                                                 </div>
-                                                <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                                                <p className="flex items-center gap-1.5 text-xs text-slate-500 py-1">
                                                     <Mail className="h-3 w-3" />
                                                     {selectedConversation.inquiry?.email_address ?? "No email supplied"}
                                                     <span className="text-slate-300">·</span>
                                                     {selectedConversation.messages.length} messages
-                                                    <span className="text-slate-300">·</span>
-                                                    {durationSince(selectedConversation.messages[0]?.sent_at ?? selectedConversation.updated_at)} old
                                                 </p>
                                             </div>
                                         </div>

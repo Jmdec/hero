@@ -1,3 +1,4 @@
+import { PDFDocument, StandardFonts } from "pdf-lib";
 import { NextRequest, NextResponse } from "next/server";
 import { sendMail } from "@/lib/mailer";
 
@@ -26,6 +27,181 @@ function formatTimestamp(value?: string) {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+function sanitizePdfText(value: string) {
+  return value
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2013|\u2014/g, "-")
+    .replace(/\u2026/g, "...")
+    .replace(/[^\x00-\xFF]/g, "");
+}
+
+function wrapText(text: string, maxWidth: number, font: any, fontSize: number) {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    const safeCandidate = sanitizePdfText(candidate);
+    if (font.widthOfTextAtSize(safeCandidate, fontSize) <= maxWidth) {
+      current = safeCandidate;
+    } else {
+      if (current) {
+        lines.push(current);
+      }
+      current = sanitizePdfText(word);
+    }
+  }
+
+  if (current) {
+    lines.push(current);
+  }
+
+  return lines;
+}
+
+async function createConversationPdf(
+  customerName: string,
+  messages: Array<{
+    sender?: string;
+    message?: string;
+    sent_at?: string;
+  }>,
+) {
+  const pdfDoc = await PDFDocument.create();
+
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  const fontSize = 11;
+  const smallFont = 9;
+  const titleSize = 20;
+
+  const lineHeight = fontSize * 1.6;
+  const margin = 50;
+
+  let page = pdfDoc.addPage();
+  let { width, height } = page.getSize();
+
+  let y = height - margin;
+
+  const maxWidth = width - margin * 2;
+
+  function newPage() {
+    page = pdfDoc.addPage();
+    ({ width, height } = page.getSize());
+    y = height - margin;
+  }
+
+  function ensureSpace(space = lineHeight) {
+    if (y - space < margin) {
+      newPage();
+    }
+  }
+
+  function drawText(
+    text: string,
+    size = fontSize,
+    textFont = font,
+    indent = 0
+  ) {
+    ensureSpace(size + 6);
+
+    page.drawText(text, {
+      x: margin + indent,
+      y,
+      size,
+      font: textFont,
+    });
+
+    y -= size + 6;
+  }
+
+  function drawWrapped(
+    text: string,
+    size = fontSize,
+    textFont = font,
+    indent = 0
+  ) {
+    const lines = wrapText(
+      text,
+      maxWidth - indent,
+      textFont,
+      size
+    );
+
+    for (const line of lines) {
+      drawText(line, size, textFont, indent);
+    }
+  }
+
+  function divider() {
+    ensureSpace(20);
+
+    page.drawLine({
+      start: { x: margin, y: y + 4 },
+      end: { x: width - margin, y: y + 4 },
+      thickness: 0.6,
+    });
+
+    y -= 16;
+  }
+
+  // Header
+  drawText("HERO Serviced Office", titleSize, bold);
+  drawText("Conversation Transcript", 14, bold);
+
+  y -= 8;
+  divider();
+
+  drawText(`Customer`, smallFont, bold);
+  drawText(customerName, fontSize);
+
+  drawText(`Generated`, smallFont, bold);
+  drawText(
+    new Date().toLocaleString("en-PH", {
+      dateStyle: "long",
+      timeStyle: "short",
+    }),
+    fontSize
+  );
+
+  divider();
+
+  // Conversation
+
+  for (const msg of messages) {
+    const isUser = msg.sender === "user";
+
+    const sender = isUser ? "You" : "HERO Assistant";
+
+    const timestamp = msg.sent_at
+      ? formatTimestamp(msg.sent_at)
+      : "";
+
+    drawText(
+      `${sender}${timestamp ? ` • ${timestamp}` : ""}`,
+      11,
+      bold
+    );
+
+    drawWrapped(msg.message || "", 11, font, 16);
+
+    y -= 8;
+  }
+
+  divider();
+
+  drawText(
+    "End of Conversation",
+    smallFont,
+    bold
+  );
+
+  return pdfDoc.save();
 }
 
 export async function POST(
@@ -91,34 +267,25 @@ export async function POST(
     const subject = `Your chat transcript from HERO Serviced Office`;
 
     const html = `
-      <div style="font-family:Arial,Helvetica,sans-serif;background:#f4f7fb;padding:32px 20px;">
-        <div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #e8edf5;border-radius:16px;overflow:hidden;">
-          <div style="height:6px;background:#0D47A1;"></div>
-          <div style="padding:28px 32px;">
-            <h2 style="margin:0 0 12px;color:#1e293b;">Hello ${escapeHtml(customerName)},</h2>
-            <p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.7;">
-              Here is a copy of your recent conversation with HERO Serviced Office.
-            </p>
-            <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;background:#f8fafc;">
-              ${messages.length > 0
-                ? messages
-                    .map((message) => {
-                      const senderLabel = message.sender && message.sender !== "user" ? message.sender : "you";
-                      return `
-                        <div style="margin-bottom:12px;">
-                          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;">
-                            ${escapeHtml(senderLabel)}${message.sent_at ? ` · ${escapeHtml(formatTimestamp(message.sent_at))}` : ""}
-                          </div>
-                          <div style="margin-top:4px;font-size:14px;line-height:1.6;color:#1e293b;white-space:pre-wrap;">
-                            ${escapeHtml(message.message || "")}
-                          </div>
-                        </div>`;
-                    })
-                    .join("")
-                : "<p style=\"margin:0;color:#64748b;\">No messages were captured for this conversation.</p>"
-              }
-            </div>
-          </div>
+      <div style="font-family:Arial,Helvetica,sans-serif;background:#f8fafc;padding:32px 20px;">
+        <div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:32px;">
+          
+          <h2 style="margin:0 0 16px;font-size:22px;color:#1f2937;font-weight:600;">
+            Hello ${escapeHtml(customerName)},
+          </h2>
+
+          <p style="margin:0 0 12px;font-size:15px;line-height:1.7;color:#4b5563;">
+            Thank you for chatting with <strong>HERO Serviced Office</strong>.
+          </p>
+
+          <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#4b5563;">
+            We've attached a PDF copy of your conversation for your reference.
+          </p>
+
+          <p style="margin:0;font-size:14px;color:#6b7280;">
+            If you have any questions, simply reply to this email and our team will be happy to assist you.
+          </p>
+
         </div>
       </div>
     `;
@@ -126,14 +293,13 @@ export async function POST(
     const text = [
       `Hello ${customerName},`,
       "",
-      "Here is a copy of your recent conversation with HERO Serviced Office.",
+      "Your chat transcript from HERO Serviced Office is attached as a PDF file.",
       "",
-      ...messages.map((message) => {
-        const senderLabel = message.sender && message.sender !== "user" ? message.sender : "you";
-        const stamp = message.sent_at ? ` (${formatTimestamp(message.sent_at)})` : "";
-        return `${senderLabel}${stamp}: ${message.message || ""}`;
-      }),
+      "Please open the attached PDF to view the full conversation.",
     ].join("\n");
+
+    const pdfBuffer = await createConversationPdf(customerName, messages);
+    const attachmentBuffer = Buffer.from(pdfBuffer);
 
     await sendMail({
       to: recipientEmail,
@@ -141,6 +307,13 @@ export async function POST(
       html,
       text,
       replyTo: process.env.SMTP_USER || undefined,
+      attachments: [
+        {
+          filename: `hero-conversation-${conversationId}.pdf`,
+          content: attachmentBuffer,
+          contentType: "application/pdf",
+        },
+      ],
     });
 
     return NextResponse.json({ sent: true, to: recipientEmail });
