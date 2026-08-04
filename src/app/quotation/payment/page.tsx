@@ -16,7 +16,7 @@ import {
   Eye, Home, FileText
 } from "lucide-react";
 
-type PaymentMethod = "qrph" | "online_transfer" | "bank" | null;
+type PaymentMethod = "n/a" | "qrph" | "online_transfer" | "bank" | null;
 
 type GateStatus = "checking" | "valid" | "invalid";
 
@@ -88,6 +88,8 @@ const peso = (n: number) => `P${n.toLocaleString("en-PH", { minimumFractionDigit
 
 function getPaymentMethodLabel(paymentMethod: PaymentMethod | string | null | undefined) {
   switch (paymentMethod) {
+    case "n/a":
+      return "N/A";
     case "qrph":
       return "QRPH";
     case "online_transfer":
@@ -317,7 +319,7 @@ function ReceiptRow({ label, value }: { label: string; value?: string }) {
   return (
     <div className="flex justify-between items-start gap-3 text-sm">
       <span className="text-[#64748B] shrink-0">{label}</span>
-      <span className="text-[#0B1F4A] font-medium text-right break-words">{value}</span>
+      <span className="text-[#0B1F4A] font-medium text-right wrap-break-word">{value}</span>
     </div>
   );
 }
@@ -371,6 +373,15 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
     sub: string;
     details: string[];
   }> = [
+    {
+      id: "n/a",
+      icon: Clock,
+      label: "N/A",
+      sub: "No payment yet",
+      details: [
+        "This quotation does not yet have a payment method selected.",
+      ],
+    },
       {
         id: "qrph",
         icon: QrCode,
@@ -640,7 +651,7 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
               value={paymentReference}
               onChange={(e) => setPaymentReference(e.target.value)}
               className={!paymentReference.trim() ? inputErrCls : inputCls}
-              placeholder="e.g. Bank/QRPH transaction reference ID"
+              placeholder="Transaction Reference Number"
             />
           </div>
 

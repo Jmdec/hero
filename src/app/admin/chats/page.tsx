@@ -76,6 +76,13 @@ const SENDER_STYLE: Record<SenderKey, { bubble: string; label: string; icon: typ
     },
 };
 
+// System messages reuse the assistant layout but with a distinct color.
+const SYSTEM_STYLE = {
+    bubble: "rounded-bl-sm border border-sky-100 bg-sky-50 text-sky-900",
+    label: "text-sky-400",
+    icon: Bot,
+};
+
 function senderKeyOf(sender: string): SenderKey {
     if (sender === "admin") return "admin";
     if (sender === "assistant") return "assistant";
@@ -534,12 +541,9 @@ export default function AdminChatsPage() {
                                     <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
                                     <span className="shrink-0 font-mono text-[10px] text-slate-400">{timeAgo(conversation.updated_at)}</span>
                                 </div>
-                                <p className="truncate text-xs text-slate-500">{conversation.inquiry?.email_address ?? "No email"}</p>
+                    
                                 <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5">
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                        <StatusChip status={conversation.status} />
-                                        {isAddressed(conversation) ? <AddressedChip /> : null}
-                                    </div>
+                                    <p className="truncate text-xs text-slate-500">{conversation.inquiry?.email_address ?? "No email"}</p>
                                     <span className="font-mono text-[10px] text-slate-400">{conversation.message_count} msgs</span>
                                 </div>
                             </div>
@@ -780,18 +784,9 @@ export default function AdminChatsPage() {
                                             </div>
                                         ) : (
                                             selectedConversation.messages.map((message) => {
-                                                if (message.sender === "system") {
-                                                    return (
-                                                        <div key={message.id} className="flex justify-center">
-                                                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-200/70 px-3 py-1 text-[11px] font-medium text-slate-500">
-                                                                {message.message}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                }
-
-                                                const senderKey = senderKeyOf(message.sender);
-                                                const style = SENDER_STYLE[senderKey];
+                                                const isSystem = message.sender === "system";
+                                                const senderKey = isSystem ? "assistant" : senderKeyOf(message.sender);
+                                                const style = isSystem ? SYSTEM_STYLE : SENDER_STYLE[senderKey as SenderKey];
                                                 const SenderIcon = style.icon;
                                                 const isAdmin = senderKey === "admin";
 
@@ -802,7 +797,7 @@ export default function AdminChatsPage() {
                                                         >
                                                             <div className={`mb-1 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wide ${style.label}`}>
                                                                 <SenderIcon className="h-3 w-3" />
-                                                                <span>{message.sender}</span>
+                                                                <span>{isSystem ? "System" : message.sender}</span>
                                                                 <span>·</span>
                                                                 <span>{new Date(message.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                                                             </div>

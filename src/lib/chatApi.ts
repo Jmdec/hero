@@ -174,43 +174,17 @@ export const chatApi = {
         });
     },
 
-    closeConversation(conversationId: number) {
+    closeConversation(conversationId: number, sendTranscript = true) {
         return request(`/chat/${conversationId}/close`, {
             method: "PATCH",
-            body: JSON.stringify({ send_transcript: true }),
+            body: JSON.stringify({ send_transcript: Boolean(sendTranscript) }),
         });
     },
 
-    /**
-     * Best-effort "close on tab exit" call.
-     *
-     * Regular fetch() gets cancelled by the browser when the tab is
-     * actually closing (unload), so this uses sendBeacon when available
-     * (fire-and-forget, survives page teardown) and falls back to a
-     * keepalive fetch otherwise. Both hit the SAME close endpoint as
-     * closeConversation() — if your backend requires PATCH specifically
-     * and can't accept a beacon (which is always a POST), add a
-     * `POST /api/chat/{conversation}/close-beacon` route server-side that
-     * does the same thing as the PATCH close and swap the URL below.
-     *
-     * NOTE: this also triggers the "email me the transcript on exit" flow.
-     * The actual email send should happen SERVER-SIDE inside the close
-     * handler (so it's reliable even though the browser tab is dying and
-     * can't wait around for a response) — see emailChatHistoryOnExit()
-     * below for the beacon that carries the "please email this" flag.
-     * Required backend route (not present in this repo, needs to be added
-     * to your Laravel API):
-     *   POST /api/chat/{conversation}/close
-     *   -> on close, if inquiry.email_address exists, send the full
-     *      transcript (all ChatMessage rows for that conversation) to
-     *      that email via a Mailable/queued job.
-     */
-    closeConversationOnExit(conversationId: number) {
+    closeConversationOnExit(conversationId: number, sendTranscript = true) {
         const url = `${API_URL}/api/chat/${conversationId}/close`;
 
-        // send_transcript=1 tells the backend close handler to also email
-        // the visitor their chat history, since this is the exit path.
-        const payload = { send_transcript: true };
+        const payload = { send_transcript: Boolean(sendTranscript) };
 
         if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
             const blob = new Blob([JSON.stringify(payload)], {
@@ -232,22 +206,6 @@ export const chatApi = {
         }
     },
 
-    /**
-     * Explicitly (re-)emails the full transcript for a conversation to the
-     * visitor's inquiry email. Used by:
-     *   - the widget, if the visitor asks for a copy mid-chat ("can you
-     *     email me this conversation?")
-     *   - the admin panel, so a team member can resend the history to the
-     *     client on request.
-     *
-     * REQUIRED BACKEND ROUTE (add to Laravel, not present in this repo):
-     *   POST /api/chat/{conversation}/email-history
-     *   Body: { to？: string } // optional override, else uses inquiry.email_address
-     *   -> loads all ChatMessage rows ordered by sent_at, renders a simple
-     *      transcript (sender + timestamp + message), and sends via
-     *      Mail::to($email)->send(new ChatTranscriptMail($conversation, $messages))
-     *   Response: { sent: true, to: "someone@example.com" }
-     */
     emailChatHistory(conversationId: number, to?: string) {
         return request<{ sent: boolean; to: string }>(
             `/chat/${conversationId}/email-history`,
@@ -261,5 +219,13 @@ export const chatApi = {
 
     listConversations() {
         return request("/chat");
+    },
+
+    // Heartbeat/ping to keep server-side session alive and update last-activity.
+    pingConversation(conversationId: number) {
+        return request(`/chat/${conversationId}/heartbeat`, {
+            method: "POST",
+            body: JSON.stringify({}),
+        });
     },
 };

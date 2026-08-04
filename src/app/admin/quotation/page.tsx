@@ -56,7 +56,7 @@ interface QuotationDetail {
     duration_type: string | null;
     other_requirements: string | null;
     total: string | number;
-    payment_method: "paymongo" | "gcash" | "qrph" | "online_transfer" | "bank" | null;
+    payment_method: "n/a" | "qrph" | "online_transfer" | "bank" | null;
     transaction_id: string | null;
     receipt: string | null;
     payment_link_send_count?: number | null;
@@ -138,8 +138,7 @@ const STATUS_DOT: Record<Status, string> = {
 };
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
-    paymongo: "PayMongo",
-    gcash: "GCash",
+    "n/a": "Not Applicable",
     qrph: "QR Ph",
     online_transfer: "Online Transfer",
     bank: "Bank Transfer",

@@ -25,10 +25,12 @@ interface Message {
     type: "bot" | "user";
     text: string;
     time: string;
+    source?: string;
     cta?: CTA;
 }
 
 const SESSION_STORAGE_KEY = "hero_chat_session_id";
+const CHAT_STATE_KEY = "hero_chat_state";
 
 interface ModalProps {
     open: boolean;
@@ -352,7 +354,6 @@ type ConversationWithStatus = ConversationState & {
 const formatTime = () =>
     new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-// Stable, collision-safe id for React keys / animation identity.
 const makeId = () =>
     typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
         ? crypto.randomUUID()
@@ -363,13 +364,14 @@ const WELCOME_MESSAGE: Message = {
     type: "bot",
     text: "Hi there! 👋 I'm your HERO assistant. We deliver premium serviced offices and flexible workspace solutions in the Philippines. How can I help you today?",
     time: formatTime(),
+    source: "AI Assistant",
 };
 
 const AGENT_ENDED_MESSAGE =
     "🔴 The live agent ended the chat. You're back with our AI assistant — feel free to keep chatting or pick a quick reply below.";
 
 const AGENT_CONNECTING_MESSAGE =
-    "You will be connected to an agent. Please stay on this chat — we'll notify you the moment someone joins.";
+    "You will be connected to an agent";
 
 const BUSINESS_HOURS_WINDOW = {
     days: [1, 2, 3, 4, 5], // Mon–Fri
@@ -394,15 +396,12 @@ const OUT_OF_HOURS_MESSAGE =
 const PREFERRED_CONTACT_RECEIVED_MESSAGE =
     "Got it, thank you! We've saved your preferred contact details and someone from the team will reach out. Feel free to keep chatting with me in the meantime. 😊";
 
-// -------------------------------------------------------------------
-// CTA links: update these paths to match your actual site routes.
-// -------------------------------------------------------------------
 const CTA_LINKS = {
     quote: { label: "Request a Quotation", href: "/quotation" },
-    privateOffice: { label: "View Private Offices", href: "/spaces/private-office" },
-    virtualOffice: { label: "View Virtual Office Plans", href: "/spaces/virtual-office" },
-    coworking: { label: "View Co-working Space", href: "/spaces/co-working" },
-    meetingRooms: { label: "Book a Meeting Room", href: "/spaces/meeting-rooms" },
+    privateOffice: { label: "View Private Offices", href: "/services?modal=private" },
+    virtualOffice: { label: "View Virtual Office Plans", href: "/services?modal=virtual" },
+    coworking: { label: "View Co-working Space", href: "/services?modal=coworking" },
+    meetingRooms: { label: "View Meeting Room", href: "/services?modal=conference" },
     services: { label: "See All Services", href: "/services" },
     contact: { label: "Contact Us", href: "/contact" },
 } as const;
@@ -433,7 +432,7 @@ const PREDEFINED_REPLIES: Record<string, { text: string; cta?: CTA }> = {
         cta: CTA_LINKS.meetingRooms,
     },
     "Get a Quote": {
-        text: "We'd love to put together a quote for you! Please email us at info@heroph.net with your requirements (team size, duration, space type), and our team will get back to you promptly.",
+        text: "You can request a quotation for our services by filling out our quotation request form. We'll get back to you with a detailed quote based on your requirements.",
         cta: CTA_LINKS.quote,
     },
 };
@@ -625,7 +624,14 @@ const humanDelay = (replyLength = 0) => {
 };
 
 const quickReplyDelay = () =>
-    new Promise((res) => setTimeout(res, 350 + Math.random() * 200));
+  new Promise((res) => setTimeout(res, 10000 + Math.random() * 10000));
+
+const nextPaint = () =>
+    new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+            setTimeout(resolve, 0);
+        });
+    });
 
 const Chatbot = () => {
     const [isStarted, setIsStarted] = useState(false);
@@ -654,7 +660,7 @@ const Chatbot = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [isSubmittingLead, setIsSubmittingLead] = useState(false);
     const [leadError, setLeadError] = useState("");
-    const [isResumingSession] = useState(false);
+    const [resumed, setResumed] = useState(false);
     const [conversation, setConversation] = useState<ConversationState | null>(
         null,
     );
@@ -664,6 +670,10 @@ const Chatbot = () => {
     const [agreementTouched, setAgreementTouched] = useState(false);
     const [agentRequested, setAgentRequested] = useState(false);
     const [agentRequestInFlight, setAgentRequestInFlight] = useState(false);
+    const closeEmailSentRef = useRef(false);
+    const conversationRef = useRef<ConversationState | null>(null);
+    const leadSubmittedRef = useRef(false);
+    const conversationClosedRef = useRef(false);
     const [conversationClosed, setConversationClosed] = useState(false);
     const [awaitingPreferredContact, setAwaitingPreferredContact] = useState(false);
 
@@ -674,6 +684,10 @@ const Chatbot = () => {
 
     const agentRequestInFlightRef = useRef(false);
     const isClosingChatRef = useRef(false);
+
+    const isProcessingLocalMessageRef = useRef(false);
+
+    const pendingLocalUserTextsRef = useRef<Set<string>>(new Set());
 
     const scrollRafRef = useRef<number | null>(null);
 
@@ -687,12 +701,15 @@ const Chatbot = () => {
         "Talk to an Agent",
     ];
 
-    const scrollToBottom = useCallback(() => {
+    const scrollToBottom = useCallback((instant: boolean = false) => {
         if (scrollRafRef.current !== null) {
             cancelAnimationFrame(scrollRafRef.current);
         }
         scrollRafRef.current = requestAnimationFrame(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+            messagesEndRef.current?.scrollIntoView({
+                behavior: instant ? "auto" : "smooth",
+                block: "end",
+            });
             scrollRafRef.current = null;
         });
     }, []);
@@ -700,6 +717,12 @@ const Chatbot = () => {
     useEffect(() => {
         scrollToBottom();
     }, [messages, isTyping, scrollToBottom]);
+
+    useEffect(() => {
+        if (isChatOpen && leadSubmitted) {
+            scrollToBottom(true);
+        }
+    }, [isChatOpen, leadSubmitted, scrollToBottom]);
 
     useEffect(() => {
         if (isChatOpen && leadSubmitted) {
@@ -711,10 +734,17 @@ const Chatbot = () => {
         if (!leadSubmitted || !conversation?.id) return;
 
         const interval = window.setInterval(async () => {
+            if (isProcessingLocalMessageRef.current) return;
+
+            const pollId = conversation.remoteConversationId ?? conversation.id;
+
             try {
                 const latestConversation = await chatApi.getConversation(
-                    conversation.id,
+                    pollId,
                 );
+                try { console.debug("CHAT: polled conversation", latestConversation.id, latestConversation.status, "messages", (latestConversation.messages || []).length); } catch {}
+
+                const rawStatus = latestConversation.status;
 
                 const mappedMessages: Message[] = (
                     latestConversation.messages ?? []
@@ -726,39 +756,69 @@ const Chatbot = () => {
                         hour: "2-digit",
                         minute: "2-digit",
                     }),
+                    source:
+                        message.sender === "admin"
+                            ? "Live Agent"
+                            : message.sender === "assistant"
+                                ? "AI Assistant"
+                                : message.sender === "system"
+                                    ? "Quick Reply"
+                                    : undefined,
                 }));
-
-                const latestConversationWithStatus =
-                    latestConversation as ConversationWithStatus;
-
-                const rawStatus: string | null =
-                    latestConversationWithStatus.status ??
-                    latestConversationWithStatus.agent_status ??
-                    null;
 
                 const previousStatus = previousStatusRef.current;
                 const agentJustEnded =
                     (previousStatus === "agent_active" ||
                         previousStatus === "agent_requested") &&
-                    (rawStatus === "agent_closed" ||
-                        rawStatus === "ai" ||
-                        rawStatus === "closed");
+                    (rawStatus === "agent_closed" || rawStatus === "closed");
 
                 previousStatusRef.current = rawStatus;
 
+                // Once the server confirms a locally-sent user message (by
+                // text match), stop treating it as pending so it no longer
+                // blocks anything.
+                for (const text of Array.from(pendingLocalUserTextsRef.current)) {
+                    const confirmed = mappedMessages.some(
+                        (remote) => remote.type === "user" && remote.text === text,
+                    );
+                    if (confirmed) {
+                        pendingLocalUserTextsRef.current.delete(text);
+                    }
+                }
+
                 setMessages((prev) => {
+                    if (isProcessingLocalMessageRef.current) return prev;
+
                     const current =
                         prev[0]?.type === "bot" && prev[0]?.text === WELCOME_MESSAGE.text
-                            ? []
+                            ? prev.slice(1)
                             : prev;
+
+                    const stillPendingLocalMessages = current.filter(
+                        (message) =>
+                            message.type === "user" &&
+                            !message.id.startsWith("remote-") &&
+                            pendingLocalUserTextsRef.current.has(message.text) &&
+                            !mappedMessages.some(
+                                (remote) =>
+                                    remote.type === "user" && remote.text === message.text,
+                            ),
+                    );
+
                     const previousText = current
                         .map((m) => `${m.type}:${m.text}`)
                         .join("|");
-                    const nextText = mappedMessages
+                    const nextTextBase = mappedMessages
                         .map((m) => `${m.type}:${m.text}`)
                         .join("|");
+                    const nextText =
+                        stillPendingLocalMessages.length > 0
+                            ? `${nextTextBase}|${stillPendingLocalMessages
+                                  .map((m) => `${m.type}:${m.text}`)
+                                  .join("|")}`
+                            : nextTextBase;
 
-                    const finalMessages = agentJustEnded
+                    const finalMessagesBase = agentJustEnded
                         ? [
                             ...mappedMessages,
                             {
@@ -766,9 +826,15 @@ const Chatbot = () => {
                                 type: "bot" as const,
                                 text: AGENT_ENDED_MESSAGE,
                                 time: formatTime(),
+                                source: "AI Assistant",
                             },
                         ]
                         : mappedMessages;
+
+                    const finalMessages =
+                        stillPendingLocalMessages.length > 0
+                            ? [...finalMessagesBase, ...stillPendingLocalMessages]
+                            : finalMessagesBase;
 
                     if (!agentJustEnded && previousText === nextText) {
                         return prev;
@@ -788,46 +854,166 @@ const Chatbot = () => {
         }, 3000);
 
         return () => window.clearInterval(interval);
-    }, [conversation?.id, leadSubmitted]);
+    }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted]);
+
+    useEffect(() => {
+        if (!conversation?.id || !leadSubmitted) return;
+
+        let stopped = false;
+        const heartbeatIntervalMs = 10 * 60 * 1000; // 10 minutes
+
+        const ping = async () => {
+            if (stopped) return;
+            try {
+                const targetId = conversation.remoteConversationId ?? conversation.id;
+                await chatApi.pingConversation(targetId);
+            } catch {
+                // ignore network errors — heartbeat is best-effort
+            }
+        };
+
+        // fire once immediately, then on an interval
+        void ping();
+        const id = window.setInterval(ping, heartbeatIntervalMs);
+
+        return () => {
+            stopped = true;
+            window.clearInterval(id);
+        };
+    }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted]);
+
+    // Auto-close inactive conversations
+    const INACTIVITY_MINUTES = 12; // 10–15 minutes
+    const INACTIVITY_MS = INACTIVITY_MINUTES * 60 * 1000;
+
+    useEffect(() => {
+        if (!conversation?.id || !leadSubmitted) return;
+        if (agentRequested) return; // don't auto-close while awaiting an agent
+
+        let timer: number | null = null;
+        let closed = false;
+
+        const scheduleClose = () => {
+            if (timer) {
+                window.clearTimeout(timer);
+            }
+            timer = window.setTimeout(async () => {
+                if (closed) return;
+                closed = true;
+
+                const targetId = conversation.remoteConversationId ?? conversation.id;
+
+                try {
+                    // Close the conversation on the server and request transcript
+                    await chatApi.closeConversation(targetId, true);
+                } catch {
+                    // ignore errors — best-effort
+                }
+
+                try {
+                    await chatApi.emailChatHistory(targetId);
+                } catch {
+                    // ignore email errors — already best-effort
+                }
+
+                conversationClosedRef.current = true;
+                setConversationClosed(true);
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        id: makeId(),
+                        type: "bot",
+                        text: `Conversation Closed Automatically. A transcript has been generated and emailed to you if we have an address on file.`,
+                        time: formatTime(),
+                        source: "System",
+                    },
+                ]);
+            }, INACTIVITY_MS);
+        };
+
+        // Start or reset timer whenever messages change (user activity).
+        scheduleClose();
+
+        return () => {
+            if (timer) window.clearTimeout(timer);
+        };
+    }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted, messages.length, agentRequested]);
 
     const requestTranscriptEmail = useCallback(
         async (conversationId: number | undefined) => {
-            if (!conversationId) return;
+            if (!conversationId || closeEmailSentRef.current) return;
             try {
                 await chatApi.emailChatHistory(conversationId);
+                closeEmailSentRef.current = true;
             } catch {
-                // Swallow — the visitor already got a "sure, I'll email it"
-                // bot reply; a silent backend failure shouldn't surface as
-                // a scary error in the chat window.
             }
         },
         [],
     );
 
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        try {
+            const raw = window.sessionStorage.getItem(CHAT_STATE_KEY);
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            if (parsed?.conversation) {
+                setConversation(parsed.conversation);
+                conversationRef.current = parsed.conversation;
+                try {
+                    console.debug("CHAT: restored conversation", parsed.conversation);
+                } catch {}
+            }
+            if (Array.isArray(parsed?.messages)) {
+                setMessages(parsed.messages);
+            }
+            if (parsed?.leadSubmitted) {
+                setLeadSubmitted(true);
+                leadSubmittedRef.current = true;
+            }
+            if (parsed?.conversationClosed) {
+                setConversationClosed(Boolean(parsed.conversationClosed));
+                conversationClosedRef.current = Boolean(parsed.conversationClosed);
+            }
+            // Show a brief 'resumed' indicator when we restored state from storage.
+            setResumed(true);
+            window.setTimeout(() => setResumed(false), 3500);
+        } catch {
+            // Ignore parse errors
+        }
+    }, []);
+
+    // Persist chat state so refresh keeps the conversation intact.
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        try {
+            const state = {
+                conversation,
+                messages,
+                leadSubmitted,
+                conversationClosed,
+            };
+            window.sessionStorage.setItem(CHAT_STATE_KEY, JSON.stringify(state));
+        } catch {
+            // ignore storage errors
+        }
+    }, [conversation, messages, leadSubmitted, conversationClosed]);
+
+    useEffect(() => {
+        conversationRef.current = conversation;
+        leadSubmittedRef.current = leadSubmitted;
+        conversationClosedRef.current = conversationClosed;
+        try {
+            console.debug("CHAT: conversation changed", conversation, { leadSubmitted, conversationClosed });
+        } catch {}
+    }, [conversation, leadSubmitted, conversationClosed]);
+
+    useEffect(() => {
+        return () => { };
+    }, []);
+
     const handleCloseChat = async () => {
         isClosingChatRef.current = true;
-
-        if (leadSubmitted && conversation?.id && !conversationClosed) {
-            try {
-                // Closing the chat should automatically email the transcript to the
-                // visitor without requiring a separate manual trigger.
-                await chatApi.closeConversation(conversation.id);
-            } catch {
-                // Ignore close failures and still mark the conversation ended locally.
-            }
-
-            setConversationClosed(true);
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: makeId(),
-                    type: "bot",
-                    text: "This conversation has ended. We've emailed you a copy of this chat for your records. 📧",
-                    time: formatTime(),
-                },
-            ]);
-        }
-
         setIsChatOpen(false);
 
         window.setTimeout(() => {
@@ -836,30 +1022,18 @@ const Chatbot = () => {
     };
 
     useEffect(() => {
-        const handleBeforeUnload = () => {
-            if (isClosingChatRef.current) {
-                return;
-            }
-
-            if (leadSubmitted && conversation?.id && !conversationClosed) {
-                chatApi.closeConversationOnExit(conversation.id);
-            }
-        };
-
-        window.addEventListener("beforeunload", handleBeforeUnload);
+        const noop = () => { };
+        window.addEventListener("beforeunload", noop);
 
         return () => {
-            window.removeEventListener("beforeunload", handleBeforeUnload);
+            window.removeEventListener("beforeunload", noop);
         };
     }, [leadSubmitted, conversation?.id, conversationClosed]);
 
-    const ensureConversation = useCallback(async (): Promise<{
-        id: number;
-        session_id: string;
-    } | null> => {
+    const ensureConversation = useCallback(async (): Promise<ConversationState | null> => {
         if (conversation) return conversation;
 
-        const newConversation = {
+        const newConversation: ConversationState = {
             id: Date.now(),
             session_id:
                 typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -868,8 +1042,14 @@ const Chatbot = () => {
         };
 
         setConversation(newConversation);
+        // Make sure our ref reflects the newly-created local conversation.
+        conversationRef.current = newConversation;
+        try {
+            console.debug("CHAT: created local conversation", newConversation);
+        } catch {}
+
         if (typeof window !== "undefined") {
-            window.localStorage.setItem(
+            window.sessionStorage.setItem(
                 SESSION_STORAGE_KEY,
                 newConversation.session_id,
             );
@@ -880,16 +1060,30 @@ const Chatbot = () => {
 
     const persistMessage = useCallback(
         async (
-            activeConversation: { id: number; session_id: string } | null,
-            sender: "user" | "assistant",
+            activeConversation: { id: number; session_id: string; remoteConversationId?: number } | null,
+            sender: "user" | "assistant" | "system",
             text: string,
         ) => {
-            if (!activeConversation?.id) return;
+            // Prefer the latest server-backed conversation id if available.
+            const serverId =
+                conversationRef.current?.remoteConversationId ?? conversationRef.current?.id ??
+                activeConversation?.remoteConversationId ?? activeConversation?.id;
 
             try {
-                await chatApi.sendMessage(activeConversation.id, sender, text);
-            } catch {
-                // Swallow persistence errors so the chat remains usable even if the backend is temporarily unavailable.
+                console.debug("CHAT: persistMessage -> serverId", serverId, "sender", sender, "text", text?.slice?.(0,120));
+            } catch {}
+
+            if (!serverId) return;
+
+            if (sender === "user") {
+                pendingLocalUserTextsRef.current.add(text);
+            }
+
+            try {
+                await chatApi.sendMessage(serverId, sender, text);
+                try { console.debug("CHAT: persistMessage sent", serverId, sender); } catch {}
+            } catch (err) {
+                try { console.debug("CHAT: persistMessage failed", err); } catch {}
             }
         },
         [],
@@ -902,48 +1096,55 @@ const Chatbot = () => {
     const handleQuickReply = async (reply: string) => {
         if (conversationClosed) return;
 
-        // "Talk to an Agent" is a quick reply, but it drives its own flow
-        // (live-agent request or the out-of-hours fallback) instead of a
-        // canned answer.
         if (reply === "Talk to an Agent") {
             await handleTalkToAgent();
             return;
         }
 
-        const time = formatTime();
-
-        setMessages((prev) => [
-            ...prev,
-            { id: makeId(), type: "user", text: reply, time },
-        ]);
-        setIsTyping(true);
-        setSendError("");
-
-        const activeConversation = await ensureConversation();
-        await persistMessage(activeConversation, "user", reply);
-
-        // Quick replies are deterministic — no need to wait as long as a
-        // "the bot is thinking" free-text reply.
-        await quickReplyDelay();
-        setIsTyping(false);
-
-        // Quick reply buttons always map straight to their predefined answer.
         const predefined = PREDEFINED_REPLIES[reply];
-        const { text: replyText, cta } = predefined
-            ? { text: predefined.text, cta: predefined.cta }
-            : getLocalBotReply(reply);
 
-        setMessages((prev) => [
-            ...prev,
-            { id: makeId(), type: "bot", text: replyText, time: formatTime(), cta },
-        ]);
-        void persistMessage(activeConversation, "assistant", replyText);
+        if (!predefined) {
+            console.error(`No predefined reply configured for quick reply: "${reply}"`);
+            return;
+        }
+
+        isProcessingLocalMessageRef.current = true;
+
+        try {
+            const time = formatTime();
+
+            setMessages((prev) => [
+                ...prev,
+                { id: makeId(), type: "user", text: reply, time },
+            ]);
+            setIsTyping(true);
+            await nextPaint();
+            setSendError("");
+
+            const activeConversation = await ensureConversation();
+
+            await quickReplyDelay();
+            setIsTyping(false);
+            await nextPaint();
+
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: makeId(),
+                    type: "bot",
+                    text: predefined.text,
+                    time: formatTime(),
+                    source: "AI Assistant",
+                    cta: predefined.cta,
+                },
+            ]);
+            void persistMessage(activeConversation, "assistant", predefined.text);
+        } finally {
+            isProcessingLocalMessageRef.current = false;
+        }
     };
 
     const handleTalkToAgent = async () => {
-        // Synchronous guard closes the race window a plain state check can't:
-        // if this fires twice before the first `await` resolves and flips
-        // `agentRequested` to true, the ref stops the second call cold.
         if (
             conversationClosed ||
             agentRequested ||
@@ -952,109 +1153,129 @@ const Chatbot = () => {
         ) {
             return;
         }
-        setAgentRequestInFlight(true);
-        agentRequestInFlightRef.current = true;
 
-        const time = formatTime();
-        const userText = "I'd like to talk to a live agent.";
-
-        setMessages((prev) => [
-            ...prev,
-            { id: makeId(), type: "user", text: userText, time },
-        ]);
-        setIsTyping(true);
-        setSendError("");
-
-        const activeConversation = await ensureConversation();
-        void persistMessage(activeConversation, "user", userText);
-
-        await quickReplyDelay();
-        setIsTyping(false);
-
-        // Outside business hours: collect a preferred contact time/method
-        // instead of dead-ending on "no agent available".
-        if (!isAgentAvailableNow()) {
+        if (!leadSubmitted) {
+            setIsStarted(true);
             setMessages((prev) => [
                 ...prev,
                 {
                     id: makeId(),
                     type: "bot",
-                    text: OUT_OF_HOURS_MESSAGE,
+                    text: "Before we connect you to a live agent, please provide your contact details so our team can reach you.",
                     time: formatTime(),
-                    cta: CTA_LINKS.contact,
+                    source: "AI Assistant",
                 },
             ]);
-            void persistMessage(activeConversation, "assistant", OUT_OF_HOURS_MESSAGE);
-            setAwaitingPreferredContact(true);
-            setAgentRequestInFlight(false);
-            agentRequestInFlightRef.current = false;
             return;
         }
 
-        setAgentRequested(true);
+        setAgentRequestInFlight(true);
+        agentRequestInFlightRef.current = true;
+        isProcessingLocalMessageRef.current = true;
 
         try {
-            const targetId = conversation?.id ?? activeConversation?.id;
+            const time = formatTime();
+            const userText = "I'd like to talk to a live agent.";
 
-            if (targetId) {
-                await chatApi.requestAgent(targetId, userText);
-                // Seed the status ref so the next poll can correctly detect
-                // the eventual "agent ended the chat" transition.
-                previousStatusRef.current = "agent_requested";
+            setMessages((prev) => [
+                ...prev,
+                { id: makeId(), type: "user", text: userText, time },
+            ]);
+            // Ensure typing indicator is visible before we proceed.
+            setIsTyping(true);
+            await nextPaint();
+            setSendError("");
+
+            const activeConversation = await ensureConversation();
+
+            await quickReplyDelay();
+            setIsTyping(false);
+            await nextPaint();
+
+            if (!isAgentAvailableNow()) {
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        id: makeId(),
+                        type: "bot",
+                        text: OUT_OF_HOURS_MESSAGE,
+                        time: formatTime(),
+                        source: "AI Assistant",
+                        cta: CTA_LINKS.contact,
+                    },
+                ]);
+                void persistMessage(activeConversation, "assistant", OUT_OF_HOURS_MESSAGE);
+                setAwaitingPreferredContact(true);
+                return;
             }
 
-            // Confirmation message fires first and on its own, so the visitor
-            // gets an unambiguous "you're being connected" the moment the
-            // request succeeds — instead of only surfacing inside the longer
-            // "here's how to reach us" paragraph below.
+            setAgentRequested(true);
+
+            const connectingMessageId = makeId();
             setMessages((prev) => [
                 ...prev,
                 {
-                    id: makeId(),
+                    id: connectingMessageId,
                     type: "bot",
                     text: AGENT_CONNECTING_MESSAGE,
                     time: formatTime(),
-                    cta: CTA_LINKS.contact,
+                    source: "AI Assistant",
                 },
             ]);
-            void persistMessage(activeConversation, "assistant", AGENT_CONNECTING_MESSAGE);
 
-            // Small beat before the follow-up message lands, so the two bot
-            // bubbles don't appear in the same instant (feels more like two
-            // real thoughts rather than one message that got split).
-            await new Promise((res) => setTimeout(res, 500));
+            try {
+                const targetId =
+                    conversation?.remoteConversationId ?? conversation?.id ??
+                    activeConversation?.remoteConversationId ?? activeConversation?.id;
 
-            const agentReply =
-                "In the meantime, you can also reach us directly:\n\n📧 info@heroph.net\n📞 Mon–Fri, 8AM–8PM (Tower 6789) or 24/7 (Insular Life)\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
+                try { console.debug("CHAT: requestAgent -> targetId", targetId, "conversationRef", conversationRef.current, "activeConversation", activeConversation); } catch {}
 
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: makeId(),
-                    type: "bot",
-                    text: agentReply,
-                    time: formatTime(),
-                    cta: CTA_LINKS.contact,
-                },
-            ]);
-            void persistMessage(activeConversation, "assistant", agentReply);
-        } catch {
-            setSendError(
-                "We could not connect you to an agent right now. Please try again.",
-            );
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: makeId(),
-                    type: "bot",
-                    text: "⚠️ We could not connect you to an agent right now. Please try again.",
-                    time: formatTime(),
-                },
-            ]);
-            setAgentRequested(false);
+                if (targetId) {
+                    await chatApi.requestAgent(targetId, userText);
+                    setAgentRequested(true);
+                    previousStatusRef.current = "agent_requested";
+                }
+
+                void persistMessage(activeConversation, "assistant", AGENT_CONNECTING_MESSAGE);
+
+                await new Promise((res) => setTimeout(res, 500));
+
+                const agentReply =
+                    "In the meantime, you can also reach us directly:\n\n📧 info@heroph.net\n📞 Mon–Fri, 8AM–8PM (Tower 6789) or 24/7 (Insular Life)\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
+
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        id: makeId(),
+                        type: "bot",
+                        text: agentReply,
+                        time: formatTime(),
+                        source: "AI Assistant",
+                        cta: CTA_LINKS.contact,
+                    },
+                ]);
+                void persistMessage(activeConversation, "assistant", agentReply);
+            } catch {
+                setMessages((prev) => prev.filter((msg) => msg.id !== connectingMessageId));
+                setSendError(
+                    "We could not connect you to an agent right now. Please try again.",
+                );
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        id: makeId(),
+                        type: "bot",
+                        text: "⚠️ We could not connect you to an agent right now. Please try again.",
+                        time: formatTime(),
+                        source: "AI Assistant",
+                    },
+                ]);
+                setAgentRequested(false);
+            }
         } finally {
             setAgentRequestInFlight(false);
             agentRequestInFlightRef.current = false;
+            isProcessingLocalMessageRef.current = false;
         }
     };
 
@@ -1062,79 +1283,99 @@ const Chatbot = () => {
         if (conversationClosed) return;
         if (!message.trim()) return;
 
-        const time = formatTime();
-        const userMessage: Message = {
-            id: makeId(),
-            type: "user",
-            text: message,
-            time,
-        };
+        isProcessingLocalMessageRef.current = true;
 
-        setMessages((prev) => [...prev, userMessage]);
-        setMessage("");
-        setIsTyping(true);
-        setSendError("");
+        try {
+            const time = formatTime();
+            const userMessage: Message = {
+                id: makeId(),
+                type: "user",
+                text: message,
+                time,
+            };
 
-        const activeConversation = await ensureConversation();
-        await persistMessage(activeConversation, "user", userMessage.text);
+            setMessages((prev) => [...prev, userMessage]);
+            setMessage("");
+            setIsTyping(true);
+            await nextPaint();
+            setSendError("");
 
-        // If we're waiting on a preferred contact time/method (out-of-hours
-        // agent request), the next thing the visitor types is treated as
-        // that answer instead of routed through the local bot rules.
-        if (awaitingPreferredContact) {
-            await quickReplyDelay();
-            setIsTyping(false);
-            setAwaitingPreferredContact(false);
+            const activeConversation = await ensureConversation();
+            await persistMessage(activeConversation, "user", userMessage.text);
 
-            try {
-                const targetId = conversation?.id ?? activeConversation?.id;
-                if (targetId) {
-                    await chatApi.submitPreferredContact(targetId, {
-                        preferred_time: userMessage.text,
-                    });
+            if (awaitingPreferredContact) {
+                await quickReplyDelay();
+
+                setIsTyping(false);
+                await nextPaint();
+
+                setAwaitingPreferredContact(false);
+
+                try {
+                    const targetId =
+                        conversation?.remoteConversationId ?? conversation?.id ??
+                        activeConversation?.remoteConversationId ?? activeConversation?.id;
+                    if (targetId) {
+                        await chatApi.submitPreferredContact(targetId, {
+                            preferred_time: userMessage.text,
+                        });
+                    }
+                } catch {
                 }
-            } catch {
-                // Non-fatal — the message is already persisted above, and the
-                // team can still see it in the conversation thread.
+
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        id: makeId(),
+                        type: "bot",
+                        text: PREFERRED_CONTACT_RECEIVED_MESSAGE,
+                        time: formatTime(),
+                        source: "AI Assistant",
+                        cta: CTA_LINKS.contact,
+                    },
+                ]);
+                void persistMessage(
+                    activeConversation,
+                    "assistant",
+                    PREFERRED_CONTACT_RECEIVED_MESSAGE,
+                );
+                return;
             }
+
+            if (agentRequested) {
+                setIsTyping(false);
+                await nextPaint();
+                return;
+            }
+
+            const { text: replyText, cta } = getLocalBotReply(userMessage.text);
+
+            await humanDelay(replyText.length);
+
+            setIsTyping(false);
+            await nextPaint();
 
             setMessages((prev) => [
                 ...prev,
                 {
                     id: makeId(),
                     type: "bot",
-                    text: PREFERRED_CONTACT_RECEIVED_MESSAGE,
+                    text: replyText,
                     time: formatTime(),
-                    cta: CTA_LINKS.contact,
+                    source: "AI Assistant",
+                    cta,
                 },
             ]);
-            void persistMessage(
-                activeConversation,
-                "assistant",
-                PREFERRED_CONTACT_RECEIVED_MESSAGE,
-            );
-            return;
-        }
+            void persistMessage(activeConversation, "assistant", replyText);
 
-        // Fully local reply — no fetch, no API, no OpenAI dependency.
-        const { text: replyText, cta } = getLocalBotReply(userMessage.text);
-
-        // Length-aware delay makes longer answers feel like they took a
-        // moment longer to "type" without ever stalling.
-        await humanDelay(replyText.length);
-        setIsTyping(false);
-        setMessages((prev) => [
-            ...prev,
-            { id: makeId(), type: "bot", text: replyText, time: formatTime(), cta },
-        ]);
-        void persistMessage(activeConversation, "assistant", replyText);
-
-        // If the visitor explicitly asked for a copy of the chat, actually
-        // trigger the backend email send (the reply text above just
-        // acknowledges it locally).
-        if (wantsChatHistory(userMessage.text)) {
-            const targetId = conversation?.id ?? activeConversation?.id;
-            void requestTranscriptEmail(targetId);
+            if (wantsChatHistory(userMessage.text)) {
+                const targetId =
+                    conversation?.remoteConversationId ?? conversation?.id ??
+                    activeConversation?.remoteConversationId ?? activeConversation?.id;
+                void requestTranscriptEmail(targetId);
+            }
+        } finally {
+            isProcessingLocalMessageRef.current = false;
         }
     };
 
@@ -1192,6 +1433,10 @@ const Chatbot = () => {
             };
 
             setConversation(newConversation);
+            // Ensure our ref is in sync immediately so subsequent calls use server id.
+            conversationRef.current = newConversation;
+            try { console.debug("CHAT: started conversation", startResponse, newConversation); } catch {}
+
             if (typeof window !== "undefined") {
                 window.localStorage.setItem(
                     SESSION_STORAGE_KEY,
@@ -1206,7 +1451,7 @@ const Chatbot = () => {
                     type: "bot",
                     text: greeting,
                     time: formatTime(),
-                    cta: CTA_LINKS.services,
+                    source: "AI Assistant",
                 },
             ]);
             await persistMessage(newConversation, "assistant", greeting);
@@ -1291,16 +1536,15 @@ const Chatbot = () => {
 
                         {/* Body */}
                         <div className="flex-1 overflow-y-auto bg-gray-50">
-                            {/* Resuming previous session */}
-                            {isResumingSession && (
-                                <div className="h-full flex flex-col items-center justify-center gap-3 text-gray-400">
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    <p className="text-xs">Loading your conversation…</p>
+                            {/* Resumed previous session badge */}
+                            {resumed && (
+                                <div className="px-4 py-2 bg-yellow-50 border-t border-b border-yellow-100 text-yellow-800 text-xs text-center">
+                                    Resumed your previous conversation
                                 </div>
                             )}
 
                             {/* Welcome screen */}
-                            {!isResumingSession && !isStarted && (
+                            {!isStarted && (
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -1332,7 +1576,7 @@ const Chatbot = () => {
                             )}
 
                             {/* Lead form */}
-                            {!isResumingSession && isStarted && !leadSubmitted && (
+                            {isStarted && !leadSubmitted && (
                                 <motion.div
                                     initial={{ opacity: 0, x: 12 }}
                                     animate={{ opacity: 1, x: 0 }}
@@ -1471,10 +1715,7 @@ const Chatbot = () => {
                                     >
                                         {isSubmittingLead ? (
                                             <>
-                                                <Loader2
-                                                    className="h-4 w-4 shrink-0 animate-spin"
-                                                    aria-hidden="true"
-                                                />
+                                                <Loader2 className="h-5 w-5 animate-spin" />
                                                 <span>Submitting...</span>
                                             </>
                                         ) : (
@@ -1488,7 +1729,7 @@ const Chatbot = () => {
                             )}
 
                             {/* Messages */}
-                            {!isResumingSession && leadSubmitted && (
+                            {leadSubmitted && (
                                 <LayoutGroup>
                                     <div className="p-4 space-y-3">
                                         <AnimatePresence initial={false}>
@@ -1518,7 +1759,7 @@ const Chatbot = () => {
                                                         {msg.cta && (
                                                             <a
                                                                 href={msg.cta.href}
-                                                                target="_blank"
+                                                                target="_self"
                                                                 rel="noopener noreferrer"
                                                                 onClick={handleCtaClick}
                                                                 className={`mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${msg.type === "user"
@@ -1533,16 +1774,15 @@ const Chatbot = () => {
                                                         <p
                                                             className={`text-[10px] mt-1 ${msg.type === "user" ? "text-blue-200 text-right" : "text-gray-400"}`}
                                                         >
-                                                            {msg.time}
+                                                            {msg.type === "bot" && msg.source
+                                                                ? `${msg.time} · ${msg.source}`
+                                                                : msg.time}
                                                         </p>
                                                     </div>
                                                 </motion.div>
                                             ))}
                                         </AnimatePresence>
 
-                                        {/* Typing indicator — same easing/duration family as message
-                                            bubbles above so the handoff between "typing" and "message
-                                            landed" doesn't visibly change speed. */}
                                         <AnimatePresence>
                                             {isTyping && (
                                                 <motion.div
@@ -1636,9 +1876,11 @@ const Chatbot = () => {
                                                                     {reply === "Talk to an Agent" && (
                                                                         <UserRound className="w-3 h-3" />
                                                                     )}
-                                                                    {reply === "Talk to an Agent" && agentRequested
-                                                                        ? "Agent requested"
-                                                                        : reply}
+                                                                    {reply === "Talk to an Agent" && agentRequestInFlight
+                                                                        ? "Requesting agent…"
+                                                                        : reply === "Talk to an Agent" && agentRequested
+                                                                            ? "Agent requested"
+                                                                            : reply}
                                                                 </button>
                                                             ))}
                                                         </div>
@@ -1653,7 +1895,7 @@ const Chatbot = () => {
                         </div>
 
                         {/* Input area */}
-                        {!isResumingSession && leadSubmitted && !conversationClosed && (
+                        {leadSubmitted && !conversationClosed && (
                             <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
                                 <div className="flex items-center gap-2">
                                     <input

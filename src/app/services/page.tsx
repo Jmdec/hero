@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
@@ -445,8 +446,36 @@ function SpaceModal({
   );
 }
 
-export default function ServicesPage() {
+function ServicesPageContent() {
   const [activeSpace, setActiveSpace] = useState<SpaceType | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Deep-link support: if the page is loaded (or navigated to, e.g. from the
+  // chatbot's CTA buttons) with `?modal=<space-id>`, open that space's modal
+  // automatically instead of requiring the visitor to click through the grid.
+  useEffect(() => {
+    const modalId = searchParams.get("modal");
+    if (!modalId) {
+      setActiveSpace(null);
+      return;
+    }
+    const match = spaceTypes.find((space) => space.id === modalId);
+    setActiveSpace(match ?? null);
+  }, [searchParams]);
+
+  const openSpaceModal = (space: SpaceType) => {
+    setActiveSpace(space);
+    router.push(`${pathname}?modal=${space.id}`, { scroll: false });
+  };
+
+  const closeSpaceModal = () => {
+    setActiveSpace(null);
+    if (searchParams.get("modal")) {
+      router.push(pathname, { scroll: false });
+    }
+  };
 
   const moveInSteps = [
     { step: 1, title: "Inquiry", description: "Contact us to learn more about our office spaces and availability." },
@@ -691,7 +720,7 @@ export default function ServicesPage() {
               return (
                 <motion.button
                   key={space.id}
-                  onClick={() => setActiveSpace(space)}
+                  onClick={() => openSpaceModal(space)}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: i * 0.07 }}
@@ -727,7 +756,7 @@ export default function ServicesPage() {
 
       {/* Modal */}
       {activeSpace && (
-        <SpaceModal space={activeSpace} onClose={() => setActiveSpace(null)} />
+        <SpaceModal space={activeSpace} onClose={closeSpaceModal} />
       )}
 
       {/* ── Move-In Flow ── */}
@@ -852,5 +881,13 @@ export default function ServicesPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function ServicesPage() {
+  return (
+    <Suspense fallback={null}>
+      <ServicesPageContent />
+    </Suspense>
   );
 }
