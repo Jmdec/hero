@@ -11,7 +11,7 @@ import {
   getContactInquiryRecipients,
 } from "@/lib/contactInquiryRouting";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
 function isValidId(id: string) {
   return /^\d+$/.test(id);
