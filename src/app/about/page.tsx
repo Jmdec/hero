@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Handshake,
   Scale,
+  Loader2,
   Gauge,
   Eye,
   Award,
