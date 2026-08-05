@@ -1015,29 +1015,6 @@ const Chatbot = () => {
         }, 0);
     };
 
-    const handleStartNewConversation = async () => {
-        // Allow creating a new conversation after the user explicitly requests it.
-        conversationClosedRef.current = false;
-        setConversationClosed(false);
-
-        // Reset local conversation/cache so ensureConversation can create a fresh one.
-        setConversation(null);
-        conversationRef.current = null;
-
-        // Clear persisted state so we don't immediately restore the closed state.
-        try {
-            if (typeof window !== "undefined") {
-                window.sessionStorage.removeItem(CHAT_STATE_KEY);
-                window.localStorage.removeItem(SESSION_STORAGE_KEY);
-            }
-        } catch {}
-
-        // Start over with the welcome message.
-        setMessages([WELCOME_MESSAGE]);
-        setSendError("");
-        setIsTyping(false);
-    };
-
     useEffect(() => {
         const noop = () => { };
         window.addEventListener("beforeunload", noop);
@@ -1048,12 +1025,6 @@ const Chatbot = () => {
     }, [leadSubmitted, conversation?.id, conversationClosed]);
 
     const ensureConversation = useCallback(async (): Promise<ConversationState | null> => {
-        // If the conversation was closed, do not create a new one automatically.
-        if (conversationClosedRef.current) {
-            try { console.debug("CHAT: conversation closed — not creating a new one"); } catch {}
-            return null;
-        }
-
         if (conversation) return conversation;
 
         const newConversation: ConversationState = {
@@ -1909,30 +1880,6 @@ const Chatbot = () => {
                                                         </div>
                                                     </motion.div>
                                                 )}
-                                        </AnimatePresence>
-
-                                        <AnimatePresence>
-                                            {conversationClosed && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: 6 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, y: -4 }}
-                                                    transition={{ duration: 0.18 }}
-                                                    className="pt-3 px-6"
-                                                >
-                                                    <div className="rounded-2xl border border-gray-200 bg-white p-3 text-sm text-gray-700 text-center">
-                                                        <p className="mb-2">This conversation has ended.</p>
-                                                        <div className="flex items-center justify-center gap-2">
-                                                            <button
-                                                                onClick={handleStartNewConversation}
-                                                                className="px-3 py-1.5 bg-[#1B3A8C] text-white rounded-full text-sm hover:bg-[#16318a] active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
-                                                            >
-                                                                Start New Conversation
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </motion.div>
-                                            )}
                                         </AnimatePresence>
 
                                         <div ref={messagesEndRef} />
