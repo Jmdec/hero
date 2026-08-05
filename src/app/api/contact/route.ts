@@ -7,7 +7,7 @@ import {
   getContactInquiryRecipients,
 } from "@/lib/contactInquiryRouting";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
 interface ContactInquiryPayload {
   id?: number;
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as ContactInquiryPayload;
 
-    const response = await fetch(`http://hero-backend-production-9db6.up.railway.app/api/contact`, {
+    const response = await fetch(`${API_URL}/api/contact`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
