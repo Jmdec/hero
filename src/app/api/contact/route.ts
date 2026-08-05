@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as ContactInquiryPayload;
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/contact`, {
+    const response = await fetch(`http://hero-backend-production-9db6.up.railway.app/api/contact`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
