@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendMail } from "@/lib/mailer";
 import {
   extractContactBranchInterest,
   getContactBranchLabel,
@@ -140,6 +139,26 @@ function buildJapaneseDetails(dynamicData?: Record<string, string> | null) {
 }
 
 async function sendInquiryNotifications(payload: ContactInquiryPayload, openInquiryUrl: string) {
+  let sendMail: (args: {
+    to: string;
+    subject: string;
+    html: string;
+    text?: string;
+    replyTo?: string;
+    attachments?: Array<{
+      filename: string;
+      content: string | Buffer;
+      contentType?: string;
+    }>;
+  }) => Promise<unknown>;
+
+  try {
+    ({ sendMail } = await import("@/lib/mailer"));
+  } catch (error) {
+    console.warn("Mailer module unavailable; skipping contact notifications:", error);
+    return;
+  }
+
   const branchInterest = payload.branchInterest ?? extractContactBranchInterest(payload.dynamicData);
   const recipients = getContactInquiryRecipients(branchInterest);
   const subject = `New ${getContactInquiryLabel(payload.inquiryType)} inquiry from ${payload.name}`;
