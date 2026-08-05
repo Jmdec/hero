@@ -21,6 +21,17 @@ interface ContactInquiryPayload {
   dynamicData?: Record<string, string>;
 }
 
+async function readBackendPayload(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  const text = await response.text();
+  return { message: text || "Unexpected backend response." };
+}
+
 function buildRows(payload: ContactInquiryPayload) {
   const branch = getContactBranchLabel(payload.branchInterest ?? extractContactBranchInterest(payload.dynamicData));
   const details = Object.entries(payload.dynamicData ?? {})
@@ -192,7 +203,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const data = await readBackendPayload(response);
 
     if (response.ok) {
       const saved = (data?.data ?? {}) as { id?: number; public_view_token?: string; dynamic_data?: Record<string, string> };
@@ -200,26 +211,32 @@ export async function POST(request: NextRequest) {
         ? `${request.nextUrl.origin}/contact/inquiry/${saved.public_view_token}`
         : `${request.nextUrl.origin}/admin/contact`;
 
-      await sendInquiryNotifications(
-        {
-          ...body,
-          id: saved.id,
-          dynamicData: saved.dynamic_data ?? body.dynamicData,
-        },
-        publicInquiryUrl,
-      );
+      try {
+        await sendInquiryNotifications(
+          {
+            ...body,
+            id: saved.id,
+            dynamicData: saved.dynamic_data ?? body.dynamicData,
+          },
+          publicInquiryUrl,
+        );
+      } catch (notificationError) {
+        // Contact save succeeded; do not fail the client request on email issues.
+        console.warn("Contact inquiry saved but notification failed:", notificationError);
+      }
     }
 
     return NextResponse.json(data, {
       status: response.status,
     });
   } catch (error) {
+    console.error("Contact API route failure:", error);
     return NextResponse.json(
       {
-        message: "Failed submitting contact",
+        message: "Unable to submit contact right now.",
       },
       {
-        status: 500,
+        status: 502,
       },
     );
   }
