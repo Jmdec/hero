@@ -7,7 +7,7 @@ import {
   getContactInquiryRecipients,
 } from "@/lib/contactInquiryRouting";
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
 interface ContactInquiryPayload {
   id?: number;
