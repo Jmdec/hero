@@ -222,6 +222,8 @@ export interface QuotationDetail {
     vat_percentage?: number | string | null;
     vat_amount?: number | string | null;
     contract_admin_fee?: number | string | null;
+    discount?: number | string | null;
+    discounts?: number | string | null;
     contract_content?: string | null;
     contract_updated_at?: string | null;
 }
@@ -626,29 +628,42 @@ async function generateVirtualOfficeContractPdf(
     const paymentMethodLabel = formatPaymentMethodLabel(d.payment_method);
     const formattedStartDate = formatDisplayDate(d.date);
 
-    // --- VAT / subtotal computation ---
-    const VAT_RATE = 0.12; // 12% PH VAT
-    const parseAmount = (value: string): number | null => {
-        const numeric = Number(String(value).replace(/[^0-9.]/g, ""));
+    const parseNumberish = (value: string | number | null | undefined): number | null => {
+        const normalized = typeof value === "string" ? value.replace(/[^0-9.-]/g, "") : value;
+        const numeric = Number(normalized ?? null);
         return Number.isFinite(numeric) ? numeric : null;
     };
-    const formatCurrency = (value: number): string =>
-        `₱${value.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const formatPhp = (value: number | null | undefined): string => {
+        const numeric = Number(value ?? 0);
+        if (Number.isNaN(numeric)) return "PHP 0.00";
+        return `PHP ${numeric.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
 
-    const monthlyFeeAmount = parseAmount(monthlyFee);
-    let vatAmountLabel = "—";
-    let subtotalLabel = "—";
-    let totalPerMonthLabel = "—";
+    const monthlyFeeAmount = parseNumberish(d.package_price) ?? parseNumberish(monthlyFee);
+    const monthsCount = parseNumberish(d.months ?? d.duration) ?? 1;
+    const subtotalAmount = parseNumberish(d.subtotal);
+    const vatAmount = parseNumberish(d.vat_amount);
+    const vatPercent = parseNumberish(d.vat_percentage);
+    const contractFeeAmount = parseNumberish(d.contract_admin_fee);
+    const discountAmount = parseNumberish(d.discounts ?? d.discount);
+    const grandTotalAmount = parseNumberish(d.total);
 
-    if (monthlyFeeAmount !== null) {
-        // Treat the listed package price as VAT-inclusive; back out the subtotal and VAT.
-        const subtotal = monthlyFeeAmount / (1 + VAT_RATE);
-        const vatAmount = monthlyFeeAmount - subtotal;
+    const derivedDiscount = discountAmount ?? (
+        subtotalAmount != null && contractFeeAmount != null && grandTotalAmount != null
+            ? Math.max(0, subtotalAmount + contractFeeAmount - grandTotalAmount)
+            : null
+    );
 
-        subtotalLabel = formatCurrency(subtotal);
-        vatAmountLabel = formatCurrency(vatAmount);
-        totalPerMonthLabel = formatCurrency(monthlyFeeAmount);
-    }
+    const drawPriceBreakdownSection = () => {
+        sectionTitle("Price Breakdown");
+        drawLine(`Package Price: ${monthlyFeeAmount != null ? formatPhp(monthlyFeeAmount) : "—"}`);
+        drawLine(`Quantity / Months: ${monthsCount}`);
+        drawLine(`Subtotal: ${subtotalAmount != null ? formatPhp(subtotalAmount) : "—"}`);
+        drawLine(`VAT${vatPercent != null ? ` (${vatPercent}%)` : ""}: ${vatAmount != null ? formatPhp(vatAmount) : "—"}`);
+        drawLine(`Contract & Administrative Fee: ${contractFeeAmount != null ? formatPhp(contractFeeAmount) : "—"}`);
+        drawLine(`Discounts: ${derivedDiscount != null ? formatPhp(derivedDiscount) : "—"}`);
+        drawLine(`Grand Total: ${grandTotalAmount != null ? formatPhp(grandTotalAmount) : "—"}`, { bold: true });
+    };
 
     const durationLabel = d.duration || quotation.duration || "Month-to-month";
 
@@ -663,6 +678,9 @@ async function generateVirtualOfficeContractPdf(
             drawParagraph(block);
             cursorY -= 6;
         }
+
+        cursorY -= 6;
+        drawPriceBreakdownSection();
 
         cursorY -= 30;
         drawLine("Hero PH Inc.", { bold: true, gap: 40 });
@@ -700,11 +718,10 @@ async function generateVirtualOfficeContractPdf(
     drawLine(`Package: ${quotation.package || "—"}`);
     drawLine(`Duration: ${durationLabel}`);
     drawLine(`Start Date: ${formattedStartDate}`);
-    drawLine(`Subtotal (Monthly, VAT-exclusive): ${subtotalLabel}`);
-    drawLine(`VAT (12%): ${vatAmountLabel}`);
-    drawLine(`Monthly Fee (VAT-inclusive): ${totalPerMonthLabel}`);
     drawLine(`Payment Method: ${paymentMethodLabel}`);
     if (d.transaction_id) drawLine(`Reference No: ${d.transaction_id}`);
+
+    drawPriceBreakdownSection();
 
     sectionTitle("3. Client Information");
     drawLine(`Name: ${idName}`);

@@ -60,6 +60,7 @@ interface QuotationDetail {
     transaction_id: string | null;
     receipt: string | null;
     payment_link_send_count?: number | null;
+    payment_link_sent_count?: number | null;
     receipt_url?: string | null;
     receipt_path?: string | null;
     id_type?: string | null;
@@ -79,15 +80,14 @@ interface QuotationDetail {
     signatory_id_path?: string | null;
     signatory_same_as_id_holder?: boolean | null;
     months?: number | null;
-    // Flat pricing fields — this is what the get-a-quote Virtual Office flow
-    // actually submits (see buildPayload() in the quote form).
     package_name?: string | null;
     package_price?: number | string | null;
     vat_percentage?: number | string | null;
     vat_amount?: number | string | null;
     subtotal?: number | string | null;
     contract_admin_fee?: number | string | null;
-    // Legacy/alternate nested shape, kept for compatibility.
+    discount?: number | string | null;
+    discounts?: number | string | null;
     price_breakdown?: QuotationPriceBreakdown | null;
     contract_content?: string | null;
     contract_updated_at?: string | null;
@@ -236,6 +236,11 @@ function hasPricingData(detail: QuotationDetail) {
         detail.package_price != null ||
         (Number(detail.total) || 0) > 0
     );
+}
+
+function getPaymentLinkSentCount(detail: QuotationDetail | null | undefined) {
+    if (!detail) return 0;
+    return Number(detail.payment_link_sent_count ?? detail.payment_link_send_count ?? 0) || 0;
 }
 
 // Toast
@@ -802,9 +807,9 @@ export default function AdminQuotationsPage() {
 
     // Verification step for Virtual Office
     const handleSendPaymentLink = async (quote: Quotation) => {
-        const currentCount = quote.detail?.payment_link_send_count ?? 0;
+        const currentCount = getPaymentLinkSentCount(quote.detail);
         if (currentCount >= 3) {
-            pushToast("This payment link has reached the 3-send limit.", "error");
+            pushToast("Maximum sends reached (3/3).", "error");
             return;
         }
 
@@ -817,33 +822,40 @@ export default function AdminQuotationsPage() {
             });
             const payload = await res.json().catch(() => null);
             if (!res.ok) {
-                const message = payload?.warning || payload?.message || payload?.error || "Failed to send payment link.";
+                const message = payload?.message || payload?.error || "Failed to send payment link.";
                 throw new Error(message);
             }
 
-            const deliveredViaFallback = payload?.success === true && payload?.fallback_delivery === "frontend";
-            const deliveryFailed = payload?.success === false || Boolean(payload?.fallback_error) || (Boolean(payload?.warning || payload?.error) && !deliveredViaFallback);
+            const deliveryFailed = payload?.ok === false || payload?.success === false || Boolean(payload?.error);
 
             if (deliveryFailed) {
-                const message = payload?.fallback_error || payload?.warning || payload?.message || payload?.error || "Payment link delivery failed.";
+                const message = payload?.message || payload?.error || "Payment link delivery failed.";
                 throw new Error(message);
             }
 
-            const nextCount = Number(payload?.payment_link_send_count ?? currentCount + 1);
+            const nextCount = Number(payload?.payment_link_sent_count ?? payload?.payment_link_send_count ?? currentCount + 1);
             setQuotations((previous) => previous.map((item) => item.id === quote.id ? {
                 ...item,
-                detail: item.detail ? { ...item.detail, payment_link_send_count: nextCount } : item.detail,
+                detail: item.detail
+                    ? {
+                        ...item.detail,
+                        payment_link_sent_count: nextCount,
+                        payment_link_send_count: nextCount,
+                    }
+                    : item.detail,
             } : item));
             setSelected((current) => current && current.id === quote.id ? {
                 ...current,
-                detail: current.detail ? { ...current.detail, payment_link_send_count: nextCount } : current.detail,
+                detail: current.detail
+                    ? {
+                        ...current.detail,
+                        payment_link_sent_count: nextCount,
+                        payment_link_send_count: nextCount,
+                    }
+                    : current.detail,
             } : current);
 
-            if (deliveredViaFallback) {
-                pushToast(`Payment link delivered to ${who}.`, "success");
-            } else {
-                pushToast(`Payment link delivered to ${who}.`, "success");
-            }
+            pushToast(`Payment link delivered to ${who} (${nextCount}/3).`, "success");
         } catch (error) {
             const msg = error instanceof Error ? error.message : "Couldn't send payment link to the client.";
             pushToast(msg, "error");
@@ -1125,6 +1137,7 @@ export default function AdminQuotationsPage() {
                                         ) : (
                                             <>
                                                 <Link2 className="w-4 h-4" />
+                                                {selected.status === "payment_verification" ? "Payment Link Sent" : "Send Payment Link"}
                                                 {(selected.detail?.payment_link_send_count ?? 0) >= 3 ? "Payment link limit reached" : "Send Payment Link"}
                                             </>
                                         )}
@@ -1215,6 +1228,46 @@ export default function AdminQuotationsPage() {
                                     <div className="whitespace-pre-wrap text-sm leading-7 text-[#0B1F4A]">
                                         {contractDraft}
                                     </div>
+                                    {(() => {
+                                        const breakdown = getContractPriceBreakdown(contractModalQuote.detail);
+                                        if (!breakdown) return null;
+
+                                        return (
+                                            <div className="mt-8 border-t border-[#E5EAF2] pt-5">
+                                                <p className="text-sm font-bold text-[#1B3A8C] mb-3">Price Breakdown</p>
+                                                <div className="space-y-1.5 text-sm text-[#0B1F4A]">
+                                                    <div className="flex justify-between gap-4">
+                                                        <span>Package Price</span>
+                                                        <span className="font-semibold">{breakdown.packagePrice != null ? formatPhpAmount(breakdown.packagePrice) : "—"}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-4">
+                                                        <span>Quantity / Months</span>
+                                                        <span className="font-semibold">{breakdown.months}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-4">
+                                                        <span>Subtotal</span>
+                                                        <span className="font-semibold">{breakdown.subtotal != null ? formatPhpAmount(breakdown.subtotal) : "—"}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-4">
+                                                        <span>VAT{breakdown.vatPercentage != null ? ` (${breakdown.vatPercentage}%)` : ""}</span>
+                                                        <span className="font-semibold">{breakdown.vatAmount != null ? formatPhpAmount(breakdown.vatAmount) : "—"}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-4">
+                                                        <span>Contract & Administrative Fee</span>
+                                                        <span className="font-semibold">{breakdown.contractFee != null ? formatPhpAmount(breakdown.contractFee) : "—"}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-4">
+                                                        <span>Discounts</span>
+                                                        <span className="font-semibold">{breakdown.discount != null ? formatPhpAmount(breakdown.discount) : "—"}</span>
+                                                    </div>
+                                                    <div className="mt-2 pt-2 border-t border-[#D9E2F0] flex justify-between gap-4 text-base">
+                                                        <span className="font-bold">Grand Total</span>
+                                                        <span className="font-bold text-[#1B3A8C]">{breakdown.grandTotal != null ? formatPhpAmount(breakdown.grandTotal) : "—"}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             ) : (
                                 <div className="mx-auto max-w-3xl bg-white border border-[#D9E2F0] rounded-xl p-5 sm:p-6 shadow-sm space-y-3">
@@ -1451,4 +1504,47 @@ export default function AdminQuotationsPage() {
             <ToastStack toasts={toasts} onDismiss={dismissToast} />
         </>
     );
+}
+
+function formatPhpAmount(value: number | null | undefined) {
+    const numeric = Number(value ?? 0);
+    if (Number.isNaN(numeric)) return "PHP 0.00";
+    return `PHP ${numeric.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function toNumber(value: string | number | null | undefined): number | null {
+    const numeric = Number(value ?? null);
+    return Number.isFinite(numeric) ? numeric : null;
+}
+
+function getContractPriceBreakdown(detail: QuotationDetail | null | undefined) {
+    if (!detail) {
+        return null;
+    }
+
+    const packagePrice = toNumber(detail.package_price);
+    const months = toNumber(detail.months ?? detail.duration) ?? 1;
+    const subtotal = toNumber(detail.subtotal);
+    const vatAmount = toNumber(detail.vat_amount);
+    const vatPercentage = toNumber(detail.vat_percentage);
+    const contractFee = toNumber(detail.contract_admin_fee);
+    const explicitDiscount = toNumber(detail.discounts ?? detail.discount);
+    const grandTotal = toNumber(detail.total);
+
+    let computedDiscount = explicitDiscount;
+    if (computedDiscount == null && subtotal != null && contractFee != null && grandTotal != null) {
+        const derived = subtotal + contractFee - grandTotal;
+        computedDiscount = derived > 0 ? derived : 0;
+    }
+
+    return {
+        packagePrice,
+        months,
+        subtotal,
+        vatAmount,
+        vatPercentage,
+        contractFee,
+        discount: computedDiscount,
+        grandTotal,
+    };
 }

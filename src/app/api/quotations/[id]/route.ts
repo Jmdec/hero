@@ -55,9 +55,25 @@ export async function PUT(
 
         if (!res.ok) {
             const text = await res.text().catch(() => "");
-            console.error(`Laravel API error (${res.status}):`, text);
+            let parsed: any = null;
+            try {
+                parsed = text ? JSON.parse(text) : null;
+            } catch {
+                parsed = null;
+            }
+
+            console.error("Quotation update failed via proxy", {
+                quotationId: id,
+                status: res.status,
+                response: parsed ?? text,
+            });
+
             return NextResponse.json(
-                { message: `Quotation service error: ${res.status}`, error: text },
+                {
+                    message: parsed?.message || `Quotation service error: ${res.status}`,
+                    errors: parsed?.errors || null,
+                    error: parsed?.error || text,
+                },
                 { status: res.status }
             );
         }
@@ -65,9 +81,12 @@ export async function PUT(
         const data = await res.json().catch(() => null);
         return NextResponse.json(data, { status: 200 });
     } catch (error) {
-        console.error("Quotations update API error:", error);
+        console.error("Quotations update API proxy exception", {
+            quotationId: id,
+            error: String(error),
+        });
         return NextResponse.json(
-            { message: "Unable to reach the quotation service. Please try again.", error: String(error) },
+            { message: "Unable to update quotation right now.", error: String(error) },
             { status: 502 }
         );
     }
