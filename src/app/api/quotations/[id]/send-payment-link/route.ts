@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-function resolveLaravelApiBase() {
-    const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
-    const normalized = configured.replace(/\/+$/g, "");
-    return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
-}
+const LARAVEL_API_URL = process.env.LARAVEL_API_URL ?? "http://localhost:8000/api";
 
 export async function POST(
     request: NextRequest,
@@ -12,18 +8,7 @@ export async function POST(
 ) {
     const { id } = await params;
     try {
-        const apiBase = resolveLaravelApiBase();
-        const targetUrl = `${apiBase}/quotations/${encodeURIComponent(id)}/send-payment-link`;
-        const localRouteUrl = `${request.nextUrl.origin.replace(/\/+$/g, "")}/api/quotations/${encodeURIComponent(id)}/send-payment-link`;
-
-        if (targetUrl === localRouteUrl) {
-            return NextResponse.json(
-                { message: "Server configuration error. Set LARAVEL_API_URL to your Laravel backend URL." },
-                { status: 500 }
-            );
-        }
-
-        const res = await fetch(targetUrl, {
+        const res = await fetch(`${LARAVEL_API_URL}/quotations/${encodeURIComponent(id)}/send-payment-link`, {
             method: "POST",
             headers: {
                 Accept: "application/json",

@@ -5,15 +5,8 @@ import {
     QuotationPayload,
 } from "@/lib/nodemailer";
 
-function resolveLaravelApiBase() {
-    const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
-    const normalized = configured.replace(/\/+$/g, "");
-    return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
-}
-
-const API_URL = resolveLaravelApiBase();
-
-const LARAVEL_BASE_URL = process.env.LARAVEL_APP_URL ?? API_URL.replace(/\/api\/?$/, "");
+const LARAVEL_API_URL = process.env.LARAVEL_API_URL ?? "http://localhost:8000/api";
+const LARAVEL_BASE_URL = process.env.LARAVEL_APP_URL ?? LARAVEL_API_URL.replace(/\/api\/?$/, "");
 
 function resolveLaravelFileUrl(url: string | null | undefined): string | null {
     if (!url) return null;
@@ -76,7 +69,7 @@ async function fileToDocumentCopy(file: File | null): Promise<QuotationDocumentC
 export async function GET(request: NextRequest) {
     try {
         const url = new URL(request.url);
-        const laravelUrl = `${API_URL}/quotations${url.search}`;
+        const laravelUrl = `${LARAVEL_API_URL}/quotations${url.search}`;
         
         const res = await fetch(laravelUrl, {
             method: "GET",
@@ -110,8 +103,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const contentType = request.headers.get("content-type") ?? "";
+        const shouldSendFrontendEmails = request.headers.get("x-send-quotation-email") === "true";
         let notificationPayload: QuotationPayload | null = null;
-        let notificationSummary: { userSent: boolean; adminSent: boolean } | null = null;
         let res: Response;
         let paymentProofCopy: QuotationDocumentCopy | null = null;
         let governmentIdCopy: QuotationDocumentCopy | null = null;
@@ -121,25 +114,6 @@ export async function POST(request: NextRequest) {
             const formData = await request.formData();
             const backendFormData = new FormData();
 
-            const rawPayload = formData.get("payload");
-            if (typeof rawPayload === "string") {
-                try {
-                    notificationPayload = JSON.parse(rawPayload) as QuotationPayload;
-                } catch (error) {
-                    console.warn("Unable to parse multipart quotation payload for email notification context.", error);
-                }
-            }
-
-            const paymentProofFile = formData.get("payment_proof");
-            const governmentIdFile = formData.get("government_id");
-            const signatoryGovernmentIdFile = formData.get("signatory_government_id");
-
-            paymentProofCopy = await fileToDocumentCopy(paymentProofFile instanceof File ? paymentProofFile : null);
-            governmentIdCopy = await fileToDocumentCopy(governmentIdFile instanceof File ? governmentIdFile : null);
-            signatoryGovernmentIdCopy = await fileToDocumentCopy(
-                signatoryGovernmentIdFile instanceof File ? signatoryGovernmentIdFile : null
-            );
-
             for (const [key, value] of formData.entries()) {
                 if (value instanceof File) {
                     backendFormData.append(key, value, value.name);
@@ -148,7 +122,7 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            res = await fetch(`${API_URL}/quotations`, {
+            res = await fetch(`${LARAVEL_API_URL}/quotations`, {
                 method: "POST",
                 headers: {
                     Accept: "application/json",
@@ -159,7 +133,7 @@ export async function POST(request: NextRequest) {
             const body = await request.json();
             notificationPayload = body as QuotationPayload;
 
-            res = await fetch(`${API_URL}/quotations`, {
+            res = await fetch(`${LARAVEL_API_URL}/quotations`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -179,11 +153,9 @@ export async function POST(request: NextRequest) {
         }
 
         const data = await res.json().catch(() => null);
-        const extractedData =
-            data && typeof data === "object" && "data" in data
-                ? (data as { data?: unknown }).data
-                : data;
-        const savedQuotation = (extractedData as QuotationPayload | null) ?? (notificationPayload ?? null);
+        const savedQuotation = ((data && typeof data === "object" && "data" in data)
+            ? (data as any).data
+            : data) as QuotationPayload | null ?? (notificationPayload ?? null);
 
         // Fallback: when in-memory multipart File copies are missing, pull the persisted
         // files from Laravel storage URLs so client/admin emails still include attachments.
@@ -211,52 +183,23 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Wait for notification delivery so serverless runtimes cannot drop
-        // detached promises before SMTP sends complete.
-        if (savedQuotation) {
-            const notificationQuotationId = (savedQuotation as QuotationPayload & { id?: number | string }).id;
-            try {
-                const delivery = await sendQuotationNotifications(
-                    savedQuotation,
-                    {
+        // Fire-and-forget — quotation is already saved, so a mail failure
+        // shouldn't block the user's response. Errors are logged internally.
+        if (shouldSendFrontendEmails && savedQuotation) {
+            void (async () => {
+                try {
+                    await sendQuotationNotifications(savedQuotation, {
                         paymentProofCopy,
                         governmentIdCopy,
                         signatoryGovernmentIdCopy,
-                    },
-                );
-
-                notificationSummary = {
-                    userSent: delivery.userSent,
-                    adminSent: delivery.adminSent,
-                };
-
-                if (!delivery.adminSent || !delivery.userSent) {
-                    console.error("Quotation notification delivery incomplete.", {
-                        quotationId: notificationQuotationId ?? null,
-                        userSent: delivery.userSent,
-                        adminSent: delivery.adminSent,
                     });
+                } catch (err) {
+                    console.error("Quotation email notification error:", err);
                 }
-            } catch (err) {
-                notificationSummary = { userSent: false, adminSent: false };
-                console.error("Quotation email notification error:", {
-                    quotationId: notificationQuotationId ?? null,
-                    error: err,
-                });
-            }
-        } else {
-            console.error("Quotation notification skipped because no payload could be derived after successful submission.");
+            })();
         }
 
-        const responsePayload =
-            data && typeof data === "object"
-                ? {
-                    ...(data as Record<string, unknown>),
-                    notification: notificationSummary,
-                }
-                : { data, notification: notificationSummary };
-
-        return NextResponse.json(responsePayload, { status: 201 });
+        return NextResponse.json(data, { status: 201 });
     } catch (error) {
         console.error("Quotations POST API error:", error);
         return NextResponse.json(
