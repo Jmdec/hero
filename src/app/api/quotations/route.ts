@@ -105,7 +105,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const contentType = request.headers.get("content-type") ?? "";
-        let notificationPayload: QuotationPayload | null = null;
         let res: Response;
         let paymentProofCopy: QuotationDocumentCopy | null = null;
         let governmentIdCopy: QuotationDocumentCopy | null = null;
@@ -132,7 +131,6 @@ export async function POST(request: NextRequest) {
             });
         } else {
             const body = await request.json();
-            notificationPayload = body as QuotationPayload;
 
             res = await fetch(`${LARAVEL_API_BASE}/quotations`, {
                 method: "POST",
@@ -156,7 +154,7 @@ export async function POST(request: NextRequest) {
         const data = await res.json().catch(() => null);
         const savedQuotation = ((data && typeof data === "object" && "data" in data)
             ? (data as any).data
-            : data) as QuotationPayload | null ?? (notificationPayload ?? null);
+            : data) as (QuotationPayload & { id?: number | string }) | null;
 
         // Fallback: when in-memory multipart File copies are missing, pull the persisted
         // files from Laravel storage URLs so client/admin emails still include attachments.
@@ -184,24 +182,54 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Fire-and-forget — quotation is already saved, so a mail failure
-        // shouldn't block the user's response. Errors are logged internally.
+        let notificationResult: { userSent: boolean; adminSent: boolean } | null = null;
+
+        // Await notification sending so serverless runtimes do not terminate
+        // before the mail operation completes.
         if (savedQuotation) {
-            void (async () => {
-                try {
-                    await sendQuotationNotifications(savedQuotation, {
-                        paymentProofCopy,
-                        governmentIdCopy,
-                        signatoryGovernmentIdCopy,
-                        useBackendDelivery: false,
-                    });
-                } catch (err) {
-                    console.error("Quotation email notification error:", err);
-                }
-            })();
+            try {
+                notificationResult = await sendQuotationNotifications(savedQuotation, {
+                    paymentProofCopy,
+                    governmentIdCopy,
+                    signatoryGovernmentIdCopy,
+                    useBackendDelivery: false,
+                });
+
+                console.log("Quotation notifications dispatched", {
+                    quotationId: savedQuotation.id ?? null,
+                    service: savedQuotation.service_name,
+                    userSent: notificationResult.userSent,
+                    adminSent: notificationResult.adminSent,
+                });
+            } catch (err) {
+                console.error("Quotation email notification error:", {
+                    quotationId: savedQuotation.id ?? null,
+                    service: savedQuotation.service_name,
+                    error: String(err),
+                });
+            }
         }
 
-        return NextResponse.json(data, { status: 201 });
+        if (notificationResult && (!notificationResult.adminSent || !notificationResult.userSent)) {
+            return NextResponse.json(
+                {
+                    ...data,
+                    notification: {
+                        ...notificationResult,
+                        warning: "Quotation saved but one or more notification emails failed.",
+                    },
+                },
+                { status: 201 }
+            );
+        }
+
+        return NextResponse.json(
+            {
+                ...data,
+                notification: notificationResult,
+            },
+            { status: 201 }
+        );
     } catch (error) {
         console.error("Quotations POST API error:", error);
         return NextResponse.json(
