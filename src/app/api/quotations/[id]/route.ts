@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+const LARAVEL_API_URL = process.env.LARAVEL_API_URL ?? "http://localhost:8000/api";
 
 export async function GET(
     _request: NextRequest,
@@ -7,7 +7,7 @@ export async function GET(
 ) {
     const { id } = await params;
     try {
-        const res = await fetch(`${API_URL}/quotations/${id}`, {
+        const res = await fetch(`${LARAVEL_API_URL}/quotations/${id}`, {
             method: "GET",
             headers: { 
                 Accept: "application/json",
@@ -43,7 +43,7 @@ export async function PUT(
     const { id } = await params;
     try {
         const body = await request.json();
-        const res = await fetch(`${API_URL}/quotations/${id}`, {
+        const res = await fetch(`${LARAVEL_API_URL}/quotations/${id}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -78,7 +78,7 @@ export async function DELETE(
 ) {
     const { id } = await params;
     try {
-        const res = await fetch(`${API_URL}/quotations/${id}`, {
+        const res = await fetch(`${LARAVEL_API_URL}/quotations/${id}`, {
             method: "DELETE",
             headers: { 
                 Accept: "application/json",
