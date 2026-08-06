@@ -5,8 +5,9 @@ import {
     QuotationPayload,
 } from "@/lib/nodemailer";
 
-const LARAVEL_API_URL = process.env.LARAVEL_API_URL ?? "http://localhost:8000/api";
-const LARAVEL_BASE_URL = process.env.LARAVEL_APP_URL ?? LARAVEL_API_URL.replace(/\/api\/?$/, "");
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+const LARAVEL_BASE_URL = process.env.LARAVEL_APP_URL ?? API_URL.replace(/\/api\/?$/, "");
+
 
 function resolveLaravelFileUrl(url: string | null | undefined): string | null {
     if (!url) return null;
@@ -69,7 +70,7 @@ async function fileToDocumentCopy(file: File | null): Promise<QuotationDocumentC
 export async function GET(request: NextRequest) {
     try {
         const url = new URL(request.url);
-        const laravelUrl = `${LARAVEL_API_URL}/quotations${url.search}`;
+        const laravelUrl = `${API_URL}/quotations${url.search}`;
         
         const res = await fetch(laravelUrl, {
             method: "GET",
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            res = await fetch(`${LARAVEL_API_URL}/quotations`, {
+            res = await fetch(`${API_URL}/quotations`, {
                 method: "POST",
                 headers: {
                     Accept: "application/json",
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
             const body = await request.json();
             notificationPayload = body as QuotationPayload;
 
-            res = await fetch(`${LARAVEL_API_URL}/quotations`, {
+            res = await fetch(`${API_URL}/quotations`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-function resolveLaravelApiBase() {
-    const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
-    const normalized = configured.replace(/\/+$/g, "");
-    return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
-}
-
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 async function readBackendPayload(response: Response) {
     const contentType = response.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) {
@@ -22,8 +17,7 @@ export async function POST(
 ) {
     const { id } = await params;
     try {
-        const apiBase = resolveLaravelApiBase();
-        const targetUrl = `${apiBase}/quotations/${encodeURIComponent(id)}/send-email`;
+        const targetUrl = `${API_URL}/quotations/${encodeURIComponent(id)}/send-email`;
         const localRouteUrl = `${request.nextUrl.origin.replace(/\/+$/g, "")}/api/quotations/${encodeURIComponent(id)}/send-email`;
 
         if (targetUrl === localRouteUrl) {
