@@ -8,7 +8,11 @@ import {
 
 export const runtime = "nodejs";
 
-const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+function resolveLaravelApiBase() {
+  const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
+  const normalized = configured.replace(/\/+$/g, "");
+  return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
+}
 
 interface ContactInquiryPayload {
   id?: number;
@@ -214,8 +218,28 @@ async function sendInquiryNotifications(payload: ContactInquiryPayload, openInqu
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as ContactInquiryPayload;
+    const apiBase = resolveLaravelApiBase();
+    const targetUrl = `${apiBase}/contact`;
+    const localRouteUrl = `${request.nextUrl.origin.replace(/\/+$/g, "")}/api/contact`;
 
-    const response = await fetch(`${API_URL}/api/contact`, {
+    if (targetUrl === localRouteUrl) {
+      console.error("Contact API misconfiguration: backend URL resolves to the frontend contact route itself.", {
+        targetUrl,
+        laravelApiUrl: process.env.LARAVEL_API_URL,
+        nextPublicApiUrl: process.env.NEXT_PUBLIC_API_URL,
+      });
+
+      return NextResponse.json(
+        {
+          message: "Server configuration error. Set LARAVEL_API_URL to your Laravel backend URL.",
+        },
+        {
+          status: 500,
+        },
+      );
+    }
+
+    const response = await fetch(targetUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

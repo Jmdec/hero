@@ -2,9 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 
+type GoogleTranslateElementCtor = new (
+  options: { pageLanguage: string; autoDisplay: boolean },
+  elementId: string,
+) => unknown;
+
 declare global {
   interface Window {
-    google: any;
+    google?: {
+      translate?: {
+        TranslateElement?: GoogleTranslateElementCtor;
+      };
+    };
     googleTranslateElementInit: () => void;
   }
 }
@@ -17,17 +26,59 @@ const LANGUAGES = [
 export default function LanguageSwitcher() {
   const [current, setCurrent] = useState(LANGUAGES[0]);
   const [open, setOpen] = useState(false);
+  const [translationUnavailable, setTranslationUnavailable] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    // Hidden container for Google Translate widget
-    if (!document.getElementById("google_translate_element")) {
-      const el = document.createElement("div");
-      el.id = "google_translate_element";
-      el.style.display = "none";
-      document.body.appendChild(el);
-    }
+  const writeCookie = (value: string) => {
+    // eslint-disable-next-line react-hooks/immutability
+    document.cookie = value;
+  };
 
+  const ensureTranslateReady = () =>
+    new Promise<void>((resolve, reject) => {
+      if (window.google?.translate?.TranslateElement) {
+        resolve();
+        return;
+      }
+
+      // Hidden container for Google Translate widget
+      if (!document.getElementById("google_translate_element")) {
+        const el = document.createElement("div");
+        el.id = "google_translate_element";
+        el.style.display = "none";
+        document.body.appendChild(el);
+      }
+
+      window.googleTranslateElementInit = () => {
+        try {
+          new window.google.translate.TranslateElement(
+            { pageLanguage: "en", autoDisplay: false },
+            "google_translate_element",
+          );
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      const existingScript = document.getElementById("google-translate-script") as HTMLScriptElement | null;
+      if (existingScript) {
+        existingScript.addEventListener("load", () => resolve(), { once: true });
+        existingScript.addEventListener("error", () => reject(new Error("Google Translate script failed to load.")), {
+          once: true,
+        });
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.id = "google-translate-script";
+      script.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+      script.async = true;
+      script.onerror = () => reject(new Error("Google Translate script blocked by browser policy or extension."));
+      document.body.appendChild(script);
+    });
+
+  useEffect(() => {
     // Suppress ALL Google Translate UI chrome
     if (!document.getElementById("gt-suppress-styles")) {
       const style = document.createElement("style");
@@ -45,22 +96,6 @@ export default function LanguageSwitcher() {
         .goog-te-gadget > span { display: none !important; }
       `;
       document.head.appendChild(style);
-    }
-
-    // Inject Google Translate script once
-    if (!document.getElementById("google-translate-script")) {
-      window.googleTranslateElementInit = () => {
-        new window.google.translate.TranslateElement(
-          { pageLanguage: "en", autoDisplay: false },
-          "google_translate_element",
-        );
-      };
-      const script = document.createElement("script");
-      script.id = "google-translate-script";
-      script.src =
-        "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
-      script.async = true;
-      document.body.appendChild(script);
     }
 
     // Re-apply body top suppression whenever GT modifies it
@@ -92,21 +127,29 @@ export default function LanguageSwitcher() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const switchLanguage = (lang: (typeof LANGUAGES)[0]) => {
+  const switchLanguage = async (lang: (typeof LANGUAGES)[0]) => {
     setCurrent(lang);
     setOpen(false);
 
     if (lang.code === "en") {
-      document.cookie =
-        "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+      writeCookie("googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;");
+      writeCookie(`googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`);
       window.location.reload();
       return;
     }
 
+    try {
+      await ensureTranslateReady();
+      setTranslationUnavailable(false);
+    } catch (error) {
+      setTranslationUnavailable(true);
+      console.warn("Language switch is unavailable because Google Translate was blocked.", error);
+      return;
+    }
+
     const value = `/en/${lang.code}`;
-    document.cookie = `googtrans=${value}; path=/`;
-    document.cookie = `googtrans=${value}; path=/; domain=${window.location.hostname}`;
+    writeCookie(`googtrans=${value}; path=/`);
+    writeCookie(`googtrans=${value}; path=/; domain=${window.location.hostname}`);
 
     const tryTranslate = (attempts = 0) => {
       const select =
@@ -150,6 +193,12 @@ export default function LanguageSwitcher() {
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
+
+      {translationUnavailable && (
+        <p className="absolute right-0 mt-1 text-xs text-red-600 whitespace-nowrap">
+          Translation blocked by browser policy.
+        </p>
+      )}
 
       {open && (
         <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
