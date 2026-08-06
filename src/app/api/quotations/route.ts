@@ -6,8 +6,8 @@ import {
 } from "@/lib/nodemailer";
 
 function resolveLaravelApiBase() {
-const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
-    const normalized = API_URL.replace(/\/+$/g, "");
+    const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
+    const normalized = configured.replace(/\/+$/g, "");
     return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
 }
 
@@ -226,6 +226,14 @@ export async function POST(request: NextRequest) {
 
                     if (!delivery.adminSent) {
                         console.error("Quotation admin notification failed.", {
+                            quotationId: notificationQuotationId ?? null,
+                            userSent: delivery.userSent,
+                            adminSent: delivery.adminSent,
+                        });
+                    }
+
+                    if (!delivery.userSent) {
+                        console.error("Quotation user notification failed.", {
                             quotationId: notificationQuotationId ?? null,
                             userSent: delivery.userSent,
                             adminSent: delivery.adminSent,

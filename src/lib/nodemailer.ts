@@ -489,6 +489,7 @@ function getBranchManagerRecipients(branch: string | null | undefined): string[]
 function getCoreStakeholderRecipients(quotation: QuotationPayload): string[] {
     return toUniqueEmails([
         RECIPIENTS.chairman,
+        RECIPIENTS.president,
         RECIPIENTS.generalManager,
         ...getBranchManagerRecipients(quotation.branch),
         RECIPIENTS.salesOfficer,

@@ -21,9 +21,21 @@ export async function POST(request: Request) {
             { disableBackendDelegation: true }
         );
 
+        if (!userSent || !adminSent) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "One or more quotation notifications failed.",
+                    userEmailSent: userSent,
+                    adminEmailSent: adminSent,
+                },
+                { status: 502 }
+            );
+        }
+
         return NextResponse.json(
-            { success: userSent || adminSent, userEmailSent: userSent, adminEmailSent: adminSent },
-            { status: userSent && adminSent ? 200 : 207 }
+            { success: true, userEmailSent: true, adminEmailSent: true },
+            { status: 200 }
         );
     } catch (error) {
         console.error("Quotation email route error:", error);
