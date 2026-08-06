@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { QuotationPayload, sendQuotationPaymentVerifiedAdminEmail } from "@/lib/nodemailer";
 
 const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
 
 export async function POST(
   _request: NextRequest,
@@ -10,7 +11,7 @@ export async function POST(
   const { id } = await params;
 
   try {
-    const quoteRes = await fetch(`${API_URL}/quotations/${encodeURIComponent(id)}`, {
+    const quoteRes = await fetch(`${LARAVEL_API_BASE}/quotations/${encodeURIComponent(id)}`, {
       method: "GET",
       headers: {
         Accept: "application/json",

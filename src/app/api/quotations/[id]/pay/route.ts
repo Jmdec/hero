@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { QuotationDocumentCopy, QuotationPayload, sendQuotationPaymentVerificationEmail } from "@/lib/nodemailer";
 
 const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
 
 export async function POST(
   request: NextRequest,
@@ -30,7 +31,7 @@ export async function POST(
       }
     }
 
-    const res = await fetch(`${API_URL}/quotations/${encodeURIComponent(id)}/pay`, {
+    const res = await fetch(`${LARAVEL_API_BASE}/quotations/${encodeURIComponent(id)}/pay`, {
       method: "POST",
       body: backendFormData,
       cache: "no-store",
@@ -47,7 +48,7 @@ export async function POST(
 
     if (res.ok) {
       try {
-        const quoteRes = await fetch(`${API_URL}/quotations/${encodeURIComponent(id)}`, {
+        const quoteRes = await fetch(`${LARAVEL_API_BASE}/quotations/${encodeURIComponent(id)}`, {
           method: "GET",
           headers: {
             Accept: "application/json",

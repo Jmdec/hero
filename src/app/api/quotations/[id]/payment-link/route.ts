@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
 
 export async function GET(
     request: NextRequest,
@@ -10,7 +11,7 @@ export async function GET(
     try {
         const url = new URL(request.url);
         const queryString = url.search;
-        const res = await fetch(`${API_URL}/quotations/${id}/payment-link${queryString}`, {
+        const res = await fetch(`${LARAVEL_API_BASE}/quotations/${id}/payment-link${queryString}`, {
             method: "GET",
             headers: {
                 Accept: "application/json",

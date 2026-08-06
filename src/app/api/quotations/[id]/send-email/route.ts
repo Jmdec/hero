@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
 async function readBackendPayload(response: Response) {
     const contentType = response.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) {
@@ -17,7 +18,7 @@ export async function POST(
 ) {
     const { id } = await params;
     try {
-        const targetUrl = `${API_URL}/quotations/${encodeURIComponent(id)}/send-email`;
+        const targetUrl = `${LARAVEL_API_BASE}/quotations/${encodeURIComponent(id)}/send-email`;
         const localRouteUrl = `${request.nextUrl.origin.replace(/\/+$/g, "")}/api/quotations/${encodeURIComponent(id)}/send-email`;
 
         if (targetUrl === localRouteUrl) {

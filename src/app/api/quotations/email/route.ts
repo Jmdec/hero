@@ -17,7 +17,9 @@ export async function POST(request: Request) {
 
         const { userSent, adminSent } = await sendQuotationNotifications(
             quotation,
-            {},
+            {
+                useBackendDelivery: false,
+            },
         );
 
         if (!userSent || !adminSent) {

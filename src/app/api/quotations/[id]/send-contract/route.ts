@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendQuotationContractEmail, QuotationPayload } from "@/lib/nodemailer";
 
 const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
 
 async function sendContractForQuotation(quotation: QuotationPayload & { id?: number | string }) {
     if (!quotation?.detail?.email) {
@@ -17,7 +18,7 @@ export async function GET(
 ) {
     const { id } = await params;
     try {
-        const quoteRes = await fetch(`${API_URL}/quotations/${id}`, {
+        const quoteRes = await fetch(`${LARAVEL_API_BASE}/quotations/${id}`, {
             method: "GET",
             headers: {
                 Accept: "application/json",
@@ -36,7 +37,7 @@ export async function GET(
 
         await sendContractForQuotation(quotation);
 
-        const updateRes = await fetch(`${API_URL}/quotations/${encodeURIComponent(id)}`, {
+        const updateRes = await fetch(`${LARAVEL_API_BASE}/quotations/${encodeURIComponent(id)}`, {
             method: "PUT",
             headers: {
                 Accept: "application/json",
@@ -69,7 +70,7 @@ export async function POST(
 ) {
     const { id } = await params;
     try {
-        const quoteRes = await fetch(`${API_URL}/quotations/${id}`, {
+        const quoteRes = await fetch(`${LARAVEL_API_BASE}/quotations/${id}`, {
             method: "GET",
             headers: {
                 Accept: "application/json",
@@ -88,7 +89,7 @@ export async function POST(
 
         await sendContractForQuotation(quotation);
 
-        const updateRes = await fetch(`${API_URL}/quotations/${encodeURIComponent(id)}`, {
+        const updateRes = await fetch(`${LARAVEL_API_BASE}/quotations/${encodeURIComponent(id)}`, {
             method: "PUT",
             headers: {
                 Accept: "application/json",
