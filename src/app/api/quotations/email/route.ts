@@ -15,26 +15,11 @@ export async function POST(request: Request) {
             );
         }
 
-        const { userSent, adminSent } = await sendQuotationNotifications(
-            quotation,
-            {},
-        );
-
-        if (!userSent || !adminSent) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "One or more quotation notifications failed.",
-                    userEmailSent: userSent,
-                    adminEmailSent: adminSent,
-                },
-                { status: 502 }
-            );
-        }
+        const { userSent, adminSent } = await sendQuotationNotifications(quotation);
 
         return NextResponse.json(
-            { success: true, userEmailSent: true, adminEmailSent: true },
-            { status: 200 }
+            { success: userSent || adminSent, userEmailSent: userSent, adminEmailSent: adminSent },
+            { status: userSent && adminSent ? 200 : 207 }
         );
     } catch (error) {
         console.error("Quotation email route error:", error);
