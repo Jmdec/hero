@@ -15,7 +15,9 @@ export async function POST(request: Request) {
             );
         }
 
-        const { userSent, adminSent } = await sendQuotationNotifications(quotation);
+        const { userSent, adminSent } = await sendQuotationNotifications(quotation, {
+            useBackendDelivery: false,
+        });
 
         return NextResponse.json(
             { success: userSent || adminSent, userEmailSent: userSent, adminEmailSent: adminSent },

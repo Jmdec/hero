@@ -222,6 +222,7 @@ export async function POST(request: NextRequest) {
                         paymentProofCopy,
                         governmentIdCopy,
                         signatoryGovernmentIdCopy,
+                        useBackendDelivery: false,
                     },
                 );
 

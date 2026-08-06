@@ -248,6 +248,7 @@ export interface QuotationNotificationOptions {
     signatoryGovernmentIdCopy?: QuotationDocumentCopy | null;
     contractSendUrl?: string;
     verifyPaymentUrl?: string;
+    useBackendDelivery?: boolean;
 }
 
 const VO_PACKAGE_PRICES: Record<string, string> = {
@@ -1171,8 +1172,11 @@ export async function sendQuotationNotifications(
     quotation: QuotationPayload,
     options: QuotationNotificationOptions = {}
 ) {
-    // If configured, delegate email sending to the Laravel backend endpoints
-    const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND_EMAIL === 'true' || process.env.USE_BACKEND_EMAIL === 'true';
+    // Allow callers to explicitly disable backend delegation (for frontend proxy routes)
+    // to avoid frontend<->backend recursion when backend routes call back into Next.js.
+    const shouldUseBackendByEnv =
+        process.env.NEXT_PUBLIC_USE_BACKEND_EMAIL === "true" || process.env.USE_BACKEND_EMAIL === "true";
+    const useBackend = options.useBackendDelivery ?? shouldUseBackendByEnv;
 
     if (useBackend) {
         const backendBase = (process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || '').replace(/\/$/, '') || undefined;
