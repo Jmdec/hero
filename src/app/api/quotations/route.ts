@@ -223,9 +223,6 @@ export async function POST(request: NextRequest) {
                         governmentIdCopy,
                         signatoryGovernmentIdCopy,
                     },
-                    {
-                        disableBackendDelegation: true,
-                    }
                 );
 
                 notificationSummary = {

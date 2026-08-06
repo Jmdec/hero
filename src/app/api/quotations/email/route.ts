@@ -18,7 +18,6 @@ export async function POST(request: Request) {
         const { userSent, adminSent } = await sendQuotationNotifications(
             quotation,
             {},
-            { disableBackendDelegation: true }
         );
 
         if (!userSent || !adminSent) {
