@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { QuotationPayload, sendQuotationPaymentVerifiedAdminEmail } from "@/lib/nodemailer";
 
-const LARAVEL_API_URL = process.env.LARAVEL_API_URL ?? "http://localhost:8000/api";
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
 async function handleVerifyPayment(
     id: string
 ) {
-    const quoteRes = await fetch(`${LARAVEL_API_URL}/quotations/${encodeURIComponent(id)}`, {
+    const quoteRes = await fetch(`${API_URL}/quotations/${encodeURIComponent(id)}`, {
         method: "GET",
         headers: {
             Accept: "application/json",
@@ -45,7 +45,7 @@ async function handleVerifyPayment(
         paid_at: new Date().toISOString(),
     };
 
-    const updateRes = await fetch(`${LARAVEL_API_URL}/quotations/${encodeURIComponent(id)}`, {
+    const updateRes = await fetch(`${API_URL}/quotations/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers: {
             Accept: "application/json",

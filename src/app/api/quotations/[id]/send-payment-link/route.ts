@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const LARAVEL_API_URL = process.env.LARAVEL_API_URL ?? "http://localhost:8000/api";
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
 export async function POST(
     request: NextRequest,
@@ -8,7 +8,7 @@ export async function POST(
 ) {
     const { id } = await params;
     try {
-        const res = await fetch(`${LARAVEL_API_URL}/quotations/${encodeURIComponent(id)}/send-payment-link`, {
+        const res = await fetch(`${API_URL}/quotations/${encodeURIComponent(id)}/send-payment-link`, {
             method: "POST",
             headers: {
                 Accept: "application/json",

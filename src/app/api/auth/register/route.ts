@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendVerificationEmail } from "@/lib/nodemailer";
 
-const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-).replace(/\/+$/g, "");
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
 export async function POST(request: NextRequest) {
   try {

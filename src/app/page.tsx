@@ -712,53 +712,55 @@ export default function Home() {
           )}
 
           {!loading && !loadError && featuredTestimonials.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredTestimonials.map((t, i) => (
-                <motion.div
-                  key={t.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: i * 0.05 }}
-                  viewport={{ once: true }}
-                  className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex gap-0.5">
-                      {Array.from({ length: t.rating }).map((_, j) => (
-                        <Star
-                          key={j}
-                          className="h-5 w-5 fill-[#1B3A8C] text-[#1B3A8C]"
-                        />
-                      ))}
-                    </div>
-                    <Quote className="h-8 w-8 text-gray-100 fill-gray-100" />
-                  </div>
-
-                  <p className="text-sm text-gray-700 leading-relaxed flex-1 mb-6">
-                    &ldquo;{t.quote}&rdquo;
-                  </p>
-
-                  <div className="border-t border-gray-100 pt-5">
-                    <div className="flex items-center gap-3">
-                      <div className="h-11 w-11 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0">
-                        <span className="text-xs font-semibold text-white">
-                          {getInitials(t.name)}
-                        </span>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {featuredTestimonials.map((t, i) => (
+                  <motion.div
+                    key={t.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: i * 0.05 }}
+                    viewport={{ once: true }}
+                    className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: t.rating }).map((_, j) => (
+                          <Star
+                            key={j}
+                            className="h-5 w-5 fill-[#1B3A8C] text-[#1B3A8C]"
+                          />
+                        ))}
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {t.name}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {t.title}
-                          {t.company ? ` · ${t.company}` : ""}
-                        </p>
+                      <Quote className="h-8 w-8 text-gray-100 fill-gray-100" />
+                    </div>
+
+                    <p className="text-sm text-gray-700 leading-relaxed flex-1 mb-6">
+                      &ldquo;{t.quote}&rdquo;
+                    </p>
+
+                    <div className="border-t border-gray-100 pt-5">
+                      <div className="flex items-center gap-3">
+                        <div className="h-11 w-11 rounded-full bg-[#1B3A8C] flex items-center justify-center shrink-0">
+                          <span className="text-xs font-semibold text-white">
+                            {getInitials(t.name)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {t.name}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {t.title}
+                            {t.company ? ` · ${t.company}` : ""}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))}
 
+              </div>
               <div className="py-12 flex items-center justify-center">
                 <Link
                   href="/testimonial"
@@ -767,7 +769,7 @@ export default function Home() {
                   View All Testimonials
                 </Link>
               </div>
-            </div>
+            </>
           )}
         </div>
       </section>

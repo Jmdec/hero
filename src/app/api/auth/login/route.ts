@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, '')
-    const fullUrl = `${apiUrl}/api/auth/login`
+    const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+    const fullUrl = `${API_URL}/api/auth/login`
 
     console.log("Attempting to connect to Laravel API at:", fullUrl)
 

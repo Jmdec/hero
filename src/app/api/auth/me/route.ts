@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const LARAVEL_API_URL = (process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/+$/g, "");
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
 function getLaravelApiUrl(path: string) {
-    return `${LARAVEL_API_URL}${LARAVEL_API_URL.endsWith("/api") ? "" : "/api"}${path}`;
+    return `${API_URL}${API_URL.endsWith("/api") ? "" : "/api"}${path}`;
 }
 
 export async function GET(request: NextRequest) {

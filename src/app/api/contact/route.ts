@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendMail } from "@/lib/mailer";
 import {
   extractContactBranchInterest,
   getContactBranchLabel,
@@ -6,13 +7,7 @@ import {
   getContactInquiryRecipients,
 } from "@/lib/contactInquiryRouting";
 
-export const runtime = "nodejs";
-
-function resolveLaravelApiBase() {
-  const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
-  const normalized = configured.replace(/\/+$/g, "");
-  return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
-}
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
 interface ContactInquiryPayload {
   id?: number;
@@ -24,17 +19,6 @@ interface ContactInquiryPayload {
   inquiryType: string;
   message: string;
   dynamicData?: Record<string, string>;
-}
-
-async function readBackendPayload(response: Response) {
-  const contentType = response.headers.get("content-type") ?? "";
-
-  if (contentType.includes("application/json")) {
-    return response.json();
-  }
-
-  const text = await response.text();
-  return { message: text || "Unexpected backend response." };
 }
 
 function buildRows(payload: ContactInquiryPayload) {
@@ -143,26 +127,6 @@ function buildJapaneseDetails(dynamicData?: Record<string, string> | null) {
 }
 
 async function sendInquiryNotifications(payload: ContactInquiryPayload, openInquiryUrl: string) {
-  let sendMail: (args: {
-    to: string;
-    subject: string;
-    html: string;
-    text?: string;
-    replyTo?: string;
-    attachments?: Array<{
-      filename: string;
-      content: string | Buffer;
-      contentType?: string;
-    }>;
-  }) => Promise<unknown>;
-
-  try {
-    ({ sendMail } = await import("@/lib/mailer"));
-  } catch (error) {
-    console.warn("Mailer module unavailable; skipping contact notifications:", error);
-    return;
-  }
-
   const branchInterest = payload.branchInterest ?? extractContactBranchInterest(payload.dynamicData);
   const recipients = getContactInquiryRecipients(branchInterest);
   const subject = `New ${getContactInquiryLabel(payload.inquiryType)} inquiry from ${payload.name}`;
@@ -218,28 +182,8 @@ async function sendInquiryNotifications(payload: ContactInquiryPayload, openInqu
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as ContactInquiryPayload;
-    const apiBase = resolveLaravelApiBase();
-    const targetUrl = `${apiBase}/contact`;
-    const localRouteUrl = `${request.nextUrl.origin.replace(/\/+$/g, "")}/api/contact`;
 
-    if (targetUrl === localRouteUrl) {
-      console.error("Contact API misconfiguration: backend URL resolves to the frontend contact route itself.", {
-        targetUrl,
-        laravelApiUrl: process.env.LARAVEL_API_URL,
-        nextPublicApiUrl: process.env.NEXT_PUBLIC_API_URL,
-      });
-
-      return NextResponse.json(
-        {
-          message: "Server configuration error. Set LARAVEL_API_URL to your Laravel backend URL.",
-        },
-        {
-          status: 500,
-        },
-      );
-    }
-
-    const response = await fetch(targetUrl, {
+    const response = await fetch(`${API_URL}/api/contact`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -248,7 +192,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
-    const data = await readBackendPayload(response);
+    const data = await response.json();
 
     if (response.ok) {
       const saved = (data?.data ?? {}) as { id?: number; public_view_token?: string; dynamic_data?: Record<string, string> };
@@ -256,32 +200,26 @@ export async function POST(request: NextRequest) {
         ? `${request.nextUrl.origin}/contact/inquiry/${saved.public_view_token}`
         : `${request.nextUrl.origin}/admin/contact`;
 
-      try {
-        await sendInquiryNotifications(
-          {
-            ...body,
-            id: saved.id,
-            dynamicData: saved.dynamic_data ?? body.dynamicData,
-          },
-          publicInquiryUrl,
-        );
-      } catch (notificationError) {
-        // Contact save succeeded; do not fail the client request on email issues.
-        console.warn("Contact inquiry saved but notification failed:", notificationError);
-      }
+      await sendInquiryNotifications(
+        {
+          ...body,
+          id: saved.id,
+          dynamicData: saved.dynamic_data ?? body.dynamicData,
+        },
+        publicInquiryUrl,
+      );
     }
 
     return NextResponse.json(data, {
       status: response.status,
     });
   } catch (error) {
-    console.error("Contact API route failure:", error);
     return NextResponse.json(
       {
-        message: "Unable to submit contact right now.",
+        message: "Failed submitting contact",
       },
       {
-        status: 502,
+        status: 500,
       },
     );
   }

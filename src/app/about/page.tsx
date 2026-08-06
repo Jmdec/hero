@@ -8,7 +8,6 @@ import {
   ShieldCheck,
   Handshake,
   Scale,
-  Loader2,
   Gauge,
   Eye,
   Award,
@@ -173,20 +172,6 @@ const allCompanies = groupCompanies.flatMap((region) => region.companies);
 
 export default function AboutPage() {
   const [spaceSlide, setSpaceSlide] = useState(0);
-
-  const teamCarousel = [
-    { image: "/_ARM1425.webp", title: "Our Team" },
-    { image: "/_ARM1442.webp", title: "Operations Department" },
-    { image: "/_ARM1457.webp", title: "Marketing & Sales Department" },
-    { image: "/_ARM1467.webp", title: "Accounting Department" },
-  ]
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSpaceSlide((prev) => (prev + 1) % teamCarousel.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [teamCarousel.length]);
 
   const values = [
     {
@@ -362,28 +347,20 @@ export default function AboutPage() {
           </div>
 
           <div className="relative flex justify-center mt-10 h-135 w-full">
-            {teamCarousel.map((item, index) => (
-              <div
-                key={index}
-                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ${index === spaceSlide ? "opacity-100 z-10" : "opacity-0 z-0"
-                  }`}
-              >
-                <div className="relative">
-                  <Image
-                    src={item.image}
-                    alt={item.title}
-                    width={800}
-                    height={500}
-                    className="rounded-2xl object-cover max-h-135 w-auto"
-                    unoptimized
-                  />
+            <div className="relative">
+              <Image
+                src="/_ARM1425.webp"
+                alt="Our Team"
+                width={800}
+                height={500}
+                className="rounded-2xl object-cover max-h-135 w-auto"
+                unoptimized
+              />
 
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-black/60 px-4 py-2 text-white">
-                    {item.title}
-                  </div>
-                </div>
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-black/60 px-4 py-2 text-white">
+                Our Team
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>

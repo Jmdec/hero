@@ -2,7 +2,7 @@ import { PDFDocument, StandardFonts } from "pdf-lib";
 import { NextRequest, NextResponse } from "next/server";
 import { sendMail } from "@/lib/mailer";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.LARAVEL_API_URL || "http://localhost:8000";
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
 function isValidConversationId(id: string) {
   return /^\d+$/.test(id);
