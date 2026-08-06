@@ -51,10 +51,21 @@ export default function LanguageSwitcher() {
 
       window.googleTranslateElementInit = () => {
         try {
-          new window.google.translate.TranslateElement(
-            { pageLanguage: "en", autoDisplay: false },
+          const TranslateElement = window.google?.translate?.TranslateElement;
+
+          if (!TranslateElement) {
+            reject(new Error("Google Translate is unavailable."));
+            return;
+          }
+
+          new TranslateElement(
+            {
+              pageLanguage: "en",
+              autoDisplay: false,
+            },
             "google_translate_element",
           );
+
           resolve();
         } catch (error) {
           reject(error);
@@ -206,11 +217,10 @@ export default function LanguageSwitcher() {
             <button
               key={lang.code}
               onClick={() => switchLanguage(lang)}
-              className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
-                current.code === lang.code
+              className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors ${current.code === lang.code
                   ? "text-[#1B3A8C] bg-[#C5D2EC]/30 font-medium"
                   : "text-gray-700 hover:bg-gray-50 hover:text-[#1B3A8C]"
-              }`}
+                }`}
             >
               <span className="w-7 text-xs font-mono text-gray-400 uppercase">
                 {lang.label}
