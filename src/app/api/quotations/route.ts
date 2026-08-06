@@ -5,7 +5,7 @@ import {
     QuotationPayload,
 } from "@/lib/nodemailer";
 
-const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "https://localhost:8000").replace(/\/+$/g, "");
 const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
 const LARAVEL_BASE_URL = process.env.LARAVEL_APP_URL ?? LARAVEL_API_BASE.replace(/\/api\/?$/, "");
 
