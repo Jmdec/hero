@@ -710,8 +710,11 @@ export default function AdminQuotationsPage() {
                 throw new Error(message);
             }
 
-            if (payload?.warning || payload?.error || payload?.success === false) {
-                const message = payload?.warning || payload?.message || payload?.error || "Payment link created but email delivery failed.";
+            const deliveredViaFallback = payload?.success === true && payload?.fallback_delivery === "frontend";
+            const deliveryFailed = payload?.success === false || Boolean(payload?.fallback_error) || (Boolean(payload?.warning || payload?.error) && !deliveredViaFallback);
+
+            if (deliveryFailed) {
+                const message = payload?.fallback_error || payload?.warning || payload?.message || payload?.error || "Payment link delivery failed.";
                 throw new Error(message);
             }
 
@@ -724,7 +727,12 @@ export default function AdminQuotationsPage() {
                 ...current,
                 detail: current.detail ? { ...current.detail, payment_link_send_count: nextCount } : current.detail,
             } : current);
-            pushToast(`Payment link sent to ${who}`, "success");
+
+            if (deliveredViaFallback) {
+                pushToast(`Payment link delivered to ${who} (fallback).`, "success");
+            } else {
+                pushToast(`Payment link delivered to ${who}.`, "success");
+            }
         } catch (error) {
             const msg = error instanceof Error ? error.message : "Couldn't send payment link to the client.";
             pushToast(msg, "error");
