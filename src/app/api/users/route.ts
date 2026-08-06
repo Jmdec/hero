@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+function resolveLaravelApiBase() {
+    const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
+    const normalized = configured.replace(/\/+$/g, "");
+    return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
+}
 
 export async function GET(request: NextRequest) {
     try {
         const url = new URL(request.url);
-        const laravelUrl = `${API_URL}/users${url.search}`;
+        const laravelUrl = `${resolveLaravelApiBase()}/users${url.search}`;
 
         const res = await fetch(laravelUrl, {
             method: "GET",

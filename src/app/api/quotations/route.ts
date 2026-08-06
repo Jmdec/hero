@@ -5,7 +5,13 @@ import {
     QuotationPayload,
 } from "@/lib/nodemailer";
 
-const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+function resolveLaravelApiBase() {
+    const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
+    const normalized = configured.replace(/\/+$/g, "");
+    return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
+}
+
+const API_URL = resolveLaravelApiBase();
 
 const LARAVEL_BASE_URL = process.env.LARAVEL_APP_URL ?? API_URL.replace(/\/api\/?$/, "");
 
@@ -154,9 +160,11 @@ export async function POST(request: NextRequest) {
         }
 
         const data = await res.json().catch(() => null);
-        const savedQuotation = ((data && typeof data === "object" && "data" in data)
-            ? (data as any).data
-            : data) as QuotationPayload | null ?? (notificationPayload ?? null);
+        const extractedData =
+            data && typeof data === "object" && "data" in data
+                ? (data as { data?: unknown }).data
+                : data;
+        const savedQuotation = (extractedData as QuotationPayload | null) ?? (notificationPayload ?? null);
 
         // Fallback: when in-memory multipart File copies are missing, pull the persisted
         // files from Laravel storage URLs so client/admin emails still include attachments.
