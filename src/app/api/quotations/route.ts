@@ -111,6 +111,7 @@ export async function POST(request: NextRequest) {
     try {
         const contentType = request.headers.get("content-type") ?? "";
         let notificationPayload: QuotationPayload | null = null;
+        let notificationSummary: { userSent: boolean; adminSent: boolean } | null = null;
         let res: Response;
         let paymentProofCopy: QuotationDocumentCopy | null = null;
         let governmentIdCopy: QuotationDocumentCopy | null = null;
@@ -210,47 +211,55 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Fire-and-forget — quotation is already saved, so a mail failure
-        // shouldn't block the user's response. Errors are logged internally.
+        // Wait for notification delivery so serverless runtimes cannot drop
+        // detached promises before SMTP sends complete.
         if (savedQuotation) {
             const notificationQuotationId = (savedQuotation as QuotationPayload & { id?: number | string }).id;
-            void (async () => {
-                try {
-                    const delivery = await sendQuotationNotifications(savedQuotation, {
+            try {
+                const delivery = await sendQuotationNotifications(
+                    savedQuotation,
+                    {
                         paymentProofCopy,
                         governmentIdCopy,
                         signatoryGovernmentIdCopy,
-                    }, {
+                    },
+                    {
                         disableBackendDelegation: true,
-                    });
-
-                    if (!delivery.adminSent) {
-                        console.error("Quotation admin notification failed.", {
-                            quotationId: notificationQuotationId ?? null,
-                            userSent: delivery.userSent,
-                            adminSent: delivery.adminSent,
-                        });
                     }
+                );
 
-                    if (!delivery.userSent) {
-                        console.error("Quotation user notification failed.", {
-                            quotationId: notificationQuotationId ?? null,
-                            userSent: delivery.userSent,
-                            adminSent: delivery.adminSent,
-                        });
-                    }
-                } catch (err) {
-                    console.error("Quotation email notification error:", {
+                notificationSummary = {
+                    userSent: delivery.userSent,
+                    adminSent: delivery.adminSent,
+                };
+
+                if (!delivery.adminSent || !delivery.userSent) {
+                    console.error("Quotation notification delivery incomplete.", {
                         quotationId: notificationQuotationId ?? null,
-                        error: err,
+                        userSent: delivery.userSent,
+                        adminSent: delivery.adminSent,
                     });
                 }
-            })();
+            } catch (err) {
+                notificationSummary = { userSent: false, adminSent: false };
+                console.error("Quotation email notification error:", {
+                    quotationId: notificationQuotationId ?? null,
+                    error: err,
+                });
+            }
         } else {
             console.error("Quotation notification skipped because no payload could be derived after successful submission.");
         }
 
-        return NextResponse.json(data, { status: 201 });
+        const responsePayload =
+            data && typeof data === "object"
+                ? {
+                    ...(data as Record<string, unknown>),
+                    notification: notificationSummary,
+                }
+                : { data, notification: notificationSummary };
+
+        return NextResponse.json(responsePayload, { status: 201 });
     } catch (error) {
         console.error("Quotations POST API error:", error);
         return NextResponse.json(

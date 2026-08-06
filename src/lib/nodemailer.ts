@@ -1119,6 +1119,38 @@ export async function sendQuotationPaymentLinkEmail(
 async function sendQuotationMailWithErrorHandling(
     mailOptions: Parameters<typeof transporter.sendMail>[0]
 ) {
+    const trySend = async (options: Parameters<typeof transporter.sendMail>[0]) => {
+        const info = await transporter.sendMail(options);
+
+        const acceptedCount = Array.isArray(info.accepted) ? info.accepted.length : 0;
+        const rejectedCount = Array.isArray(info.rejected) ? info.rejected.length : 0;
+        const pendingCount = Array.isArray(info.pending) ? info.pending.length : 0;
+
+        if (acceptedCount === 0) {
+            console.error("Email send returned no accepted recipients.", {
+                to: options.to,
+                rejected: info.rejected,
+                pending: info.pending,
+                response: info.response,
+            });
+            throw new Error("SMTP accepted zero recipients for this message.");
+        }
+
+        console.log("Email sent successfully:", info.messageId, {
+            acceptedCount,
+            rejectedCount,
+            pendingCount,
+        });
+
+        return {
+            success: true,
+            messageId: info.messageId,
+            accepted: info.accepted,
+            rejected: info.rejected,
+            pending: info.pending,
+        };
+    };
+
     try {
         console.log("Sending email...");
         console.log("To:", mailOptions.to);
@@ -1134,15 +1166,21 @@ async function sendQuotationMailWithErrorHandling(
             }))
         );
 
-        const info = await transporter.sendMail(mailOptions);
-
-        console.log("Email sent successfully:", info.messageId);
-
-        return {
-            success: true,
-            messageId: info.messageId,
-        };
+        return await trySend(mailOptions);
     } catch (error) {
+        if (error instanceof Error && process.env.SMTP_USER) {
+            const fromValue = String(mailOptions.from ?? "");
+            const smtpUser = process.env.SMTP_USER;
+            const hasSenderError = /sender address rejected|mail from command failed|from address/i.test(error.message);
+            const alreadyUsingSmtpUser = fromValue.toLowerCase().includes(smtpUser.toLowerCase());
+
+            if (hasSenderError && !alreadyUsingSmtpUser) {
+                console.warn("Retrying email with SMTP_USER as sender due to sender-address rejection.");
+                const fallbackFrom = `\"Hero Serviced Office\" <${smtpUser}>`;
+                return trySend({ ...mailOptions, from: fallbackFrom });
+            }
+        }
+
         console.error("Email send failed:", error);
 
         if (error instanceof Error) {
