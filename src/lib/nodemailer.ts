@@ -250,10 +250,6 @@ export interface QuotationNotificationOptions {
     verifyPaymentUrl?: string;
 }
 
-export interface QuotationNotificationControl {
-    disableBackendDelegation?: boolean;
-}
-
 const VO_PACKAGE_PRICES: Record<string, string> = {
     Basic: "₱2,000",
     Standard: "₱3,000",
@@ -489,7 +485,6 @@ function getBranchManagerRecipients(branch: string | null | undefined): string[]
 function getCoreStakeholderRecipients(quotation: QuotationPayload): string[] {
     return toUniqueEmails([
         RECIPIENTS.chairman,
-        RECIPIENTS.president,
         RECIPIENTS.generalManager,
         ...getBranchManagerRecipients(quotation.branch),
         RECIPIENTS.salesOfficer,
@@ -911,6 +906,7 @@ export async function sendQuotationPaymentVerifiedAdminEmail(
         ...parseRecipientList(process.env.ADMIN_NOTIFICATION_EMAILS),
     ]);
     const attachments = [...getDocumentCopyAttachments(options)];
+    const receiptRow = quotationRow("Receipt File", d.receipt || d.receipt_url);
     const priceBreakdownRows = buildQuotationPriceBreakdownRows(quotation);
     const quoteId = (quotation as QuotationPayload & { id?: string | number }).id;
     const dashboardUrl = options.contractSendUrl || (
@@ -923,6 +919,9 @@ export async function sendQuotationPaymentVerifiedAdminEmail(
         <p style="font-size:15px;line-height:1.8;color:#475569;">Hi Admin Team,</p>
         <p style="font-size:15px;line-height:1.8;color:#475569;">
             Payment for <strong>${d.full_name}</strong> for the <strong>${quotation.service_name}</strong> quotation has been verified and confirmed to be correct and true.
+        </p>
+        <p style="font-size:14px;line-height:1.7;color:#64748b;">
+            The uploaded payment receipt is included below and attached to this email for your review.
         </p>
         <p style="text-align:center;margin:24px 0;">
             <a href="${dashboardUrl}" style="display:inline-block;padding:14px 24px;background:#0D47A1;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:700;">
@@ -939,6 +938,7 @@ export async function sendQuotationPaymentVerifiedAdminEmail(
             ${quotationRow("Branch", quotation.branch)}
             ${quotationRow("Payment Method", d.payment_method)}
             ${quotationRow("Reference No", d.transaction_id)}
+            ${receiptRow}
             ${priceBreakdownRows}
         </table>`;
 
@@ -1119,38 +1119,6 @@ export async function sendQuotationPaymentLinkEmail(
 async function sendQuotationMailWithErrorHandling(
     mailOptions: Parameters<typeof transporter.sendMail>[0]
 ) {
-    const trySend = async (options: Parameters<typeof transporter.sendMail>[0]) => {
-        const info = await transporter.sendMail(options);
-
-        const acceptedCount = Array.isArray(info.accepted) ? info.accepted.length : 0;
-        const rejectedCount = Array.isArray(info.rejected) ? info.rejected.length : 0;
-        const pendingCount = Array.isArray(info.pending) ? info.pending.length : 0;
-
-        if (acceptedCount === 0) {
-            console.error("Email send returned no accepted recipients.", {
-                to: options.to,
-                rejected: info.rejected,
-                pending: info.pending,
-                response: info.response,
-            });
-            throw new Error("SMTP accepted zero recipients for this message.");
-        }
-
-        console.log("Email sent successfully:", info.messageId, {
-            acceptedCount,
-            rejectedCount,
-            pendingCount,
-        });
-
-        return {
-            success: true,
-            messageId: info.messageId,
-            accepted: info.accepted,
-            rejected: info.rejected,
-            pending: info.pending,
-        };
-    };
-
     try {
         console.log("Sending email...");
         console.log("To:", mailOptions.to);
@@ -1166,21 +1134,15 @@ async function sendQuotationMailWithErrorHandling(
             }))
         );
 
-        return await trySend(mailOptions);
+        const info = await transporter.sendMail(mailOptions);
+
+        console.log("Email sent successfully:", info.messageId);
+
+        return {
+            success: true,
+            messageId: info.messageId,
+        };
     } catch (error) {
-        if (error instanceof Error && process.env.SMTP_USER) {
-            const fromValue = String(mailOptions.from ?? "");
-            const smtpUser = process.env.SMTP_USER;
-            const hasSenderError = /sender address rejected|mail from command failed|from address/i.test(error.message);
-            const alreadyUsingSmtpUser = fromValue.toLowerCase().includes(smtpUser.toLowerCase());
-
-            if (hasSenderError && !alreadyUsingSmtpUser) {
-                console.warn("Retrying email with SMTP_USER as sender due to sender-address rejection.");
-                const fallbackFrom = `\"Hero Serviced Office\" <${smtpUser}>`;
-                return trySend({ ...mailOptions, from: fallbackFrom });
-            }
-        }
-
         console.error("Email send failed:", error);
 
         if (error instanceof Error) {
@@ -1207,13 +1169,10 @@ async function sendQuotationMailWithErrorHandling(
 
 export async function sendQuotationNotifications(
     quotation: QuotationPayload,
-    options: QuotationNotificationOptions = {},
-    control: QuotationNotificationControl = {}
+    options: QuotationNotificationOptions = {}
 ) {
     // If configured, delegate email sending to the Laravel backend endpoints
-    const useBackend =
-        !control.disableBackendDelegation &&
-        (process.env.NEXT_PUBLIC_USE_BACKEND_EMAIL === 'true' || process.env.USE_BACKEND_EMAIL === 'true');
+    const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND_EMAIL === 'true' || process.env.USE_BACKEND_EMAIL === 'true';
 
     if (useBackend) {
         const backendBase = (process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || '').replace(/\/$/, '') || undefined;
