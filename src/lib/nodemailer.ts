@@ -250,6 +250,10 @@ export interface QuotationNotificationOptions {
     verifyPaymentUrl?: string;
 }
 
+export interface QuotationNotificationControl {
+    disableBackendDelegation?: boolean;
+}
+
 const VO_PACKAGE_PRICES: Record<string, string> = {
     Basic: "₱2,000",
     Standard: "₱3,000",
@@ -1164,10 +1168,13 @@ async function sendQuotationMailWithErrorHandling(
 
 export async function sendQuotationNotifications(
     quotation: QuotationPayload,
-    options: QuotationNotificationOptions = {}
+    options: QuotationNotificationOptions = {},
+    control: QuotationNotificationControl = {}
 ) {
     // If configured, delegate email sending to the Laravel backend endpoints
-    const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND_EMAIL === 'true' || process.env.USE_BACKEND_EMAIL === 'true';
+    const useBackend =
+        !control.disableBackendDelegation &&
+        (process.env.NEXT_PUBLIC_USE_BACKEND_EMAIL === 'true' || process.env.USE_BACKEND_EMAIL === 'true');
 
     if (useBackend) {
         const backendBase = (process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || '').replace(/\/$/, '') || undefined;

@@ -6,8 +6,8 @@ import {
 } from "@/lib/nodemailer";
 
 function resolveLaravelApiBase() {
-    const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
-    const normalized = configured.replace(/\/+$/g, "");
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+    const normalized = API_URL.replace(/\/+$/g, "");
     return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
 }
 
@@ -110,7 +110,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const contentType = request.headers.get("content-type") ?? "";
-        const shouldSendFrontendEmails = request.headers.get("x-send-quotation-email") === "true";
         let notificationPayload: QuotationPayload | null = null;
         let res: Response;
         let paymentProofCopy: QuotationDocumentCopy | null = null;
@@ -120,6 +119,25 @@ export async function POST(request: NextRequest) {
         if (contentType.includes("multipart/form-data")) {
             const formData = await request.formData();
             const backendFormData = new FormData();
+
+            const rawPayload = formData.get("payload");
+            if (typeof rawPayload === "string") {
+                try {
+                    notificationPayload = JSON.parse(rawPayload) as QuotationPayload;
+                } catch (error) {
+                    console.warn("Unable to parse multipart quotation payload for email notification context.", error);
+                }
+            }
+
+            const paymentProofFile = formData.get("payment_proof");
+            const governmentIdFile = formData.get("government_id");
+            const signatoryGovernmentIdFile = formData.get("signatory_government_id");
+
+            paymentProofCopy = await fileToDocumentCopy(paymentProofFile instanceof File ? paymentProofFile : null);
+            governmentIdCopy = await fileToDocumentCopy(governmentIdFile instanceof File ? governmentIdFile : null);
+            signatoryGovernmentIdCopy = await fileToDocumentCopy(
+                signatoryGovernmentIdFile instanceof File ? signatoryGovernmentIdFile : null
+            );
 
             for (const [key, value] of formData.entries()) {
                 if (value instanceof File) {
@@ -194,18 +212,34 @@ export async function POST(request: NextRequest) {
 
         // Fire-and-forget — quotation is already saved, so a mail failure
         // shouldn't block the user's response. Errors are logged internally.
-        if (shouldSendFrontendEmails && savedQuotation) {
+        if (savedQuotation) {
+            const notificationQuotationId = (savedQuotation as QuotationPayload & { id?: number | string }).id;
             void (async () => {
                 try {
-                    await sendQuotationNotifications(savedQuotation, {
+                    const delivery = await sendQuotationNotifications(savedQuotation, {
                         paymentProofCopy,
                         governmentIdCopy,
                         signatoryGovernmentIdCopy,
+                    }, {
+                        disableBackendDelegation: true,
                     });
+
+                    if (!delivery.adminSent) {
+                        console.error("Quotation admin notification failed.", {
+                            quotationId: notificationQuotationId ?? null,
+                            userSent: delivery.userSent,
+                            adminSent: delivery.adminSent,
+                        });
+                    }
                 } catch (err) {
-                    console.error("Quotation email notification error:", err);
+                    console.error("Quotation email notification error:", {
+                        quotationId: notificationQuotationId ?? null,
+                        error: err,
+                    });
                 }
             })();
+        } else {
+            console.error("Quotation notification skipped because no payload could be derived after successful submission.");
         }
 
         return NextResponse.json(data, { status: 201 });

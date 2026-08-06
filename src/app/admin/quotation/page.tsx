@@ -441,6 +441,16 @@ function isLinkableValue(value: string | null | undefined): value is string {
 function SignatoryDetailsSection({ detail }: { detail: QuotationDetail }) {
     const sameAsHolder = Boolean(detail.signatory_same_as_id_holder);
 
+    const signatoryDetailsValue = detail.signatory_details;
+    const signatoryDetailsText =
+        typeof signatoryDetailsValue === "string"
+            ? signatoryDetailsValue
+            : signatoryDetailsValue && typeof signatoryDetailsValue === "object"
+                ? Object.values(signatoryDetailsValue as Record<string, unknown>)
+                    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+                    .join(" · ")
+                : null;
+
     const idType = sameAsHolder ? detail.id_type : detail.signatory_id_type;
     const idName = sameAsHolder ? detail.id_name : detail.signatory_id_name;
     const idNumber = sameAsHolder ? detail.id_number : detail.signatory_id_number;
@@ -453,13 +463,8 @@ function SignatoryDetailsSection({ detail }: { detail: QuotationDetail }) {
     const idDocUrl = isLinkableValue(rawDocValue) ? rawDocValue : null;
     const idDocFilename = !idDocUrl && rawDocValue ? rawDocValue : null;
 
-    const hasContent = [idType, idName, idNumber, idAddress, rawDocValue, detail.signatory_details].some(Boolean);
-
-    // TEMP DEBUG — remove once confirmed
-    if (!hasContent) {
-        console.warn("SignatoryDetailsSection: no content found, raw detail was:", detail);
-        return null;
-    }
+    const hasContent = [sameAsHolder, idType, idName, idNumber, idAddress, rawDocValue, signatoryDetailsText].some(Boolean);
+    if (!hasContent) return null;
 
     return (
         <ReceiptSection>
@@ -469,6 +474,7 @@ function SignatoryDetailsSection({ detail }: { detail: QuotationDetail }) {
             {idType && <ReceiptRow label="ID Type" value={idType} />}
             {idNumber && <ReceiptRow label="ID Number" value={idNumber} />}
             {idAddress && <ReceiptRow label="Address" value={idAddress} />}
+            {signatoryDetailsText && <ReceiptRow label="Signatory Notes" value={signatoryDetailsText} />}
             {idDocUrl && <ReceiptRow label="ID Document" value="View uploaded document" href={idDocUrl} />}
             {idDocFilename && <ReceiptRow label="ID Document" value={idDocFilename} />}
         </ReceiptSection>
