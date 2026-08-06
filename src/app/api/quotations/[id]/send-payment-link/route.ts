@@ -35,6 +35,18 @@ export async function POST(
             responseJson = null;
         }
 
+        const parsed = responseJson as { warning?: string; error?: string; message?: string } | null;
+        if (res.ok && parsed && (parsed.warning || parsed.error)) {
+            return NextResponse.json(
+                {
+                    message: parsed.warning || parsed.message || "Payment link created but email delivery failed.",
+                    error: parsed.error,
+                    raw: parsed,
+                },
+                { status: 502 }
+            );
+        }
+
         return new NextResponse(responseText || JSON.stringify(responseJson ?? {}), {
             status: res.status,
             headers: {

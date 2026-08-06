@@ -706,7 +706,12 @@ export default function AdminQuotationsPage() {
             });
             const payload = await res.json().catch(() => null);
             if (!res.ok) {
-                const message = payload?.message || "Failed to send payment link.";
+                const message = payload?.warning || payload?.message || payload?.error || "Failed to send payment link.";
+                throw new Error(message);
+            }
+
+            if (payload?.warning || payload?.error || payload?.success === false) {
+                const message = payload?.warning || payload?.message || payload?.error || "Payment link created but email delivery failed.";
                 throw new Error(message);
             }
 
