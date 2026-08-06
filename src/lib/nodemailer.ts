@@ -222,6 +222,8 @@ export interface QuotationDetail {
     vat_percentage?: number | string | null;
     vat_amount?: number | string | null;
     contract_admin_fee?: number | string | null;
+    contract_content?: string | null;
+    contract_updated_at?: string | null;
 }
 
 export interface QuotationPayload {
@@ -616,6 +618,7 @@ async function generateVirtualOfficeContractPdf(
     };
 
     const d = quotation.detail;
+    const customContractContent = (d.contract_content || "").trim();
     const monthlyFee = VO_PACKAGE_PRICES[quotation.package || ""] ?? "—";
     const today = new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
     const idName = d.id_name || d.full_name;
@@ -648,6 +651,37 @@ async function generateVirtualOfficeContractPdf(
     }
 
     const durationLabel = d.duration || quotation.duration || "Month-to-month";
+
+    if (customContractContent) {
+        drawLine("Hero Serviced Office", { size: 20, bold: true, color: COLOR_PRIMARY, align: "center", gap: 26 });
+        drawLine("Virtual Office Service Agreement", { size: 11, color: COLOR_MUTED, align: "center", gap: 28 });
+        drawLine(`Date Issued: ${today}`, { size: 10, gap: 20 });
+
+        sectionTitle("Contract Content");
+        const blocks = customContractContent.split(/\r?\n\r?\n/).map((block) => block.trim()).filter(Boolean);
+        for (const block of blocks) {
+            drawParagraph(block);
+            cursorY -= 6;
+        }
+
+        cursorY -= 30;
+        drawLine("Hero PH Inc.", { bold: true, gap: 40 });
+        drawLine("_______________________________", { gap: 14 });
+        drawLine("Authorized Representative", { gap: 40 });
+
+        drawLine(`${signatoryLabel}`, { bold: true, gap: 40 });
+        drawLine("_______________________________", { gap: 14 });
+        drawLine("Client Signature");
+
+        ensureSpace(30);
+        drawLine(
+            "23F TOWER6789, Ayala Avenue 6789, Makati City 1209, Philippines · salesofficer@heroph.net",
+            { size: 8, color: COLOR_MUTED, align: "center" }
+        );
+
+        const bytes = await pdfDoc.save();
+        return Buffer.from(bytes);
+    }
 
     drawLine("Hero Serviced Office", { size: 20, bold: true, color: COLOR_PRIMARY, align: "center", gap: 26 });
     drawLine("Virtual Office Service Agreement", { size: 11, color: COLOR_MUTED, align: "center", gap: 28 });

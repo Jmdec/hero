@@ -89,6 +89,8 @@ interface QuotationDetail {
     contract_admin_fee?: number | string | null;
     // Legacy/alternate nested shape, kept for compatibility.
     price_breakdown?: QuotationPriceBreakdown | null;
+    contract_content?: string | null;
+    contract_updated_at?: string | null;
 }
 
 interface Quotation {
@@ -188,6 +190,43 @@ function getInitials(name: string | null | undefined) {
 
 function isVirtualOffice(quote: Quotation) {
     return quote.service_name?.trim().toLowerCase() === "virtual office";
+}
+
+function buildDefaultContractContent(quote: Quotation) {
+    const detail = quote.detail;
+    const today = new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+    const fullName = detail?.full_name ?? "Client";
+    const companyName = detail?.company_name ? ` of ${detail.company_name}` : "";
+    const packageName = quote.package ?? detail?.package_name ?? "N/A";
+    const duration = detail?.duration != null
+        ? `${detail.duration} ${detail.duration === 1 ? "month" : "months"}`
+        : detail?.duration_type ?? "Month-to-month";
+    const startDate = detail?.date ? formatDate(detail.date) : "TBD";
+    const branch = quote.branch ?? "N/A";
+
+    return [
+        `Date Issued: ${today}`,
+        "",
+        "1. Parties",
+        `This Virtual Office Service Agreement (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and ${fullName}${companyName} (\"Client\").`,
+        "",
+        "2. Service Details",
+        `Service: ${quote.service_name}`,
+        `Branch: ${branch}`,
+        `Package: ${packageName}`,
+        `Duration: ${duration}`,
+        `Start Date: ${startDate}`,
+        "",
+        "3. Terms & Conditions",
+        "The Client agrees to Hero PH's standard terms of service, including billing, renewal, and cancellation policies.",
+        "This Agreement takes effect upon confirmed payment unless otherwise agreed in writing.",
+        "",
+        "4. Signatures",
+        "Hero PH Inc. Authorized Representative",
+        "_______________________________",
+        fullName,
+        "_______________________________",
+    ].join("\n");
 }
 
 function hasPricingData(detail: QuotationDetail) {
@@ -532,6 +571,11 @@ export default function AdminQuotationsPage() {
     // Email-to-client actions
     const [sendingPaymentLinkId, setSendingPaymentLinkId] = useState<number | null>(null);
     const [sendingContractId, setSendingContractId] = useState<number | null>(null);
+    const [contractModalQuote, setContractModalQuote] = useState<Quotation | null>(null);
+    const [contractEditMode, setContractEditMode] = useState(false);
+    const [contractDraft, setContractDraft] = useState("");
+    const [contractSavedSnapshot, setContractSavedSnapshot] = useState("");
+    const [savingContract, setSavingContract] = useState(false);
 
     const [toasts, setToasts] = useState<ToastItem[]>([]);
     const toastIdRef = useRef(0);
@@ -689,6 +733,73 @@ export default function AdminQuotationsPage() {
         }
     };
 
+    const openContractViewer = (quote: Quotation) => {
+        const initial = quote.detail?.contract_content?.trim() || buildDefaultContractContent(quote);
+        setContractModalQuote(quote);
+        setContractEditMode(false);
+        setContractDraft(initial);
+        setContractSavedSnapshot(initial);
+    };
+
+    const closeContractViewer = () => {
+        if (savingContract) return;
+        setContractModalQuote(null);
+        setContractEditMode(false);
+        setContractDraft("");
+        setContractSavedSnapshot("");
+    };
+
+    const handleSaveContract = async () => {
+        if (!contractModalQuote?.detail) return;
+
+        setSavingContract(true);
+        try {
+            const updatedDetail = {
+                ...contractModalQuote.detail,
+                contract_content: contractDraft,
+            };
+
+            const res = await fetch(`/api/quotations/${contractModalQuote.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                body: JSON.stringify({
+                    service_id: contractModalQuote.service_id,
+                    service_name: contractModalQuote.service_name,
+                    lease_term: contractModalQuote.lease_term,
+                    package: contractModalQuote.package,
+                    event_type: contractModalQuote.event_type,
+                    status: contractModalQuote.status,
+                    detail: updatedDetail,
+                }),
+            });
+
+            const payload = await res.json().catch(() => null);
+            if (!res.ok) {
+                throw new Error(payload?.message || "Failed to save contract content.");
+            }
+
+            const returned = (payload?.data ?? null) as Quotation | null;
+            const mergedQuote: Quotation = returned ?? {
+                ...contractModalQuote,
+                detail: updatedDetail,
+            };
+
+            setQuotations((previous) =>
+                previous.map((item) => (item.id === mergedQuote.id ? mergedQuote : item))
+            );
+            setSelected((current) => (current && current.id === mergedQuote.id ? mergedQuote : current));
+            setContractModalQuote(mergedQuote);
+            setContractSavedSnapshot(contractDraft);
+            setContractEditMode(false);
+            pushToast("Contract content saved.", "success");
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Unable to save contract content.";
+            pushToast(message, "error");
+        } finally {
+            setSavingContract(false);
+        }
+    };
+
     // Verification step for Virtual Office
     const handleSendPaymentLink = async (quote: Quotation) => {
         const currentCount = quote.detail?.payment_link_send_count ?? 0;
@@ -729,7 +840,7 @@ export default function AdminQuotationsPage() {
             } : current);
 
             if (deliveredViaFallback) {
-                pushToast(`Payment link delivered to ${who} (fallback).`, "success");
+                pushToast(`Payment link delivered to ${who}.`, "success");
             } else {
                 pushToast(`Payment link delivered to ${who}.`, "success");
             }
@@ -907,6 +1018,14 @@ export default function AdminQuotationsPage() {
                                                         <Eye className="w-4 h-4" />
                                                     </button>
                                                     <button
+                                                        onClick={(e) => { e.stopPropagation(); openContractViewer(quote); }}
+                                                        className="p-2 rounded-lg text-[#64748B] hover:text-[#1B3A8C] hover:bg-[#F0F4FB] transition"
+                                                        aria-label={`View contract for ${quote.detail?.full_name ?? "customer"}`}
+                                                        title="View Contract"
+                                                    >
+                                                        <FileText className="w-4 h-4" />
+                                                    </button>
+                                                    <button
                                                         onClick={(e) => { e.stopPropagation(); setDeleteTarget(quote); }}
                                                         className="p-2 rounded-lg text-[#64748B] hover:text-red-600 hover:bg-red-50 transition"
                                                         aria-label={`Delete request from ${quote.detail?.full_name ?? "customer"}`}
@@ -1022,6 +1141,13 @@ export default function AdminQuotationsPage() {
                                 <div className="space-y-2.5">
                                     <p className="text-xs font-semibold text-[#64748B]">Contract</p>
                                     <button
+                                        onClick={() => openContractViewer(selected)}
+                                        className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg border border-[#C5D2EC] bg-white text-[#1B3A8C] text-sm font-semibold hover:bg-[#EEF2FB] transition"
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                        View Contract
+                                    </button>
+                                    <button
                                         onClick={() => handleSendContract(selected)}
                                         disabled={sendingContractId === selected.id || selected.status === "contract_sent" || selected.status === "completed"}
                                         className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg bg-[#1B3A8C] text-white text-sm font-semibold hover:bg-[#16316F] transition disabled:opacity-60"
@@ -1053,6 +1179,89 @@ export default function AdminQuotationsPage() {
                             >
                                 <Trash2 className="w-4 h-4" /> Delete quotation
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {contractModalQuote && (
+                <div className="fixed inset-0 z-70 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60" onClick={closeContractViewer} />
+                    <div className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                        <div className="px-6 py-4 border-b border-[#E5EAF2] flex items-center justify-between gap-4">
+                            <div>
+                                <h3 className="text-base font-semibold text-[#0B1F4A]">Contract Preview</h3>
+                                <p className="text-xs text-[#64748B]">
+                                    {contractModalQuote.detail?.full_name ?? "Client"} · {contractModalQuote.service_name}
+                                </p>
+                            </div>
+                            <button
+                                onClick={closeContractViewer}
+                                disabled={savingContract}
+                                className="p-2 rounded-lg text-[#64748B] hover:bg-[#F0F4FB] transition disabled:opacity-50"
+                                aria-label="Close contract preview"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto bg-[#F8FAFD] p-4 sm:p-6">
+                            {!contractEditMode ? (
+                                <div className="mx-auto max-w-3xl bg-white border border-[#D9E2F0] rounded-xl p-6 sm:p-8 shadow-sm">
+                                    <div className="text-center mb-6">
+                                        <p className="text-xl font-bold text-[#1B3A8C]">Hero Serviced Office</p>
+                                        <p className="text-sm text-[#64748B] mt-1">Virtual Office Service Agreement</p>
+                                    </div>
+                                    <div className="whitespace-pre-wrap text-sm leading-7 text-[#0B1F4A]">
+                                        {contractDraft}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="mx-auto max-w-3xl bg-white border border-[#D9E2F0] rounded-xl p-5 sm:p-6 shadow-sm space-y-3">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Edit Contract</p>
+                                    <textarea
+                                        value={contractDraft}
+                                        onChange={(e) => setContractDraft(e.target.value)}
+                                        className="w-full min-h-105 rounded-xl border border-[#D9E2F0] bg-white px-4 py-3 text-sm text-[#0B1F4A] leading-7 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C]"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="px-6 py-4 border-t border-[#E5EAF2] flex flex-wrap items-center justify-end gap-2.5">
+                            {contractEditMode ? (
+                                <>
+                                    <button
+                                        onClick={() => setContractEditMode(false)}
+                                        className="px-4 py-2 rounded-lg border border-[#D9E2F0] text-sm font-medium text-[#0B1F4A] hover:bg-[#F8FAFD] transition"
+                                    >
+                                        Preview
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setContractDraft(contractSavedSnapshot);
+                                            setContractEditMode(false);
+                                        }}
+                                        className="px-4 py-2 rounded-lg border border-[#D9E2F0] text-sm font-medium text-[#0B1F4A] hover:bg-[#F8FAFD] transition"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSaveContract}
+                                        disabled={savingContract}
+                                        className="px-4 py-2 rounded-lg bg-[#1B3A8C] text-white text-sm font-semibold hover:bg-[#16316F] transition disabled:opacity-60"
+                                    >
+                                        {savingContract ? "Saving..." : "Save"}
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={() => setContractEditMode(true)}
+                                    className="px-4 py-2 rounded-lg bg-[#1B3A8C] text-white text-sm font-semibold hover:bg-[#16316F] transition"
+                                >
+                                    Edit Contract
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

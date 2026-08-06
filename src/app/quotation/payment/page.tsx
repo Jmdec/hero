@@ -16,7 +16,7 @@ import {
   Eye, Home, FileText
 } from "lucide-react";
 
-type PaymentMethod = "n/a" | "qrph" | "online_transfer" | "bank" | null;
+type PaymentMethod = "qrph" | "online_transfer" | "bank" | null;
 
 type GateStatus = "checking" | "valid" | "invalid";
 
@@ -88,8 +88,6 @@ const peso = (n: number) => `P${n.toLocaleString("en-PH", { minimumFractionDigit
 
 function getPaymentMethodLabel(paymentMethod: PaymentMethod | string | null | undefined) {
   switch (paymentMethod) {
-    case "n/a":
-      return "N/A";
     case "qrph":
       return "QRPH";
     case "online_transfer":
@@ -373,15 +371,6 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
     sub: string;
     details: string[];
   }> = [
-    {
-      id: "n/a",
-      icon: Clock,
-      label: "N/A",
-      sub: "No payment yet",
-      details: [
-        "This quotation does not yet have a payment method selected.",
-      ],
-    },
       {
         id: "qrph",
         icon: QrCode,
