@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = (
-    process.env.LARAVEL_API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:8000"
-).replace(/\/+$/g, "");
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
 const LARAVEL_API_BASE = API_URL.endsWith("/api")
     ? API_URL
@@ -101,12 +97,6 @@ export async function POST(
         const localRouteUrl =
             `${request.nextUrl.origin.replace(/\/+$/g, "")}/api/quotations/${encodeURIComponent(id)}/send-payment-link`;
 
-        console.log("========================================");
-        console.log("SEND PAYMENT LINK");
-        console.log("========================================");
-        console.log("Quotation ID:", id);
-        console.log("Laravel URL:", targetUrl);
-
         if (targetUrl === localRouteUrl) {
             console.error("Recursive API call detected.");
 
@@ -194,9 +184,6 @@ export async function POST(
         });
 
     } catch (error) {
-        console.error("========================================");
-        console.error("SEND PAYMENT LINK ERROR");
-        console.error("========================================");
         console.error(error);
 
         return NextResponse.json(
