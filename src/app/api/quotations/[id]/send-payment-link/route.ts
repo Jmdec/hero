@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const LARAVEL_API_URL = process.env.LARAVEL_API_URL ?? "http://localhost:8000/api";
+const LARAVEL_API_URL = process.env.LARAVEL_API_URL ?? "http://localhost:8000";
 
 export async function POST(
     request: NextRequest,
