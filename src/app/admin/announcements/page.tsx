@@ -300,10 +300,6 @@ function StatCard({
       </div>
       <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
       <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-      <div className={`flex items-center gap-1 text-xs font-semibold ${trendTone}`}>
-        {showTrendIcon}
-        {trend ? trend : "No change"}
-      </div>
     </button>
   );
 }

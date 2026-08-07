@@ -1029,7 +1029,7 @@ export default function AdminQuotationsPage() {
         <>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4">
                 {/* Stats */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard id="total" label="Total requests" value={String(counts.all)} icon={Inbox} tone="neutral" onClick={setActiveCard} />
                     <StatCard id="needs_attention" label="Needs attention" value={String(needsAttention)} icon={AlertCircle} tone="amber" onClick={setActiveCard} />
                     <StatCard id="value" label="Quotation value" value={String(completed)} icon={Check} tone="green" onClick={setActiveCard} />
@@ -1123,7 +1123,7 @@ export default function AdminQuotationsPage() {
                         <div className="p-16 text-center text-sm text-[#64748B]">
                             <div className="flex items-center justify-center gap-2">
                                 <div className="w-4 h-4 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
-                                <span className="text-sm text-[#64748B]">Loading quotations...</span>   
+                                <span className="text-sm text-[#64748B]">Loading quotations...</span>
                             </div>
                         </div>
                     ) : filtered.length === 0 ? (

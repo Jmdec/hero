@@ -138,20 +138,17 @@ type StatCardProps = {
     onClick: (id: StatKey) => void;
 };
 
-function StatCard({ id, icon: Icon, label, value,  tone = "neutral", onClick }: StatCardProps) {
+function StatCard({ id, icon: Icon, label, value, tone = "neutral", onClick }: StatCardProps) {
     const t = STAT_TONE_STYLES[tone];
     return (
         <button
             onClick={() => onClick(id)}
-            className="group bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC] relative overflow-hidden"
+            className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
         >
-            <div className={`absolute top-0 left-0 w-1 h-full ${t.bg}`} />
+            <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
             <div className="flex items-start justify-between mb-4">
-                <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: t.bg === "bg-amber-50" ? "#FFF8E1" : "#EEF2FB" }}
-                >
-                    <Icon className="w-5 h-5" style={{ color: t.text === "text-amber-700" ? "#F57F17" : "#0D47A1" }} />
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
+                    <Icon className={`w-5 h-5 ${t.text}`} />
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
             </div>
@@ -569,7 +566,7 @@ export default function UsersPage() {
                 )}
 
                 {/* Stat Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {statCards.map((s) => (
                         <StatCard key={s.id} {...s} onClick={setActiveCard} />
                     ))}

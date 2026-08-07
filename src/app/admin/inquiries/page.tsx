@@ -93,21 +93,18 @@ const INQUIRY_LABELS: Record<string, string> = {
   others: "Others",
 }
 
-const SIGNATURE = `Best regards,
-
-HERO Serviced Office Team
-Sales: salesofficer@heroph.net | digitalsalesmarketing@heroph.net
-Support: admin@heroph.net
-Main Line: +63 942 639 4128
-Tower 6789: +632 8528 3100 | Insular Life Building: +632 8246 0801
-"Your Workspace for Success."`
-
 function greeting(c: Contact) {
   const firstName = c.name?.split(" ")[0] || c.name
   return `Good Day Mr/Ms ${firstName},`
 }
 
 const QUOTATION_BASE_URL = "/quotation"
+
+const BRANCH_LABELS: Record<string, string> = {
+  "tower-6789": "Tower 6789",
+  "insular-life": "Insular Life Building",
+  both: "Both Branches",
+}
 
 function quotationLink(c: Contact, inquiryType: string) {
   const serviceValue = inquiryType === "co-working-space" ? "coworking" : inquiryType
@@ -124,25 +121,51 @@ function quotationLink(c: Contact, inquiryType: string) {
 
 type TemplateBuilder = (c: Contact) => { subject: string; body: string }
 
+function getDetailValue(c: Contact, ...keys: string[]) {
+  for (const key of keys) {
+    const value = c.details?.[key]
+    if (typeof value === "string" && value.trim()) return value.trim()
+  }
+  return ""
+}
+
+function getBranchValue(c: Contact) {
+  const rawBranch = getDetailValue(c, "branchInterest", "interestedBranch")
+  return BRANCH_LABELS[rawBranch] ?? rawBranch ?? "Not specified"
+}
+
+function getServiceInterestValue(c: Contact) {
+  const rawService = getDetailValue(c, "serviceOfInterest")
+  if (!rawService) return "Not specified"
+  return INQUIRY_LABELS[rawService] ?? formatLabel(rawService)
+}
+
+function getPreferredVisitSchedule(c: Contact) {
+  const date = getDetailValue(c, "visitDate")
+  const time = getDetailValue(c, "visitTime", "preferredTime", "time")
+  const parts = [date ? formatDate(date) : "", time].filter(Boolean)
+  return parts.join(" at ") || "Not specified"
+}
+
 const EMAIL_TEMPLATES: Record<string, TemplateBuilder> = {
   "private-office": (c) => ({
     subject: `Your Private Office Inquiry at HERO Serviced Office`,
     body: `${greeting(c)}
 
-Thank you for your interest in a Private Office at HERO Serviced Office. We'd love to help you find the right fully furnished workspace for your team.
+We’d love to help you find the right fully furnished workspace for your team — with Flexibility That Fits Your Needs. 
 
-Here's a quick overview:
-- Pricing: starts at PHP 11,000/seat/month (corridor side) or PHP 12,000/seat/month (window side)
+Here's a quick overview: 
+- Pricing: starts at PHP 11,000/seat/month  to  PHP 12,000/seat/month 
 - Office sizes: available from 1 to 35 persons
-- Contract terms: 3, 6, 9, or 12 months
-- Inclusions: fully furnished workstation, prestigious business address, high-speed internet (up to 600 Mbps), professional reception services, mail and parcel handling, utilities, housekeeping, meeting room usage credits, pantry and common area access, printing and scanning, 24/7 secure access, and access cards
-- Add-ons available: parking slots, dedicated internet line, additional workstations, conference room upgrade, company signage, mail forwarding, and IT support
-
-Move-in is typically available within 3-4 weeks of completing the required documents and payment, and a refundable security deposit equivalent to 1-2 months' rent applies.
+- Contract terms: 3, 6, 9, and  12 months 
+- Inclusions: fully furnished workstation, prestigious business address, high-speed internet (up to 600 Mbps), professional reception services, mail and parcel handling, utilities, housekeeping, pantry and common area access, telephone booth access, access to multifunctional printer, 24/7 secure access.
+- Add-ons available: parking slots, dedicated internet line, dedicated IP, telephone lines, conference room access and lockers.
 
 Interested in our service? Request your quotation here: ${quotationLink(c, "private-office")}
 
-${SIGNATURE}`,
+Best regards,
+
+HERO Serviced Office`,
   }),
 
   "virtual-office": (c) => ({
@@ -151,45 +174,51 @@ ${SIGNATURE}`,
 
 Thank you for reaching out about our Virtual Office solutions. Here are our current packages:
 
-- Basic - PHP 2,000/month: business address, registration document assistance, mail handling, basic call handling, 1 day co-working access, 1 hour conference room access
-- Standard - PHP 3,000/month: business address, registration document assistance, mail handling, basic call handling, 2 days co-working access, 2 hours conference room access
-- Premium - PHP 5,000/month: business address, registration document assistance, mail handling, basic call handling, 5 days co-working access, 3 hours conference room access
+- Basic - PHP 2,000/month: business address, registration document assistance, mail handling, 1 day co-working access, 1 hour conference room access
+- Standard - PHP 3,000/month: business address, registration document assistance, mail handling, 2 days co-working access, 2 hours conference room access
+- Premium - PHP 5,000/month: business address, registration document assistance, mail handling, 5 days co-working access, 3 hours conference room access
 
 Contract terms are available for 6 or 12 months, and the address can be used for official business registration.
 
 Interested in our service? Request your quotation here: ${quotationLink(c, "virtual-office")}
 
-${SIGNATURE}`,
+Best regards,
+
+HERO Serviced Office`,
   }),
 
   "co-working-space": (c) => ({
     subject: `Your Co-Working Space Inquiry at HERO Serviced Office`,
     body: `${greeting(c)}
 
-Thanks for your interest in our Co-Working Space. It's a great fit if you'd like a flexible, professional workspace without a long-term commitment.
+Thanks for your interest in our Co-Working Space. It's a great fit if you'd like a flexible, professional workspace without a long-term commitment. 
 
-- Pricing: PHP 550/day, PHP 2,000/week, or PHP 5,500/month
-- Inclusions: flexible workstation, high-speed internet (up to 600 Mbps), reception services, utilities, air-conditioned environment, meeting room usage credits, pantry and lounge access, 24/7 secure access, phone booth access, and unlimited coffee, tea, and water
-- Add-ons: printing and scanning services, additional access cards
+- Pricing: PHP 550/day, PHP 2,000/week, or PHP 6,000/month 
+- Inclusions: flexible workstation, high-speed internet (up to 600 Mbps), air-conditioned environment, pantry and lounge access, 24/7 secure access, phone booth access, and free- flowing coffee, tea, and water 
+- Add-ons: printing and scanning services, access cards, meeting room access
 
 Interested in our service? Request your quotation here: ${quotationLink(c, "co-working-space")}
 
-${SIGNATURE}`,
+Best regards,
+
+HERO Serviced Office`,
   }),
 
   "meeting-room": (c) => ({
     subject: `Your Conference Room Booking Inquiry at HERO Serviced Office`,
     body: `${greeting(c)}
 
-Thank you for your interest in booking our Conference Room. Here are the details:
+Thank you for your interest in booking our Meeting Room. Here are the details:
 
-- Pricing: PHP 1,500/hour or PHP 9,000/day
-- Inclusions: fully furnished conference room, high-speed internet (up to 600 Mbps), reception services, utilities, projector and screen, meeting room usage credits, pantry access, 24/7 secure access, and unlimited coffee, tea, and water
-- Add-ons: printing and scanning services, additional access cards
+- Pricing: PHP 1,500/hour or PHP 9,000/day (8-10 seater) and PHP 3,000/hour or PHP 18,000/day (18-20 seater)
+- Inclusions: fully furnished conference room, Wi-fi connection  (up to 600 Mbps), reception services, and free-flowing coffee, tea, and water
+- Add-ons: printing and scanning services, projector and screen
 
 Interested in our service? Request your quotation here: ${quotationLink(c, "meeting-room")}
 
-${SIGNATURE}`,
+Best regards,
+
+HERO Serviced Office`,
   }),
 
   "event-space": (c) => ({
@@ -198,13 +227,15 @@ ${SIGNATURE}`,
 
 Thank you for considering HERO Serviced Office for your upcoming event. Our Event/Activity Area is a flexible, fully serviced space designed for workshops, training, networking sessions, and product launches.
 
-- Pricing: starts at PHP 5,000, depending on setup and number of participants
-- Inclusions: flexible event space setup, high-speed internet (up to 600 Mbps), reception services, utilities, basic furniture setup, lounge access, pantry access, unlimited coffee/tea/water, and 24/7 secure access (subject to booking schedule)
-- Add-ons: audio-visual equipment, sound system rental, event styling, catering coordination, and extra seating
+- Pricing: starts at PHP 7,000 depending on setup and number of participants and duration of the event
+- Inclusions: flexible event space setup, Wifi- connection (up to 600 Mbps), reception services, utilities, basic furniture setup, lounge access, pantry access, free-flowing coffee  and 24/7 secure access (subject to booking schedule)
+- Add-ons: audio-visual equipment, sound system rental, event styling, catering coordination, conference room and extra seating
 
 Interested in our service? Request your quotation here: ${quotationLink(c, "event-space")}
 
-${SIGNATURE}`,
+Best regards,
+
+HERO Serviced Office`,
   }),
 
   "ocular-visit": (c) => ({
@@ -214,13 +245,15 @@ ${SIGNATURE}`,
 Thank you for your interest in visiting HERO Serviced Office. We'd be happy to give you a tour of our workspaces at Tower 6789 or the Insular Life Building along Ayala Avenue, Makati.
 
 Here’s your scheduled ocular visit details:
-- Preferred branch: 
-- Preferred date and time: 
-- Service of Interest: 
+- Preferred branch: ${getBranchValue(c)}
+- Preferred date and time: ${getPreferredVisitSchedule(c)}
+- Service of Interest: ${getServiceInterestValue(c)}
 
 We look forward to showing you around and discussing the best fit for your business.
 
-${SIGNATURE}`,
+Best regards,
+
+HERO Serviced Office`,
   }),
 
   partnership: (c) => ({
@@ -231,7 +264,9 @@ Thank you for reaching out about a potential partnership with HERO Serviced Offi
 
 Could you share a bit more detail about the partnership you have in mind (e.g., referral, corporate agreement, event collaboration) along with your company background? This will help us route your inquiry to the right team and respond with the most relevant information.
 
-${SIGNATURE}`,
+Best regards,
+
+HERO Serviced Office`,
   }),
 
   others: (c) => ({
@@ -244,7 +279,9 @@ Thank you for reaching out to HERO Serviced Office. We received your message:
 
 We'd love to learn more about what you're looking for so we can point you to the right workspace solution - Private Office, Virtual Office, Co-Working Space, Conference Room, or Event Space. Could you share a few more details, or let us know a good time for a quick call?
 
-${SIGNATURE}`,
+Best regards,
+
+HERO Serviced Office`,
   }),
 }
 
@@ -359,18 +396,17 @@ function StatCard({
   return (
     <button
       onClick={() => onClick(id)}
-      className="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-slate-300 hover:shadow-md"
+      className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
     >
-      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${toneStyles.bg}`}>
-        <Icon className={`h-5 w-5 ${toneStyles.text}`} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-2xl font-bold leading-none text-slate-900">{value}</p>
-        <p className="mt-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {label}
-        </p>
+      <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : "bg-[#0D47A1]"}`} />
+      <div className="flex items-start justify-between mb-4">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${toneStyles.bg}`}>
+          <Icon className={`w-5 h-5 ${toneStyles.text}`} />
+        </div>
+        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
       </div>
-      <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-500" />
+      <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
+      <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
     </button>
   )
 }
@@ -1360,12 +1396,12 @@ export default function ContactsAdmin() {
               </div>
 
               <h2 className="mt-5 text-xl font-bold text-center text-[#0B1F4A]">
-              Delete Inquiry?
-            </h2>
+                Delete Inquiry?
+              </h2>
 
-            <p className="mt-3 text-center text-sm text-[#64748B] leading-6">
-              Are you sure you want to delete this request
-              {deleteTarget.name ? ` for ${deleteTarget.name}` : ""}?
+              <p className="mt-3 text-center text-sm text-[#64748B] leading-6">
+                Are you sure you want to delete this request
+                {deleteTarget.name ? ` for ${deleteTarget.name}` : ""}?
                 This action cannot be undone.
               </p>
 
