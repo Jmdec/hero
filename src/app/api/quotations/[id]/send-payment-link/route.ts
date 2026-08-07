@@ -47,6 +47,7 @@ export async function POST(
             headers: {
                 Accept: "application/json",
                 "Content-Type": "application/json",
+                "X-Frontend-Origin": request.nextUrl.origin,
             },
         });
 
