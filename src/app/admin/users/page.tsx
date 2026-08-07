@@ -158,8 +158,7 @@ function StatCard({ id, icon: Icon, label, value, tone = "neutral", onClick }: S
     );
 }
 
-/* ─── Drill-Down Modal (Analytics-based; not currently wired to a live
-     analytics fetch — kept for when server analytics are available) ─── */
+/* Drill-Down Modal */
 function DrillDownModal({ id, data, onClose }: { id: StatKey; data: Analytics; onClose: () => void }) {
     const drillMap: Record<string, { title: string; items: { label: string; value: string; sub?: string }[] }> = {
         chat_leads: {
@@ -566,7 +565,7 @@ export default function UsersPage() {
                 )}
 
                 {/* Stat Cards */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                     {statCards.map((s) => (
                         <StatCard key={s.id} {...s} onClick={setActiveCard} />
                     ))}

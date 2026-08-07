@@ -767,7 +767,7 @@ export default function ContactsAdmin() {
     <div className="min-h-screen p-4 md:p-8">
       <main className="mx-auto space-y-6">
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard id="total" label="Total Inquiries" value={stats.total} icon={Inbox} tone="neutral" onClick={setActiveStat} />
           <StatCard id="new" label="New" value={stats.new} icon={Mail} tone="blue" onClick={setActiveStat} />
           <StatCard id="contacted" label="Contacted" value={stats.contacted} icon={Send} tone="amber" onClick={setActiveStat} />

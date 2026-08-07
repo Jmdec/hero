@@ -5,6 +5,7 @@ import {
     AlertCircle,
     ArrowRightLeft,
     Bot,
+    ChevronRight,
     CheckCircle2,
     Headset,
     Inbox,
@@ -14,6 +15,8 @@ import {
     RefreshCw,
     Search,
     Send,
+    TrendingDown,
+    TrendingUp,
     User,
     X,
     XCircle,
@@ -21,6 +24,15 @@ import {
 import { chatApi, type ChatConversation, type ConversationResponse } from "@/lib/chatApi";
 
 type StatusKey = "active" | "waiting_admin" | "agent_requested" | "agent_active" | "agent_closed" | "closed";
+type StatKey = "total" | "needs_you" | "live" | "addressed";
+type StatTone = "neutral" | "amber" | "green" | "red";
+
+const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
+    neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]" },
+    amber: { bg: "bg-amber-50", text: "text-amber-700" },
+    green: { bg: "bg-green-50", text: "text-green-700" },
+    red: { bg: "bg-red-50", text: "text-red-600" },
+};
 
 const STATUS: Record<StatusKey, { label: string; rail: string; dot: string; chip: string; live?: boolean; ended?: boolean }> = {
     active: { label: "AI Assistant", rail: "bg-emerald-500", dot: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" },
@@ -199,6 +211,7 @@ export default function AdminChatsPage() {
     const [query, setQuery] = useState("");
     const [addressedFilter, setAddressedFilter] = useState<AddressedFilter>("all");
     const [agentRequestNotice, setAgentRequestNotice] = useState<string | null>(null);
+    const [activeCard, setActiveCard] = useState<StatKey | null>(null);
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -484,6 +497,143 @@ export default function AdminChatsPage() {
         return { total, needsYou, live, ended, addressed, needsResponse };
     }, [conversations]);
 
+    const statCards = useMemo<Omit<StatCardProps, "onClick">[]>(() => {
+        const now = new Date();
+        const monthStats = conversations.reduce(
+            (acc, c) => {
+                const created = new Date(c.created_at);
+                if (Number.isNaN(created.getTime())) return acc;
+
+                const bucket = isSameMonth(created, now)
+                    ? acc.current
+                    : isPreviousMonth(created, now)
+                        ? acc.previous
+                        : null;
+                if (!bucket) return acc;
+
+                bucket.total += 1;
+                if (NEEDS_ADMIN.includes(c.status as StatusKey)) bucket.needsYou += 1;
+                if ((c.status as StatusKey) === "agent_active") bucket.live += 1;
+                if (isAddressed(c)) bucket.addressed += 1;
+                return acc;
+            },
+            {
+                current: { total: 0, needsYou: 0, live: 0, addressed: 0 },
+                previous: { total: 0, needsYou: 0, live: 0, addressed: 0 },
+            },
+        );
+
+        return [
+            {
+                id: "total",
+                icon: Inbox,
+                label: "Total Conversations",
+                value: String(overview.total),
+                tone: "neutral",
+                trend: getTrendText(monthStats.current.total, monthStats.previous.total),
+            },
+            {
+                id: "needs_you",
+                icon: Headset,
+                label: "Needs You",
+                value: String(overview.needsYou),
+                tone: "amber",
+                trend: getTrendText(monthStats.current.needsYou, monthStats.previous.needsYou),
+            },
+            {
+                id: "live",
+                icon: Bot,
+                label: "Live Now",
+                value: String(overview.live),
+                tone: "green",
+                trend: getTrendText(monthStats.current.live, monthStats.previous.live),
+            },
+            {
+                id: "addressed",
+                icon: CheckCircle2,
+                label: "Addressed",
+                value: String(overview.addressed),
+                tone: "red",
+                trend: getTrendText(monthStats.current.addressed, monthStats.previous.addressed),
+            },
+        ];
+    }, [conversations, overview]);
+
+    const drillDownData = useMemo<Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>>(() => {
+        const waitingQueue = conversations.filter((c) => NEEDS_ADMIN.includes(c.status as StatusKey));
+        const liveQueue = conversations.filter((c) => (c.status as StatusKey) === "agent_active");
+        const addressedQueue = conversations.filter((c) => isAddressed(c));
+        const unaddressedQueue = conversations.filter((c) => !isAddressed(c));
+        const endedQueue = conversations.filter((c) => statusOf(c.status).ended);
+        const longWaiting = waitingQueue.filter((c) => {
+            const mins = Math.round((Date.now() - new Date(c.updated_at).getTime()) / 60000);
+            return mins > 15;
+        }).length;
+        const staleUnaddressed = unaddressedQueue.filter((c) => {
+            const mins = Math.round((Date.now() - new Date(c.updated_at).getTime()) / 60000);
+            return mins > 30;
+        }).length;
+        const avgMessages = conversations.length
+            ? (conversations.reduce((sum, c) => sum + c.message_count, 0) / conversations.length).toFixed(1)
+            : "0.0";
+        const liveOver30m = liveQueue.filter((c) => {
+            const mins = Math.round((Date.now() - new Date(c.started_at).getTime()) / 60000);
+            return mins > 30;
+        }).length;
+        const longestLive = liveQueue
+            .map((c) => Math.round((Date.now() - new Date(c.started_at).getTime()) / 60000))
+            .sort((a, b) => b - a)[0];
+
+        return {
+            total: {
+                title: "Conversation Volume",
+                items: [
+                    { label: "Total conversations", value: String(overview.total), sub: "All tracked chat sessions" },
+                    { label: "Needs response", value: String(overview.needsResponse), sub: `${percent(overview.needsResponse, overview.total)} of total` },
+                    { label: "Addressed", value: String(overview.addressed), sub: `${percent(overview.addressed, overview.total)} of total` },
+                    { label: "Ended", value: String(overview.ended), sub: `${percent(overview.ended, overview.total)} of total` },
+                    { label: "Avg. messages/chat", value: avgMessages, sub: "Across all conversations" },
+                    { label: "Agent escalation rate", value: percent(overview.needsYou + overview.live, overview.total), sub: "Requested or live with admin" },
+                ],
+            },
+            needs_you: {
+                title: "Needs You Queue",
+                items: [
+                    { label: "Waiting for admin", value: String(overview.needsYou), sub: `${percent(overview.needsYou, overview.total)} of total` },
+                    { label: "Waiting > 15 min", value: String(longWaiting), sub: "At-risk response delay" },
+                    { label: "Unaddressed in queue", value: String(waitingQueue.filter((c) => !isAddressed(c)).length), sub: "Still pending triage" },
+                    { label: "Addressed but open", value: String(waitingQueue.filter((c) => isAddressed(c)).length), sub: "Marked handled, not closed" },
+                    { label: "Avg. queue messages", value: waitingQueue.length ? (waitingQueue.reduce((sum, c) => sum + c.message_count, 0) / waitingQueue.length).toFixed(1) : "0.0", sub: "Per waiting conversation" },
+                    { label: "Share of open queue", value: percent(overview.needsYou, Math.max(overview.total - overview.ended, 1)), sub: "Among non-ended chats" },
+                ],
+            },
+            live: {
+                title: "Live Admin Sessions",
+                items: [
+                    { label: "Live now", value: String(overview.live), sub: `${percent(overview.live, overview.total)} of total` },
+                    { label: "Live > 30 min", value: String(liveOver30m), sub: "Potential long-resolution chats" },
+                    { label: "Longest live", value: longestLive !== undefined ? `${longestLive}m` : "—", sub: "Current active sessions" },
+                    { label: "Avg. live messages", value: liveQueue.length ? (liveQueue.reduce((sum, c) => sum + c.message_count, 0) / liveQueue.length).toFixed(1) : "0.0", sub: "Per live conversation" },
+                    { label: "Addressed live", value: String(liveQueue.filter((c) => isAddressed(c)).length), sub: "Already marked addressed" },
+                    { label: "Unaddressed live", value: String(liveQueue.filter((c) => !isAddressed(c)).length), sub: "Needs follow-through" },
+                ],
+            },
+            addressed: {
+                title: "Addressing Health",
+                items: [
+                    { label: "Addressed total", value: String(overview.addressed), sub: `${percent(overview.addressed, overview.total)} coverage` },
+                    { label: "Unaddressed total", value: String(overview.needsResponse), sub: `${percent(overview.needsResponse, overview.total)} backlog` },
+                    { label: "Unaddressed > 30 min", value: String(staleUnaddressed), sub: "Aging unresolved chats" },
+                    { label: "Addressed and ended", value: String(addressedQueue.filter((c) => statusOf(c.status).ended).length), sub: "Fully completed" },
+                    { label: "Addressed but still open", value: String(addressedQueue.filter((c) => !statusOf(c.status).ended).length), sub: "Monitor until closure" },
+                    { label: "Unaddressed and ended", value: String(endedQueue.filter((c) => !isAddressed(c)).length), sub: "Process hygiene gap" },
+                ],
+            },
+        };
+    }, [conversations, overview]);
+
+    const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
+
     const selectedIsEnded = selectedConversation ? statusOf(selectedConversation.status).ended : false;
     const selectedIsAddressed = selectedConversation ? isAddressed(selectedConversation) : false;
     const selectedNeedsAdmin = selectedConversation
@@ -608,27 +758,10 @@ export default function AdminChatsPage() {
 
                 {/* Queue summary + Refresh */}
                 <div className="hidden shrink-0 items-stretch gap-2 mb-2 lg:flex">
-                    <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-5">
-                        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                            <p className="text-[11px] text-slate-400">Total</p>
-                            <p className="text-lg font-semibold text-slate-800">{overview.total}</p>
-                        </div>
-                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                            <p className="text-[11px] text-amber-600">Needs you</p>
-                            <p className="text-lg font-semibold text-amber-700">{overview.needsYou}</p>
-                        </div>
-                        <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2">
-                            <p className="text-[11px] text-[#0D47A1]/70">Live now</p>
-                            <p className="text-lg font-semibold text-[#0D47A1]">{overview.live}</p>
-                        </div>
-                        <div className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2">
-                            <p className="text-[11px] text-teal-600">Addressed</p>
-                            <p className="text-lg font-semibold text-teal-700">{overview.addressed}</p>
-                        </div>
-                        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                            <p className="text-[11px] text-slate-400">Unaddressed</p>
-                            <p className="text-lg font-semibold text-slate-800">{overview.needsResponse}</p>
-                        </div>
+                    <div className="grid flex-1 grid-cols-2 gap-3 lg:grid-cols-4">
+                        {statCards.map((s) => (
+                            <StatCard key={s.id} {...s} onClick={setActiveCard} />
+                        ))}
                     </div>
 
                     <button
@@ -883,6 +1016,121 @@ export default function AdminChatsPage() {
                     </div>
                 </div>
             </main>
+
+            {activeDrillDown && (
+                <ModalBackdrop onClose={() => setActiveCard(null)}>
+                    <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+                        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                            <h2 className="text-lg font-semibold text-slate-900">
+                                {activeDrillDown.title}
+                            </h2>
+                            <button
+                                onClick={() => setActiveCard(null)}
+                                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 px-6 py-5 sm:grid-cols-2">
+                            {activeDrillDown.items.map((item) => (
+                                <div key={item.label} className="rounded-xl bg-slate-50 p-4">
+                                    <p className="text-xs text-slate-500">{item.label}</p>
+                                    <p className="mt-1 text-xl font-bold text-slate-900">
+                                        {item.value}
+                                    </p>
+                                    {item.sub && (
+                                        <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </ModalBackdrop>
+            )}
         </div>
     );
+}
+
+function ModalBackdrop({
+    onClose,
+    children,
+}: {
+    onClose: () => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+            onClick={onClose}
+        >
+            <div onClick={(e) => e.stopPropagation()} className="w-full flex justify-center">
+                {children}
+            </div>
+        </div>
+    );
+}
+
+type StatCardProps = {
+    id: StatKey;
+    icon: React.ElementType;
+    label: string;
+    value: string;
+    trend?: string;
+    tone?: StatTone;
+    onClick: (id: StatKey) => void;
+};
+
+function StatCard({ id, icon: Icon, label, value, trend, tone = "neutral", onClick }: StatCardProps) {
+    const t = STAT_TONE_STYLES[tone];
+    const trendUp = Boolean(trend && trend.startsWith("+"));
+
+    return (
+        <button
+            onClick={() => onClick(id)}
+            className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
+        >
+            <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
+            <div className="flex items-start justify-between mb-4">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
+                    <Icon className={`w-5 h-5 ${t.text}`} />
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
+            </div>
+            <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
+            <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+            {trend ? (
+                <p className={`flex items-center gap-1 text-xs font-medium ${trendUp ? "text-green-600" : "text-red-600"}`}>
+                    {trendUp ? (
+                        <TrendingUp className="h-3.5 w-3.5" />
+                    ) : (
+                        <TrendingDown className="h-3.5 w-3.5" />
+                    )}
+                    {trend}
+                </p>
+            ) : (
+                <p className="text-xs font-medium text-slate-400">No change</p>
+            )}
+        </button>
+    );
+}
+
+function isSameMonth(date: Date, now: Date) {
+    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+}
+
+function isPreviousMonth(date: Date, now: Date) {
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return date.getFullYear() === prev.getFullYear() && date.getMonth() === prev.getMonth();
+}
+
+function getTrendText(current: number, previous: number) {
+    const delta = current - previous;
+    if (delta === 0) return "";
+    return `${delta > 0 ? "+" : ""}${delta} vs last month`;
+}
+
+function percent(value: number, total: number) {
+    if (!total) return "0.0%";
+    return `${((value / total) * 100).toFixed(1)}%`;
 }

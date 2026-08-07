@@ -883,7 +883,7 @@ export default function AnnouncementsAdmin() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard id="total" label="Total announcements" value={String(stats.total)} icon={Megaphone} tone="neutral" onClick={setActiveCard} />
           <StatCard id="published" label="Published" value={String(stats.published)} icon={FileText} tone="green" onClick={setActiveCard} />
           <StatCard id="scheduled" label="Scheduled" value={String(stats.scheduled)} icon={Calendar} tone="amber" onClick={setActiveCard} />

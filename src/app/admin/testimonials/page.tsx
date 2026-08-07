@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Search,
   Pencil,
@@ -13,13 +13,20 @@ import {
   Star,
   Mail,
   Eye,
+  Plus,
   Building2,
   Briefcase,
   CalendarDays,
   Quote,
   RefreshCw,
   Inbox,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
+
+type StatKey = "total" | "pending" | "approved" | "rejected";
+
+type StatTone = "neutral" | "amber" | "green" | "red";
 
 interface Testimonial {
   id: number;
@@ -34,6 +41,13 @@ interface Testimonial {
   updated_at?: string;
 }
 
+interface TestimonialStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+}
+
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200",
   approved:
@@ -43,6 +57,13 @@ const STATUS_STYLES: Record<string, string> = {
 
 const STATUS_OPTIONS = ["pending", "approved", "rejected"] as const;
 
+const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
+  neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]" },
+  amber: { bg: "bg-amber-50", text: "text-amber-700" },
+  green: { bg: "bg-green-50", text: "text-green-700" },
+  red: { bg: "bg-red-50", text: "text-red-600" },
+};
+
 const EMPTY_FORM = {
   name: "",
   title: "",
@@ -51,6 +72,77 @@ const EMPTY_FORM = {
   rating: 5,
   quote: "",
 };
+
+function ModalBackdrop({
+  onClose,
+  children,
+}: {
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      onClick={onClose}
+    >
+      <div onClick={(e) => e.stopPropagation()} className="w-full flex justify-center">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+type StatCardProps = {
+  id: StatKey;
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  trend?: string;
+  tone?: StatTone;
+  onClick: (id: StatKey) => void;
+};
+
+function StatCard({
+  id,
+  icon: Icon,
+  label,
+  value,
+  trend,
+  tone = "neutral",
+  onClick,
+}: StatCardProps) {
+  const t = STAT_TONE_STYLES[tone];
+  const trendUp = Boolean(trend && trend.startsWith("+"));
+
+  return (
+    <button
+      onClick={() => onClick(id)}
+      className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
+    >
+      <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
+      <div className="flex items-start justify-between mb-4">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
+          <Icon className={`w-5 h-5 ${t.text}`} />
+        </div>
+        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
+      </div>
+      <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
+      <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+      {trend ? (
+        <p className={`flex items-center gap-1 text-xs font-medium ${trendUp ? "text-green-600" : "text-red-600"}`}>
+          {trendUp ? (
+            <TrendingUp className="h-3.5 w-3.5" />
+          ) : (
+            <TrendingDown className="h-3.5 w-3.5" />
+          )}
+          {trend}
+        </p>
+      ) : (
+        <p className="text-xs font-medium text-slate-400">No change</p>
+      )}
+    </button>
+  );
+}
 
 function authHeaders(json = false) {
   const token =
@@ -92,12 +184,60 @@ function getPageNumbers(current: number, last: number): (number | "…")[] {
   return result;
 }
 
+function isSameMonth(date: Date, now: Date) {
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth()
+  );
+}
+
+function isPreviousMonth(date: Date, now: Date) {
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return (
+    date.getFullYear() === prev.getFullYear() &&
+    date.getMonth() === prev.getMonth()
+  );
+}
+
+function getTrendText(current: number, previous: number) {
+  const delta = current - previous;
+  if (delta === 0) return "";
+  return `${delta > 0 ? "+" : ""}${delta} vs last month`;
+}
+
+function getPercent(value: number, total: number) {
+  if (!total) return "0.0%";
+  return `${((value / total) * 100).toFixed(1)}%`;
+}
+
+function getAverageRating(items: Testimonial[]) {
+  if (!items.length) return "0.0";
+  const total = items.reduce((sum, item) => sum + item.rating, 0);
+  return (total / items.length).toFixed(1);
+}
+
+function getAgeInDays(value?: string) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const diff = Date.now() - date.getTime();
+  return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+}
+
 export default function TestimonialsAdmin() {
   const [items, setItems] = useState<Testimonial[]>([]);
+  const [allItems, setAllItems] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [activeCard, setActiveCard] = useState<StatKey | null>(null);
+  const [stats, setStats] = useState<TestimonialStats>({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  });
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -128,6 +268,30 @@ export default function TestimonialsAdmin() {
   const [deleteTarget, setDeleteTarget] = useState<Testimonial | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/testimonials?per_page=1000`, {
+        headers: authHeaders(),
+      });
+
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+
+      const data = await res.json();
+      const list: Testimonial[] = data.data ?? [];
+
+      setAllItems(list);
+      setStats({
+        total: list.length,
+        pending: list.filter((item) => item.status === "pending").length,
+        approved: list.filter((item) => item.status === "approved").length,
+        rejected: list.filter((item) => item.status === "rejected").length,
+      });
+    } catch {
+      setAllItems([]);
+      setStats({ total: 0, pending: 0, approved: 0, rejected: 0 });
+    }
+  }, []);
 
   async function fetchTestimonials(background = false) {
     if (background) {
@@ -176,6 +340,7 @@ export default function TestimonialsAdmin() {
 
   useEffect(() => {
     fetchTestimonials();
+    fetchStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, search, status, ratingFilter, retryCount]);
 
@@ -190,12 +355,161 @@ export default function TestimonialsAdmin() {
 
   function handleRefresh() {
     fetchTestimonials(true)
+    fetchStats()
   }
 
   const pageNumbers = useMemo(
     () => getPageNumbers(page, lastPage),
     [page, lastPage],
   );
+
+  const statCards = useMemo<Omit<StatCardProps, "onClick">[]>(() => {
+    const now = new Date();
+    const monthlyCounts = allItems.reduce(
+      (acc, item) => {
+        if (!item.created_at) return acc;
+        const created = new Date(item.created_at);
+        if (Number.isNaN(created.getTime())) return acc;
+
+        if (isSameMonth(created, now)) {
+          acc.current.total += 1;
+          acc.current[item.status] += 1;
+        } else if (isPreviousMonth(created, now)) {
+          acc.previous.total += 1;
+          acc.previous[item.status] += 1;
+        }
+
+        return acc;
+      },
+      {
+        current: { total: 0, pending: 0, approved: 0, rejected: 0 },
+        previous: { total: 0, pending: 0, approved: 0, rejected: 0 },
+      },
+    );
+
+    return [
+      {
+        id: "total",
+        icon: Quote,
+        label: "Total Testimonials",
+        value: stats.total.toString(),
+        tone: "neutral",
+        trend: getTrendText(monthlyCounts.current.total, monthlyCounts.previous.total),
+      },
+      {
+        id: "pending",
+        icon: Inbox,
+        label: "Pending Review",
+        value: stats.pending.toString(),
+        tone: "amber",
+        trend: getTrendText(monthlyCounts.current.pending, monthlyCounts.previous.pending),
+      },
+      {
+        id: "approved",
+        icon: Star,
+        label: "Approved",
+        value: stats.approved.toString(),
+        tone: "green",
+        trend: getTrendText(monthlyCounts.current.approved, monthlyCounts.previous.approved),
+      },
+      {
+        id: "rejected",
+        icon: X,
+        label: "Rejected",
+        value: stats.rejected.toString(),
+        tone: "red",
+        trend: getTrendText(monthlyCounts.current.rejected, monthlyCounts.previous.rejected),
+      },
+    ];
+  }, [allItems, stats]);
+
+  const drillDownData = useMemo<Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>>(() => {
+    const now = new Date();
+    const approvedItems = allItems.filter((item) => item.status === "approved");
+    const pendingItems = allItems.filter((item) => item.status === "pending");
+    const rejectedItems = allItems.filter((item) => item.status === "rejected");
+    const currentMonthItems = allItems.filter((item) => {
+      if (!item.created_at) return false;
+      const created = new Date(item.created_at);
+      return !Number.isNaN(created.getTime()) && isSameMonth(created, now);
+    });
+    const previousMonthItems = allItems.filter((item) => {
+      if (!item.created_at) return false;
+      const created = new Date(item.created_at);
+      return !Number.isNaN(created.getTime()) && isPreviousMonth(created, now);
+    });
+    const fiveStarCount = allItems.filter((item) => item.rating === 5).length;
+    const lowRatingCount = allItems.filter((item) => item.rating <= 3).length;
+    const stalePending = pendingItems.filter((item) => {
+      const age = getAgeInDays(item.created_at);
+      return age !== null && age > 7;
+    }).length;
+    const newestPendingAge = pendingItems
+      .map((item) => getAgeInDays(item.created_at))
+      .filter((age): age is number => age !== null)
+      .sort((a, b) => b - a)[0];
+    const approvedWithCompany = approvedItems.filter((item) => Boolean(item.company)).length;
+    const rejectedThisMonth = rejectedItems.filter((item) => {
+      if (!item.created_at) return false;
+      const created = new Date(item.created_at);
+      return !Number.isNaN(created.getTime()) && isSameMonth(created, now);
+    }).length;
+
+    return {
+      total: {
+        title: "Total Testimonials Breakdown",
+        items: [
+          { label: "Approved", value: String(stats.approved), sub: `${getPercent(stats.approved, stats.total)} of total` },
+          { label: "Pending review", value: String(stats.pending), sub: `${getPercent(stats.pending, stats.total)} of total` },
+          { label: "Rejected", value: String(stats.rejected), sub: `${getPercent(stats.rejected, stats.total)} of total` },
+          { label: "Average rating", value: getAverageRating(allItems), sub: "Across all testimonials" },
+          { label: "5-star submissions", value: String(fiveStarCount), sub: `${getPercent(fiveStarCount, stats.total)} of total` },
+          { label: "This month", value: String(currentMonthItems.length), sub: `${currentMonthItems.length - previousMonthItems.length >= 0 ? "+" : ""}${currentMonthItems.length - previousMonthItems.length} vs last month` },
+        ],
+      },
+      pending: {
+        title: "Pending Testimonials",
+        items: [
+          { label: "Awaiting review", value: String(stats.pending), sub: `${getPercent(stats.pending, stats.total)} of total` },
+          { label: "Pending 5-star", value: String(pendingItems.filter((item) => item.rating === 5).length), sub: "High-priority social proof" },
+          { label: "Pending low-rated", value: String(pendingItems.filter((item) => item.rating <= 3).length), sub: "Needs moderation review" },
+          { label: "Aging > 7 days", value: String(stalePending), sub: "At risk of going stale" },
+          { label: "Oldest pending", value: newestPendingAge !== undefined ? `${newestPendingAge} days` : "—", sub: "Since submission" },
+          { label: "Avg. pending rating", value: getAverageRating(pendingItems), sub: "Across pending queue" },
+        ],
+      },
+      approved: {
+        title: "Approved Testimonials",
+        items: [
+          { label: "Approved total", value: String(stats.approved), sub: `${getPercent(stats.approved, stats.total)} approval rate` },
+          {
+            label: "Approved this month", value: String(approvedItems.filter((item) => {
+              if (!item.created_at) return false;
+              const created = new Date(item.created_at);
+              return !Number.isNaN(created.getTime()) && isSameMonth(created, now);
+            }).length), sub: "Fresh social proof"
+          },
+          { label: "Average approved rating", value: getAverageRating(approvedItems), sub: "Across approved testimonials" },
+          { label: "With company listed", value: String(approvedWithCompany), sub: `${getPercent(approvedWithCompany, Math.max(approvedItems.length, 1))} of approved` },
+          { label: "5-star approved", value: String(approvedItems.filter((item) => item.rating === 5).length), sub: "Top-tier testimonials" },
+          { label: "Approved with titles", value: String(approvedItems.filter((item) => Boolean(item.title)).length), sub: "Ready for publication" },
+        ],
+      },
+      rejected: {
+        title: "Rejected Testimonials",
+        items: [
+          { label: "Rejected total", value: String(stats.rejected), sub: `${getPercent(stats.rejected, stats.total)} of total` },
+          { label: "Rejected this month", value: String(rejectedThisMonth), sub: "Current month moderation decisions" },
+          { label: "Low-rated rejected", value: String(rejectedItems.filter((item) => item.rating <= 3).length), sub: "Rating 3 or below" },
+          { label: "High-rated rejected", value: String(rejectedItems.filter((item) => item.rating >= 4).length), sub: "Potential content quality issue" },
+          { label: "Average rejected rating", value: getAverageRating(rejectedItems), sub: "Across rejected testimonials" },
+          { label: "Rejected with company", value: String(rejectedItems.filter((item) => Boolean(item.company)).length), sub: "Company attribution present" },
+        ],
+      },
+    };
+  }, [allItems, stats]);
+
+  const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
 
   // ---- View / status-only update ----
 
@@ -239,6 +553,7 @@ export default function TestimonialsAdmin() {
         prev.map((t) => (t.id === saved.id ? { ...t, ...saved } : t)),
       );
       setViewTarget((prev) => (prev ? { ...prev, ...saved } : prev));
+      await fetchStats();
       closeView();
     } catch {
       setStatusError("Couldn't update the status. Please try again.");
@@ -320,7 +635,11 @@ export default function TestimonialsAdmin() {
       setEditing(null);
       setForm(EMPTY_FORM);
 
-      if (!isEdit) fetchTestimonials();
+      await fetchStats();
+
+      if (!isEdit) {
+        fetchTestimonials();
+      }
     } catch {
       setFormErrors({ general: "Something went wrong. Please try again." });
     } finally {
@@ -346,6 +665,8 @@ export default function TestimonialsAdmin() {
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
 
       setItems((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+      await fetchStats();
+      fetchTestimonials();
       setDeleteOpen(false);
       setDeleteTarget(null);
     } catch {
@@ -364,16 +685,13 @@ export default function TestimonialsAdmin() {
 
   return (
     <div className="min-h-screen p-4 md:p-8">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4">
-        {/* <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <button
-            onClick={openCreate}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4" />
-            New Testimonial
-          </button>
-        </div> */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
+
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {statCards.map((s) => (
+            <StatCard key={s.id} {...s} onClick={setActiveCard} />
+          ))}
+        </div>
 
         {/* Filters */}
         <div className="flex flex-col gap-3 md:flex-row mb-5">
@@ -419,6 +737,16 @@ export default function TestimonialsAdmin() {
             <option value="2">2 stars</option>
             <option value="1">1 star</option>
           </select>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4" />
+              New Testimonial
+            </button>
+          </div>
 
           <button
             onClick={handleRefresh}
@@ -639,9 +967,44 @@ export default function TestimonialsAdmin() {
         )}
       </main>
 
+      {activeDrillDown && (
+        <ModalBackdrop onClose={() => setActiveCard(null)}>
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {activeDrillDown.title}
+              </h2>
+              <button
+                onClick={() => setActiveCard(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-6 py-5">
+              {activeDrillDown.items.map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-xl bg-slate-50 p-4"
+                >
+                  <p className="text-xs text-slate-500">{item.label}</p>
+                  <p className="mt-1 text-xl font-bold text-slate-900">
+                    {item.value}
+                  </p>
+                  {item.sub && (
+                    <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </ModalBackdrop>
+      )}
+
       {/* View Dialog — read-only details, status is the only editable field */}
       {viewOpen && viewTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+        <ModalBackdrop onClose={closeView}>
           <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-900">
@@ -768,12 +1131,12 @@ export default function TestimonialsAdmin() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalBackdrop>
       )}
 
       {/* Create / Edit Dialog — testimonial details only, status is untouched */}
       {formOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+        <ModalBackdrop onClose={() => setFormOpen(false)}>
           <div className="w-full max-w-xl rounded-xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-900">
@@ -938,12 +1301,12 @@ export default function TestimonialsAdmin() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalBackdrop>
       )}
 
       {/* Delete Confirmation Dialog */}
       {deleteOpen && deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+        <ModalBackdrop onClose={() => setDeleteOpen(false)}>
           <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
             <div className="px-6 py-5">
               <div className="flex items-start gap-3">
@@ -981,7 +1344,7 @@ export default function TestimonialsAdmin() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalBackdrop>
       )}
     </div>
   );
