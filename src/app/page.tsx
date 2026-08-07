@@ -836,7 +836,7 @@ export default function Home() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.97 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              className="fixed inset-0 z-999 overflow-y-auto"
+              className="fixed inset-0 z-999 overflow-y-auto pt-16"
             >
               <div className="flex min-h-full items-start justify-center px-4 py-8">
                 <div

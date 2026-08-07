@@ -17,8 +17,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 
-// ── Modal ────────────────────────────────────────────────────────────────
-
 function Modal({
   open,
   onClose,

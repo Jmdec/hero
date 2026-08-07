@@ -599,6 +599,8 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
 
             <input
               ref={paymentProofRef}
+              id="quotation-payment-proof"
+              name="paymentProof"
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
               className="hidden"
@@ -636,6 +638,8 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
           <div>
             <label className="block text-xs font-semibold tracking-wide text-[#0B1F4A] mb-2 uppercase">Reference Number</label>
             <input
+              id="quotation-payment-reference"
+              name="paymentReference"
               type="text"
               value={paymentReference}
               onChange={(e) => setPaymentReference(e.target.value)}

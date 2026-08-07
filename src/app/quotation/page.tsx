@@ -600,6 +600,8 @@ function Step2PrivateOffice({
       <div className="grid sm:grid-cols-2 gap-5">
         <Field label="Number of Seats" required error={errors.seats}>
           <input
+            id="private-office-seats"
+            name="seats"
             type="number"
             min={1}
             max={maxSeats}
@@ -611,6 +613,8 @@ function Step2PrivateOffice({
         </Field>
         <Field label="Target Move-in Date" required error={errors.moveInDate}>
           <input
+            id="private-office-move-in-date"
+            name="moveInDate"
             type="date"
             min={today}
             value={data.moveInDate}
@@ -624,6 +628,8 @@ function Step2PrivateOffice({
       </Field>
       <Field label="Other Requirements / Conditions">
         <textarea
+          id="private-office-other-requirements"
+          name="otherRequirements"
           rows={3}
           value={data.otherRequirements}
           onChange={(e) => onChange({ otherRequirements: e.target.value })}
@@ -739,6 +745,8 @@ function Step2VirtualOffice({
       <div className="grid sm:grid-cols-2 gap-5">
         <Field label="Preferred Start Date" required error={errors.startDate}>
           <input
+            id="virtual-office-start-date"
+            name="startDate"
             type="date"
             min={today}
             value={data.startDate}
@@ -749,6 +757,8 @@ function Step2VirtualOffice({
 
         <Field label="Months Duration" required error={errors.months}>
           <select
+            id="virtual-office-months"
+            name="months"
             value={data.months}
             onChange={(e) => onChange({ months: e.target.value })}
             className={errors.months ? inputErrCls : inputCls}
@@ -764,6 +774,8 @@ function Step2VirtualOffice({
       <div className="mt-5">
         <Field label="Other Requirements / Conditions">
           <textarea
+            id="virtual-office-notes"
+            name="notes"
             rows={4}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -793,6 +805,8 @@ function Step2Coworking({
       <div className="grid sm:grid-cols-2 gap-5">
         <Field label="Number of Seats" required error={errors.seats}>
           <input
+            id="coworking-seats"
+            name="seats"
             type="number"
             min={1}
             value={data.seats}
@@ -803,6 +817,8 @@ function Step2Coworking({
         </Field>
         <Field label="Preferred Start Date" required error={errors.startDate}>
           <input
+            id="coworking-start-date"
+            name="startDate"
             type="date"
             min={today}
             value={data.startDate}
@@ -816,6 +832,8 @@ function Step2Coworking({
       </Field>
       <Field label="Other Requirements">
         <textarea
+          id="coworking-other-requirements"
+          name="otherRequirements"
           rows={3}
           value={data.otherRequirements}
           onChange={(e) => onChange({ otherRequirements: e.target.value })}
@@ -842,16 +860,18 @@ function Step2MeetingRoom({
     <div className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-5">
         <Field label="Reservation Date" required error={errors.date}>
-          <input type="date" min={today} value={data.date} onChange={(e) => onChange({ date: e.target.value })} className={errors.date ? inputErrCls : inputCls} />
+          <input id="meeting-room-date" name="date" type="date" min={today} value={data.date} onChange={(e) => onChange({ date: e.target.value })} className={errors.date ? inputErrCls : inputCls} />
         </Field>
         <Field label="Preferred Time" required error={errors.time}>
-          <select value={data.time} onChange={(e) => onChange({ time: e.target.value })} className={errors.time ? inputErrCls : inputCls}>
+          <select id="meeting-room-time" name="time" value={data.time} onChange={(e) => onChange({ time: e.target.value })} className={errors.time ? inputErrCls : inputCls}>
             <option value="">Select time</option>
             {TIME_SLOTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </Field>
         <Field label="Number of Participants" required error={errors.participants}>
           <input
+            id="meeting-room-participants"
+            name="participants"
             type="number"
             min={1}
             value={data.participants}
@@ -861,14 +881,14 @@ function Step2MeetingRoom({
           />
         </Field>
         <Field label="Duration" required error={errors.duration}>
-          <select value={data.duration} onChange={(e) => onChange({ duration: e.target.value })} className={errors.duration ? inputErrCls : inputCls}>
+          <select id="meeting-room-duration" name="duration" value={data.duration} onChange={(e) => onChange({ duration: e.target.value })} className={errors.duration ? inputErrCls : inputCls}>
             <option value="">Select duration</option>
             {["1 hour", "2 hours", "3 hours", "4 hours", "Half day", "Full day"].map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </Field>
       </div>
       <Field label="Additional Requirements">
-        <textarea rows={3} value={data.additionalRequirements} onChange={(e) => onChange({ additionalRequirements: e.target.value })} className={inputCls + " resize-none"} placeholder="AV equipment, catering, whiteboard setup, etc." />
+        <textarea id="meeting-room-additional-requirements" name="additionalRequirements" rows={3} value={data.additionalRequirements} onChange={(e) => onChange({ additionalRequirements: e.target.value })} className={inputCls + " resize-none"} placeholder="AV equipment, catering, whiteboard setup, etc." />
       </Field>
     </div>
   );
@@ -889,26 +909,26 @@ function Step2EventSpace({
     <div className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-5">
         <Field label="Event Date" required error={errors.eventDate}>
-          <input type="date" min={today} value={data.eventDate} onChange={(e) => onChange({ eventDate: e.target.value })} className={errors.eventDate ? inputErrCls : inputCls} />
+          <input id="event-space-date" name="eventDate" type="date" min={today} value={data.eventDate} onChange={(e) => onChange({ eventDate: e.target.value })} className={errors.eventDate ? inputErrCls : inputCls} />
         </Field>
         <Field label="Estimated Attendees" required error={errors.attendees}>
-          <input type="number" min={1} value={data.attendees} onChange={(e) => onChange({ attendees: e.target.value })} className={errors.attendees ? inputErrCls : inputCls} placeholder="e.g. 50" />
+          <input id="event-space-attendees" name="attendees" type="number" min={1} value={data.attendees} onChange={(e) => onChange({ attendees: e.target.value })} className={errors.attendees ? inputErrCls : inputCls} placeholder="e.g. 50" />
         </Field>
         <Field label="Event Duration" required error={errors.duration}>
-          <select value={data.duration} onChange={(e) => onChange({ duration: e.target.value })} className={errors.duration ? inputErrCls : inputCls}>
+          <select id="event-space-duration" name="duration" value={data.duration} onChange={(e) => onChange({ duration: e.target.value })} className={errors.duration ? inputErrCls : inputCls}>
             <option value="">Select duration</option>
             {["2 hours", "3 hours", "4 hours", "Half day", "Full day"].map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </Field>
         <Field label="Event Type" required error={errors.eventType}>
-          <select value={data.eventType} onChange={(e) => onChange({ eventType: e.target.value })} className={errors.eventType ? inputErrCls : inputCls}>
+          <select id="event-space-type" name="eventType" value={data.eventType} onChange={(e) => onChange({ eventType: e.target.value })} className={errors.eventType ? inputErrCls : inputCls}>
             <option value="">Select type</option>
             {["Corporate Meeting", "Product Launch", "Training / Seminar", "Team Building", "Networking Event", "Other"].map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </Field>
       </div>
       <Field label="Other Requirements">
-        <textarea rows={3} value={data.otherRequirements} onChange={(e) => onChange({ otherRequirements: e.target.value })} className={inputCls + " resize-none"} placeholder="Setup preferences, catering, AV requirements, etc." />
+        <textarea id="event-space-other-requirements" name="otherRequirements" rows={3} value={data.otherRequirements} onChange={(e) => onChange({ otherRequirements: e.target.value })} className={inputCls + " resize-none"} placeholder="Setup preferences, catering, AV requirements, etc." />
       </Field>
     </div>
   );
@@ -1017,6 +1037,8 @@ function Step3({
       <div className="grid sm:grid-cols-2 gap-5">
         <Field label="Full Name" required error={errors.name}>
           <input
+            id="quotation-contact-name"
+            name="name"
             type="text"
             value={contact.name}
             onChange={(e) => setContact((p) => ({ ...p, name: e.target.value }))}
@@ -1026,6 +1048,8 @@ function Step3({
         </Field>
         <Field label="Company Name">
           <input
+            id="quotation-contact-company"
+            name="company"
             type="text"
             value={contact.company}
             onChange={(e) => setContact((p) => ({ ...p, company: e.target.value }))}
@@ -1035,6 +1059,8 @@ function Step3({
         </Field>
         <Field label="Email Address" required error={errors.email}>
           <input
+            id="quotation-contact-email"
+            name="email"
             type="email"
             value={contact.email}
             onChange={(e) => setContact((p) => ({ ...p, email: e.target.value }))}
@@ -1044,6 +1070,8 @@ function Step3({
         </Field>
         <Field label="Phone Number" required error={errors.phone}>
           <input
+            id="quotation-contact-phone"
+            name="phone"
             type="tel"
             value={contact.phone}
             onChange={(e) => setContact((p) => ({ ...p, phone: e.target.value }))}
@@ -1063,6 +1091,8 @@ function Step3({
         <label className="my-5 flex items-start gap-3 cursor-pointer group">
           <div className="relative mt-0.5 shrink-0">
             <input
+              id="quotation-signatory-same"
+              name="signatorySameAsIdHolder"
               type="checkbox"
               checked={contractIdentity.signatorySameAsIdHolder}
               onChange={(e) =>
@@ -1095,6 +1125,8 @@ function Step3({
         <div className="grid sm:grid-cols-2 gap-5">
           <Field label="Government ID Type" required error={errors.idType}>
             <select
+              id="quotation-id-type"
+              name="idType"
               value={contractIdentity.idType}
               onChange={(e) => setContractIdentity((p) => ({ ...p, idType: e.target.value, idTypeOther: "" }))}
               className={errors.idType ? inputErrCls : inputCls}
@@ -1109,6 +1141,8 @@ function Step3({
           {!isVO && contractIdentity.idType === "Others" && (
             <Field label="Specify ID Type" required error={errors.idTypeOther}>
               <input
+                id="quotation-id-type-other"
+                name="idTypeOther"
                 type="text"
                 value={contractIdentity.idTypeOther}
                 onChange={(e) => setContractIdentity((p) => ({ ...p, idTypeOther: e.target.value }))}
@@ -1120,6 +1154,8 @@ function Step3({
 
           <Field label="Name on Government ID" required error={errors.idName}>
             <input
+              id="quotation-id-name"
+              name="idName"
               type="text"
               value={contractIdentity.idName}
               onChange={(e) => setContractIdentity((p) => ({ ...p, idName: e.target.value }))}
@@ -1130,6 +1166,8 @@ function Step3({
 
           <Field label="Government ID Number" required error={errors.idNumber}>
             <input
+              id="quotation-id-number"
+              name="idNumber"
               type="text"
               value={contractIdentity.idNumber}
               onChange={(e) => setContractIdentity((p) => ({ ...p, idNumber: e.target.value }))}
@@ -1142,6 +1180,8 @@ function Step3({
         <div className="mt-5">
           <Field label="Address on Government ID" required error={errors.idAddress}>
             <textarea
+              id="quotation-id-address"
+              name="idAddress"
               rows={3}
               value={contractIdentity.idAddress}
               onChange={(e) => setContractIdentity((p) => ({ ...p, idAddress: e.target.value }))}
@@ -1165,6 +1205,8 @@ function Step3({
             </button>
             <input
               ref={idUploadRef}
+              id="quotation-government-id-file"
+              name="governmentIdFile"
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
               className="hidden"
@@ -1196,6 +1238,8 @@ function Step3({
             <div className="grid sm:grid-cols-2 gap-5">
               <Field label="Signatory ID Type" required error={errors.signatoryIdType}>
                 <select
+                  id="quotation-signatory-id-type"
+                  name="signatoryIdType"
                   value={contractIdentity.signatoryIdType}
                   onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdType: e.target.value, signatoryIdTypeOther: "" }))}
                   className={errors.signatoryIdType ? inputErrCls : inputCls}
@@ -1210,6 +1254,8 @@ function Step3({
               {!isVO && contractIdentity.signatoryIdType === "Others" && (
                 <Field label="Specify Signatory ID Type" required error={errors.signatoryIdTypeOther}>
                   <input
+                    id="quotation-signatory-id-type-other"
+                    name="signatoryIdTypeOther"
                     type="text"
                     value={contractIdentity.signatoryIdTypeOther}
                     onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdTypeOther: e.target.value }))}
@@ -1221,6 +1267,8 @@ function Step3({
 
               <Field label="Signatory Name on Government ID" required error={errors.signatoryIdName}>
                 <input
+                  id="quotation-signatory-id-name"
+                  name="signatoryIdName"
                   type="text"
                   value={contractIdentity.signatoryIdName}
                   onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdName: e.target.value }))}
@@ -1231,6 +1279,8 @@ function Step3({
 
               <Field label="Signatory ID Number" required error={errors.signatoryIdNumber}>
                 <input
+                  id="quotation-signatory-id-number"
+                  name="signatoryIdNumber"
                   type="text"
                   value={contractIdentity.signatoryIdNumber}
                   onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdNumber: e.target.value }))}
@@ -1242,6 +1292,8 @@ function Step3({
 
             <Field label="Signatory Address on Government ID" required error={errors.signatoryIdAddress}>
               <textarea
+                id="quotation-signatory-id-address"
+                name="signatoryIdAddress"
                 rows={3}
                 value={contractIdentity.signatoryIdAddress}
                 onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdAddress: e.target.value }))}
@@ -1263,6 +1315,8 @@ function Step3({
               </button>
               <input
                 ref={signatoryUploadRef}
+                id="quotation-signatory-government-id-file"
+                name="signatoryGovernmentIdFile"
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
                 className="hidden"
@@ -1458,7 +1512,7 @@ function Step4({
 
       <label className="flex items-start gap-3 cursor-pointer group mb-2">
         <div className="relative mt-0.5 shrink-0">
-          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="sr-only" />
+          <input id="quotation-consent" name="consent" type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="sr-only" />
           <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-150 ${consent ? "bg-[#0B1F4A] border-[#0B1F4A]" : "border-[#D9E2F0] bg-white group-hover:border-[#1B3A8C]"}`}>
             {consent && (
               <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
