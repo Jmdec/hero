@@ -23,6 +23,17 @@ const inputCls =
 const selectCls =
   "w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-xl focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent bg-white transition-shadow appearance-none cursor-pointer";
 
+const PH_PHONE_REGEX = /^(\+63|0)9\d{9}$/;
+
+function validatePhone(value: string) {
+  const digitsOnly = value.replace(/[\s-]/g, "");
+  if (!digitsOnly) return "Phone number is required.";
+  if (!PH_PHONE_REGEX.test(digitsOnly)) {
+    return "Enter a valid PH mobile number, e.g. +63 917 123 4567 or 0917 123 4567.";
+  }
+  return null;
+}
+
 function Label({
   htmlFor,
   children,
@@ -331,7 +342,8 @@ const inquiryTypes = [
 function MultiStepForm() {
   const [step, setStep] = useState<1 | 2>(1);
   const [direction, setDirection] = useState<1 | -1>(1); // 1 = forward, -1 = back
-
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -348,7 +360,6 @@ function MultiStepForm() {
     "idle" | "success" | "error"
   >("idle");
 
-  // Partnership / Others fall through to `false` here — no Step 2 for them.
   const hasDynamicFields = SERVICES_WITH_FIELDS.includes(formData.inquiryType);
 
   const handleChange = (
@@ -358,11 +369,19 @@ function MultiStepForm() {
   ) => {
     const { name, value, type } = e.target;
     if (name === "inquiryType") setDynamicData({});
+    if (name === "phone" && phoneTouched) {
+      setPhoneError(validatePhone(value));
+    }
     setFormData((prev) => ({
       ...prev,
       [name]:
         type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }));
+  };
+
+  const handlePhoneBlur = () => {
+    setPhoneTouched(true);
+    setPhoneError(validatePhone(formData.phone));
   };
 
   const handleDynamicChange = (name: string, value: string) => {
@@ -381,6 +400,13 @@ function MultiStepForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const phoneValidationError = validatePhone(formData.phone);
+    if (phoneValidationError) {
+      setPhoneTouched(true);
+      setPhoneError(phoneValidationError);
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmitStatus("idle");
@@ -403,6 +429,8 @@ function MultiStepForm() {
       }
 
       setSubmitStatus("success");
+      setPhoneTouched(false);
+      setPhoneError(null);
 
       setFormData({
         name: "",
@@ -531,22 +559,31 @@ function MultiStepForm() {
                   </div>
                 </div>
 
+                <div>
+                  <Label htmlFor="phone" required>
+                    Phone Number
+                  </Label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    onBlur={handlePhoneBlur}
+                    required
+                    aria-invalid={Boolean(phoneError)}
+                    aria-describedby={phoneError ? "phone-error" : undefined}
+                    className={`${inputCls} ${phoneError ? "border-red-400 focus:ring-red-400" : ""}`}
+                    placeholder="+63 XXX XXX XXXX"
+                  />
+                  {phoneError && (
+                    <p id="phone-error" className="mt-1.5 text-xs text-red-600">
+                      {phoneError}
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="phone" required>
-                      Phone Number
-                    </Label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      required
-                      className={inputCls}
-                      placeholder="+63 XXX XXX XXXX"
-                    />
-                  </div>
                   <div>
                     <Label htmlFor="company">Company</Label>
                     <input
@@ -637,6 +674,7 @@ function MultiStepForm() {
                         !formData.name ||
                         !formData.email ||
                         !formData.phone ||
+                        Boolean(validatePhone(formData.phone)) ||
                         !formData.branchInterest ||
                         !formData.inquiryType
                       }
@@ -653,6 +691,7 @@ function MultiStepForm() {
                         !formData.name ||
                         !formData.email ||
                         !formData.phone ||
+                        Boolean(validatePhone(formData.phone)) ||
                         !formData.branchInterest ||
                         !formData.inquiryType ||
                         !formData.message

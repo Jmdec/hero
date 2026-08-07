@@ -592,7 +592,7 @@ export default function TestimonialPage() {
               href="/quotation"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-semibold hover:bg-white/10 transition-colors"
             >
-              Book a tour
+              Get a quote
             </Link>
           </div>
         </div>

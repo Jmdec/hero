@@ -276,6 +276,80 @@ export default function AdminDashboard() {
         return () => window.clearTimeout(timeoutId);
     }, [fetchAnalytics]);
 
+    const inquiryPieData = useMemo(() => {
+        if (!analytics) return [];
+
+        return Object.entries(analytics.inquiries.by_type).map(([name, value], i) => ({
+            name: formatInquiryType(name), value, color: PIE_COLORS[i % PIE_COLORS.length],
+        }));
+    }, [analytics]);
+
+    const stats = useMemo<StatCardProps[]>(() => {
+        if (!analytics) return [];
+
+        const { monthly, chat_leads, inquiries, announcements, quotations } = analytics;
+        const chatTrend = getTrendValue(monthly.chat_leads);
+        const inquiryTrend = getTrendValue(monthly.inquiries);
+        const announcementTrend = getTrendValue(monthly.announcements);
+        const revenueTrend = getTrendValue(monthly.revenue);
+
+        return [
+            { id: "chat_leads", icon: Bot, label: "Chatbot Leads", value: chat_leads.total.toLocaleString(), tone: "neutral", trend: chatTrend, onClick: setActiveCard },
+            { id: "inquiries", icon: MessageSquare, label: "Contact Inquiries", value: inquiries.total.toLocaleString(), tone: "amber", trend: inquiryTrend, onClick: setActiveCard },
+            { id: "announcements", icon: Megaphone, label: "Announcements", value: announcements.total.toLocaleString(), tone: "green", trend: announcementTrend, onClick: setActiveCard },
+            { id: "revenue", icon: PhilippinePeso, label: "Quotation Revenue", value: formatCurrency(quotations.revenue), tone: "red", trend: revenueTrend, onClick: setActiveCard },
+        ];
+    }, [analytics]);
+
+    const drillDownData = useMemo(() => {
+        if (!analytics) return null;
+
+        const { chat_leads, inquiries, announcements, quotations } = analytics;
+
+        return {
+            chat_leads: {
+                title: "Chatbot Lead Generation",
+                items: [
+                    { label: "Total leads captured", value: String(chat_leads.total), sub: "All lead conversations" },
+                    { label: "Active conversations", value: String(chat_leads.active), sub: "Currently live" },
+                    { label: "Awaiting agent", value: String(chat_leads.agent_requested), sub: "Needs handoff" },
+                    { label: "Closed conversations", value: String(chat_leads.closed), sub: "Resolved or archived" },
+                    { label: "Agent handoff rate", value: `${Math.round((chat_leads.agent_requested / Math.max(chat_leads.total, 1)) * 100)}%`, sub: "Of all leads" },
+                ],
+            },
+            inquiries: {
+                title: "Contact Inquiry Overview",
+                items: [
+                    { label: "New", value: String(inquiries.new), sub: `${Math.round((inquiries.new / Math.max(inquiries.total, 1)) * 100)}% of total` },
+                    { label: "In progress", value: String(inquiries.in_progress), sub: "Awaiting a reply" },
+                    { label: "Replied", value: String(inquiries.replied), sub: "Actioned this week" },
+                    { label: "Closed", value: String(inquiries.closed), sub: "Completed requests" },
+                    { label: "Response rate", value: `${Math.round((inquiries.replied / Math.max(inquiries.total, 1)) * 100)}%`, sub: "Replied vs total" },
+                ],
+            },
+            announcements: {
+                title: "Announcement Overview",
+                items: [
+                    { label: "Total announcements", value: String(announcements.total), sub: "All drafts and posts" },
+                    { label: "Published", value: String(announcements.published), sub: "Live on the site" },
+                    { label: "Draft", value: String(announcements.draft), sub: "Pending approval" },
+                    { label: "Archived", value: String(Math.max(announcements.total - announcements.published - announcements.draft, 0)), sub: "Hidden from live view" },
+                    { label: "Publish share", value: `${Math.round((announcements.published / Math.max(announcements.total, 1)) * 100)}%`, sub: "Published vs total" },
+                ],
+            },
+            revenue: {
+                title: "Quotation Revenue",
+                items: [
+                    { label: "Total quotations", value: String(quotations.total), sub: "All requests logged" },
+                    { label: "Revenue", value: `₱${quotations.revenue.toLocaleString()}`, sub: "Current quotation value" },
+                    { label: "Pending", value: String(quotations.by_status.pending || 0), sub: "Awaiting follow-up" },
+                    { label: "Completed", value: String(quotations.by_status.completed || 0), sub: "Closed wins" },
+                    { label: "Average value", value: `₱${Math.round(quotations.revenue / Math.max(quotations.total, 1)).toLocaleString()}`, sub: "Per quotation" },
+                ],
+            },
+        };
+    }, [analytics]);
+
     if (loading) {
         return (
             <section className="p-4 flex items-center justify-center min-h-[60vh]">
@@ -287,7 +361,7 @@ export default function AdminDashboard() {
         );
     }
 
-    if (error || !analytics) {
+    if (error || !analytics || !drillDownData) {
         return (
             <section className="p-4 flex items-center justify-center min-h-[60vh]">
                 <div className="text-center space-y-4 max-w-sm">
@@ -302,67 +376,6 @@ export default function AdminDashboard() {
     }
 
     const { inquiries, announcements, quotations, monthly, recent_inquiries, chat_leads } = analytics;
-
-    const inquiryPieData = Object.entries(inquiries.by_type).map(([name, value], i) => ({
-        name: formatInquiryType(name), value, color: PIE_COLORS[i % PIE_COLORS.length],
-    }));
-
-    const stats = useMemo<StatCardProps[]>(() => {
-        const chatTrend = getTrendValue(monthly.chat_leads);
-        const inquiryTrend = getTrendValue(monthly.inquiries);
-        const announcementTrend = getTrendValue(monthly.announcements);
-        const revenueTrend = getTrendValue(monthly.revenue);
-
-        return [
-            { id: "chat_leads", icon: Bot, label: "Chatbot Leads", value: chat_leads.total.toLocaleString(), tone: "neutral", trend: chatTrend, onClick: setActiveCard },
-            { id: "inquiries", icon: MessageSquare, label: "Contact Inquiries", value: inquiries.total.toLocaleString(), tone: "amber", trend: inquiryTrend, onClick: setActiveCard },
-            { id: "announcements", icon: Megaphone, label: "Announcements", value: announcements.total.toLocaleString(), tone: "green", trend: announcementTrend, onClick: setActiveCard },
-            { id: "revenue", icon: PhilippinePeso, label: "Quotation Revenue", value: formatCurrency(quotations.revenue), tone: "red", trend: revenueTrend, onClick: setActiveCard },
-        ];
-    }, [analytics]);
-
-    const drillDownData = useMemo(() => ({
-        chat_leads: {
-            title: "Chatbot Lead Generation",
-            items: [
-                { label: "Total leads captured", value: String(chat_leads.total), sub: "All lead conversations" },
-                { label: "Active conversations", value: String(chat_leads.active), sub: "Currently live" },
-                { label: "Awaiting agent", value: String(chat_leads.agent_requested), sub: "Needs handoff" },
-                { label: "Closed conversations", value: String(chat_leads.closed), sub: "Resolved or archived" },
-                { label: "Agent handoff rate", value: `${Math.round((chat_leads.agent_requested / Math.max(chat_leads.total, 1)) * 100)}%`, sub: "Of all leads" },
-            ],
-        },
-        inquiries: {
-            title: "Contact Inquiry Overview",
-            items: [
-                { label: "New", value: String(inquiries.new), sub: `${Math.round((inquiries.new / Math.max(inquiries.total, 1)) * 100)}% of total` },
-                { label: "In progress", value: String(inquiries.in_progress), sub: "Awaiting a reply" },
-                { label: "Replied", value: String(inquiries.replied), sub: "Actioned this week" },
-                { label: "Closed", value: String(inquiries.closed), sub: "Completed requests" },
-                { label: "Response rate", value: `${Math.round((inquiries.replied / Math.max(inquiries.total, 1)) * 100)}%`, sub: "Replied vs total" },
-            ],
-        },
-        announcements: {
-            title: "Announcement Overview",
-            items: [
-                { label: "Total announcements", value: String(announcements.total), sub: "All drafts and posts" },
-                { label: "Published", value: String(announcements.published), sub: "Live on the site" },
-                { label: "Draft", value: String(announcements.draft), sub: "Pending approval" },
-                { label: "Archived", value: String(Math.max(announcements.total - announcements.published - announcements.draft, 0)), sub: "Hidden from live view" },
-                { label: "Publish share", value: `${Math.round((announcements.published / Math.max(announcements.total, 1)) * 100)}%`, sub: "Published vs total" },
-            ],
-        },
-        revenue: {
-            title: "Quotation Revenue",
-            items: [
-                { label: "Total quotations", value: String(quotations.total), sub: "All requests logged" },
-                { label: "Revenue", value: `₱${quotations.revenue.toLocaleString()}`, sub: "Current quotation value" },
-                { label: "Pending", value: String(quotations.by_status.pending || 0), sub: "Awaiting follow-up" },
-                { label: "Completed", value: String(quotations.by_status.completed || 0), sub: "Closed wins" },
-                { label: "Average value", value: `₱${Math.round(quotations.revenue / Math.max(quotations.total, 1)).toLocaleString()}`, sub: "Per quotation" },
-            ],
-        },
-    }), [analytics]);
 
     const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
 
