@@ -794,11 +794,9 @@ export default function AnnouncementsAdmin() {
                 {loading && (
                   <tr>
                     <td colSpan={5} className="px-5 py-12 text-center">
-                      <div className="flex flex-col items-center gap-2 text-slate-400">
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        <span className="text-sm">
-                          Loading announcements...
-                        </span>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
+                        <span className="text-sm text-[#64748B]">Loading announcements...</span>
                       </div>
                     </td>
                   </tr>
@@ -1178,7 +1176,7 @@ export default function AnnouncementsAdmin() {
                           date: dateValue,
                           status:
                             !Number.isNaN(selectedDate.getTime()) &&
-                            selectedDate > today
+                              selectedDate > today
                               ? "scheduled"
                               : prev.status,
                         }));

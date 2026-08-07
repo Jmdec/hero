@@ -5,7 +5,7 @@ import {
     Search,
     RefreshCw,
     X,
-    Banknote,
+    Check,
     Trash2,
     Eye,
     AlertCircle,
@@ -17,6 +17,7 @@ import {
     Pencil,
     Link2,
     FileText,
+    Loader2,
 } from "lucide-react";
 
 type Status =
@@ -721,9 +722,9 @@ export default function AdminQuotationsPage() {
     }, [quotations]);
 
     const needsAttention = counts.pending + counts.awaiting_payment + counts.payment_verification;
-    const paidRevenue = useMemo(() => {
+    const completed = useMemo(() => {
         return quotations
-            .filter((q) => (q.status === "paid" || q.status === "completed") && q.detail && hasPricingData(q.detail))
+            .filter((q) => q.status === "completed" && q.detail && hasPricingData(q.detail))
             .reduce((sum, q) => sum + (q.detail ? Number(q.detail.total) || 0 : 0), 0);
     }, [quotations]);
 
@@ -971,7 +972,7 @@ export default function AdminQuotationsPage() {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <StatCard label="Total requests" value={String(counts.all)} icon={Inbox} tone="neutral" />
                     <StatCard label="Needs attention" value={String(needsAttention)} icon={AlertCircle} tone="amber" />
-                    <StatCard label="Quotation value" value={formatCurrency(paidRevenue)} icon={Banknote} tone="green" />
+                    <StatCard label="Quotation value" value={String(completed)} icon={Check} tone="green" />
                     <StatCard label="Cancelled" value={String(counts.cancelled)} icon={XCircle} tone="red" />
                 </div>
 
@@ -1025,7 +1026,12 @@ export default function AdminQuotationsPage() {
                 {/* Table */}
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                     {loading ? (
-                        <div className="p-16 text-center text-sm text-[#64748B]">Loading quotations…</div>
+                        <div className="p-16 text-center text-sm text-[#64748B]">
+                            <div className="flex items-center justify-center gap-2">
+                                <div className="w-4 h-4 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
+                                <span className="text-sm text-[#64748B]">Loading quotations...</span>   
+                            </div>
+                        </div>
                     ) : filtered.length === 0 ? (
                         <div className="p-16 text-center">
                             <Inbox className="w-8 h-8 text-[#D9E2F0] mx-auto mb-3" />

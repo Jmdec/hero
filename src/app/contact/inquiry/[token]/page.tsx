@@ -1,8 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-
 interface ContactInquiry {
     id: number;
     name: string;
@@ -11,16 +11,7 @@ interface ContactInquiry {
     company: string | null;
     inquiry_type: string;
     message: string;
-    dynamic_data: Record<string, string> | null;
-    status: string;
-    thread: Array<{
-        type: "inbound" | "outbound";
-        from: string;
-        subject: string;
-        body: string;
-        created_at: string;
-    }>;
-    last_replied_at: string | null;
+    dynamic_data?: Record<string, string> | null;
     created_at: string;
 }
 
@@ -47,7 +38,6 @@ function getInquiryLabel(value: string) {
         partnership: "Partnership",
         others: "Others",
     };
-
     return labels[value] ?? value;
 }
 
@@ -100,9 +90,12 @@ export default function PublicInquiryPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-16">
-                <div className="rounded-3xl border border-gray-200 bg-white px-8 py-12 text-center shadow-lg">
-                    <p className="text-gray-500">Loading inquiry details…</p>
+            <div className={`min-h-screen flex items-center justify-center bg-[#F7F4EC] px-4 py-16`}>
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#DCD5C6] border-t-[#A9824C]" />
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#5C6B7A]">
+                        Loading Inquiry Details...
+                    </p>
                 </div>
             </div>
         );
@@ -110,76 +103,87 @@ export default function PublicInquiryPage() {
 
     if (error || !inquiry) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-16">
-                <div className="rounded-3xl border border-red-200 bg-white px-8 py-12 text-center shadow-lg">
-                    <p className="text-xl font-semibold text-red-700">Unable to load inquiry</p>
-                    <p className="mt-3 text-sm text-slate-600">{error ?? "This inquiry link may be invalid or expired."}</p>
+            <div className={`min-h-screen flex items-center justify-center bg-[#F7F4EC] px-4 py-16`}>
+                <div className="w-full max-w-md border border-[#DCD5C6] bg-white p-10 text-center">
+                    <div className="mx-auto mb-4 h-px w-10 bg-[#B4433B]" />
+                    <p className="text-2xl font-semibold text-[#12203A]">
+                        Link unavailable
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-[#5C6B7A]">
+                        {error ?? "This inquiry link may be invalid or expired."}
+                    </p>
                 </div>
             </div>
         );
     }
 
+    const infoRows: Array<{ label: string; value: string }> = [
+        { label: "Name", value: inquiry.name },
+        { label: "Email", value: inquiry.email },
+        { label: "Phone", value: inquiry.phone },
+        ...(inquiry.company ? [{ label: "Company", value: inquiry.company }] : []),
+        { label: "Inquiry Type", value: getInquiryLabel(inquiry.inquiry_type) },
+        { label: "Branch Interest", value: getBranchLabel(inquiry.dynamic_data?.branchInterest) },
+        { label: "Submitted", value: formatDate(inquiry.created_at) },
+    ];
+
     return (
-        <div className="min-h-screen bg-slate-50 py-4 sm:px-6 lg:px-8">
-            <div className="mx-auto w-full max-w-4xl">
-                <div className="rounded-[40px] border border-slate-200 bg-white p-10 shadow-[0_40px_120px_rgba(15,23,42,0.06)] space-y-4">
-                    <div className="rounded-3xl border border-blue-50 bg-linear-to-r from-sky-50 to-white p-8 shadow-sm">
-                        <h1 className="text-3xl font-bold text-slate-900">Inquiry Summary</h1>
-                        <p className="mt-3 text-sm leading-7 text-slate-600">
-                            This inquiry is available via a secure view link for quick reference.
+        <div className={`min-h-screen bg-[#F7F4EC] px-4 py-10 sm:px-6 lg:px-8`}>
+            <div className="mx-auto w-full max-w-3xl font-body">
+
+                {/* Directory header band */}
+                <div className="relative overflow-hidden rounded-t-sm bg-[#12203A] px-8 py-3 sm:px-10 flex justify-between items-stretch">
+                    <div className="absolute inset-x-0 top-0 h-0.75 bg-[#A9824C]" />
+                    <div className="relative flex flex-col gap-1">
+                        <div className="flex items-start justify-between gap-6">
+                            <div>
+                                <h1 className="mt-2 text-[34px] font-semibold leading-tight text-[#F7F4EC] sm:text-[40px]">
+                                    Inquiry Summary
+                                </h1>
+                            </div>
+                        </div>
+                        <p className="mt-1 max-w-md text-sm leading-6 text-[#9FADC2]">
+                            Shared for quick reference via a secure view link.
                         </p>
                     </div>
 
-                    <div className="flex flex-col gap-4">
-                        <section className="space-y-6 rounded-[32px] border border-slate-200 bg-slate-50 p-8">
-                            <div>
-                                <h2 className="text-xl font-bold text-slate-900">Customer Information</h2>
-                            </div>
+                    <div className="flex items-center">
+                        <Link
+                            href="/admin/inquiries"
+                            className="inline-flex items-center gap-2 rounded-full bg-[#A9824C] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#B47F3D] focus:outline-none focus:ring-2 focus:ring-[#A9824C] focus:ring-offset-2"
+                        >
+                            Reply
+                        </Link>
+                    </div>
+                </div>
 
-                            <div className="grid grid-cols-2 gap-4 text-sm text-slate-700">
-                                <div className="flex items-center justify-between gap-4 rounded-3xl bg-white px-4 py-3 shadow-sm">
-                                    <span className="font-bold text-slate-600">Name</span>
-                                    <span className="text-slate-900">{inquiry.name}</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-4 rounded-3xl bg-white px-4 py-3 shadow-sm">
-                                    <span className="font-bold text-slate-600">Email</span>
-                                    <span className="text-slate-900">{inquiry.email}</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-4 rounded-3xl bg-white px-4 py-3 shadow-sm">
-                                    <span className="font-bold text-slate-600">Phone</span>
-                                    <span className="text-slate-900">{inquiry.phone}</span>
-                                </div>
-                                {inquiry.company && (
-                                    <div className="flex items-center justify-between gap-4 rounded-3xl bg-white px-4 py-3 shadow-sm">
-                                        <span className="font-bold text-slate-600">Company</span>
-                                        <span className="text-slate-900">{inquiry.company}</span>
-                                    </div>
-                                )}
-                                <div className="flex items-center justify-between gap-4 rounded-3xl bg-white px-4 py-3 shadow-sm">
-                                    <span className="font-bold text-slate-600">Inquiry Type</span>
-                                    <span className="text-slate-900">{getInquiryLabel(inquiry.inquiry_type)}</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-4 rounded-3xl bg-white px-4 py-3 shadow-sm">
-                                    <span className="font-bold text-slate-600">Branch Interest</span>
-                                    <span className="text-slate-900">{getBranchLabel(inquiry.dynamic_data?.branchInterest)}</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-4 rounded-3xl bg-white px-4 py-3 shadow-sm">
-                                    <span className="font-bold text-slate-600">Submitted</span>
-                                    <span className="text-slate-900">{formatDate(inquiry.created_at)}</span>
-                                </div>
-                            </div>
-                        </section>
+                {/* Directory rows */}
+                <div className="border-x border-[#DCD5C6] bg-white px-8 py-2 sm:px-10">
+                    {infoRows.map((row, i) => (
+                        <div
+                            key={row.label}
+                            className={`flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4 ${i !== infoRows.length - 1 ? "border-b border-[#EDE9DD]" : ""
+                                }`}
+                        >
+                            <span className="text-[11px] uppercase tracking-[0.18em] text-[#A9824C]/60">
+                                {row.label}
+                            </span>
+                            <span className="text-right text-sm md:text-md text-[#12203A]">
+                                {row.value}
+                            </span>
+                        </div>
+                    ))}
+                </div>
 
-                        <section className="rounded-[32px] border border-slate-200 bg-linear-to-b from-[#f8fafc] to-white p-8 shadow-sm">
-                            <div className="flex items-center justify-between gap-4">
-                                <div>
-                                    <h2 className="text-xl font-bold text-slate-900">Message</h2>
-                                </div>
-                            </div>
-                            <div className="mt-2 rounded-3xl border border-slate-200 bg-white p-6 text-sm leading-7 text-slate-800 shadow-sm whitespace-pre-wrap">
-                                {inquiry.message}
-                            </div>
-                        </section>
+                {/* Message */}
+                <div className="border-x border-t border-[#DCD5C6] bg-white px-8 py-8 sm:px-10">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[#A9824C]">
+                        Message
+                    </p>
+                    <div className="mt-3 border-l-2 border-[#A9824C] pl-5">
+                        <p className="whitespace-pre-wrap text-sm md:text-md leading-7 text-[#2A3547]">
+                            {inquiry.message}
+                        </p>
                     </div>
                 </div>
             </div>

@@ -97,6 +97,9 @@ function StepProgress({ step }: { step: 1 | 2 }) {
 }
 
 // Dynamic Fields (Step 2)
+// NOTE: "partnership" and "others" are intentionally excluded here.
+// Any inquiryType not listed in SERVICES_WITH_FIELDS has no Step 2 and
+// submits directly from Step 1.
 
 const SERVICES_WITH_FIELDS = [
   "private-office",
@@ -345,6 +348,7 @@ function MultiStepForm() {
     "idle" | "success" | "error"
   >("idle");
 
+  // Partnership / Others fall through to `false` here — no Step 2 for them.
   const hasDynamicFields = SERVICES_WITH_FIELDS.includes(formData.inquiryType);
 
   const handleChange = (
@@ -482,7 +486,7 @@ function MultiStepForm() {
       <div className="overflow-hidden">
         <AnimatePresence mode="wait" custom={direction}>
           {step === 1 ? (
-            <motion.div
+            <motion.form
               key="step1"
               custom={direction}
               variants={variants}
@@ -490,6 +494,7 @@ function MultiStepForm() {
               animate="center"
               exit="exit"
               transition={{ duration: 0.3, ease: "easeInOut" }}
+              onSubmit={hasDynamicFields ? (e) => e.preventDefault() : handleSubmit}
             >
               {/* ── Step 1: Contact info + inquiry type ── */}
               <div className="space-y-6">
@@ -600,7 +605,8 @@ function MultiStepForm() {
                   </SelectWrapper>
                 </div>
 
-                {/* Message (shown in step 1 if no dynamic fields needed) */}
+                {/* Message (shown in step 1 if no dynamic fields needed —
+                    i.e. Partnership / Others, which skip Step 2 entirely) */}
                 {!hasDynamicFields && formData.inquiryType && (
                   <div>
                     <Label htmlFor="message" required>
@@ -668,7 +674,7 @@ function MultiStepForm() {
                   )}
                 </div>
               </div>
-            </motion.div>
+            </motion.form>
           ) : (
             <motion.form
               key="step2"
@@ -680,7 +686,9 @@ function MultiStepForm() {
               transition={{ duration: 0.3, ease: "easeInOut" }}
               onSubmit={handleSubmit}
             >
-              {/* ── Step 2: Dynamic service fields + message ── */}
+              {/* ── Step 2: Dynamic service fields + message ──
+                  Only reached for inquiry types in SERVICES_WITH_FIELDS.
+                  Partnership / Others never navigate here. */}
               <div className="space-y-6">
                 {/* Summary chip */}
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#1B3A8C]/8 rounded-full border border-[#1B3A8C]/20">
@@ -1020,7 +1028,7 @@ export default function ContactPage() {
             unoptimized
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
+          <div className="absolute inset-0 bg-linear-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
         </div>
         <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
@@ -1089,28 +1097,6 @@ export default function ContactPage() {
             </motion.div>
           </div>
         </div>
-
-        {/* Quick contact strip, anchored to the bottom edge of the hero
-        <div className="pt-10">
-          <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-4">
-            {contactChannels.map((c) => (
-              <div
-                key={c.label}
-                className="flex items-center gap-3 bg-gray-200 backdrop-blur-md border border-gray-300 rounded-2xl px-5 py-4"
-              >
-                <span className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-                  <c.icon className="w-4.5 h-4.5 text-black" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-wide text-black font-medium">
-                    {c.label}
-                  </p>
-                  <p className="text-sm font-semibold text-black truncate">{c.value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div> */}
       </section>
 
       {/* FAQ */}

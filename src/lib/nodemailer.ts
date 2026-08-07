@@ -426,14 +426,14 @@ function isVirtualOfficePaymongo(
 
 const RECIPIENTS = {
     chairman: process.env.QUOTATION_CHAIRMAN_EMAIL || process.env.CONTACT_INQUIRY_CHAIRMAN_EMAIL || process.env.CHAIRMAN_EMAIL || "infinitech.eirene@gmail.com",
-    president: process.env.QUOTATION_PRESIDENT_EMAIL || process.env.CONTACT_INQUIRY_PRESIDENT_EMAIL || process.env.PRESIDENT_EMAIL || "president.mock@hero-office.test",
-    salesOfficer: process.env.SALES_OFFICER_EMAIL || "sales.officer.mock@hero-office.test",
+    president: process.env.QUOTATION_PRESIDENT_EMAIL || process.env.CONTACT_INQUIRY_PRESIDENT_EMAIL || process.env.PRESIDENT_EMAIL || "",
+    generalManager: process.env.GENERAL_MANAGER_EMAIL || "",
+    salesOfficer: process.env.SALES_OFFICER_EMAIL || "",
     digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "eirenegrc.armilla@gmail.com",
-    generalManager: process.env.GENERAL_MANAGER_EMAIL || "general.manager.mock@hero-office.test",
-    accounting: process.env.ACCOUNTING_EMAIL || "accounting.mock@hero-office.test",
+    accounting: process.env.ACCOUNTING_EMAIL || "infinitech.eirene@gmail.com",
     branchManagers: {
-        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "tower6789.manager.mock@hero-office.test",
-        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "insular.manager.mock@hero-office.test",
+        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "armilla.eirenegrace@gmail.com",
+        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "armilla.eirenegrace@gmail.com",
     },
 };
 

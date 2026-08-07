@@ -1,7 +1,3 @@
-// 📁 PUT THIS FILE AT: app/api/admin/contacts/[id]/reply/route.ts
-// ⚠️ "reply" folder goes INSIDE the "[id]" folder, INSIDE "contacts" (plural).
-// URL: POST /api/admin/contacts/5/reply
-
 import { NextRequest, NextResponse } from "next/server";
 import { sendMail } from "@/lib/mailer";
 import {
@@ -85,9 +81,6 @@ async function sendInquiryTakenNotification(args: {
             <tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">Branch Interest</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${branchLabel}</td></tr>
             <tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">Handled By</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${handlerName}${handlerEmail ? ` (${handlerEmail})` : ""}</td></tr>
           </table>
-          <div style="margin-top:24px;">
-            <a href="${adminUrl}" style="display:inline-block;padding:12px 18px;background:#0D47A1;color:#ffffff;text-decoration:none;border-radius:999px;font-weight:700;font-size:14px;">Open Inquiry</a>
-          </div>
         </div>
       </div>
     </div>`;
@@ -156,7 +149,7 @@ export async function POST(
   }
 
   // 1. fetch the inquiry (auth required — same as your other admin calls)
-  const getRes = await fetch(`${API_URL}/api/admin/contacts/${id}`, {
+  const getRes = await fetch(`${API_URL}/api/admin/inquiries/${id}`, {
     headers: {
       Accept: "application/json",
       Authorization: authHeader,
@@ -182,7 +175,7 @@ export async function POST(
   });
 
   // 3. record the reply back in Laravel (auth required again)
-  const patchRes = await fetch(`${API_URL}/api/admin/contacts/${id}/reply`, {
+  const patchRes = await fetch(`${API_URL}/api/admin/inquiries/${id}/reply`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

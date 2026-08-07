@@ -131,6 +131,15 @@ const TIME_SLOTS = [
   ["13:00", "1:00 PM"], ["14:00", "2:00 PM"], ["15:00", "3:00 PM"], ["16:00", "4:00 PM"],
 ];
 
+function normalizeQuotationService(value: string | null): ServiceId | null {
+  if (!value) return null;
+
+  const normalized = value === "co-working-space" ? "coworking" : value;
+  return SERVICES.some((service) => service.id === normalized)
+    ? (normalized as ServiceId)
+    : null;
+}
+
 // Standard accepted government IDs (used by non-VO services / general fallback)
 const GOVERNMENT_ID_TYPES = [
   "Philippine National ID (PhilSys ID)",
@@ -1592,14 +1601,15 @@ export default function GetAQuotePage() {
 
   useEffect(() => {
     const branch = searchParams.get("branch");
-    const service = searchParams.get("service");
+    const service = normalizeQuotationService(searchParams.get("service") ?? searchParams.get("type"));
 
     if (branch && BRANCHES.some((b) => b.id === branch)) {
       setSelectedBranch(branch as BranchId);
     }
 
-    if (service && SERVICES.some((s) => s.id === service)) {
-      setSelectedService(service as ServiceId);
+    if (service) {
+      setSelectedService(service);
+      setStep(2);
     }
   }, [searchParams]);
   const [virtualOffice, setVirtualOffice] = useState<VirtualOfficeFields>({ package: "", startDate: "", months: "" });

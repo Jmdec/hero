@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState, useCallback, useRef } from "react"
 import {
   Search,
   Eye,
@@ -11,9 +11,13 @@ import {
   X,
   AlertTriangle,
   Mail,
-  Phone,
-  Building2,
+  Pencil,
+  ChevronDown,
   Calendar,
+  RefreshCw,
+  Send,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react"
 
 interface Contact {
@@ -30,27 +34,221 @@ interface Contact {
   updated_at?: string
 }
 
+interface ContactStats {
+  total: number
+  new: number
+  contacted: number
+  completed: number
+}
+
 const STATUS_STYLES: Record<string, string> = {
   new: "bg-blue-100 text-blue-700 ring-1 ring-inset ring-blue-200",
   contacted: "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200",
   completed: "bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-200",
 }
 
+function mapDisplayStatus(status: string | null | undefined) {
+  switch (status) {
+    case "replied":
+    case "in_progress":
+      return "contacted"
+    case "closed":
+      return "completed"
+    default:
+      return status || "new"
+  }
+}
+
+function mapApiStatus(status: string | null | undefined) {
+  switch (status) {
+    case "contacted":
+      return "replied"
+    case "completed":
+      return "closed"
+    default:
+      return status || "new"
+  }
+}
+
 const INQUIRY_LABELS: Record<string, string> = {
   "private-office": "Private Office",
   "virtual-office": "Virtual Office",
+  "co-working-space": "Co-Working Space",
   "meeting-room": "Meeting Room",
   "event-space": "Event Space",
+  "ocular-visit": "Ocular Visit",
+  partnership: "Partnership",
+  others: "Others",
+}
+
+const SIGNATURE = `Best regards,
+
+HERO Serviced Office Team
+Sales: salesofficer@heroph.net | digitalsalesmarketing@heroph.net
+Support: admin@heroph.net
+Main Line: +63 942 639 4128
+Tower 6789: +632 8528 3100 | Insular Life Building: +632 8246 0801
+"Your Workspace for Success."`
+
+function greeting(c: Contact) {
+  const firstName = c.name?.split(" ")[0] || c.name
+  return `Good Day Mr/Ms ${firstName},`
+}
+
+const QUOTATION_BASE_URL = "/quotation"
+
+function quotationLink(c: Contact, inquiryType: string) {
+  const serviceValue = inquiryType === "co-working-space" ? "coworking" : inquiryType
+
+  const params = new URLSearchParams({
+    service: serviceValue,
+    ref: String(c.id),
+    type: inquiryType,
+  })
+
+  const origin = typeof window !== "undefined" ? window.location.origin : ""
+  return `${origin}${QUOTATION_BASE_URL}?${params.toString()}`
+}
+
+type TemplateBuilder = (c: Contact) => { subject: string; body: string }
+
+const EMAIL_TEMPLATES: Record<string, TemplateBuilder> = {
+  "private-office": (c) => ({
+    subject: `Your Private Office Inquiry at HERO Serviced Office`,
+    body: `${greeting(c)}
+
+Thank you for your interest in a Private Office at HERO Serviced Office. We'd love to help you find the right fully furnished workspace for your team.
+
+Here's a quick overview:
+- Pricing: starts at PHP 11,000/seat/month (corridor side) or PHP 12,000/seat/month (window side)
+- Office sizes: available from 1 to 35 persons
+- Contract terms: 3, 6, 9, or 12 months
+- Inclusions: fully furnished workstation, prestigious business address, high-speed internet (up to 600 Mbps), professional reception services, mail and parcel handling, utilities, housekeeping, meeting room usage credits, pantry and common area access, printing and scanning, 24/7 secure access, and access cards
+- Add-ons available: parking slots, dedicated internet line, additional workstations, conference room upgrade, company signage, mail forwarding, and IT support
+
+Move-in is typically available within 3-4 weeks of completing the required documents and payment, and a refundable security deposit equivalent to 1-2 months' rent applies.
+
+Interested in our service? Request your quotation here: ${quotationLink(c, "private-office")}
+
+${SIGNATURE}`,
+  }),
+
+  "virtual-office": (c) => ({
+    subject: `Your Virtual Office Inquiry at HERO Serviced Office`,
+    body: `${greeting(c)}
+
+Thank you for reaching out about our Virtual Office solutions. Here are our current packages:
+
+- Basic - PHP 2,000/month: business address, registration document assistance, mail handling, basic call handling, 1 day co-working access, 1 hour conference room access
+- Standard - PHP 3,000/month: business address, registration document assistance, mail handling, basic call handling, 2 days co-working access, 2 hours conference room access
+- Premium - PHP 5,000/month: business address, registration document assistance, mail handling, basic call handling, 5 days co-working access, 3 hours conference room access
+
+Contract terms are available for 6 or 12 months, and the address can be used for official business registration.
+
+Interested in our service? Request your quotation here: ${quotationLink(c, "virtual-office")}
+
+${SIGNATURE}`,
+  }),
+
+  "co-working-space": (c) => ({
+    subject: `Your Co-Working Space Inquiry at HERO Serviced Office`,
+    body: `${greeting(c)}
+
+Thanks for your interest in our Co-Working Space. It's a great fit if you'd like a flexible, professional workspace without a long-term commitment.
+
+- Pricing: PHP 550/day, PHP 2,000/week, or PHP 5,500/month
+- Inclusions: flexible workstation, high-speed internet (up to 600 Mbps), reception services, utilities, air-conditioned environment, meeting room usage credits, pantry and lounge access, 24/7 secure access, phone booth access, and unlimited coffee, tea, and water
+- Add-ons: printing and scanning services, additional access cards
+
+Interested in our service? Request your quotation here: ${quotationLink(c, "co-working-space")}
+
+${SIGNATURE}`,
+  }),
+
+  "meeting-room": (c) => ({
+    subject: `Your Conference Room Booking Inquiry at HERO Serviced Office`,
+    body: `${greeting(c)}
+
+Thank you for your interest in booking our Conference Room. Here are the details:
+
+- Pricing: PHP 1,500/hour or PHP 9,000/day
+- Inclusions: fully furnished conference room, high-speed internet (up to 600 Mbps), reception services, utilities, projector and screen, meeting room usage credits, pantry access, 24/7 secure access, and unlimited coffee, tea, and water
+- Add-ons: printing and scanning services, additional access cards
+
+Interested in our service? Request your quotation here: ${quotationLink(c, "meeting-room")}
+
+${SIGNATURE}`,
+  }),
+
+  "event-space": (c) => ({
+    subject: `Your Event & Activity Space Inquiry at HERO Serviced Office`,
+    body: `${greeting(c)}
+
+Thank you for considering HERO Serviced Office for your upcoming event. Our Event/Activity Area is a flexible, fully serviced space designed for workshops, training, networking sessions, and product launches.
+
+- Pricing: starts at PHP 5,000, depending on setup and number of participants
+- Inclusions: flexible event space setup, high-speed internet (up to 600 Mbps), reception services, utilities, basic furniture setup, lounge access, pantry access, unlimited coffee/tea/water, and 24/7 secure access (subject to booking schedule)
+- Add-ons: audio-visual equipment, sound system rental, event styling, catering coordination, and extra seating
+
+Interested in our service? Request your quotation here: ${quotationLink(c, "event-space")}
+
+${SIGNATURE}`,
+  }),
+
+  "ocular-visit": (c) => ({
+    subject: `Scheduling Your Ocular Visit at HERO Serviced Office`,
+    body: `${greeting(c)}
+
+Thank you for your interest in visiting HERO Serviced Office. We'd be happy to give you a tour of our workspaces at Tower 6789 or the Insular Life Building along Ayala Avenue, Makati.
+
+Here’s your scheduled ocular visit details:
+- Preferred branch: 
+- Preferred date and time: 
+- Service of Interest: 
+
+We look forward to showing you around and discussing the best fit for your business.
+
+${SIGNATURE}`,
+  }),
+
+  partnership: (c) => ({
+    subject: `Thank You for Your Partnership Inquiry - HERO Serviced Office`,
+    body: `${greeting(c)}
+
+Thank you for reaching out about a potential partnership with HERO Serviced Office. We're always glad to explore opportunities that create value for both sides.
+
+Could you share a bit more detail about the partnership you have in mind (e.g., referral, corporate agreement, event collaboration) along with your company background? This will help us route your inquiry to the right team and respond with the most relevant information.
+
+${SIGNATURE}`,
+  }),
+
+  others: (c) => ({
+    subject: `Following Up on Your Inquiry - HERO Serviced Office`,
+    body: `${greeting(c)}
+
+Thank you for reaching out to HERO Serviced Office. We received your message:
+
+"${c.message || "—"}"
+
+We'd love to learn more about what you're looking for so we can point you to the right workspace solution - Private Office, Virtual Office, Co-Working Space, Conference Room, or Event Space. Could you share a few more details, or let us know a good time for a quick call?
+
+${SIGNATURE}`,
+  }),
+}
+
+function buildTemplateFor(c: Contact) {
+  const builder = EMAIL_TEMPLATES[c.inquiry_type] ?? EMAIL_TEMPLATES.others
+  return builder(c)
 }
 
 function formatDate(value: string) {
-  const d = new Date(value)
-  if (isNaN(d.getTime())) return value
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
   return d.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
-  })
+  });
 }
 
 function formatLabel(key: string) {
@@ -61,10 +259,104 @@ function formatLabel(key: string) {
     .trim()
 }
 
+// Builds a compact page list with ellipses, e.g. 1 … 4 5 [6] 7 8 … 12
+function getPageNumbers(current: number, last: number): (number | "…")[] {
+  if (last <= 7) return Array.from({ length: last }, (_, i) => i + 1);
+
+  const pages = new Set<number>([1, last, current - 1, current, current + 1]);
+  const sorted = Array.from(pages)
+    .filter((p) => p >= 1 && p <= last)
+    .sort((a, b) => a - b);
+
+  const result: (number | "…")[] = [];
+  sorted.forEach((p, i) => {
+    if (i > 0 && p - (sorted[i - 1] as number) > 1) result.push("…");
+    result.push(p);
+  });
+  return result;
+}
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string
+  value: number
+  icon: React.ComponentType<{ className?: string }>
+  tone: "neutral" | "blue" | "amber" | "green"
+}) {
+  const toneStyles = {
+    neutral: { bg: "bg-slate-100", text: "text-slate-600" },
+    blue: { bg: "bg-blue-50", text: "text-blue-700" },
+    amber: { bg: "bg-amber-50", text: "text-amber-700" },
+    green: { bg: "bg-emerald-50", text: "text-emerald-700" },
+  }[tone]
+
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${toneStyles.bg}`}>
+        <Icon className={`h-5 w-5 ${toneStyles.text}`} />
+      </span>
+      <div className="min-w-0">
+        <p className="text-2xl font-bold leading-none text-slate-900">{value}</p>
+        <p className="mt-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {label}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+type ToastTone = "success" | "error"
+
+interface ToastItem {
+  id: number
+  message: string
+  tone: ToastTone
+}
+
+function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: number) => void }) {
+  if (toasts.length === 0) return null
+  return (
+    <div className="fixed bottom-5 right-5 z-100 flex flex-col gap-2 w-full max-w-sm pointer-events-none">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={`pointer-events-auto flex items-start gap-3 rounded-xl border px-4 py-3 shadow-lg transition-all animate-in fade-in slide-in-from-bottom-2 ${t.tone === "success"
+            ? "bg-white border-green-200"
+            : "bg-white border-red-200"
+            }`}
+        >
+          {t.tone === "success" ? (
+            <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+          ) : (
+            <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          )}
+          <p className="text-sm text-slate-800 flex-1 leading-snug">{t.message}</p>
+          <button
+            onClick={() => onDismiss(t.id)}
+            className="text-slate-400 hover:text-slate-600 transition shrink-0"
+            aria-label="Dismiss notification"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function ContactsAdmin() {
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [stats, setStats] = useState<ContactStats>({ total: 0, new: 0, contacted: 0, completed: 0 })
+  const [statsLoading, setStatsLoading] = useState(true)
+  const [statsError, setStatsError] = useState<string | null>(null)
 
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("")
@@ -86,8 +378,36 @@ export default function ContactsAdmin() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  async function fetchContacts() {
-    setLoading(true)
+  // Reply-by-email dialog state
+  const [replyTarget, setReplyTarget] = useState<Contact | null>(null)
+  const [replyOpen, setReplyOpen] = useState(false)
+  const [replySubject, setReplySubject] = useState("")
+  const [replyBody, setReplyBody] = useState("")
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const [sendSuccess, setSendSuccess] = useState(false)
+
+  const [toasts, setToasts] = useState<ToastItem[]>([])
+  const toastIdRef = useRef(0)
+
+  const pushToast = useCallback((message: string, tone: ToastTone) => {
+    const id = ++toastIdRef.current
+    setToasts((t) => [...t, { id, message, tone }])
+    setTimeout(() => {
+      setToasts((t) => t.filter((toast) => toast.id !== id))
+    }, 4000)
+  }, [])
+
+  const dismissToast = (id: number) => {
+    setToasts((t) => t.filter((toast) => toast.id !== id))
+  }
+
+  async function fetchContacts(background = false) {
+    if (background) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
     setError(null)
 
     try {
@@ -97,7 +417,7 @@ export default function ContactsAdmin() {
       })
 
       if (search) params.append("search", search)
-      if (status) params.append("status", status)
+      if (status) params.append("status", mapApiStatus(status))
       if (type) params.append("inquiry_type", type)
 
       const token = localStorage.getItem("token")
@@ -111,10 +431,15 @@ export default function ContactsAdmin() {
       if (!res.ok) throw new Error(`Request failed (${res.status})`)
 
       const data = await res.json()
+      const list = Array.isArray(data.data) ? data.data : []
+      const mappedContacts = list.map((contact: Contact) => ({
+        ...contact,
+        status: mapDisplayStatus(contact.status),
+      }))
 
-      setContacts(data.data ?? [])
+      setContacts(mappedContacts)
       setLastPage(data.last_page ?? 1)
-      setTotal(data.total ?? (data.data ?? []).length)
+      setTotal(data.total ?? mappedContacts.length)
     } catch (err) {
       setError(
         err instanceof Error
@@ -124,6 +449,49 @@ export default function ContactsAdmin() {
       setContacts([])
     } finally {
       setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  async function fetchStats() {
+    setStatsLoading(true)
+    setStatsError(null)
+
+    try {
+      const token = localStorage.getItem("token")
+      const res = await fetch(`/api/admin/contacts?per_page=1000`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!res.ok) throw new Error(`Request failed (${res.status})`)
+
+      const data = await res.json()
+      const list = Array.isArray(data.data) ? data.data : []
+      const statsData = list.reduce(
+        (acc: ContactStats, inquiry: Contact) => {
+          const displayStatus = mapDisplayStatus(inquiry.status)
+          if (displayStatus === "new") {
+            acc.new += 1
+          } else if (displayStatus === "contacted") {
+            acc.contacted += 1
+          } else if (displayStatus === "completed") {
+            acc.completed += 1
+          }
+          acc.total += 1
+          return acc
+        },
+        { total: 0, new: 0, contacted: 0, completed: 0 },
+      )
+
+      setStats(statsData)
+    } catch (err) {
+      setStatsError(
+        err instanceof Error ? err.message : "Could not load stats."
+      )
+    } finally {
+      setStatsLoading(false)
     }
   }
 
@@ -131,6 +499,15 @@ export default function ContactsAdmin() {
     fetchContacts()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, search, status, type])
+
+  useEffect(() => {
+    fetchStats()
+  }, [])
+
+  function handleRefresh() {
+    fetchContacts(true)
+    fetchStats()
+  }
 
   function openStatusDialog(c: Contact) {
     setStatusTarget(c)
@@ -144,23 +521,25 @@ export default function ContactsAdmin() {
 
     try {
       const token = localStorage.getItem("token")
+      const apiStatus = mapApiStatus(statusValue)
 
       await fetch(`/api/admin/contacts/${statusTarget.id}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: statusValue }),
+        body: JSON.stringify({ status: apiStatus }),
       })
 
       setContacts((prev) =>
         prev.map((c) =>
-          c.id === statusTarget.id ? { ...c, status: statusValue } : c
+          c.id === statusTarget.id ? { ...c, status: mapDisplayStatus(apiStatus) } : c
         )
       )
       setStatusOpen(false)
       setStatusTarget(null)
+      fetchStats()
     } catch {
       // keep dialog open so the admin can retry
     } finally {
@@ -190,6 +569,7 @@ export default function ContactsAdmin() {
       setContacts((prev) => prev.filter((c) => c.id !== deleteTarget.id))
       setDeleteOpen(false)
       setDeleteTarget(null)
+      fetchStats()
     } catch {
       // keep dialog open so the admin can retry
     } finally {
@@ -197,63 +577,133 @@ export default function ContactsAdmin() {
     }
   }
 
+  // ---- Reply-by-email handlers ----
+
+  function openReplyDialog(c: Contact) {
+    const { subject, body } = buildTemplateFor(c)
+    setReplyTarget(c)
+    setReplySubject(subject)
+    setReplyBody(body)
+    setSendError(null)
+    setSendSuccess(false)
+    setReplyOpen(true)
+  }
+
+  // Regenerate the draft from the template, discarding manual edits.
+  function resetReplyTemplate() {
+    if (!replyTarget) return
+    const { subject, body } = buildTemplateFor(replyTarget)
+    setReplySubject(subject)
+    setReplyBody(body)
+  }
+
+  async function confirmSendReply() {
+    if (!replyTarget) return
+    setSending(true)
+    setSendError(null)
+
+    try {
+      const token = localStorage.getItem("token")
+
+      const res = await fetch(`/api/admin/contacts/${replyTarget.id}/reply`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          to: replyTarget.email,
+          subject: replySubject,
+          message: replyBody,
+        }),
+      })
+
+      if (!res.ok) throw new Error(`Request failed (${res.status})`)
+
+      // Move the inquiry to "contacted" once a reply has gone out.
+      setContacts((prev) =>
+        prev.map((c) =>
+          c.id === replyTarget.id ? { ...c, status: "contacted" } : c
+        )
+      )
+      setSendSuccess(true)
+      fetchStats()
+    } catch (err) {
+      setSendError(
+        err instanceof Error
+          ? err.message
+          : "Could not send the email. Please try again."
+      )
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const pageNumbers = useMemo(
+    () => getPageNumbers(page, lastPage),
+    [page, lastPage],
+  );
+
   return (
     <div className="min-h-screen p-4 md:p-8">
       <main className="mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
-            Inquiries
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Manage website inquiries
-          </p>
-        </div>
 
         {/* Filters */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-          <div className="flex flex-col gap-3 md:flex-row">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                placeholder="Search name, email, message..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value)
-                  setPage(1)
-                }}
-              />
-            </div>
-
-            <select
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 md:w-44"
-              value={status}
+        <div className="flex flex-col gap-3 md:flex-row">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              placeholder="Search name, email, message..."
+              value={search}
               onChange={(e) => {
-                setStatus(e.target.value)
+                setSearch(e.target.value)
                 setPage(1)
               }}
-            >
-              <option value="">All Status</option>
-              <option value="new">New</option>
-              <option value="contacted">Contacted</option>
-              <option value="completed">Completed</option>
-            </select>
-
-            <select
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 md:w-48"
-              value={type}
-              onChange={(e) => {
-                setType(e.target.value)
-                setPage(1)
-              }}
-            >
-              <option value="">All Inquiry</option>
-              <option value="private-office">Private Office</option>
-              <option value="virtual-office">Virtual Office</option>
-              <option value="meeting-room">Meeting Room</option>
-              <option value="event-space">Event Space</option>
-            </select>
+            />
           </div>
+
+          <select
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 md:w-44"
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value)
+              setPage(1)
+            }}
+          >
+            <option value="">All Status</option>
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="completed">Completed</option>
+          </select>
+
+          <select
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 md:w-48"
+            value={type}
+            onChange={(e) => {
+              setType(e.target.value)
+              setPage(1)
+            }}
+          >
+            <option value="">All Inquiry</option>
+            <option value="private-office">Private Office</option>
+            <option value="virtual-office">Virtual Office</option>
+            <option value="co-working-space">Co-Working Space</option>
+            <option value="meeting-room">Meeting Room</option>
+            <option value="event-space">Event Space</option>
+            <option value="ocular-visit">Ocular Visit</option>
+            <option value="partnership">Partnership</option>
+            <option value="others">Others</option>
+          </select>
+
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-[#D9E2F0] rounded-xl text-sm font-semibold text-[#0B1F4A] hover:border-[#1B3A8C] hover:text-[#1B3A8C] transition disabled:opacity-50 shrink-0"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
         </div>
 
         {/* Table */}
@@ -274,9 +724,9 @@ export default function ContactsAdmin() {
                 {loading && (
                   <tr>
                     <td colSpan={5} className="px-5 py-12 text-center">
-                      <div className="flex flex-col items-center gap-2 text-slate-400">
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        <span className="text-sm">Loading inquiries...</span>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
+                        <span className="text-sm text-[#64748B]">Loading inquiries...</span>
                       </div>
                     </td>
                   </tr>
@@ -291,7 +741,7 @@ export default function ContactsAdmin() {
                           {error}
                         </p>
                         <button
-                          onClick={fetchContacts}
+                          onClick={() => fetchContacts()}
                           className="mt-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
                         >
                           Try again
@@ -314,7 +764,14 @@ export default function ContactsAdmin() {
                 {!loading &&
                   !error &&
                   contacts.map((c) => (
-                    <tr key={c.id} className="hover:bg-blue-50/40">
+                    <tr
+                      key={c.id}
+                      onClick={() => {
+                        setSelected(c)
+                        setViewOpen(true)
+                      }}
+                      className="cursor-pointer hover:bg-blue-50/40"
+                    >
                       <td className="px-5 py-4">
                         <p className="font-semibold text-slate-900">
                           {c.name}
@@ -328,11 +785,13 @@ export default function ContactsAdmin() {
 
                       <td className="px-5 py-4">
                         <button
-                          onClick={() => openStatusDialog(c)}
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize transition hover:opacity-80 ${
-                            STATUS_STYLES[c.status] ??
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openStatusDialog(c)
+                          }}
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize transition hover:opacity-80 ${STATUS_STYLES[c.status] ??
                             "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
-                          }`}
+                            }`}
                         >
                           {c.status}
                         </button>
@@ -345,7 +804,19 @@ export default function ContactsAdmin() {
                       <td className="px-5 py-4">
                         <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openReplyDialog(c)
+                            }}
+                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                            title="Reply by email"
+                          >
+                            <Mail className="h-4 w-4" />
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
                               setSelected(c)
                               setViewOpen(true)
                             }}
@@ -356,7 +827,10 @@ export default function ContactsAdmin() {
                           </button>
 
                           <button
-                            onClick={() => openDeleteDialog(c)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openDeleteDialog(c)
+                            }}
                             className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                             title="Delete"
                           >
@@ -373,9 +847,9 @@ export default function ContactsAdmin() {
 
         {/* Pagination */}
         {!loading && !error && contacts.length > 0 && (
-          <div className="flex flex-col items-center justify-between gap-3 md:flex-row">
+          <div className="mt-5 flex flex-col items-center justify-between gap-3 md:flex-row">
             <p className="text-sm text-slate-500">
-              {total > 0 ? `${total} total inquiries` : null}
+              {total > 0 ? `${total} total announcements` : null}
             </p>
 
             <div className="flex items-center gap-2">
@@ -388,7 +862,31 @@ export default function ContactsAdmin() {
                 Prev
               </button>
 
-              <span className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700">
+              <div className="hidden items-center gap-1 sm:flex">
+                {pageNumbers.map((p, i) =>
+                  p === "…" ? (
+                    <span
+                      key={`ellipsis-${i}`}
+                      className="px-2 text-sm text-slate-400"
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`h-9 w-9 rounded-lg text-sm font-medium transition-colors ${page === p
+                        ? "bg-blue-600 text-white"
+                        : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                    >
+                      {p}
+                    </button>
+                  ),
+                )}
+              </div>
+
+              <span className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 sm:hidden">
                 Page {page} of {lastPage}
               </span>
 
@@ -407,107 +905,233 @@ export default function ContactsAdmin() {
 
       {/* View Details Dialog */}
       {viewOpen && selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Inquiry Details
-              </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B1F4A]/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden">
+            <div className="flex items-start justify-between gap-4 border-b border-[#E5EAF2] px-6 py-5">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-11 h-11 rounded-full bg-[#1B3A8C] text-white flex items-center justify-center font-semibold text-sm shrink-0">
+                  {selected.name
+                    ?.trim()
+                    .split(/\s+/)
+                    .map((p) => p[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase() || "?"}
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-base font-semibold text-[#0B1F4A] truncate">
+                    {selected.name}
+                  </h2>
+                  <p className="text-xs text-[#64748B] truncate">
+                    {INQUIRY_LABELS[selected.inquiry_type] ?? selected.inquiry_type} · {formatDate(selected.created_at)}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setViewOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-full p-1.5 text-[#64748B] hover:bg-[#F0F4FB] transition shrink-0"
+                aria-label="Close"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 py-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-base font-semibold text-slate-900">
-                    {selected.name}
-                  </p>
-                  <span
-                    className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${
-                      STATUS_STYLES[selected.status] ??
-                      "bg-slate-100 text-slate-600"
+              <div>
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_STYLES[selected.status] ??
+                    "bg-slate-100 text-slate-600"
                     }`}
-                  >
-                    {selected.status}
-                  </span>
-                </div>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                  {INQUIRY_LABELS[selected.inquiry_type] ??
-                    selected.inquiry_type}
+                >
+                  {selected.status}
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 text-sm sm:grid-cols-2">
-                <div className="flex items-center gap-2 text-slate-700">
-                  <Mail className="h-4 w-4 text-slate-400" />
-                  <span className="truncate">{selected.email}</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-700">
-                  <Phone className="h-4 w-4 text-slate-400" />
-                  <span>{selected.phone}</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-700">
-                  <Building2 className="h-4 w-4 text-slate-400" />
-                  <span>{selected.company || "—"}</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-700">
-                  <Calendar className="h-4 w-4 text-slate-400" />
-                  <span>{formatDate(selected.created_at)}</span>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#8B96AB] mb-3">
+                  Contact
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-baseline justify-between gap-4 py-1">
+                    <span className="text-sm text-[#64748B]">Email</span>
+                    <a href={`mailto:${selected.email}`} className="text-sm font-semibold text-[#0B1F4A] hover:underline text-right truncate max-w-[65%]">
+                      {selected.email}
+                    </a>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-4 py-1">
+                    <span className="text-sm text-[#64748B]">Phone</span>
+                    <a href={`tel:${selected.phone}`} className="text-sm font-semibold text-[#0B1F4A] hover:underline">
+                      {selected.phone}
+                    </a>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-4 py-1">
+                    <span className="text-sm text-[#64748B]">Company</span>
+                    <span className="text-sm font-semibold text-[#0B1F4A]">{selected.company || "—"}</span>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <div className="border-t border-dashed border-[#D9E2F0] pt-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#8B96AB] mb-3">
                   Message
                 </p>
-                <p className="rounded-lg border border-slate-100 bg-white p-3 text-sm leading-relaxed text-slate-700">
+                <p className="rounded-xl bg-[#F8FAFD] border border-[#E5EAF2] p-3 text-sm leading-relaxed text-[#0B1F4A]">
                   {selected.message || "—"}
                 </p>
               </div>
 
-              {selected.details &&
-                Object.keys(selected.details).length > 0 && (
-                  <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      Additional Details
-                    </p>
-                    <div className="space-y-1.5 rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-sm">
-                      {Object.entries(selected.details).map(([k, v]) => (
-                        <div key={k} className="flex justify-between gap-3">
-                          <span className="text-slate-500">
-                            {formatLabel(k)}
-                          </span>
-                          <span className="font-medium text-slate-800">
-                            {String(v)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+              {selected.details && Object.keys(selected.details).length > 0 && (
+                <div className="border-t border-dashed border-[#D9E2F0] pt-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#8B96AB] mb-3">
+                    Additional details
+                  </p>
+                  <div className="space-y-1.5">
+                    {Object.entries(selected.details).map(([k, v]) => (
+                      <div key={k} className="flex items-baseline justify-between gap-4 py-1">
+                        <span className="text-sm text-[#64748B]">{formatLabel(k)}</span>
+                        <span className="text-sm font-semibold text-[#0B1F4A] text-right">{String(v)}</span>
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-[#E5EAF2] px-6 py-4">
               <button
-                onClick={() => setViewOpen(false)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                onClick={() => {
+                  setViewOpen(false)
+                  openReplyDialog(selected)
+                }}
+                className="flex items-center gap-2 rounded-xl bg-[#0B1F4A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#132a5e] transition"
               >
-                Close
+                <Mail className="h-4 w-4" />
+                Reply by email
               </button>
               <button
                 onClick={() => {
                   setViewOpen(false)
                   openStatusDialog(selected)
                 }}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                className="rounded-xl bg-[#1B3A8C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#16316F] transition"
               >
-                Update Status
+                Update status
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reply by Email Dialog */}
+      {replyOpen && replyTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B1F4A]/50 p-4">
+          <div className="flex w-full max-w-xl max-h-[90vh] flex-col rounded-2xl bg-white shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[#E5EAF2] px-6 py-5">
+              <div>
+                <h2 className="text-base font-semibold text-[#0B1F4A]">
+                  Reply to {replyTarget.name}
+                </h2>
+                <p className="text-xs text-[#64748B] mt-0.5">
+                  Draft generated from the{" "}
+                  <span className="font-medium text-[#0B1F4A]">
+                    {INQUIRY_LABELS[replyTarget.inquiry_type] ?? replyTarget.inquiry_type}
+                  </span>{" "}
+                  inquiry template
+                </p>
+              </div>
+              <button
+                onClick={() => setReplyOpen(false)}
+                className="rounded-full p-1.5 text-[#64748B] hover:bg-[#F0F4FB] transition shrink-0"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto px-6 py-5">
+              {sendSuccess ? (
+                <div className="flex flex-col items-center gap-2 py-8 text-center">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-green-50">
+                    <CheckCircle2 className="h-6 w-6 text-green-600" />
+                  </span>
+                  <p className="text-sm font-medium text-[#0B1F4A]">
+                    Email sent to {replyTarget.email}
+                  </p>
+                  <p className="text-xs text-[#64748B]">
+                    This inquiry has been marked as contacted.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 rounded-xl bg-[#F8FAFD] border border-[#E5EAF2] px-3 py-2.5 text-sm text-[#64748B]">
+                    <Mail className="h-4 w-4 shrink-0 text-[#94A3B8]" />
+                    <span>
+                      To: <span className="font-semibold text-[#0B1F4A]">{replyTarget.email}</span>
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.15em] text-[#8B96AB]">
+                      Subject
+                    </label>
+                    <input
+                      value={replySubject}
+                      onChange={(e) => setReplySubject(e.target.value)}
+                      className="w-full rounded-xl border border-[#D9E2F0] px-3 py-2.5 text-sm text-[#0B1F4A] focus:border-[#1B3A8C] focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <label className="block text-[11px] font-bold uppercase tracking-[0.15em] text-[#8B96AB]">
+                        Message
+                      </label>
+                      <button
+                        onClick={resetReplyTemplate}
+                        className="text-xs font-semibold text-[#1B3A8C] hover:text-[#16316F]"
+                      >
+                        Reset to template
+                      </button>
+                    </div>
+                    <textarea
+                      value={replyBody}
+                      onChange={(e) => setReplyBody(e.target.value)}
+                      rows={14}
+                      className="w-full resize-y rounded-xl border border-[#D9E2F0] px-3 py-2.5 text-sm leading-relaxed text-[#0B1F4A] focus:border-[#1B3A8C] focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10"
+                    />
+                  </div>
+
+                  {sendError && (
+                    <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-600">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      {sendError}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-[#E5EAF2] px-6 py-4">
+              <button
+                onClick={() => setReplyOpen(false)}
+                className="rounded-xl border border-[#D9E2F0] px-4 py-2 text-sm font-medium text-[#0B1F4A] hover:bg-[#F8FAFD] transition"
+              >
+                {sendSuccess ? "Close" : "Cancel"}
+              </button>
+              {!sendSuccess && (
+                <button
+                  onClick={confirmSendReply}
+                  disabled={sending || !replySubject.trim() || !replyBody.trim()}
+                  className="flex items-center gap-2 rounded-xl bg-[#1B3A8C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#16316F] transition disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {sending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  Send email
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -515,116 +1139,126 @@ export default function ContactsAdmin() {
 
       {/* Status Update Dialog */}
       {statusOpen && statusTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Update Status
-              </h2>
-              <button
-                onClick={() => setStatusOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B1F4A]/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
+            <div className="p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#EEF2FB]">
+                  <Pencil className="w-6 h-6 text-[#1B3A8C]" />
+                </div>
+                <button
+                  onClick={() => setStatusOpen(false)}
+                  className="rounded-full p-1.5 text-[#64748B] hover:bg-[#F0F4FB] transition shrink-0"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
 
-            <div className="space-y-4 px-6 py-5">
-              <p className="text-sm text-slate-500">
-                Change the status for{" "}
-                <span className="font-medium text-slate-800">
-                  {statusTarget.name}
-                </span>
-                .
+              <h2 className="mt-4 text-lg font-bold text-[#0B1F4A]">
+                Update status
+              </h2>
+              <p className="mt-1 text-sm text-[#64748B]">
+                {statusTarget.name}
               </p>
 
-              <div className="space-y-2">
-                {["new", "contacted", "completed"].map((opt) => (
-                  <label
-                    key={opt}
-                    className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 text-sm transition ${
-                      statusValue === opt
-                        ? "border-blue-400 bg-blue-50"
-                        : "border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="capitalize text-slate-700">{opt}</span>
-                    <input
-                      type="radio"
-                      name="status"
-                      value={opt}
-                      checked={statusValue === opt}
-                      onChange={() => setStatusValue(opt)}
-                      className="h-4 w-4 accent-blue-600"
-                    />
-                  </label>
-                ))}
+              <label className="block mt-5 text-[10px] font-semibold uppercase tracking-wide text-[#64748B] mb-1.5">
+                New status
+              </label>
+              <div className="relative">
+                <select
+                  value={statusValue}
+                  onChange={(e) => setStatusValue(e.target.value)}
+                  className="w-full appearance-none px-4 py-3 pr-10 bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl text-sm font-medium text-[#0B1F4A] capitalize focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C] cursor-pointer"
+                >
+                  {["new", "contacted", "completed"].map((opt) => (
+                    <option key={opt} value={opt} className="capitalize">
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
               </div>
-            </div>
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
-              <button
-                onClick={() => setStatusOpen(false)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmStatusUpdate}
-                disabled={statusSaving || statusValue === statusTarget.status}
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {statusSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-                Save Changes
-              </button>
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => setStatusOpen(false)}
+                  className="flex-1 rounded-xl border border-[#D9E2F0] py-3 text-sm font-medium text-[#0B1F4A] hover:bg-[#F8FAFD] transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmStatusUpdate}
+                  disabled={statusSaving || statusValue === statusTarget.status}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#1B3A8C] py-3 text-sm font-semibold text-white hover:bg-[#16316F] transition disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {statusSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Save changes
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      {deleteOpen && deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
-            <div className="px-6 py-5">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
-                  <AlertTriangle className="h-5 w-5 text-red-600" />
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold text-slate-900">
-                    Delete this inquiry?
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    This will permanently remove the inquiry from{" "}
-                    <span className="font-medium text-slate-700">
-                      {deleteTarget.name}
-                    </span>
-                    . This action cannot be undone.
-                  </p>
-                </div>
-              </div>
-            </div>
+      {/* Delete confirmation modal - shared by table row and detail modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => !deleting && setDeleteTarget(null)}
+          />
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
-              <button
-                onClick={() => setDeleteOpen(false)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={deleting}
-                className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
-                Delete
-              </button>
+          {/* Modal */}
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
+                <Trash2 className="w-7 h-7 text-red-600" />
+              </div>
+
+              <h2 className="mt-5 text-xl font-bold text-center text-[#0B1F4A]">
+                Delete Quotation?
+              </h2>
+
+              <p className="mt-3 text-center text-sm text-[#64748B] leading-6">
+                Are you sure you want to delete this request
+                {deleteTarget.details?.full_name ? ` for ${deleteTarget.details.full_name}` : ""}?
+                <br />
+                This action cannot be undone.
+              </p>
+
+              <div className="mt-8 flex gap-3">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleting}
+                  className="flex-1 rounded-xl border border-[#D9E2F0] py-3 font-medium hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                  className="flex-1 rounded-xl bg-red-600 py-3 text-white font-semibold hover:bg-red-700 transition disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {deleting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Deleting…
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
+
     </div>
   )
 }

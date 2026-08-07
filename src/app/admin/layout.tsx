@@ -30,11 +30,11 @@ const menuItems = [
     items: [
       { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
       { title: "Quotation", href: "/admin/quotation", icon: FileSpreadsheet },
-      { title: "Users", href: "/admin/users", icon: Users },
-      { title: "Chats", href: "/admin/chats", icon: MessagesSquare },
-      { title: "Inquiry", href: "/admin/contact", icon: MailQuestion },
-      { title: "Announcements", href: "/admin/announcements", icon: Megaphone },
-      { title: "Testimonials", href: "/admin/testimonials", icon: MessageCircleHeart },
+      { title: "User", href: "/admin/users", icon: Users },
+      { title: "Chat", href: "/admin/chats", icon: MessagesSquare },
+      { title: "Inquiry", href: "/admin/inquiries", icon: MailQuestion },
+      { title: "Announcement", href: "/admin/announcements", icon: Megaphone },
+      { title: "Testimonial", href: "/admin/testimonials", icon: MessageCircleHeart },
     ],
   },
 ];
