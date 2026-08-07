@@ -19,14 +19,18 @@ import * as THREE from "three"
 interface RoomScene {
   id: string
   name: string
-  /** Short blurb shown in the "Room info" panel and (truncated) in the switcher. */
   description?: string
-  /** Bullet list of amenities/highlights shown in the "Room info" panel. */
   features?: string[]
   panoramaUrl: string
-  /** IDs of other rooms this room has a walkable hotspot connection to. */
   connectsTo?: string[]
   thumbnailUrl?: string
+  hotspots?: Array<{
+    targetId: string
+    targetName: string
+    lon: number
+    lat: number
+    label?: string
+  }>
 }
 
 interface BuildingTab {
@@ -36,18 +40,11 @@ interface BuildingTab {
 }
 
 interface Immersive360TourProps {
-  /** Rooms shown in the bottom-center switcher (kept short, e.g. 4-5 rooms). */
   rooms: RoomScene[]
-  /**
-   * Full set of rooms for this building, used to resolve hotspot targets
-   * (e.g. hallways) that aren't part of the featured switcher list. Falls
-   * back to `rooms` if not provided.
-   */
   allRooms?: RoomScene[]
   initialRoomId?: string
   onClose?: () => void
   isEmbedded?: boolean
-  /** Optional building switcher, rendered top-left inside the viewer. */
   buildingTabs?: BuildingTab[]
   activeBuildingId?: string
   onSwitchBuilding?: (id: string) => void
@@ -58,32 +55,9 @@ interface Hotspot {
   targetName: string
   lon: number // degrees, horizontal position on the sphere
   lat: number // degrees, vertical position on the sphere
+  label?: string
 }
 
-const HOTSPOT_LAT = -12 // slightly below eye-level, like a floor-directed arrow
-
-function computeHotspots(room: RoomScene, allRooms: RoomScene[]): Hotspot[] {
-  const targets = (room.connectsTo || [])
-    .map((id) => allRooms.find((r) => r.id === id))
-    .filter((r): r is RoomScene => Boolean(r))
-
-  if (targets.length === 0) return []
-
-  const spread = 360 / targets.length
-  return targets.map((target, i) => ({
-    targetId: target.id,
-    targetName: target.name,
-    lon: i * spread,
-    lat: HOTSPOT_LAT,
-  }))
-}
-
-// Module-level texture cache shared across room switches so previously-
-// loaded panoramas (and prefetched neighbors) never get re-downloaded or
-// re-decoded. Keyed by URL. Textures are intentionally never disposed from
-// here — the tour only ever cycles through a small, known set of rooms per
-// building, so keeping them resident is cheap and avoids visible reloads
-// when a visitor backtracks.
 const textureCache = new Map<string, THREE.Texture>()
 const sharedLoader = new THREE.TextureLoader()
 sharedLoader.crossOrigin = "anonymous"
@@ -204,9 +178,6 @@ export function Immersive360Tour({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  // Kept as state too (in addition to the ref) purely to drive the UI
-  // (e.g. a "resume rotation" affordance) — never read inside the effect
-  // that builds the WebGL scene.
   const [isAutoRotating, setIsAutoRotatingState] = useState(true)
   const setIsAutoRotating = useCallback((val: boolean) => {
     isAutoRotatingRef.current = val
@@ -215,37 +186,24 @@ export function Immersive360Tour({
 
   const [showInfo, setShowInfo] = useState(false)
   const [showShareMenu, setShowShareMenu] = useState(false)
-  // Whether the bottom-center room switcher panel is expanded. The user can
-  // collapse it (e.g. to see more of the panorama) and reopen it via a
-  // small pill button that stays in its place.
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(true)
   const wasMobileViewport = useRef(false)
   const [isMobileViewport, setIsMobileViewport] = useState(false)
   const [mobileSwitcherBottom, setMobileSwitcherBottom] = useState(20)
 
-  // Hotspot screen positions are now updated imperatively via direct DOM
-  // writes inside the render loop (see the effect below) instead of forcing
-  // a React re-render every frame. `hotspotPositions` only exists to drive
-  // the *initial* mount of the hotspot buttons (so refs exist to write to);
-  // it is not updated per-frame.
   const hotspotRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
-
-  const hotspots = useMemo(() => computeHotspots(selectedRoom, roomGraph), [selectedRoom, roomGraph])
-
-  // Viewer must be explicitly "activated" (clicked/tapped) before it captures
-  // drag/scroll input. This lets the page scroll normally over the viewer
-  // until the user opts in, and prevents accidental zoom-on-scroll.
+  const hotspots = useMemo(() => {
+    return (selectedRoom.hotspots ?? []).map((hotspot) => ({
+      ...hotspot,
+      targetName: hotspot.targetName || roomGraph.find((room) => room.id === hotspot.targetId)?.name || hotspot.targetId,
+    }))
+  }, [selectedRoom, roomGraph])
   const [isActive, setIsActive] = useState(false)
   const isActiveRef = useRef(false)
   useEffect(() => {
     isActiveRef.current = isActive
   }, [isActive])
 
-  // ---- One-time scene setup (renderer, camera, geometry, event listeners) ----
-  // This used to be re-created on every panorama change AND every
-  // auto-rotate toggle. It now runs once per mount and never tears down the
-  // renderer for a room change — only the sphere's texture/material is
-  // swapped in the effect below.
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -269,8 +227,6 @@ export function Immersive360Tour({
     const geometry = new THREE.SphereGeometry(500, 60, 40)
     geometry.scale(-1, 1, 1)
 
-    // Placeholder material; the real texture is assigned by the
-    // texture-loading effect below (keyed on panoramaUrl).
     const material = new THREE.MeshBasicMaterial()
     const sphere = new THREE.Mesh(geometry, material)
     sphereRef.current = sphere
@@ -407,13 +363,8 @@ export function Immersive360Tour({
       renderer.dispose()
       geometry.dispose()
       material.dispose()
-      // Note: cached textures are intentionally NOT disposed here — they're
-      // owned by the module-level textureCache and may be reused if this
-      // component remounts (e.g. building switch unmount/remount).
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement)
     }
-    // Intentionally empty — this scene only needs to be built once per mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ---- Texture swap on room change (cheap: no renderer/camera rebuild) ----
@@ -443,8 +394,6 @@ export function Immersive360Tour({
       },
     )
 
-    // Reset the look direction whenever we load a new room's panorama so
-    // hotspots and framing start from a consistent, predictable position.
     lon.current = 0
     lat.current = 0
 
@@ -453,8 +402,6 @@ export function Immersive360Tour({
     }
   }, [selectedRoom, roomGraph])
 
-  // Deactivate the viewer (release scroll/drag capture) whenever the user
-  // clicks/taps outside of it, and always deactivate on room change.
   useEffect(() => {
     setIsActive(false)
   }, [selectedRoom.id])
@@ -470,7 +417,6 @@ export function Immersive360Tour({
     return () => document.removeEventListener("pointerdown", handleOutsidePointerDown)
   }, [])
 
-  // Collapse the switcher by default when entering mobile layout.
   useEffect(() => {
     if (isMobileViewport && !wasMobileViewport.current) {
       setIsSwitcherOpen(false)
@@ -478,7 +424,6 @@ export function Immersive360Tour({
     wasMobileViewport.current = isMobileViewport
   }, [isMobileViewport])
 
-  // Escape also releases the viewer, handy on desktop.
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setIsActive(false)
@@ -487,8 +432,6 @@ export function Immersive360Tour({
     return () => window.removeEventListener("keydown", handleKey)
   }, [])
 
-  // Keep the mobile room switcher above iOS browser chrome by tracking the
-  // visual viewport delta (window bottom minus visible viewport bottom).
   useEffect(() => {
     const updateMobileBottomOffset = () => {
       const mobile = window.matchMedia("(max-width: 639px)").matches
@@ -641,11 +584,6 @@ export function Immersive360Tour({
   const dockButtonClass = (active?: boolean) =>
     `w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center transition-colors ${active ? "bg-[#C9A15D]/15 text-[#C9A15D]" : "text-white/70 hover:text-white hover:bg-white/5"
     }`
-
-  // ---- Imperative hotspot positioning (no per-frame React state) ----
-  // Ref holds the latest updater so the animate() loop (created once on
-  // mount) always calls the current version without needing to be a
-  // useEffect dependency.
   const updateHotspotPositionsRef = useRef<() => void>(() => {})
 
   useEffect(() => {
@@ -697,10 +635,6 @@ export function Immersive360Tour({
         style={{ touchAction: isActive ? "none" : "pan-y" }}
       />
 
-      {/* Hotspot layer: positions are written directly to each button's
-          `transform` style from the render loop (see updateHotspotPositionsRef)
-          instead of via React state, so orbiting the camera doesn't trigger
-          a re-render every frame. */}
       <div ref={hotspotLayerRef} className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
         {!isLoading && !loadError && hotspots.map((hs) => (
           <button
@@ -715,16 +649,17 @@ export function Immersive360Tour({
               if (didDrag.current) return
               navigateToRoom(hs.targetId)
             }}
-            title={`Go to ${hs.targetName}`}
+            title={hs.label ? `${hs.label} · ${hs.targetName}` : `Go to ${hs.targetName}`}
+            aria-label={hs.label ? `${hs.label} · ${hs.targetName}` : `Go to ${hs.targetName}`}
           >
             <span className="relative flex items-center justify-center">
-              <span className="absolute inline-flex h-8 w-8 sm:h-11 sm:w-11 rounded-full bg-[#C9A15D]/30 animate-ping" />
-              <span className="relative flex h-8 w-8 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-[#0A1420]/85 border-2 border-[#C9A15D] shadow-lg backdrop-blur-md transition-transform group-hover:scale-110">
-                <ChevronUp className="w-6 h-6 sm:w-8 sm:h-8 text-[#C9A15D]" />
+              <span className="absolute inline-flex h-8 w-8 sm:h-11 sm:w-11 rounded-full bg-[#C9A15D]/25 animate-ping" />
+              <span className="relative flex h-8 w-8 sm:h-11 sm:w-11 items-center justify-center rounded-full border-[2px] border-[#F6E3AE] bg-gradient-to-br from-[#FFF6D8] via-[#C9A15D] to-[#7C571A] shadow-[0_0_20px_rgba(201,161,93,0.35)] transition-transform duration-200 group-hover:scale-110 group-hover:shadow-[0_0_28px_rgba(201,161,93,0.45)]">
+                <ChevronUp className="w-5 h-5 sm:w-6 sm:h-6 text-[#0A1420]" />
               </span>
             </span>
-            <span className="hidden sm:block px-2 py-0.5 rounded-full bg-[#0A1420]/90 border border-[#C9A15D]/25 text-white text-xs font-medium whitespace-nowrap shadow-md">
-              {hs.targetName}
+            <span className="hidden sm:block max-w-[9rem] px-2.5 py-1 rounded-full border border-[#C9A15D]/30 bg-[#0A1420]/95 text-[#F7E5B0] text-[11px] font-semibold whitespace-nowrap shadow-lg backdrop-blur-sm">
+              {hs.label || hs.targetName}
             </span>
           </button>
         ))}

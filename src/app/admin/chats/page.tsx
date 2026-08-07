@@ -263,7 +263,10 @@ export default function AdminChatsPage() {
                 const conversation = await chatApi.getConversation(selectedConversationId);
                 if (!cancelled) setSelectedConversation(conversation);
             } catch (err) {
-                if (!cancelled) setError(err instanceof Error ? err.message : "Unable to load conversation.");
+                if (!cancelled) {
+                    setError(err instanceof Error ? err.message : "Unable to load conversation.");
+                    setSelectedConversation(null);
+                }
             } finally {
                 if (!cancelled) setConversationLoading(false);
             }

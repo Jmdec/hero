@@ -18,6 +18,7 @@ import {
     Link2,
     FileText,
     Loader2,
+    ChevronRight,
 } from "lucide-react";
 
 type Status =
@@ -29,12 +30,6 @@ type Status =
     | "completed"
     | "cancelled";
 
-// Kept for backwards compatibility with any records that DO have a nested
-// price_breakdown object (older records / other clients). The quote form
-// (get-a-quote page) does NOT send this shape — it sends flat fields on the
-// detail object instead (package_name, package_price, vat_percentage,
-// vat_amount, subtotal, contract_admin_fee, total, months/duration). See
-// QuotationDetail below and the receipt sections, which read both shapes.
 interface QuotationPriceBreakdown {
     package_base_monthly?: number | null;
     vat_monthly?: number | null;
@@ -345,6 +340,7 @@ function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id
 // Stats
 
 type StatTone = "neutral" | "amber" | "green" | "red";
+type StatKey = "total" | "needs_attention" | "value" | "cancelled";
 
 const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
     neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]" },
@@ -353,28 +349,84 @@ const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
     red: { bg: "bg-red-50", text: "text-red-600" },
 };
 
+function buildDrillDownData(quotations: Quotation[], counts: Record<Status | "all", number>, needsAttention: number, completedValue: number) {
+    const paidCount = counts.paid + counts.contract_sent + counts.completed;
+    const pendingCount = counts.pending;
+    const awaitingPaymentCount = counts.awaiting_payment + counts.payment_verification;
+    const conversionRate = counts.all > 0 ? Math.round((paidCount / counts.all) * 100) : 0;
+    const avgValue = counts.completed > 0 ? Math.round(completedValue / counts.completed) : 0;
+
+    return {
+        total: {
+            title: "All Quotations",
+            items: [
+                { label: "Pending", value: String(counts.pending), sub: `${Math.round((counts.pending / Math.max(counts.all, 1)) * 100)}% of total` },
+                { label: "Needs attention", value: String(needsAttention), sub: `${Math.round((needsAttention / Math.max(counts.all, 1)) * 100)}% of total` },
+                { label: "Completed", value: String(counts.completed), sub: `${Math.round((counts.completed / Math.max(counts.all, 1)) * 100)}% of total` },
+                { label: "Conversion rate", value: `${conversionRate}%`, sub: "Paid/contracted to completed" },
+            ],
+        },
+        needs_attention: {
+            title: "Needs Attention",
+            items: [
+                { label: "Pending", value: String(counts.pending), sub: `${pendingCount} awaiting action` },
+                { label: "Awaiting payment", value: String(awaitingPaymentCount), sub: `${awaitingPaymentCount} at risk of stalling` },
+                { label: "Cancelled", value: String(counts.cancelled), sub: `${Math.round((counts.cancelled / Math.max(counts.all, 1)) * 100)}% of total` },
+                { label: "Active requests", value: String(counts.all - counts.completed - counts.cancelled), sub: "Open pipeline" },
+            ],
+        },
+        value: {
+            title: "Quotation Value",
+            items: [
+                { label: "Completed value", value: `PHP ${completedValue.toLocaleString("en-PH")}`, sub: "Completed quotes only" },
+                { label: "Average completed value", value: `PHP ${avgValue.toLocaleString("en-PH")}`, sub: "Per completed request" },
+                { label: "Paid/contracted", value: String(paidCount), sub: `${conversionRate}% conversion` },
+                { label: "Open value", value: `PHP ${quotations.filter((q) => q.status !== "completed" && q.status !== "cancelled").reduce((sum, q) => sum + (q.detail ? Number(q.detail.total) || 0 : 0), 0).toLocaleString("en-PH")}`, sub: "Pending or active" },
+            ],
+        },
+        cancelled: {
+            title: "Cancelled Quotations",
+            items: [
+                { label: "Cancelled count", value: String(counts.cancelled), sub: `${Math.round((counts.cancelled / Math.max(counts.all, 1)) * 100)}% of total` },
+                { label: "Pending before cancel", value: String(counts.pending), sub: "Can still be recovered" },
+                { label: "Awaiting payment before cancel", value: String(awaitingPaymentCount), sub: "At-risk flow" },
+                { label: "Completed quotes", value: String(counts.completed), sub: "Successful pipeline" },
+            ],
+        },
+    } as Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>;
+}
+
 function StatCard({
+    id,
     label,
     value,
     icon: Icon,
     tone = "neutral",
+    onClick,
 }: {
+    id: StatKey;
     label: string;
     value: string;
     icon: React.ComponentType<{ className?: string }>;
     tone?: StatTone;
+    onClick: (id: StatKey) => void;
 }) {
     const t = STAT_TONE_STYLES[tone];
     return (
-        <div className="bg-white border border-[#D9E2F0] rounded-2xl p-5 shadow-[0_4px_24px_rgba(11,31,74,0.04)] flex items-center gap-4">
-            <span className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${t.bg}`}>
-                <Icon className={`w-5 h-5 ${t.text}`} />
-            </span>
-            <div className="min-w-0">
-                <p className="text-2xl font-bold text-[#0B1F4A] leading-none truncate">{value}</p>
-                <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mt-1.5">{label}</p>
+        <button
+            onClick={() => onClick(id)}
+            className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
+        >
+            <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
+            <div className="flex items-start justify-between mb-4">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
+                    <Icon className={`w-5 h-5 ${t.text}`} />
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
             </div>
-        </div>
+            <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
+            <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+        </button>
     );
 }
 
@@ -630,6 +682,7 @@ export default function AdminQuotationsPage() {
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const [statusEditTarget, setStatusEditTarget] = useState<Quotation | null>(null);
     const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
+    const [activeCard, setActiveCard] = useState<StatKey | null>(null);
 
     // Email-to-client actions
     const [sendingPaymentLinkId, setSendingPaymentLinkId] = useState<number | null>(null);
@@ -727,6 +780,13 @@ export default function AdminQuotationsPage() {
             .filter((q) => q.status === "completed" && q.detail && hasPricingData(q.detail))
             .reduce((sum, q) => sum + (q.detail ? Number(q.detail.total) || 0 : 0), 0);
     }, [quotations]);
+
+    const drillDownData = useMemo(
+        () => buildDrillDownData(quotations, counts, needsAttention, completed),
+        [quotations, counts, needsAttention, completed],
+    );
+
+    const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
 
     const handleStatusUpdate = async (quote: Quotation, status: Status) => {
         const previousStatus = quote.status;
@@ -970,16 +1030,50 @@ export default function AdminQuotationsPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4">
                 {/* Stats */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <StatCard label="Total requests" value={String(counts.all)} icon={Inbox} tone="neutral" />
-                    <StatCard label="Needs attention" value={String(needsAttention)} icon={AlertCircle} tone="amber" />
-                    <StatCard label="Quotation value" value={String(completed)} icon={Check} tone="green" />
-                    <StatCard label="Cancelled" value={String(counts.cancelled)} icon={XCircle} tone="red" />
+                    <StatCard id="total" label="Total requests" value={String(counts.all)} icon={Inbox} tone="neutral" onClick={setActiveCard} />
+                    <StatCard id="needs_attention" label="Needs attention" value={String(needsAttention)} icon={AlertCircle} tone="amber" onClick={setActiveCard} />
+                    <StatCard id="value" label="Quotation value" value={String(completed)} icon={Check} tone="green" onClick={setActiveCard} />
+                    <StatCard id="cancelled" label="Cancelled" value={String(counts.cancelled)} icon={XCircle} tone="red" onClick={setActiveCard} />
                 </div>
 
                 {error && (
                     <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-300 bg-[#FFF5F5] px-4 py-3 text-sm text-red-600">
                         <AlertCircle className="w-4 h-4 shrink-0" />
                         {error}
+                    </div>
+                )}
+
+                {activeDrillDown && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setActiveCard(null)} />
+                        <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl">
+                            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                                <h2 className="text-lg font-semibold text-slate-900">{activeDrillDown.title}</h2>
+                                <button
+                                    onClick={() => setActiveCard(null)}
+                                    className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 gap-3 px-6 py-5 sm:grid-cols-2">
+                                {activeDrillDown.items.map((item) => (
+                                    <div key={item.label} className="rounded-xl bg-slate-50 p-4">
+                                        <p className="text-xs text-slate-500">{item.label}</p>
+                                        <p className="mt-1 text-xl font-bold text-slate-900">{item.value}</p>
+                                        {item.sub && <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>}
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="px-6 pb-6">
+                                <button
+                                    onClick={() => setActiveCard(null)}
+                                    className="w-full rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 

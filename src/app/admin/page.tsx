@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
     MessageSquare,
     Megaphone,
@@ -29,8 +29,6 @@ import {
     Pie,
     Cell,
 } from "recharts";
-
-/* ─── Types ─── */
 
 interface MonthPoint {
     month: string;
@@ -61,8 +59,6 @@ interface Analytics {
     }[];
 }
 
-/* ─── Helpers ─── */
-
 function authHeaders() {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     return { Authorization: `Bearer ${token ?? ""}`, "Content-Type": "application/json" };
@@ -82,49 +78,75 @@ function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function getTrendValue(points: MonthPoint[]) {
+    if (!points.length) return "";
+
+    const latest = points[points.length - 1]?.total ?? 0;
+    const previous = points[points.length - 2]?.total ?? latest;
+    const delta = latest - previous;
+
+    if (delta === 0) return "";
+
+    const percent = previous === 0 ? (latest > 0 ? 100 : 0) : Math.round((delta / previous) * 100);
+    return `${delta > 0 ? "+" : "-"}${Math.abs(percent)}%`;
+}
+
 const PIE_COLORS = ["#0D47A1", "#1565C0", "#1976D2", "#64B5F6", "#FFC107", "#F57F17"];
 
-/* ─── Stat Card ─── */
 type StatKey = "chat_leads" | "inquiries" | "announcements" | "revenue";
+type StatTone = "neutral" | "amber" | "green" | "red";
 
 type StatCardProps = {
     id: StatKey;
     icon: React.ElementType;
     label: string;
     value: string;
-    sub: string;
-    trendUp: boolean | null;
-    color: string;
+    tone?: StatTone;
+    trend?: string;
     onClick: (id: StatKey) => void;
 };
 
-function StatCard({ id, icon: Icon, label, value, sub, trendUp, color, onClick }: StatCardProps) {
+const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
+    neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]" },
+    amber: { bg: "bg-amber-50", text: "text-amber-700" },
+    green: { bg: "bg-green-50", text: "text-green-700" },
+    red: { bg: "bg-red-50", text: "text-red-600" },
+};
+
+function StatCard({ id, icon: Icon, label, value, tone = "neutral", trend, onClick }: StatCardProps) {
+    const t = STAT_TONE_STYLES[tone];
+    const accent = tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]";
+    const trendTone = trend?.startsWith("+") ? "text-green-600" : trend?.startsWith("-") ? "text-red-600" : "text-slate-500";
+    const showTrendIcon = trend?.startsWith("+") ? <TrendingUp className="w-3.5 h-3.5" /> : trend?.startsWith("-") ? <TrendingDown className="w-3.5 h-3.5" /> : null;
+
     return (
         <button
             onClick={() => onClick(id)}
-            className="group bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC] relative overflow-hidden"
+            className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
         >
-            <div className={`absolute top-0 left-0 w-1 h-full ${color}`} />
+            <div className={`absolute top-0 left-0 w-1 h-full ${accent}`} />
             <div className="flex items-start justify-between mb-4">
-                <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: color === "bg-[#FFC107]" ? "#FFF8E1" : "#EEF2FB" }}
-                >
-                    <Icon className="w-5 h-5" style={{ color: color === "bg-[#FFC107]" ? "#F57F17" : "#0D47A1" }} />
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
+                    <Icon className={`w-5 h-5 ${t.text}`} />
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
             </div>
             <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
             <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-            {trendUp !== null ? (
-                <div className={`flex items-center gap-1 text-xs font-semibold ${trendUp ? "text-green-600" : "text-red-500"}`}>
-                    {trendUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                    {sub}
-                </div>
-            ) : (
-                <p className="text-xs text-gray-400">{sub}</p>
-            )}
+            <div className={`flex items-center gap-1 text-xs font-semibold ${trendTone}`}>
+                {showTrendIcon}
+                {trend ? trend : "No change"}
+            </div>
         </button>
+    );
+}
+
+function ModalBackdrop({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl">{children}</div>
+        </div>
     );
 }
 
@@ -134,75 +156,76 @@ function DrillDownModal({ id, data, onClose }: { id: StatKey; data: Analytics; o
         chat_leads: {
             title: "Chatbot Lead Generation",
             items: [
-                { label: "Total Leads Captured", value: String(data.chat_leads.total) },
-                { label: "Total Conversations", value: String(data.chat_leads.conversations) },
-                { label: "Active Conversations", value: String(data.chat_leads.active) },
-                { label: "Awaiting Agent", value: String(data.chat_leads.agent_requested) },
-                { label: "Closed", value: String(data.chat_leads.closed) },
+                { label: "Total leads captured", value: String(data.chat_leads.total), sub: "All lead conversations" },
+                { label: "Active conversations", value: String(data.chat_leads.active), sub: "Currently live" },
+                { label: "Awaiting agent", value: String(data.chat_leads.agent_requested), sub: "Needs handoff" },
+                { label: "Closed conversations", value: String(data.chat_leads.closed), sub: "Resolved or archived" },
+                { label: "Agent handoff rate", value: `${Math.round((data.chat_leads.agent_requested / Math.max(data.chat_leads.total, 1)) * 100)}%`, sub: "Of all leads" },
             ],
         },
         inquiries: {
-            title: "Inquiry Summary",
+            title: "Contact Inquiry Overview",
             items: [
-                { label: "New", value: String(data.inquiries.new) },
-                { label: "In Progress", value: String(data.inquiries.in_progress) },
-                { label: "Replied", value: String(data.inquiries.replied) },
-                { label: "Closed", value: String(data.inquiries.closed) },
-                ...Object.entries(data.inquiries.by_type).map(([k, v]) => ({
-                    label: formatInquiryType(k), value: String(v),
+                { label: "New", value: String(data.inquiries.new), sub: `${Math.round((data.inquiries.new / Math.max(data.inquiries.total, 1)) * 100)}% of total` },
+                { label: "In progress", value: String(data.inquiries.in_progress), sub: "Awaiting a reply" },
+                { label: "Replied", value: String(data.inquiries.replied), sub: "Actioned this week" },
+                { label: "Closed", value: String(data.inquiries.closed), sub: "Completed requests" },
+                { label: "Response rate", value: `${Math.round((data.inquiries.replied / Math.max(data.inquiries.total, 1)) * 100)}%`, sub: "Replied vs total" },
+                ...Object.entries(data.inquiries.by_type).slice(0, 3).map(([k, v]) => ({
+                    label: formatInquiryType(k), value: String(v), sub: "By inquiry type",
                 })),
             ],
         },
         announcements: {
             title: "Announcement Overview",
             items: [
-                { label: "Total", value: String(data.announcements.total) },
-                { label: "Published", value: String(data.announcements.published), sub: "Live on site" },
-                { label: "Draft", value: String(data.announcements.draft), sub: "Pending review" },
-                { label: "Archived", value: String(data.announcements.total - data.announcements.published - data.announcements.draft), sub: "Hidden" },
+                { label: "Total announcements", value: String(data.announcements.total), sub: "All drafts and posts" },
+                { label: "Published", value: String(data.announcements.published), sub: "Live on the site" },
+                { label: "Draft", value: String(data.announcements.draft), sub: "Pending approval" },
+                { label: "Archived", value: String(Math.max(data.announcements.total - data.announcements.published - data.announcements.draft, 0)), sub: "Hidden from live view" },
+                { label: "Publish share", value: `${Math.round((data.announcements.published / Math.max(data.announcements.total, 1)) * 100)}%`, sub: "Published vs total" },
             ],
         },
         revenue: {
-            title: "Quotation Summary",
+            title: "Quotation Revenue",
             items: [
-                { label: "Total Quotation Value", value: `₱${data.quotations.revenue.toLocaleString()}` },
-                { label: "Total Quotations", value: String(data.quotations.total) },
-                ...Object.entries(data.quotations.by_status).map(([k, v]) => ({
-                    label: k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()), value: String(v),
-                })),
+                { label: "Total quotations", value: String(data.quotations.total), sub: "All requests logged" },
+                { label: "Revenue", value: `₱${data.quotations.revenue.toLocaleString()}`, sub: "Current quotation value" },
+                { label: "Pending", value: String(data.quotations.by_status.pending || 0), sub: "Awaiting follow-up" },
+                { label: "Completed", value: String(data.quotations.by_status.completed || 0), sub: "Closed wins" },
+                { label: "Average value", value: `₱${Math.round(data.quotations.revenue / Math.max(data.quotations.total, 1)).toLocaleString()}`, sub: "Per quotation" },
             ],
         },
     };
 
     const modal = drillMap[id];
+    if (!modal) return null;
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-[#0D47A1]">
-                    <h3 className="text-base font-bold text-white">{modal.title}</h3>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
-                        <X className="w-4 h-4 text-white" />
+        <ModalBackdrop onClose={onClose}>
+            <div className="rounded-2xl bg-white shadow-xl">
+                <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                    <h3 className="text-base font-bold text-slate-900">{modal.title}</h3>
+                    <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700">
+                        <X className="h-4 w-4" />
                     </button>
                 </div>
-                <div className="p-5 space-y-3">
-                    {modal.items.map((item, i) => (
-                        <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                            <div>
-                                <p className="text-sm font-medium text-gray-800">{item.label}</p>
-                                {item.sub && <p className="text-xs text-gray-400">{item.sub}</p>}
-                            </div>
-                            <span className="text-sm font-bold text-[#0D47A1]">{item.value}</span>
+                <div className="grid grid-cols-1 gap-3 px-6 py-5 sm:grid-cols-2">
+                    {modal.items.map((item) => (
+                        <div key={item.label} className="rounded-xl bg-slate-50 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
+                            <p className="mt-1 text-xl font-bold text-slate-900">{item.value}</p>
+                            {item.sub && <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>}
                         </div>
                     ))}
                 </div>
-                <div className="px-5 pb-5">
-                    <button onClick={onClose} className="w-full py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                <div className="px-6 pb-6">
+                    <button onClick={onClose} className="w-full rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
                         Close
                     </button>
                 </div>
             </div>
-        </div>
+        </ModalBackdrop>
     );
 }
 
@@ -284,12 +307,64 @@ export default function AdminDashboard() {
         name: formatInquiryType(name), value, color: PIE_COLORS[i % PIE_COLORS.length],
     }));
 
-    const stats: StatCardProps[] = [
-        { id: "chat_leads", icon: Bot, label: "Chatbot Leads", value: chat_leads.total.toLocaleString(), sub: `${chat_leads.conversations} conversations · ${chat_leads.agent_requested} awaiting agent`, trendUp: chat_leads.total > 0, color: "bg-[#0D47A1]", onClick: setActiveCard },
-        { id: "inquiries", icon: MessageSquare, label: "Contact Inquiries", value: inquiries.total.toLocaleString(), sub: `${inquiries.new} new · ${inquiries.in_progress} in progress`, trendUp: inquiries.new > 0, color: "bg-[#0D47A1]", onClick: setActiveCard },
-        { id: "announcements", icon: Megaphone, label: "Announcements", value: announcements.total.toLocaleString(), sub: `${announcements.published} published · ${announcements.draft} draft`, trendUp: null, color: "bg-[#0D47A1]", onClick: setActiveCard },
-        { id: "revenue", icon: PhilippinePeso, label: "Quotation Value", value: formatCurrency(quotations.revenue), sub: `${quotations.total} quotation${quotations.total !== 1 ? "s" : ""} total`, trendUp: quotations.revenue > 0, color: "bg-[#FFC107]", onClick: setActiveCard },
-    ];
+    const stats = useMemo<StatCardProps[]>(() => {
+        const chatTrend = getTrendValue(monthly.chat_leads);
+        const inquiryTrend = getTrendValue(monthly.inquiries);
+        const announcementTrend = getTrendValue(monthly.announcements);
+        const revenueTrend = getTrendValue(monthly.revenue);
+
+        return [
+            { id: "chat_leads", icon: Bot, label: "Chatbot Leads", value: chat_leads.total.toLocaleString(), tone: "neutral", trend: chatTrend, onClick: setActiveCard },
+            { id: "inquiries", icon: MessageSquare, label: "Contact Inquiries", value: inquiries.total.toLocaleString(), tone: "amber", trend: inquiryTrend, onClick: setActiveCard },
+            { id: "announcements", icon: Megaphone, label: "Announcements", value: announcements.total.toLocaleString(), tone: "green", trend: announcementTrend, onClick: setActiveCard },
+            { id: "revenue", icon: PhilippinePeso, label: "Quotation Revenue", value: formatCurrency(quotations.revenue), tone: "red", trend: revenueTrend, onClick: setActiveCard },
+        ];
+    }, [analytics]);
+
+    const drillDownData = useMemo(() => ({
+        chat_leads: {
+            title: "Chatbot Lead Generation",
+            items: [
+                { label: "Total leads captured", value: String(chat_leads.total), sub: "All lead conversations" },
+                { label: "Active conversations", value: String(chat_leads.active), sub: "Currently live" },
+                { label: "Awaiting agent", value: String(chat_leads.agent_requested), sub: "Needs handoff" },
+                { label: "Closed conversations", value: String(chat_leads.closed), sub: "Resolved or archived" },
+                { label: "Agent handoff rate", value: `${Math.round((chat_leads.agent_requested / Math.max(chat_leads.total, 1)) * 100)}%`, sub: "Of all leads" },
+            ],
+        },
+        inquiries: {
+            title: "Contact Inquiry Overview",
+            items: [
+                { label: "New", value: String(inquiries.new), sub: `${Math.round((inquiries.new / Math.max(inquiries.total, 1)) * 100)}% of total` },
+                { label: "In progress", value: String(inquiries.in_progress), sub: "Awaiting a reply" },
+                { label: "Replied", value: String(inquiries.replied), sub: "Actioned this week" },
+                { label: "Closed", value: String(inquiries.closed), sub: "Completed requests" },
+                { label: "Response rate", value: `${Math.round((inquiries.replied / Math.max(inquiries.total, 1)) * 100)}%`, sub: "Replied vs total" },
+            ],
+        },
+        announcements: {
+            title: "Announcement Overview",
+            items: [
+                { label: "Total announcements", value: String(announcements.total), sub: "All drafts and posts" },
+                { label: "Published", value: String(announcements.published), sub: "Live on the site" },
+                { label: "Draft", value: String(announcements.draft), sub: "Pending approval" },
+                { label: "Archived", value: String(Math.max(announcements.total - announcements.published - announcements.draft, 0)), sub: "Hidden from live view" },
+                { label: "Publish share", value: `${Math.round((announcements.published / Math.max(announcements.total, 1)) * 100)}%`, sub: "Published vs total" },
+            ],
+        },
+        revenue: {
+            title: "Quotation Revenue",
+            items: [
+                { label: "Total quotations", value: String(quotations.total), sub: "All requests logged" },
+                { label: "Revenue", value: `₱${quotations.revenue.toLocaleString()}`, sub: "Current quotation value" },
+                { label: "Pending", value: String(quotations.by_status.pending || 0), sub: "Awaiting follow-up" },
+                { label: "Completed", value: String(quotations.by_status.completed || 0), sub: "Closed wins" },
+                { label: "Average value", value: `₱${Math.round(quotations.revenue / Math.max(quotations.total, 1)).toLocaleString()}`, sub: "Per quotation" },
+            ],
+        },
+    }), [analytics]);
+
+    const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
 
     return (
         <>
@@ -456,7 +531,7 @@ export default function AdminDashboard() {
                             <h3 className="text-sm font-bold text-gray-800">Recent Inquiries</h3>
                             <p className="text-xs text-gray-400">Latest 7 contact submissions</p>
                         </div>
-                        <a href="/admin/contact" className="text-xs font-semibold text-[#0D47A1] hover:underline">View all →</a>
+                        <a href="/admin/inquiries" className="text-xs font-semibold text-[#0D47A1] hover:underline">View all →</a>
                     </div>
                     {recent_inquiries.length === 0 ? (
                         <div className="py-16 text-center text-sm text-gray-400">No inquiries yet</div>
@@ -510,7 +585,7 @@ export default function AdminDashboard() {
             </section>
 
             {/* ── Drill-Down Modal ── */}
-            {activeCard && <DrillDownModal id={activeCard} data={analytics} onClose={() => setActiveCard(null)} />}
+            {activeDrillDown && <DrillDownModal id={activeCard!} data={analytics} onClose={() => setActiveCard(null)} />} 
         </>
     );
 }

@@ -66,7 +66,7 @@ async function sendInquiryTakenNotification(args: {
   const recipients = getContactInquiryRecipients(branchInterest);
   const inquiryLabel = getContactInquiryLabel(args.inquiry.inquiry_type);
   const branchLabel = getContactBranchLabel(branchInterest);
-  const adminUrl = `${args.origin}/admin/contact`;
+  const adminUrl = `${args.origin}/admin/inquiries`;
   const subject = `Inquiry taken: ${inquiryLabel} / ${args.inquiry.name}`;
   const html = `
     <div style="font-family:Arial,Helvetica,sans-serif;background:#f4f7fb;padding:32px 20px;">

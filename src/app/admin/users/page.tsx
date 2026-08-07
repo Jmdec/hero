@@ -20,6 +20,9 @@ import {
     Trash2,
     Loader2,
     Tag,
+    TrendingDown,
+    TrendingUp,
+    ChevronRight,
 } from "lucide-react";
 
 type StatKey = "total" | "verified" | "unverified" | "admins";
@@ -34,6 +37,40 @@ interface UserRecord {
     role?: Role;
     email_verified?: boolean;
     created_at?: string;
+}
+
+/* Analytics types — shape expected by DrillDownModal */
+interface Analytics {
+    chat_leads: {
+        total: number;
+        conversations: number;
+        active: number;
+        agent_requested: number;
+        closed: number;
+    };
+    inquiries: {
+        new: number;
+        in_progress: number;
+        replied: number;
+        closed: number;
+        by_type: Record<string, number>;
+    };
+    announcements: {
+        total: number;
+        published: number;
+        draft: number;
+    };
+    quotations: {
+        revenue: number;
+        total: number;
+        by_status: Record<string, number>;
+    };
+}
+
+function formatInquiryType(key: string): string {
+    return key
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /* Drill-Down Data */
@@ -73,14 +110,12 @@ const drillDownData: Record<StatKey, { title: string; items: { label: string; va
         ],
     },
     admins: {
-        title: "Admin Users",
+        title: "Administrators",
         items: [
-            { label: "Total Admins", value: "18", sub: "7.2% of all users" },
+            { label: "Total Admins", value: "18", sub: "7.2% of total" },
             { label: "Verified Admins", value: "16", sub: "88.9% of admins" },
-            { label: "Active this month", value: "15", sub: "83.3% active rate" },
-            { label: "Assigned roles", value: "3", sub: "Super, Editor, Viewer" },
-            { label: "Last admin added", value: "Jun 23", sub: "James Reyes" },
-            { label: "Admin growth", value: "+2", sub: "vs last month" },
+            { label: "Unverified Admins", value: "2", sub: "11.1% of admins" },
+            { label: "New admins this month", value: "1", sub: "vs 0 last month" },
         ],
     },
 };
@@ -99,34 +134,111 @@ type StatCardProps = {
     icon: React.ElementType;
     label: string;
     value: string;
-    trend: string;
     tone?: StatTone;
     onClick: (id: StatKey) => void;
 };
 
-function StatCard({
-    id,
-    label,
-    value,
-    icon: Icon,
-    trend,
-    tone = "neutral",
-    onClick,
-}: StatCardProps) {
+function StatCard({ id, icon: Icon, label, value,  tone = "neutral", onClick }: StatCardProps) {
     const t = STAT_TONE_STYLES[tone];
     return (
         <button
             onClick={() => onClick(id)}
-            className="w-full text-left bg-white border border-[#D9E2F0] rounded-2xl p-5 shadow-[0_4px_24px_rgba(11,31,74,0.04)] hover:border-[#1B3A8C]/30 hover:shadow-md transition-all flex items-center gap-4"
+            className="group bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC] relative overflow-hidden"
         >
-            <span className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${t.bg}`}>
-                <Icon className={`w-5 h-5 ${t.text}`} />
-            </span>
-            <div className="min-w-0">
-                <p className="text-2xl font-bold text-[#0B1F4A] leading-none truncate">{value}</p>
-                <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide mt-1.5">{label}</p>
+            <div className={`absolute top-0 left-0 w-1 h-full ${t.bg}`} />
+            <div className="flex items-start justify-between mb-4">
+                <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: t.bg === "bg-amber-50" ? "#FFF8E1" : "#EEF2FB" }}
+                >
+                    <Icon className="w-5 h-5" style={{ color: t.text === "text-amber-700" ? "#F57F17" : "#0D47A1" }} />
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
             </div>
+            <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
+            <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
         </button>
+    );
+}
+
+/* ─── Drill-Down Modal (Analytics-based; not currently wired to a live
+     analytics fetch — kept for when server analytics are available) ─── */
+function DrillDownModal({ id, data, onClose }: { id: StatKey; data: Analytics; onClose: () => void }) {
+    const drillMap: Record<string, { title: string; items: { label: string; value: string; sub?: string }[] }> = {
+        chat_leads: {
+            title: "Chatbot Lead Generation",
+            items: [
+                { label: "Total Leads Captured", value: String(data.chat_leads.total) },
+                { label: "Total Conversations", value: String(data.chat_leads.conversations) },
+                { label: "Active Conversations", value: String(data.chat_leads.active) },
+                { label: "Awaiting Agent", value: String(data.chat_leads.agent_requested) },
+                { label: "Closed", value: String(data.chat_leads.closed) },
+            ],
+        },
+        inquiries: {
+            title: "Inquiry Summary",
+            items: [
+                { label: "New", value: String(data.inquiries.new) },
+                { label: "In Progress", value: String(data.inquiries.in_progress) },
+                { label: "Replied", value: String(data.inquiries.replied) },
+                { label: "Closed", value: String(data.inquiries.closed) },
+                ...Object.entries(data.inquiries.by_type).map(([k, v]) => ({
+                    label: formatInquiryType(k), value: String(v),
+                })),
+            ],
+        },
+        announcements: {
+            title: "Announcement Overview",
+            items: [
+                { label: "Total", value: String(data.announcements.total) },
+                { label: "Published", value: String(data.announcements.published), sub: "Live on site" },
+                { label: "Draft", value: String(data.announcements.draft), sub: "Pending review" },
+                { label: "Archived", value: String(data.announcements.total - data.announcements.published - data.announcements.draft), sub: "Hidden" },
+            ],
+        },
+        revenue: {
+            title: "Quotation Summary",
+            items: [
+                { label: "Total Quotation Value", value: `₱${data.quotations.revenue.toLocaleString()}` },
+                { label: "Total Quotations", value: String(data.quotations.total) },
+                ...Object.entries(data.quotations.by_status).map(([k, v]) => ({
+                    label: k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()), value: String(v),
+                })),
+            ],
+        },
+    };
+
+    const modal = drillMap[id];
+    if (!modal) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-[#0D47A1]">
+                    <h3 className="text-base font-bold text-white">{modal.title}</h3>
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                        <X className="w-4 h-4 text-white" />
+                    </button>
+                </div>
+                <div className="p-5 space-y-3">
+                    {modal.items.map((item, i) => (
+                        <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                            <div>
+                                <p className="text-sm font-medium text-gray-800">{item.label}</p>
+                                {item.sub && <p className="text-xs text-gray-400">{item.sub}</p>}
+                            </div>
+                            <span className="text-sm font-bold text-[#0D47A1]">{item.value}</span>
+                        </div>
+                    ))}
+                </div>
+                <div className="px-5 pb-5">
+                    <button onClick={onClose} className="w-full py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -273,7 +385,6 @@ export default function UsersPage() {
             icon: Users,
             label: "Total Users",
             value: stats.total.toString(),
-            trend: `${stats.total} registered`,
             tone: "neutral",
         },
         {
@@ -281,9 +392,6 @@ export default function UsersPage() {
             icon: UserCheck,
             label: "Verified Users",
             value: stats.verified.toString(),
-            trend: `${Math.round(
-                (stats.verified / Math.max(stats.total, 1)) * 100
-            )}% verified`,
             tone: "green",
         },
         {
@@ -291,7 +399,6 @@ export default function UsersPage() {
             icon: UserX,
             label: "Pending Verification",
             value: stats.unverified.toString(),
-            trend: "Needs attention",
             tone: "red",
         },
         {
@@ -299,7 +406,6 @@ export default function UsersPage() {
             icon: ShieldCheck,
             label: "Administrators",
             value: stats.admins.toString(),
-            trend: "Access management",
             tone: "amber",
         },
     ];
@@ -444,10 +550,10 @@ export default function UsersPage() {
     return (
         <>
             <section className="p-4 space-y-8">
-                {/* ── Error States ── */}
+                {/* Error States */}
                 {error && (
                     <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                         <div className="flex-1">
                             <p className="text-sm font-semibold text-red-900">{error}</p>
                             <p className="text-xs text-red-700 mt-1">Please check your connection and try again.</p>
@@ -462,7 +568,7 @@ export default function UsersPage() {
                     </div>
                 )}
 
-                {/* ── Stat Cards ── */}
+                {/* Stat Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
                     {statCards.map((s) => (
                         <StatCard key={s.id} {...s} onClick={setActiveCard} />
@@ -505,13 +611,12 @@ export default function UsersPage() {
                     </button>
                 </div>
 
-                {/* ── User Overview Table ── */}
+                {/* User Overview Table */}
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead className="bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
                                 <tr>
-                                    <th className="px-5 py-3 text-left">ID</th>
                                     <th className="px-5 py-3 text-left">User</th>
                                     <th className="px-5 py-3 text-left">Role</th>
                                     <th className="px-5 py-3 text-left">Joined</th>
@@ -542,9 +647,6 @@ export default function UsersPage() {
                                             onClick={() => openView(user)}
                                             className="cursor-pointer hover:bg-gray-50 transition-colors"
                                         >
-                                            <td className="px-5 py-3.5 text-xs font-mono text-gray-400">
-                                                {user.id ?? "—"}
-                                            </td>
                                             <td className="px-5 py-3.5">
                                                 <p className="font-semibold text-gray-800 text-sm">{user.name || "Unknown"}</p>
                                                 <span className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">

@@ -20,6 +20,9 @@ import {
   FileText,
   Clock,
   Link2,
+  Megaphone,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 
 interface SocialMediaEntry {
@@ -243,6 +246,116 @@ type ConfirmState = {
   onConfirm: () => void | Promise<void>;
 };
 
+type StatKey = "total" | "published" | "scheduled" | "draft";
+type StatTone = "neutral" | "amber" | "green" | "red";
+
+type AnnouncementStats = {
+  total: number;
+  published: number;
+  scheduled: number;
+  draft: number;
+  archived: number;
+};
+
+const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
+  neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]" },
+  amber: { bg: "bg-amber-50", text: "text-amber-700" },
+  green: { bg: "bg-green-50", text: "text-green-700" },
+  red: { bg: "bg-red-50", text: "text-red-600" },
+};
+
+function StatCard({
+  id,
+  label,
+  value,
+  icon: Icon,
+  tone = "neutral",
+  trend,
+  onClick,
+}: {
+  id: StatKey;
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone?: StatTone;
+  trend?: string;
+  onClick: (id: StatKey) => void;
+}) {
+  const t = STAT_TONE_STYLES[tone];
+  const accent = tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]";
+  const trendTone = trend?.startsWith("+") ? "text-green-600" : trend?.startsWith("-") ? "text-red-600" : "text-slate-500";
+  const showTrendIcon = trend?.startsWith("+") ? <TrendingUp className="w-3.5 h-3.5" /> : trend?.startsWith("-") ? <TrendingDown className="w-3.5 h-3.5" /> : null;
+
+  return (
+    <button
+      onClick={() => onClick(id)}
+      className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
+    >
+      <div className={`absolute top-0 left-0 w-1 h-full ${accent}`} />
+      <div className="flex items-start justify-between mb-4">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
+          <Icon className={`w-5 h-5 ${t.text}`} />
+        </div>
+        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
+      </div>
+      <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
+      <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+      <div className={`flex items-center gap-1 text-xs font-semibold ${trendTone}`}>
+        {showTrendIcon}
+        {trend ? trend : "No change"}
+      </div>
+    </button>
+  );
+}
+
+function buildDrillDownData(stats: AnnouncementStats, items: Announcement[]) {
+  const publishedPercent = stats.total > 0 ? Math.round((stats.published / stats.total) * 100) : 0;
+  const draftPercent = stats.total > 0 ? Math.round((stats.draft / stats.total) * 100) : 0;
+  const scheduledPercent = stats.total > 0 ? Math.round((stats.scheduled / stats.total) * 100) : 0;
+  const archivedPercent = stats.total > 0 ? Math.round((stats.archived / stats.total) * 100) : 0;
+  const liveCount = items.filter((item) => item.status === "published" || item.status === "posted").length;
+
+  return {
+    total: {
+      title: "Announcement Overview",
+      items: [
+        { label: "Published", value: String(stats.published), sub: `${publishedPercent}% of total` },
+        { label: "Scheduled", value: String(stats.scheduled), sub: `${scheduledPercent}% of total` },
+        { label: "Draft", value: String(stats.draft), sub: `${draftPercent}% of total` },
+        { label: "Archived", value: String(stats.archived), sub: `${archivedPercent}% of total` },
+        { label: "Live now", value: String(liveCount), sub: "Published or posted" },
+      ],
+    },
+    published: {
+      title: "Published Announcements",
+      items: [
+        { label: "Published count", value: String(stats.published), sub: `${publishedPercent}% of total` },
+        { label: "Live on site", value: String(stats.published), sub: "Visible to visitors" },
+        { label: "Recently updated", value: String(items.filter((item) => item.status === "published").length), sub: "Current published set" },
+        { label: "Ready for review", value: String(Math.max(stats.draft, 0)), sub: "Pending approval" },
+      ],
+    },
+    scheduled: {
+      title: "Scheduled Announcements",
+      items: [
+        { label: "Scheduled count", value: String(stats.scheduled), sub: `${scheduledPercent}% of total` },
+        { label: "Upcoming launches", value: String(stats.scheduled), sub: "Planned for release" },
+        { label: "At-risk timing", value: String(Math.max(stats.scheduled - 1, 0)), sub: "Needs a reminder" },
+        { label: "Pending action", value: String(stats.draft), sub: "Drafts still open" },
+      ],
+    },
+    draft: {
+      title: "Draft Announcements",
+      items: [
+        { label: "Draft count", value: String(stats.draft), sub: `${draftPercent}% of total` },
+        { label: "Waiting review", value: String(stats.draft), sub: "Needs editorial check" },
+        { label: "Ready to publish", value: String(Math.max(stats.draft - 1, 0)), sub: "Qualified for rollout" },
+        { label: "Archived backlog", value: String(stats.archived), sub: "Hidden from live view" },
+      ],
+    },
+  } as Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>;
+}
+
 // Hoisted to module scope on purpose: defining this inside the component
 // body would create a brand-new component type on every render, forcing
 // React to unmount/remount the whole modal (including any inputs) each
@@ -303,6 +416,7 @@ export default function AnnouncementsAdmin() {
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [activeCard, setActiveCard] = useState<StatKey | null>(null);
 
   function requestConfirmation(next: ConfirmState) {
     setConfirmState(next);
@@ -377,6 +491,17 @@ export default function AnnouncementsAdmin() {
     () => getPageNumbers(page, lastPage),
     [page, lastPage],
   );
+
+  const stats = useMemo<AnnouncementStats>(() => ({
+    total,
+    published: items.filter((item) => item.status === "published" || item.status === "posted").length,
+    scheduled: items.filter((item) => item.status === "scheduled").length,
+    draft: items.filter((item) => item.status === "draft").length,
+    archived: items.filter((item) => item.status === "archived").length,
+  }), [items, total]);
+
+  const drillDownData = useMemo(() => buildDrillDownData(stats, items), [stats, items]);
+  const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
 
   function openView(a: Announcement) {
     setViewTarget(a);
@@ -734,6 +859,41 @@ export default function AnnouncementsAdmin() {
   return (
     <div className="min-h-screen p-4 md:p-8">
       <main className="mx-auto space-y-6">
+        {activeDrillDown && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setActiveCard(null)} />
+            <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                <h3 className="text-base font-bold text-slate-900">{activeDrillDown.title}</h3>
+                <button onClick={() => setActiveCard(null)} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-3 px-6 py-5 sm:grid-cols-2">
+                {activeDrillDown.items.map((item) => (
+                  <div key={item.label} className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
+                    <p className="mt-1 text-xl font-bold text-slate-900">{item.value}</p>
+                    {item.sub && <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>}
+                  </div>
+                ))}
+              </div>
+              <div className="px-6 pb-6">
+                <button onClick={() => setActiveCard(null)} className="w-full rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard id="total" label="Total announcements" value={String(stats.total)} icon={Megaphone} tone="neutral" onClick={setActiveCard} />
+          <StatCard id="published" label="Published" value={String(stats.published)} icon={FileText} tone="green" onClick={setActiveCard} />
+          <StatCard id="scheduled" label="Scheduled" value={String(stats.scheduled)} icon={Calendar} tone="amber" onClick={setActiveCard} />
+          <StatCard id="draft" label="Draft" value={String(stats.draft)} icon={Clock} tone="red" onClick={setActiveCard} />
+        </div>
+
         {/* Filters */}
         <div className="flex flex-col gap-3 md:flex-row mb-5">
           {/* Search */}

@@ -836,208 +836,210 @@ export default function Home() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.97 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              className="fixed inset-0 z-[999] grid place-items-center px-4 py-3 pointer-events-none"
+              className="fixed inset-0 z-999 overflow-y-auto"
             >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-2xl bg-white rounded-2xl border border-gray-100 shadow-2xl pointer-events-auto flex flex-col max-h-[80vh]"
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between px-7 pt-6 pb-4 shrink-0">
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900">
-                      Share your experience
-                    </h2>
-                    <p className="text-sm text-gray-400 mt-0.5">
-                      We&rsquo;d love to hear from you
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleClose}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                    aria-label="Close"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                {/* Body */}
-                <div className="overflow-y-auto px-7 pb-2 flex-1">
-                  <AnimatePresence mode="wait">
-                    {submitted ? (
-                      /* Success state */
-                      <motion.div
-                        key="success"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="py-10 text-center"
-                      >
-                        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-50 border border-green-100">
-                          <Star className="h-7 w-7 fill-green-500 text-green-500" />
-                        </div>
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">
-                          Thank you, {form.name.split(" ")[0]}!
-                        </h3>
-                        <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">
-                          Your testimonial has been submitted!
-                        </p>
-                      </motion.div>
-                    ) : (
-                      /* Form */
-                      <motion.form
-                        key="form"
-                        onSubmit={handleSubmit}
-                        className="space-y-4 py-2"
-                      >
-                        {submitError && (
-                          <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
-                            {submitError}
-                          </p>
-                        )}
-
-                        {/* Rating */}
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-700 mb-2">
-                            Overall rating
-                          </label>
-                          <div className="flex gap-1">
-                            {[1, 2, 3, 4, 5].map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                onMouseEnter={() => setHoveredStar(s)}
-                                onMouseLeave={() => setHoveredStar(0)}
-                                onClick={() => set("rating", s)}
-                              >
-                                <Star
-                                  className={`h-7 w-7 transition-colors ${s <= (hoveredStar || form.rating)
-                                    ? "fill-[#FFC107] text-[#FFC107]"
-                                    : "fill-gray-100 text-gray-200"
-                                    }`}
-                                />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          {/* Name */}
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                              Full name <span className="text-red-400">*</span>
-                            </label>
-                            <input
-                              required
-                              type="text"
-                              value={form.name}
-                              onChange={(e) => set("name", e.target.value)}
-                              placeholder="e.g. Maria Santos"
-                              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
-                            />
-                          </div>
-
-                          {/* Email */}
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                              Email address{" "}
-                              <span className="text-red-400">*</span>
-                            </label>
-                            <input
-                              required
-                              type="email"
-                              value={form.email}
-                              onChange={(e) => set("email", e.target.value)}
-                              placeholder="you@company.com"
-                              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Job title + Company */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                              Job title <span className="text-red-400">*</span>
-                            </label>
-                            <input
-                              required
-                              type="text"
-                              value={form.title}
-                              onChange={(e) => set("title", e.target.value)}
-                              placeholder="e.g. CEO"
-                              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                              Company <span className="text-red-400">*</span>
-                            </label>
-                            <input
-                              required
-                              type="text"
-                              value={form.company}
-                              onChange={(e) => set("company", e.target.value)}
-                              placeholder="e.g. Bayanihan Digital"
-                              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
-                            />
-                          </div>
-                        </div>
-
-                        {/* quote */}
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                            Your testimonial{" "}
-                            <span className="text-red-400">*</span>
-                          </label>
-                          <textarea
-                            required
-                            rows={4}
-                            value={form.quote}
-                            onChange={(e) => set("quote", e.target.value)}
-                            placeholder="Tell us about your experience working at Hero Serviced Office…"
-                            className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all resize-none"
-                          />
-                        </div>
-
-                        <p className="text-[11px] text-gray-400">
-                          Your testimonial may be published on our website after
-                          review. We&rsquo;ll never share your email address.
-                        </p>
-
-                        {/* Submit */}
-                        <button
-                          type="submit"
-                          disabled={isSubmitting}
-                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#1B3A8C] py-3 text-sm font-medium text-white hover:bg-[#2a4fa8] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          {isSubmitting ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Submitting…
-                            </>
-                          ) : (
-                            <>
-                              Submit testimonial
-                              <Send className="h-4 w-4" />
-                            </>
-                          )}
-                        </button>
-                      </motion.form>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Footer */}
-                {submitted && (
-                  <div className="px-7 py-5 border-t border-gray-100 shrink-0">
+              <div className="flex min-h-full items-start justify-center px-4 py-8">
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="pointer-events-auto w-full max-w-2xl rounded-2xl border border-gray-100 bg-white shadow-2xl flex flex-col max-h-[calc(100vh-4rem)]"
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-7 pt-6 pb-4 shrink-0">
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900">
+                        Share your experience
+                      </h2>
+                      <p className="text-sm text-gray-400 mt-0.5">
+                        We&rsquo;d love to hear from you
+                      </p>
+                    </div>
                     <button
                       onClick={handleClose}
-                      className="w-full rounded-xl bg-[#1B3A8C] py-2.5 text-sm font-medium text-white hover:bg-[#2a4fa8] transition-colors"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                      aria-label="Close"
                     >
-                      Done
+                      <X className="h-5 w-5" />
                     </button>
                   </div>
-                )}
+
+                  {/* Body */}
+                  <div className="overflow-y-auto px-7 pb-2 flex-1">
+                    <AnimatePresence mode="wait">
+                      {submitted ? (
+                        /* Success state */
+                        <motion.div
+                          key="success"
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="py-10 text-center"
+                        >
+                          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-50 border border-green-100">
+                            <Star className="h-7 w-7 fill-green-500 text-green-500" />
+                          </div>
+                          <h3 className="text-lg font-bold text-gray-900 mb-2">
+                            Thank you, {form.name.split(" ")[0]}!
+                          </h3>
+                          <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">
+                            Your testimonial has been submitted!
+                          </p>
+                        </motion.div>
+                      ) : (
+                        /* Form */
+                        <motion.form
+                          key="form"
+                          onSubmit={handleSubmit}
+                          className="space-y-4 py-2"
+                        >
+                          {submitError && (
+                            <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+                              {submitError}
+                            </p>
+                          )}
+
+                          {/* Rating */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-2">
+                              Overall rating
+                            </label>
+                            <div className="flex gap-1">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  onMouseEnter={() => setHoveredStar(s)}
+                                  onMouseLeave={() => setHoveredStar(0)}
+                                  onClick={() => set("rating", s)}
+                                >
+                                  <Star
+                                    className={`h-7 w-7 transition-colors ${s <= (hoveredStar || form.rating)
+                                      ? "fill-[#FFC107] text-[#FFC107]"
+                                      : "fill-gray-100 text-gray-200"
+                                      }`}
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Name */}
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                                Full name <span className="text-red-400">*</span>
+                              </label>
+                              <input
+                                required
+                                type="text"
+                                value={form.name}
+                                onChange={(e) => set("name", e.target.value)}
+                                placeholder="e.g. Maria Santos"
+                                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                              />
+                            </div>
+
+                            {/* Email */}
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                                Email address{" "}
+                                <span className="text-red-400">*</span>
+                              </label>
+                              <input
+                                required
+                                type="email"
+                                value={form.email}
+                                onChange={(e) => set("email", e.target.value)}
+                                placeholder="you@company.com"
+                                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Job title + Company */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                                Job title <span className="text-red-400">*</span>
+                              </label>
+                              <input
+                                required
+                                type="text"
+                                value={form.title}
+                                onChange={(e) => set("title", e.target.value)}
+                                placeholder="e.g. CEO"
+                                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                                Company <span className="text-red-400">*</span>
+                              </label>
+                              <input
+                                required
+                                type="text"
+                                value={form.company}
+                                onChange={(e) => set("company", e.target.value)}
+                                placeholder="e.g. Bayanihan Digital"
+                                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          {/* quote */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                              Your testimonial{" "}
+                              <span className="text-red-400">*</span>
+                            </label>
+                            <textarea
+                              required
+                              rows={4}
+                              value={form.quote}
+                              onChange={(e) => set("quote", e.target.value)}
+                              placeholder="Tell us about your experience working at Hero Serviced Office…"
+                              className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all resize-none"
+                            />
+                          </div>
+
+                          <p className="text-[11px] text-gray-400">
+                            Your testimonial may be published on our website after
+                            review. We&rsquo;ll never share your email address.
+                          </p>
+
+                          {/* Submit */}
+                          <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#1B3A8C] py-3 text-sm font-medium text-white hover:bg-[#2a4fa8] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {isSubmitting ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Submitting…
+                              </>
+                            ) : (
+                              <>
+                                Submit testimonial
+                                <Send className="h-4 w-4" />
+                              </>
+                            )}
+                          </button>
+                        </motion.form>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Footer */}
+                  {submitted && (
+                    <div className="px-7 py-5 border-t border-gray-100 shrink-0">
+                      <button
+                        onClick={handleClose}
+                        className="w-full rounded-xl bg-[#1B3A8C] py-2.5 text-sm font-medium text-white hover:bg-[#2a4fa8] transition-colors"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           </>

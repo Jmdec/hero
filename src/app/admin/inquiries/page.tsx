@@ -13,11 +13,14 @@ import {
   Mail,
   Pencil,
   ChevronDown,
-  Calendar,
+  Inbox,
   RefreshCw,
   Send,
   CheckCircle2,
   XCircle,
+  ChevronRight as ChevronRightIcon,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react"
 
 interface Contact {
@@ -39,6 +42,15 @@ interface ContactStats {
   new: number
   contacted: number
   completed: number
+}
+
+type StatKey = "total" | "new" | "contacted" | "completed"
+
+const STAT_TONE_STYLES: Record<"neutral" | "blue" | "amber" | "green", { bg: string; text: string }> = {
+  neutral: { bg: "bg-slate-100", text: "text-slate-600" },
+  blue: { bg: "bg-blue-50", text: "text-blue-700" },
+  amber: { bg: "bg-amber-50", text: "text-amber-700" },
+  green: { bg: "bg-emerald-50", text: "text-emerald-700" },
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -276,36 +288,90 @@ function getPageNumbers(current: number, last: number): (number | "…")[] {
   return result;
 }
 
+function buildDrillDownData(stats: ContactStats, contacts: Contact[]) {
+  const byType = contacts.reduce<Record<string, number>>((acc, contact) => {
+    const label = INQUIRY_LABELS[contact.inquiry_type] ?? contact.inquiry_type
+    acc[label] = (acc[label] ?? 0) + 1
+    return acc
+  }, {})
+
+  const topTypes = Object.entries(byType)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([label, count]) => ({ label, value: String(count) }))
+
+  const percentageText = (n: number) => (stats.total > 0 ? `${Math.round((n / stats.total) * 100)}% of total` : "—")
+
+  return {
+    total: {
+      title: "All Inquiries",
+      items: [
+        { label: "New", value: String(stats.new), sub: percentageText(stats.new) },
+        { label: "Contacted", value: String(stats.contacted), sub: percentageText(stats.contacted) },
+        { label: "Completed", value: String(stats.completed), sub: percentageText(stats.completed) },
+        ...topTypes,
+      ],
+    },
+    new: {
+      title: "New Inquiries",
+      items: [
+        { label: "Count", value: String(stats.new), sub: percentageText(stats.new) },
+        { label: "Awaiting first reply", value: String(stats.new) },
+        ...topTypes,
+      ],
+    },
+    contacted: {
+      title: "Contacted Inquiries",
+      items: [
+        { label: "Count", value: String(stats.contacted), sub: percentageText(stats.contacted) },
+        { label: "Replied via email", value: String(stats.contacted) },
+        ...topTypes,
+      ],
+    },
+    completed: {
+      title: "Completed Inquiries",
+      items: [
+        { label: "Count", value: String(stats.completed), sub: percentageText(stats.completed) },
+        { label: "Closed out", value: String(stats.completed) },
+        ...topTypes,
+      ],
+    },
+  } as Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>
+}
+
 function StatCard({
+  id,
   label,
   value,
   icon: Icon,
   tone,
+  onClick,
 }: {
+  id: StatKey
   label: string
   value: number
   icon: React.ComponentType<{ className?: string }>
   tone: "neutral" | "blue" | "amber" | "green"
+  onClick: (id: StatKey) => void
 }) {
-  const toneStyles = {
-    neutral: { bg: "bg-slate-100", text: "text-slate-600" },
-    blue: { bg: "bg-blue-50", text: "text-blue-700" },
-    amber: { bg: "bg-amber-50", text: "text-amber-700" },
-    green: { bg: "bg-emerald-50", text: "text-emerald-700" },
-  }[tone]
+  const toneStyles = STAT_TONE_STYLES[tone]
 
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <button
+      onClick={() => onClick(id)}
+      className="group flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-slate-300 hover:shadow-md"
+    >
       <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${toneStyles.bg}`}>
         <Icon className={`h-5 w-5 ${toneStyles.text}`} />
       </span>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-2xl font-bold leading-none text-slate-900">{value}</p>
         <p className="mt-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
           {label}
         </p>
       </div>
-    </div>
+      <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-500" />
+    </button>
   )
 }
 
@@ -357,6 +423,7 @@ export default function ContactsAdmin() {
   const [stats, setStats] = useState<ContactStats>({ total: 0, new: 0, contacted: 0, completed: 0 })
   const [statsLoading, setStatsLoading] = useState(true)
   const [statsError, setStatsError] = useState<string | null>(null)
+  const [activeStat, setActiveStat] = useState<StatKey | null>(null)
 
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("")
@@ -639,14 +706,37 @@ export default function ContactsAdmin() {
     }
   }
 
+  const hasActiveFilters = Boolean(search || status || type);
+
+  function clearFilters() {
+    setSearch("");
+    setStatus("");
+    setType("");
+    setPage(1);
+  }
+
   const pageNumbers = useMemo(
     () => getPageNumbers(page, lastPage),
     [page, lastPage],
   );
 
+  const drillDownData = useMemo(
+    () => buildDrillDownData(stats, contacts),
+    [stats, contacts],
+  );
+
+  const activeDrillDown = activeStat ? drillDownData[activeStat] : null;
+
   return (
     <div className="min-h-screen p-4 md:p-8">
       <main className="mx-auto space-y-6">
+
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StatCard id="total" label="Total Inquiries" value={stats.total} icon={Inbox} tone="neutral" onClick={setActiveStat} />
+          <StatCard id="new" label="New" value={stats.new} icon={Mail} tone="blue" onClick={setActiveStat} />
+          <StatCard id="contacted" label="Contacted" value={stats.contacted} icon={Send} tone="amber" onClick={setActiveStat} />
+          <StatCard id="completed" label="Completed" value={stats.completed} icon={CheckCircle2} tone="green" onClick={setActiveStat} />
+        </div>
 
         {/* Filters */}
         <div className="flex flex-col gap-3 md:flex-row">
@@ -753,10 +843,28 @@ export default function ContactsAdmin() {
 
                 {!loading && !error && contacts.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-5 py-12 text-center">
-                      <p className="text-sm text-slate-500">
-                        No inquiries match your filters.
-                      </p>
+                    <td colSpan={5} className="px-5 py-14 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100">
+                          <Inbox className="h-5 w-5 text-slate-400" />
+                        </div>
+                        <p className="text-sm font-medium text-slate-700">
+                          No Inquiries found
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          {hasActiveFilters
+                            ? "Try a different search term or clear your filters."
+                            : "New inquiries will show up here."}
+                        </p>
+                        {hasActiveFilters && (
+                          <button
+                            onClick={clearFilters}
+                            className="mt-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                          >
+                            Clear filters
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -849,7 +957,7 @@ export default function ContactsAdmin() {
         {!loading && !error && contacts.length > 0 && (
           <div className="mt-5 flex flex-col items-center justify-between gap-3 md:flex-row">
             <p className="text-sm text-slate-500">
-              {total > 0 ? `${total} total announcements` : null}
+              {total > 0 ? `${total} total inquiries` : null}
             </p>
 
             <div className="flex items-center gap-2">
@@ -902,6 +1010,40 @@ export default function ContactsAdmin() {
           </div>
         )}
       </main>
+
+      {activeDrillDown && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setActiveStat(null)} />
+          <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <h2 className="text-lg font-semibold text-slate-900">{activeDrillDown.title}</h2>
+              <button
+                onClick={() => setActiveStat(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 px-6 py-5 sm:grid-cols-2">
+              {activeDrillDown.items.map((item) => (
+                <div key={item.label} className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs text-slate-500">{item.label}</p>
+                  <p className="mt-1 text-xl font-bold text-slate-900">{item.value}</p>
+                  {item.sub && <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>}
+                </div>
+              ))}
+            </div>
+            <div className="px-6 pb-6">
+              <button
+                onClick={() => setActiveStat(null)}
+                className="w-full rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* View Details Dialog */}
       {viewOpen && selected && (
@@ -1218,13 +1360,12 @@ export default function ContactsAdmin() {
               </div>
 
               <h2 className="mt-5 text-xl font-bold text-center text-[#0B1F4A]">
-                Delete Quotation?
-              </h2>
+              Delete Inquiry?
+            </h2>
 
-              <p className="mt-3 text-center text-sm text-[#64748B] leading-6">
-                Are you sure you want to delete this request
-                {deleteTarget.details?.full_name ? ` for ${deleteTarget.details.full_name}` : ""}?
-                <br />
+            <p className="mt-3 text-center text-sm text-[#64748B] leading-6">
+              Are you sure you want to delete this request
+              {deleteTarget.name ? ` for ${deleteTarget.name}` : ""}?
                 This action cannot be undone.
               </p>
 

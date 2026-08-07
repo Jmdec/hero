@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
       const saved = (data?.data ?? {}) as { id?: number; public_view_token?: string; dynamic_data?: Record<string, string> };
       const publicInquiryUrl = saved.public_view_token
         ? `${request.nextUrl.origin}/contact/inquiry/${saved.public_view_token}`
-        : `${request.nextUrl.origin}/admin/contact`;
+        : `${request.nextUrl.origin}/admin/inquiries`;
 
       await sendInquiryNotifications(
         {

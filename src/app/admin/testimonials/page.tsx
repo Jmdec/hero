@@ -95,6 +95,7 @@ function getPageNumbers(current: number, last: number): (number | "…")[] {
 export default function TestimonialsAdmin() {
   const [items, setItems] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
@@ -128,9 +129,13 @@ export default function TestimonialsAdmin() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  async function fetchTestimonials() {
-    setLoading(true);
-    setError(null);
+  async function fetchTestimonials(background = false) {
+    if (background) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
+    setError(null)
 
     try {
       const params = new URLSearchParams({
@@ -161,7 +166,11 @@ export default function TestimonialsAdmin() {
       );
       setItems([]);
     } finally {
-      setLoading(false);
+      if (background) {
+        setRefreshing(false)
+      } else {
+        setLoading(false)
+      }
     }
   }
 
@@ -177,6 +186,10 @@ export default function TestimonialsAdmin() {
     setStatus("");
     setRatingFilter("");
     setPage(1);
+  }
+
+  function handleRefresh() {
+    fetchTestimonials(true)
   }
 
   const pageNumbers = useMemo(
@@ -406,6 +419,15 @@ export default function TestimonialsAdmin() {
             <option value="2">2 stars</option>
             <option value="1">1 star</option>
           </select>
+
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-[#D9E2F0] rounded-xl text-sm font-semibold text-[#0B1F4A] hover:border-[#1B3A8C] hover:text-[#1B3A8C] transition disabled:opacity-50 shrink-0"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
         </div>
 
         {/* Table */}
@@ -426,11 +448,9 @@ export default function TestimonialsAdmin() {
                 {loading && (
                   <tr>
                     <td colSpan={5} className="px-5 py-12 text-center">
-                      <div className="flex flex-col items-center gap-2 text-slate-400">
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        <span className="text-sm">
-                          Loading testimonialss...
-                        </span>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
+                        <span className="text-sm text-[#64748B]">Loading testimonials...</span>
                       </div>
                     </td>
                   </tr>
@@ -487,75 +507,75 @@ export default function TestimonialsAdmin() {
                 )}
 
                 {!loading && !error && items.map((t) => (
-                    <tr key={t.id} className="hover:bg-blue-50/40">
-                      <td className="px-5 py-4">
-                        <p className="font-semibold text-slate-900">{t.name}</p>
-                        <p className="line-clamp-1 text-xs text-slate-500">
-                          {t.title}
-                          {t.company ? ` · ${t.company}` : ""}
-                        </p>
-                      </td>
+                  <tr key={t.id} className="hover:bg-blue-50/40">
+                    <td className="px-5 py-4">
+                      <p className="font-semibold text-slate-900">{t.name}</p>
+                      <p className="line-clamp-1 text-xs text-slate-500">
+                        {t.title}
+                        {t.company ? ` · ${t.company}` : ""}
+                      </p>
+                    </td>
 
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-0.5">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-3.5 w-3.5 ${i < t.rating
-                                ? "fill-[#1B3A8C] text-[#1B3A8C]"
-                                : "fill-slate-100 text-slate-200"
-                                }`}
-                            />
-                          ))}
-                        </div>
-                      </td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-3.5 w-3.5 ${i < t.rating
+                              ? "fill-[#1B3A8C] text-[#1B3A8C]"
+                              : "fill-slate-100 text-slate-200"
+                              }`}
+                          />
+                        ))}
+                      </div>
+                    </td>
 
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize ${STATUS_STYLES[t.status] ??
-                            "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
-                            }`}
+                    <td className="px-5 py-4">
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize ${STATUS_STYLES[t.status] ??
+                          "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
+                          }`}
+                      >
+                        {t.status}
+                      </span>
+                    </td>
+
+                    <td className="px-5 py-4 text-slate-500">
+                      <div className="flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5 text-slate-400" />
+                        {t.email}
+                      </div>
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => openView(t)}
+                          className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                          title="View"
                         >
-                          {t.status}
-                        </span>
-                      </td>
+                          <Eye className="h-4 w-4" />
+                        </button>
 
-                      <td className="px-5 py-4 text-slate-500">
-                        <div className="flex items-center gap-1.5">
-                          <Mail className="h-3.5 w-3.5 text-slate-400" />
-                          {t.email}
-                        </div>
-                      </td>
+                        <button
+                          onClick={() => openEdit(t)}
+                          className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
 
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => openView(t)}
-                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-                            title="View"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-
-                          <button
-                            onClick={() => openEdit(t)}
-                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-                            title="Edit"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-
-                          <button
-                            onClick={() => openDeleteDialog(t)}
-                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        <button
+                          onClick={() => openDeleteDialog(t)}
+                          className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
