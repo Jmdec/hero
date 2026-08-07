@@ -155,7 +155,7 @@ export default function AnnouncementPopup() {
               width={180}
               height={180}
               unoptimized
-              className="scale-x-[-1] drop-shadow-[0_8px_16px_rgba(13,25,54,0.35)]"
+              className="drop-shadow-[0_10px_20px_rgba(13,25,54,0.35)]"
             />
           </motion.div>
 
@@ -184,26 +184,18 @@ export default function AnnouncementPopup() {
                 ? { duration: 0.15 }
                 : { type: "spring", stiffness: 260, damping: 22, delay: 0.08 }
             }
-            className="pointer-events-auto relative bottom-10 -ml-3 w-[272px] max-w-[calc(100vw-2rem)] sm:w-[300px]"
+            className="pointer-events-auto relative bottom-10 -ml-3 w-68 max-w-[calc(100vw-2rem)] sm:w-75"
           >
             <div className="overflow-hidden rounded-[18px] border border-[#0D2A5C]/10 bg-[#FBFAF6] shadow-[0_18px_40px_-12px_rgba(13,25,54,0.35)]">
 
               <div className="max-h-[46vh] overflow-y-auto px-4 pb-4 pt-3.5">
-                <div className="relative flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex h-2 w-2 shrink-0 rounded-full bg-[#00D1B2] shadow-[0_0_0_3px_rgba(0,209,178,0.25)]" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0D2A5C]">
-                      {announcement.tag}
-                    </span>
-                  </div>
                   <button
                     onClick={handleClose}
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#9DB4DC] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-[#00D1B2]"
+                    className="absolute top-3 right-3 h-6 w-6 shrink-0 items-end justify-end rounded-full text-[#0D2A5C] transition-colors hover:text-gray-400 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-[#00D1B2]"
                     aria-label="Close announcement"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
-                </div>
                 <h3
                   id="announcement-title"
                   className="text-[17px] font-bold leading-snug tracking-tight text-[#101828]"
@@ -229,7 +221,7 @@ export default function AnnouncementPopup() {
                           href={entry.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-full bg-[#0D1E3F]/[0.06] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0D1E3F] transition-colors hover:bg-[#0D1E3F]/[0.12]"
+                          className="inline-flex items-center gap-1 rounded-full bg-[#0D1E3F]/6 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0D1E3F] transition-colors hover:bg-[#0D1E3F]/12"
                         >
                           {formatSocialPlatform(entry.platform)}
                           <ExternalLink className="h-2.5 w-2.5" />
@@ -241,7 +233,7 @@ export default function AnnouncementPopup() {
               </div>
 
               {/* Bottom accent — a single warm ember line, the "signature" mark */}
-              <div className="h-[3px] w-full bg-[linear-gradient(90deg,#00D1B2_0%,#0D47A1_55%,#0D1E3F_100%)]" />
+              <div className="h-0.75 w-full bg-[linear-gradient(90deg,#00D1B2_0%,#0D47A1_55%,#0D1E3F_100%)]" />
             </div>
           </motion.div>
         </div>

@@ -557,7 +557,11 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
 }
 
 function sanitizePdfText(text: string) {
-    return text.replace(/₱/g, "PHP ");
+    return text
+        .replace(/₱/g, "PHP ")
+        .replace(/[\r\n\t]+/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .trim();
 }
 
 /**
@@ -654,16 +658,7 @@ async function generateVirtualOfficeContractPdf(
             : null
     );
 
-    const drawPriceBreakdownSection = () => {
-        sectionTitle("Price Breakdown");
-        drawLine(`Package Price: ${monthlyFeeAmount != null ? formatPhp(monthlyFeeAmount) : "—"}`);
-        drawLine(`Quantity / Months: ${monthsCount}`);
-        drawLine(`Subtotal: ${subtotalAmount != null ? formatPhp(subtotalAmount) : "—"}`);
-        drawLine(`VAT${vatPercent != null ? ` (${vatPercent}%)` : ""}: ${vatAmount != null ? formatPhp(vatAmount) : "—"}`);
-        drawLine(`Contract & Administrative Fee: ${contractFeeAmount != null ? formatPhp(contractFeeAmount) : "—"}`);
-        drawLine(`Discounts: ${derivedDiscount != null ? formatPhp(derivedDiscount) : "—"}`);
-        drawLine(`Grand Total: ${grandTotalAmount != null ? formatPhp(grandTotalAmount) : "—"}`, { bold: true });
-    };
+
 
     const durationLabel = d.duration || quotation.duration || "Month-to-month";
 
@@ -678,9 +673,6 @@ async function generateVirtualOfficeContractPdf(
             drawParagraph(block);
             cursorY -= 6;
         }
-
-        cursorY -= 6;
-        drawPriceBreakdownSection();
 
         cursorY -= 30;
         drawLine("Hero PH Inc.", { bold: true, gap: 40 });
@@ -721,8 +713,6 @@ async function generateVirtualOfficeContractPdf(
     drawLine(`Payment Method: ${paymentMethodLabel}`);
     if (d.transaction_id) drawLine(`Reference No: ${d.transaction_id}`);
 
-    drawPriceBreakdownSection();
-
     sectionTitle("3. Client Information");
     drawLine(`Name: ${idName}`);
     if (d.id_type) drawLine(`ID Type: ${d.id_type}`);
@@ -749,7 +739,7 @@ async function generateVirtualOfficeContractPdf(
 
     ensureSpace(30);
     drawLine(
-        "23F TOWER6789, Ayala Avenue 6789, Makati City 1209, Philippines · salesofficer@heroph.net",
+        "23F TOWER6789, Ayala Avenue 6789, Makati City 1209, Philippines · .net",
         { size: 8, color: COLOR_MUTED, align: "center" }
     );
 
@@ -799,7 +789,6 @@ export async function sendQuotationUserEmail(
             ${quotation.service_name.toLowerCase()} request and our team will get back
             to you within <strong>24 business hours</strong>.
         </p>
-        ${signatoryLine}
         ${docCopyLine}
         <table style="width:100%;border-collapse:collapse;margin-top:16px;">
             ${buildQuotationDetailRows(quotation, {
@@ -840,18 +829,21 @@ export async function sendQuotationContractEmail(
     const d = quotation.detail;
     const firstName = d.full_name.split(" ")[0] || d.full_name;
     const attachments = [...getDocumentCopyAttachments(options)];
-    const shouldAttachContract = isVirtualOfficePaymongo(quotation);
+    const shouldAttachContract = isVirtualOfficePaymongo(quotation) || Boolean((d.contract_content || "").trim());
 
     if (shouldAttachContract) {
-        try {
-            const contractBuffer = await generateVirtualOfficeContractPdf(quotation);
-            attachments.push({
-                filename: "Hero-Virtual-Office-Contract.pdf",
-                content: contractBuffer,
-                contentType: "application/pdf",
-            });
-        } catch (error) {
-            console.error("Failed to generate contract email attachment:", error);
+        const contractBuffer = await generateVirtualOfficeContractPdf(quotation);
+        attachments.push({
+            filename: "Hero-Virtual-Office-Contract.pdf",
+            content: contractBuffer,
+            contentType: "application/pdf",
+        });
+
+        const hasContractAttachment = attachments.some((attachment) =>
+            attachment.filename === "Hero-Virtual-Office-Contract.pdf"
+        );
+        if (!hasContractAttachment) {
+            throw new Error("Contract PDF attachment missing. Contract email not sent.");
         }
     }
 
@@ -1080,10 +1072,6 @@ export async function sendQuotationAdminEmail(
             ${buildQuotationDetailRows(quotation, {
                 formattedDate: true,
             })}
-            ${quotationRow("取引ID", d.transaction_id)}
-            ${quotationRow("領収書ファイル", d.receipt)}
-            ${quotationRow("政府発行IDファイル", d.government_id_file)}
-            ${quotationRow("署名者IDファイル", d.signatory_id_file)}
         </table>`;
 
     const tasks: Promise<unknown>[] = [];

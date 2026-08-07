@@ -180,6 +180,18 @@ function formatDate(value: string | null) {
     return d.toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
 }
 
+function parseNumberish(value: string | number | null | undefined): number | null {
+    const normalized = typeof value === "string" ? value.replace(/[^0-9.-]/g, "") : value;
+    const numeric = Number(normalized ?? null);
+    return Number.isFinite(numeric) ? numeric : null;
+}
+
+function formatPhp(value: number | null | undefined): string {
+    const numeric = Number(value ?? 0);
+    if (Number.isNaN(numeric)) return "PHP 0.00";
+    return `PHP ${numeric.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function getInitials(name: string | null | undefined) {
     if (!name) return "?";
     const parts = name.trim().split(/\s+/);
@@ -197,35 +209,80 @@ function buildDefaultContractContent(quote: Quotation) {
     const today = new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
     const fullName = detail?.full_name ?? "Client";
     const companyName = detail?.company_name ? ` of ${detail.company_name}` : "";
-    const packageName = quote.package ?? detail?.package_name ?? "N/A";
-    const duration = detail?.duration != null
-        ? `${detail.duration} ${detail.duration === 1 ? "month" : "months"}`
-        : detail?.duration_type ?? "Month-to-month";
-    const startDate = detail?.date ? formatDate(detail.date) : "TBD";
-    const branch = quote.branch ?? "N/A";
+    const packageName = quote.package ?? "—";
+    const duration = detail?.duration ?? "Month-to-month";
+    const startDate = detail?.date ? formatDate(detail.date) : "—";
+    const branch = quote.branch ?? null;
+    const paymentMethod = detail?.payment_method
+        ? PAYMENT_METHOD_LABELS[detail.payment_method] ?? detail.payment_method
+        : "N/A";
+    const idName = detail?.id_name ?? fullName;
+    const signatoryLabel = detail?.signatory_details ?? idName;
+
+    const monthlyFeeByPackage: Record<string, string> = {
+        Basic: "2000",
+        Standard: "3000",
+        Premium: "5000",
+    };
+
+    const monthlyFeeAmount = parseNumberish(detail?.package_price) ?? parseNumberish(monthlyFeeByPackage[quote.package ?? ""]);
+    const monthsCount = parseNumberish(detail?.months ?? detail?.duration) ?? 1;
+    const subtotalAmount = parseNumberish(detail?.subtotal);
+    const vatAmount = parseNumberish(detail?.vat_amount);
+    const vatPercent = parseNumberish(detail?.vat_percentage);
+    const contractFeeAmount = parseNumberish(detail?.contract_admin_fee);
+    const discountAmount = parseNumberish(detail?.discounts ?? detail?.discount);
+    const grandTotalAmount = parseNumberish(detail?.total);
+    const derivedDiscount = discountAmount ?? (
+        subtotalAmount != null && contractFeeAmount != null && grandTotalAmount != null
+            ? Math.max(0, subtotalAmount + contractFeeAmount - grandTotalAmount)
+            : null
+    );
+
+    const priceBreakdownLines = [
+        "Price Breakdown",
+        `Package Price: ${monthlyFeeAmount != null ? formatPhp(monthlyFeeAmount) : "—"}`,
+        `Quantity / Months: ${monthsCount}`,
+        `Subtotal: ${subtotalAmount != null ? formatPhp(subtotalAmount) : "—"}`,
+        `VAT${vatPercent != null ? ` (${vatPercent}%)` : ""}: ${vatAmount != null ? formatPhp(vatAmount) : "—"}`,
+        `Contract & Administrative Fee: ${contractFeeAmount != null ? formatPhp(contractFeeAmount) : "—"}`,
+        `Discounts: ${derivedDiscount != null ? formatPhp(derivedDiscount) : "—"}`,
+        `Total: ${grandTotalAmount != null ? formatPhp(grandTotalAmount) : "—"}`,
+    ];
+
+    const clientInfoLines = [
+        "3. Client Information",
+        `Name: ${idName}`,
+        detail?.id_type ? `ID Type: ${detail.id_type}` : null,
+        detail?.id_number ? `ID Number: ${detail.id_number}` : null,
+        detail?.company_name ? `Company: ${detail.company_name}` : null,
+        detail?.id_address ? `Address: ${detail.id_address}` : null,
+        detail?.signatory_details ? `Signatory Details: ${detail.signatory_details}` : null,
+        `Email: ${detail?.email ?? "—"}`,
+        `Phone: ${detail?.phone ?? "—"}`,
+    ].filter((line): line is string => Boolean(line));
 
     return [
         `Date Issued: ${today}`,
         "",
         "1. Parties",
-        `This Virtual Office Service Agreement (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and ${fullName}${companyName} (\"Client\").`,
+        `This Virtual Office Service Agreement (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and ${fullName}${companyName} (\"Client\"), effective as of the date of confirmed payment below.`,
         "",
         "2. Service Details",
-        `Service: ${quote.service_name}`,
-        `Branch: ${branch}`,
+        `Service: ${quote.service_name || "Virtual Office"}`,
+        ...(branch ? [`Branch: ${branch}`] : []),
         `Package: ${packageName}`,
         `Duration: ${duration}`,
         `Start Date: ${startDate}`,
+        `Payment Method: ${paymentMethod}`,
+        ...(detail?.transaction_id ? [`Reference No: ${detail.transaction_id}`] : []),
         "",
-        "3. Terms & Conditions",
-        "The Client agrees to Hero PH's standard terms of service, including billing, renewal, and cancellation policies.",
-        "This Agreement takes effect upon confirmed payment unless otherwise agreed in writing.",
+        ...priceBreakdownLines,
         "",
-        "4. Signatures",
-        "Hero PH Inc. Authorized Representative",
-        "_______________________________",
-        fullName,
-        "_______________________________",
+        ...clientInfoLines,
+        "",
+        "4. Terms & Conditions",
+        "The Client agrees to the Provider's standard terms of service, including monthly billing, renewal, and cancellation policies as outlined in the Provider's Terms of Use. This Agreement takes effect upon confirmed payment and remains in force on a month-to-month basis unless terminated by either party with thirty (30) days' written notice. All correspondence regarding this Agreement should be directed to salesofficer@heroph.net.",
     ].join("\n");
 }
 
@@ -419,9 +476,9 @@ function ServiceDetailsSection({ quote }: { quote: Quotation }) {
                 <div className="mt-2.5 pt-2.5 border-t border-[#F0F4FB] flex justify-between items-start">
                     <p className="text-sm text-[#64748B]">Notes</p>
                     <div className="text-sm font-bold text-[#0B1F4A]">
-                    {detail?.request && <p className="text-sm text-[#0B1F4A]">{detail.request}</p>}
-                    {detail?.other_requirements && <p className="text-sm text-[#0B1F4A]">{detail.other_requirements}</p>}
-                </div>
+                        {detail?.request && <p className="text-sm text-[#0B1F4A]">{detail.request}</p>}
+                        {detail?.other_requirements && <p className="text-sm text-[#0B1F4A]">{detail.other_requirements}</p>}
+                    </div>
                 </div>
             )}
         </ReceiptSection>
@@ -1030,14 +1087,6 @@ export default function AdminQuotationsPage() {
                                                         <Eye className="w-4 h-4" />
                                                     </button>
                                                     <button
-                                                        onClick={(e) => { e.stopPropagation(); openContractViewer(quote); }}
-                                                        className="p-2 rounded-lg text-[#64748B] hover:text-[#1B3A8C] hover:bg-[#F0F4FB] transition"
-                                                        aria-label={`View contract for ${quote.detail?.full_name ?? "customer"}`}
-                                                        title="View Contract"
-                                                    >
-                                                        <FileText className="w-4 h-4" />
-                                                    </button>
-                                                    <button
                                                         onClick={(e) => { e.stopPropagation(); setDeleteTarget(quote); }}
                                                         className="p-2 rounded-lg text-[#64748B] hover:text-red-600 hover:bg-red-50 transition"
                                                         aria-label={`Delete request from ${quote.detail?.full_name ?? "customer"}`}
@@ -1090,8 +1139,8 @@ export default function AdminQuotationsPage() {
                         <div className="overflow-y-auto px-6 py-5 space-y-5 flex-1">
 
                             {/* Status */}
-                            <div className="flex items-center justify-between gap-3">
-                                <StatusBadge status={selected.status} />
+                            <div className="flex items-center justify-start gap-3">
+                                <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#8B96AB] justify-center"> STATUS </span>
                                 <select
                                     value={selected.status}
                                     onChange={(e) => {
@@ -1137,8 +1186,15 @@ export default function AdminQuotationsPage() {
                                         ) : (
                                             <>
                                                 <Link2 className="w-4 h-4" />
-                                                {selected.status === "payment_verification" ? "Payment Link Sent" : "Send Payment Link"}
-                                                {(selected.detail?.payment_link_send_count ?? 0) >= 3 ? "Payment link limit reached" : "Send Payment Link"}
+                                                {
+                                                    selected.status === "payment_verification"
+                                                        ? (
+                                                            (selected.detail?.payment_link_send_count ?? 0) >= 3
+                                                                ? "Payment Link Limit Reached"
+                                                                : "Send Payment Link"
+                                                        )
+                                                        : "Payment Link Sent"
+                                                }
                                             </>
                                         )}
                                     </button>
@@ -1228,46 +1284,6 @@ export default function AdminQuotationsPage() {
                                     <div className="whitespace-pre-wrap text-sm leading-7 text-[#0B1F4A]">
                                         {contractDraft}
                                     </div>
-                                    {(() => {
-                                        const breakdown = getContractPriceBreakdown(contractModalQuote.detail);
-                                        if (!breakdown) return null;
-
-                                        return (
-                                            <div className="mt-8 border-t border-[#E5EAF2] pt-5">
-                                                <p className="text-sm font-bold text-[#1B3A8C] mb-3">Price Breakdown</p>
-                                                <div className="space-y-1.5 text-sm text-[#0B1F4A]">
-                                                    <div className="flex justify-between gap-4">
-                                                        <span>Package Price</span>
-                                                        <span className="font-semibold">{breakdown.packagePrice != null ? formatPhpAmount(breakdown.packagePrice) : "—"}</span>
-                                                    </div>
-                                                    <div className="flex justify-between gap-4">
-                                                        <span>Quantity / Months</span>
-                                                        <span className="font-semibold">{breakdown.months}</span>
-                                                    </div>
-                                                    <div className="flex justify-between gap-4">
-                                                        <span>Subtotal</span>
-                                                        <span className="font-semibold">{breakdown.subtotal != null ? formatPhpAmount(breakdown.subtotal) : "—"}</span>
-                                                    </div>
-                                                    <div className="flex justify-between gap-4">
-                                                        <span>VAT{breakdown.vatPercentage != null ? ` (${breakdown.vatPercentage}%)` : ""}</span>
-                                                        <span className="font-semibold">{breakdown.vatAmount != null ? formatPhpAmount(breakdown.vatAmount) : "—"}</span>
-                                                    </div>
-                                                    <div className="flex justify-between gap-4">
-                                                        <span>Contract & Administrative Fee</span>
-                                                        <span className="font-semibold">{breakdown.contractFee != null ? formatPhpAmount(breakdown.contractFee) : "—"}</span>
-                                                    </div>
-                                                    <div className="flex justify-between gap-4">
-                                                        <span>Discounts</span>
-                                                        <span className="font-semibold">{breakdown.discount != null ? formatPhpAmount(breakdown.discount) : "—"}</span>
-                                                    </div>
-                                                    <div className="mt-2 pt-2 border-t border-[#D9E2F0] flex justify-between gap-4 text-base">
-                                                        <span className="font-bold">Grand Total</span>
-                                                        <span className="font-bold text-[#1B3A8C]">{breakdown.grandTotal != null ? formatPhpAmount(breakdown.grandTotal) : "—"}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
                                 </div>
                             ) : (
                                 <div className="mx-auto max-w-3xl bg-white border border-[#D9E2F0] rounded-xl p-5 sm:p-6 shadow-sm space-y-3">
