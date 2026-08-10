@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
-function getApiBaseUrl() {
-  const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
-  const normalized = API_URL.replace(/\/+$/g, "");
-  return normalized.endsWith("/api") ? normalized.replace(/\/api$/, "") : normalized;
-}
+// function getApiBaseUrl() {
+//   const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+//   const normalized = API_URL.replace(/\/+$/g, "");
+//   return normalized.endsWith("/api") ? normalized.replace(/\/api$/, "") : normalized;
+// }
 
-const API_URL = getApiBaseUrl();
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "https://localhost:8000").replace(/\/+$/g, "");
+const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
+const LARAVEL_BASE_URL = process.env.LARAVEL_APP_URL ?? LARAVEL_API_BASE.replace(/\/api\/?$/, "");
+
+// const API_URL = getApiBaseUrl();
 
 async function readResponsePayload(res: Response) {
   const text = await res.text();
@@ -23,7 +27,7 @@ async function readResponsePayload(res: Response) {
 export async function GET(request: NextRequest) {
   const query = new URL(request.url).search;
 
-  const res = await fetch(`${API_URL}/api/admin/announcements${query}`, {
+  const res = await fetch(`${LARAVEL_BASE_URL}/admin/announcements${query}`, {
     headers: {
       Accept: "application/json",
       Authorization: request.headers.get("authorization") ?? "",
@@ -42,7 +46,7 @@ export async function POST(request: NextRequest) {
   if (contentType.includes("multipart/form-data")) {
     const formData = await request.formData();
 
-    const res = await fetch(`${API_URL}/api/admin/announcements`, {
+    const res = await fetch(`${LARAVEL_BASE_URL}/admin/announcements`, {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -64,7 +68,7 @@ export async function POST(request: NextRequest) {
     body = {};
   }
 
-  const res = await fetch(`${API_URL}/api/admin/announcements`, {
+  const res = await fetch(`${LARAVEL_BASE_URL}/admin/announcements`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

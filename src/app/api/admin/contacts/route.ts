@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+// const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "https://localhost:8000").replace(/\/+$/g, "");
+const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
+const LARAVEL_BASE_URL = process.env.LARAVEL_APP_URL ?? LARAVEL_API_BASE.replace(/\/api\/?$/, "");
 
 export async function GET(request: NextRequest) {
   const query = new URL(request.url).search;
 
-  const res = await fetch(`${API_URL}/api/admin/inquiries${query}`, {
+  const res = await fetch(`${LARAVEL_BASE_URL}/admin/inquiries${query}`, {
     headers: {
       Accept: "application/json",
       Authorization: request.headers.get("authorization") ?? "",

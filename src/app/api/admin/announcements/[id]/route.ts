@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
-function getApiBaseUrl() {
-  const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
-  const normalized = API_URL.replace(/\/+$/g, "");
-  return normalized.endsWith("/api") ? normalized.replace(/\/api$/, "") : normalized;
-}
+// function getApiBaseUrl() {
+//   const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+//   const normalized = API_URL.replace(/\/+$/g, "");
+//   return normalized.endsWith("/api") ? normalized.replace(/\/api$/, "") : normalized;
+// }
 
-const API_URL = getApiBaseUrl();
+// const API_URL = getApiBaseUrl();
+
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "https://localhost:8000").replace(/\/+$/g, "");
+const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
+const LARAVEL_BASE_URL = process.env.LARAVEL_APP_URL ?? LARAVEL_API_BASE.replace(/\/api\/?$/, "");
 
 async function readResponsePayload(res: Response) {
   const text = await res.text();
@@ -30,7 +34,7 @@ export async function PUT(
   if (contentType.includes("multipart/form-data")) {
     const formData = await request.formData();
 
-    const res = await fetch(`${API_URL}/api/admin/announcements/${id}`, {
+    const res = await fetch(`${LARAVEL_BASE_URL}/admin/announcements/${id}`, {
       method: "PUT",
       headers: {
         Accept: "application/json",
@@ -52,7 +56,7 @@ export async function PUT(
     body = {};
   }
 
-  const res = await fetch(`${API_URL}/api/admin/announcements/${id}`, {
+  const res = await fetch(`${LARAVEL_BASE_URL}/admin/announcements/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -80,7 +84,7 @@ export async function PATCH(
     body = {};
   }
 
-  const res = await fetch(`${API_URL}/api/admin/announcements/${id}`, {
+  const res = await fetch(`${LARAVEL_BASE_URL}/admin/announcements/${id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -101,7 +105,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  const res = await fetch(`${API_URL}/api/admin/announcements/${id}`, {
+  const res = await fetch(`${LARAVEL_BASE_URL}/admin/announcements/${id}`, {
     method: "DELETE",
     headers: {
       Accept: "application/json",
