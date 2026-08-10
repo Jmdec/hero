@@ -362,13 +362,13 @@ const makeId = () =>
 const WELCOME_MESSAGE: Message = {
     id: "welcome",
     type: "bot",
-    text: "Hi there! 👋 Welcome to HERO Serviced Office. We deliver premium serviced offices and flexible workspace solutions in the Philippines. How can I help you today?",
+    text: "Hi there! 👋 I'm your HERO assistant. We deliver premium serviced offices and flexible workspace solutions in the Philippines. How can I help you today?",
     time: formatTime(),
-    source: "Support",
+    source: "AI Assistant",
 };
 
 const AGENT_ENDED_MESSAGE =
-    "🔴 The live agent ended the chat. Feel free to keep chatting or pick a quick reply below.";
+    "🔴 The live agent ended the chat. You're back with our AI assistant — feel free to keep chatting or pick a quick reply below.";
 
 const AGENT_CONNECTING_MESSAGE =
     "You will be connected to an agent";
@@ -437,6 +437,195 @@ const PREDEFINED_REPLIES: Record<string, { text: string; cta?: CTA }> = {
     },
 };
 
+type BotRule = {
+    keywords: string[];
+    reply: string;
+    cta?: CTA;
+};
+
+const BOT_RULES: BotRule[] = [
+    {
+        keywords: ["thank", "thanks", "thx", "appreciate"],
+        reply:
+            "You're very welcome! 😊 Is there anything else I can help you with?",
+    },
+    {
+        keywords: ["bye", "goodbye", "see you"],
+        reply: "Thanks for chatting with us! Have a great day. 👋",
+    },
+    {
+        keywords: [
+            "hi",
+            "hello",
+            "hey",
+            "good morning",
+            "good afternoon",
+            "good evening",
+        ],
+        reply:
+            "Hello! 👋 How can I help you today? You can ask about our services, private offices, virtual offices, co-working spaces, meeting rooms, pricing, or how to reach us.",
+    },
+    {
+        keywords: ["service", "services", "what do you offer", "offer"],
+        reply: PREDEFINED_REPLIES["Our Services"].text,
+        cta: PREDEFINED_REPLIES["Our Services"].cta,
+    },
+    {
+        keywords: ["about", "who are you", "company"],
+        reply: PREDEFINED_REPLIES["Contact Info"].text,
+        cta: PREDEFINED_REPLIES["Contact Info"].cta,
+    },
+    {
+        keywords: [
+            "contact",
+            "email",
+            "phone number",
+            "reach you",
+            "address",
+            "location",
+            "where are you",
+        ],
+        reply: PREDEFINED_REPLIES["Contact Info"].text,
+        cta: PREDEFINED_REPLIES["Contact Info"].cta,
+    },
+    {
+        keywords: ["private office", "office space", "desk space"],
+        reply: PREDEFINED_REPLIES["Private Office"].text,
+        cta: PREDEFINED_REPLIES["Private Office"].cta,
+    },
+    {
+        keywords: ["virtual office", "virtual address", "mail handling"],
+        reply: PREDEFINED_REPLIES["Virtual Office"].text,
+        cta: PREDEFINED_REPLIES["Virtual Office"].cta,
+    },
+    {
+        keywords: ["co-working", "coworking", "shared desk", "hot desk"],
+        reply: PREDEFINED_REPLIES["Co-working Space"].text,
+        cta: PREDEFINED_REPLIES["Co-working Space"].cta,
+    },
+    {
+        keywords: ["meeting room", "conference room", "boardroom"],
+        reply: PREDEFINED_REPLIES["Meeting Rooms"].text,
+        cta: PREDEFINED_REPLIES["Meeting Rooms"].cta,
+    },
+    {
+        keywords: [
+            "price",
+            "pricing",
+            "cost",
+            "rate",
+            "quote",
+            "quotation",
+            "how much",
+        ],
+        reply: PREDEFINED_REPLIES["Get a Quote"].text,
+        cta: PREDEFINED_REPLIES["Get a Quote"].cta,
+    },
+    {
+        keywords: ["agent", "human", "representative", "real person"],
+        reply:
+            'I can connect you with a live team member — just tap "Talk to an Agent" below.',
+    },
+    {
+        keywords: ["hour", "open", "opening time", "business hours"],
+        reply:
+            "Tower 6789's live-chat desk is available Mon–Fri, 8AM–6PM (PHT). Our Insular Life location is staffed 24/7 on-site. You can also email us anytime at info@heroph.net.",
+    },
+    {
+        keywords: [
+            "email me this",
+            "email me the chat",
+            "send me this chat",
+            "chat history",
+            "transcript",
+            "copy of this conversation",
+            "copy of our chat",
+        ],
+        reply:
+            "Sure — I'll email a copy of this conversation to the address you gave us. It should land in your inbox shortly. 📧",
+    },
+];
+
+const FALLBACK_REPLY =
+    "Thanks for your message! I'm not sure I fully understood that, but here's what I can help with — our services, private offices, virtual offices, co-working spaces, meeting rooms, pricing, or contact details. You can also tap one of the quick replies below, or tap \"Talk to an Agent\" for a live team member.";
+
+const HISTORY_REQUEST_KEYWORDS = [
+    "email me this",
+    "email me the chat",
+    "send me this chat",
+    "chat history",
+    "transcript",
+    "copy of this conversation",
+    "copy of our chat",
+];
+
+function getLocalBotReply(userText: string): { text: string; cta?: CTA } {
+    const text = userText.toLowerCase();
+
+    for (const rule of BOT_RULES) {
+        if (rule.keywords.some((kw) => text.includes(kw))) {
+            return {
+                text: rule.reply,
+                cta: rule.cta ?? getContextualCta(userText),
+            };
+        }
+    }
+
+    return {
+        text: FALLBACK_REPLY,
+        cta: getContextualCta(userText) ?? CTA_LINKS.services,
+    };
+}
+
+function wantsChatHistory(userText: string): boolean {
+    const text = userText.toLowerCase();
+    return HISTORY_REQUEST_KEYWORDS.some((kw) => text.includes(kw));
+}
+
+function getContextualCta(userText: string): CTA | undefined {
+    const text = userText.toLowerCase();
+
+    if (/(quote|quotation|pricing|price|cost|estimate|how much)/.test(text)) {
+        return CTA_LINKS.quote;
+    }
+
+    if (/(private office|office space|desk space)/.test(text)) {
+        return CTA_LINKS.privateOffice;
+    }
+
+    if (/(virtual office|virtual address|mail handling)/.test(text)) {
+        return CTA_LINKS.virtualOffice;
+    }
+
+    if (/(coworking|co-working|shared desk|hot desk)/.test(text)) {
+        return CTA_LINKS.coworking;
+    }
+
+    if (/(meeting room|conference room|boardroom)/.test(text)) {
+        return CTA_LINKS.meetingRooms;
+    }
+
+    if (/(service|services|what do you offer|offer)/.test(text)) {
+        return CTA_LINKS.services;
+    }
+
+    if (/(contact|email|phone number|reach you|address|location|where are you)/.test(text)) {
+        return CTA_LINKS.contact;
+    }
+
+    return undefined;
+}
+
+const humanDelay = (replyLength = 0) => {
+    const base = 450;
+    const variance = Math.random() * 350; // 0–350ms jitter
+    const lengthBump = Math.min(replyLength * 3, 500); // cap the length bonus
+    return new Promise((res) => setTimeout(res, base + variance + lengthBump));
+};
+
+const quickReplyDelay = () =>
+  new Promise((res) => setTimeout(res, 10000 + Math.random() * 10000));
+
 const nextPaint = () =>
     new Promise<void>((resolve) => {
         requestAnimationFrame(() => {
@@ -481,6 +670,7 @@ const Chatbot = () => {
     const [agreementTouched, setAgreementTouched] = useState(false);
     const [agentRequested, setAgentRequested] = useState(false);
     const [agentRequestInFlight, setAgentRequestInFlight] = useState(false);
+    const closeEmailSentRef = useRef(false);
     const conversationRef = useRef<ConversationState | null>(null);
     const leadSubmittedRef = useRef(false);
     const conversationClosedRef = useRef(false);
@@ -570,9 +760,9 @@ const Chatbot = () => {
                         message.sender === "admin"
                             ? "Live Agent"
                             : message.sender === "assistant"
-                                ? "Support"
+                                ? "AI Assistant"
                                 : message.sender === "system"
-                                    ? "System"
+                                    ? "Quick Reply"
                                     : undefined,
                 }));
 
@@ -636,7 +826,7 @@ const Chatbot = () => {
                                 type: "bot" as const,
                                 text: AGENT_ENDED_MESSAGE,
                                 time: formatTime(),
-                                source: "Support",
+                                source: "AI Assistant",
                             },
                         ]
                         : mappedMessages;
@@ -745,9 +935,10 @@ const Chatbot = () => {
 
     const requestTranscriptEmail = useCallback(
         async (conversationId: number | undefined) => {
-            if (!conversationId) return;
+            if (!conversationId || closeEmailSentRef.current) return;
             try {
                 await chatApi.emailChatHistory(conversationId);
+                closeEmailSentRef.current = true;
             } catch {
             }
         },
@@ -920,12 +1111,15 @@ const Chatbot = () => {
                 ...prev,
                 { id: makeId(), type: "user", text: reply, time },
             ]);
+            setIsTyping(true);
+            await nextPaint();
             setSendError("");
 
             const activeConversation = await ensureConversation();
 
-            // Persist the user's selection so the admin can see what was asked.
-            void persistMessage(activeConversation, "user", reply);
+            await quickReplyDelay();
+            setIsTyping(false);
+            await nextPaint();
 
             setMessages((prev) => [
                 ...prev,
@@ -934,10 +1128,11 @@ const Chatbot = () => {
                     type: "bot",
                     text: predefined.text,
                     time: formatTime(),
-                    source: "Quick Reply",
+                    source: "AI Assistant",
                     cta: predefined.cta,
                 },
             ]);
+            void persistMessage(activeConversation, "assistant", predefined.text);
         } finally {
             isProcessingLocalMessageRef.current = false;
         }
@@ -962,7 +1157,7 @@ const Chatbot = () => {
                     type: "bot",
                     text: "Before we connect you to a live agent, please provide your contact details so our team can reach you.",
                     time: formatTime(),
-                    source: "Support",
+                    source: "AI Assistant",
                 },
             ]);
             return;
@@ -987,7 +1182,7 @@ const Chatbot = () => {
 
             const activeConversation = await ensureConversation();
 
-            await new Promise((res) => setTimeout(res, 800 + Math.random() * 400));
+            await quickReplyDelay();
             setIsTyping(false);
             await nextPaint();
 
@@ -999,11 +1194,11 @@ const Chatbot = () => {
                         type: "bot",
                         text: OUT_OF_HOURS_MESSAGE,
                         time: formatTime(),
-                        source: "Support",
+                        source: "AI Assistant",
                         cta: CTA_LINKS.contact,
                     },
                 ]);
-                void persistMessage(activeConversation, "system", OUT_OF_HOURS_MESSAGE);
+                void persistMessage(activeConversation, "assistant", OUT_OF_HOURS_MESSAGE);
                 setAwaitingPreferredContact(true);
                 return;
             }
@@ -1018,7 +1213,7 @@ const Chatbot = () => {
                     type: "bot",
                     text: AGENT_CONNECTING_MESSAGE,
                     time: formatTime(),
-                    source: "Support",
+                    source: "AI Assistant",
                 },
             ]);
 
@@ -1049,11 +1244,11 @@ const Chatbot = () => {
                         type: "bot",
                         text: agentReply,
                         time: formatTime(),
-                        source: "Support",
+                        source: "AI Assistant",
                         cta: CTA_LINKS.contact,
                     },
                 ]);
-                void persistMessage(activeConversation, "system", agentReply);
+                void persistMessage(activeConversation, "assistant", agentReply);
             } catch {
                 setMessages((prev) => prev.filter((msg) => msg.id !== connectingMessageId));
                 setSendError(
@@ -1066,7 +1261,7 @@ const Chatbot = () => {
                         type: "bot",
                         text: "⚠️ We could not connect you to an agent right now. Please try again.",
                         time: formatTime(),
-                        source: "Support",
+                        source: "AI Assistant",
                     },
                 ]);
                 setAgentRequested(false);
@@ -1095,12 +1290,19 @@ const Chatbot = () => {
 
             setMessages((prev) => [...prev, userMessage]);
             setMessage("");
+            setIsTyping(true);
+            await nextPaint();
             setSendError("");
 
             const activeConversation = await ensureConversation();
             await persistMessage(activeConversation, "user", userMessage.text);
 
             if (awaitingPreferredContact) {
+                await quickReplyDelay();
+
+                setIsTyping(false);
+                await nextPaint();
+
                 setAwaitingPreferredContact(false);
 
                 try {
@@ -1113,7 +1315,6 @@ const Chatbot = () => {
                         });
                     }
                 } catch {
-                    // best-effort
                 }
 
                 setMessages((prev) => [
@@ -1123,14 +1324,50 @@ const Chatbot = () => {
                         type: "bot",
                         text: PREFERRED_CONTACT_RECEIVED_MESSAGE,
                         time: formatTime(),
-                        source: "Support",
+                        source: "AI Assistant",
                         cta: CTA_LINKS.contact,
                     },
                 ]);
+                void persistMessage(
+                    activeConversation,
+                    "assistant",
+                    PREFERRED_CONTACT_RECEIVED_MESSAGE,
+                );
                 return;
             }
 
-            // No auto-reply — admin will respond via the live chat panel.
+            if (agentRequested) {
+                setIsTyping(false);
+                await nextPaint();
+                return;
+            }
+
+            const { text: replyText, cta } = getLocalBotReply(userMessage.text);
+
+            await humanDelay(replyText.length);
+
+            setIsTyping(false);
+            await nextPaint();
+
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: makeId(),
+                    type: "bot",
+                    text: replyText,
+                    time: formatTime(),
+                    source: "AI Assistant",
+                    cta,
+                },
+            ]);
+            void persistMessage(activeConversation, "assistant", replyText);
+
+            if (wantsChatHistory(userMessage.text)) {
+                const targetId =
+                    conversation?.remoteConversationId ?? conversation?.id ??
+                    activeConversation?.remoteConversationId ?? activeConversation?.id;
+                void requestTranscriptEmail(targetId);
+            }
         } finally {
             isProcessingLocalMessageRef.current = false;
         }
@@ -1201,18 +1438,19 @@ const Chatbot = () => {
                 );
             }
 
-            const greeting = `Thanks, ${leadInfo.name.trim()}! We've received your details. Our team will respond to you shortly — feel free to ask a question or use the quick replies below.`;
+            const greeting = `Thanks, ${leadInfo.name.trim()}! Your details have been received. How can I help you today?`;
             setMessages([
                 {
                     id: makeId(),
                     type: "bot",
                     text: greeting,
                     time: formatTime(),
-                    source: "Support",
+                    source: "AI Assistant",
                 },
             ]);
-            await persistMessage(newConversation, "system", greeting);
+            await persistMessage(newConversation, "assistant", greeting);
 
+            // AI handles the inquiry immediately — no extra step needed before chatting.
             setLeadSubmitted(true);
         } catch (err) {
             const detail = err instanceof Error ? err.message : undefined;
