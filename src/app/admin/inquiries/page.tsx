@@ -764,8 +764,8 @@ export default function ContactsAdmin() {
   const activeDrillDown = activeStat ? drillDownData[activeStat] : null;
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <main className="mx-auto space-y-6">
+    <main className="min-h-screen">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard id="total" label="Total Inquiries" value={stats.total} icon={Inbox} tone="neutral" onClick={setActiveStat} />
@@ -1045,7 +1045,7 @@ export default function ContactsAdmin() {
             </div>
           </div>
         )}
-      </main>
+      </section>
 
       {activeDrillDown && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1436,6 +1436,6 @@ export default function ContactsAdmin() {
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
-    </div>
+    </main>
   )
 }

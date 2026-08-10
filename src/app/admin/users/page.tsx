@@ -544,8 +544,8 @@ export default function UsersPage() {
     }
 
     return (
-        <>
-            <section className="p-4 space-y-8">
+        <main className="min-h-screen">
+            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
                 {/* Error States */}
                 {error && (
                     <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
@@ -990,6 +990,6 @@ export default function UsersPage() {
                     </div>
                 </ModalBackdrop>
             )}
-        </>
+        </main>
     );
 }

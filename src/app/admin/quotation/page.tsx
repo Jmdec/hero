@@ -1026,10 +1026,10 @@ export default function AdminQuotationsPage() {
     };
 
     return (
-        <>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4">
+        <main className="min-h-screen">
+            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
                 {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 space-y-6">
                     <StatCard id="total" label="Total requests" value={String(counts.all)} icon={Inbox} tone="neutral" onClick={setActiveCard} />
                     <StatCard id="needs_attention" label="Needs attention" value={String(needsAttention)} icon={AlertCircle} tone="amber" onClick={setActiveCard} />
                     <StatCard id="value" label="Quotation value" value={String(completed)} icon={Check} tone="green" onClick={setActiveCard} />
@@ -1203,7 +1203,7 @@ export default function AdminQuotationsPage() {
                         </div>
                     )}
                 </div>
-            </div>
+            </section>
 
             {/* Detail modal — receipt-style layout */}
             {selected && (
@@ -1618,7 +1618,7 @@ export default function AdminQuotationsPage() {
             )}
 
             <ToastStack toasts={toasts} onDismiss={dismissToast} />
-        </>
+        </main>
     );
 }
 

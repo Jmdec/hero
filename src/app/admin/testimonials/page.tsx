@@ -128,18 +128,6 @@ function StatCard({
       </div>
       <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
       <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-      {trend ? (
-        <p className={`flex items-center gap-1 text-xs font-medium ${trendUp ? "text-green-600" : "text-red-600"}`}>
-          {trendUp ? (
-            <TrendingUp className="h-3.5 w-3.5" />
-          ) : (
-            <TrendingDown className="h-3.5 w-3.5" />
-          )}
-          {trend}
-        </p>
-      ) : (
-        <p className="text-xs font-medium text-slate-400">No change</p>
-      )}
     </button>
   );
 }
@@ -684,7 +672,7 @@ export default function TestimonialsAdmin() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

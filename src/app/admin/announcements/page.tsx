@@ -853,8 +853,8 @@ export default function AnnouncementsAdmin() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <main className="mx-auto space-y-6">
+    <main className="min-h-screen">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
         {activeDrillDown && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setActiveCard(null)} />
@@ -1141,7 +1141,7 @@ export default function AnnouncementsAdmin() {
             </div>
           </div>
         )}
-      </main>
+      </section>
 
       {/* View Dialog — read-only details, status is the only editable field */}
       {viewOpen && viewTarget && (
@@ -1615,6 +1615,6 @@ export default function AnnouncementsAdmin() {
           </div>
         </ModalBackdrop>
       )}
-    </div>
+    </main>
   );
 }

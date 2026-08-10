@@ -150,7 +150,7 @@ function ModalBackdrop({ onClose, children }: { onClose: () => void; children: R
     );
 }
 
-/* ─── Drill-Down Modal ─── */
+/* Drill-Down Modal */
 function DrillDownModal({ id, data, onClose }: { id: StatKey; data: Analytics; onClose: () => void }) {
     const drillMap: Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }> = {
         chat_leads: {
@@ -219,17 +219,12 @@ function DrillDownModal({ id, data, onClose }: { id: StatKey; data: Analytics; o
                         </div>
                     ))}
                 </div>
-                <div className="px-6 pb-6">
-                    <button onClick={onClose} className="w-full rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
-                        Close
-                    </button>
-                </div>
             </div>
         </ModalBackdrop>
     );
 }
 
-/* ─── Status Badge ─── */
+/* Status Badge */
 const statusStyles: Record<string, string> = {
     new: "bg-blue-50 text-blue-700",
     in_progress: "bg-yellow-50 text-yellow-700",
@@ -380,10 +375,10 @@ export default function AdminDashboard() {
     const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
 
     return (
-        <>
-            <section className="p-4 space-y-8">
+        <main className="min-h-screen">
+            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
 
-                {/* ── Header ── */}
+                {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="text-lg font-semibold text-gray-900">Live data · {formatDate(new Date().toISOString())}</p>
@@ -398,12 +393,12 @@ export default function AdminDashboard() {
                     </button>
                 </div>
 
-                {/* ── Stat Cards ── */}
+                {/* Stat Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
                     {stats.map((s) => <StatCard key={s.id} {...s} />)}
                 </div>
 
-                {/* ── Charts Row ── */}
+                {/* Charts Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
                     {/* Lead generation */}
@@ -485,7 +480,7 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
-                {/* ── Revenue + Inquiries Trend ── */}
+                {/* Revenue + Inquiries Trend */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
                     {/* Revenue bar */}
@@ -537,7 +532,7 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
-                {/* ── Recent Contact Inquiries Table ── */}
+                {/* Recent Contact Inquiries Table */}
                 <div className="bg-white rounded-2xl shadow overflow-hidden">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                         <div>
@@ -597,8 +592,8 @@ export default function AdminDashboard() {
 
             </section>
 
-            {/* ── Drill-Down Modal ── */}
+            {/* Drill-Down Modal */}
             {activeDrillDown && <DrillDownModal id={activeCard!} data={analytics} onClose={() => setActiveCard(null)} />} 
-        </>
+        </main>
     );
 }
