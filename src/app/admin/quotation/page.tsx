@@ -18,6 +18,11 @@ import {
     Link2,
     FileText,
     ChevronRight,
+    IdCard,
+    ShieldCheck,
+    ZoomIn,
+    ZoomOut,
+    Download,
 } from "lucide-react";
 
 type Status =
@@ -74,6 +79,7 @@ interface QuotationDetail {
     signatory_id_url?: string | null;
     signatory_id_path?: string | null;
     signatory_same_as_id_holder?: boolean | null;
+    signatory_role?: string | null;
     months?: number | null;
     package_name?: string | null;
     package_price?: number | string | null;
@@ -87,7 +93,6 @@ interface QuotationDetail {
     contract_content?: string | null;
     contract_updated_at?: string | null;
 }
-
 interface Quotation {
     id: number;
     quotation_id: string;
@@ -140,6 +145,24 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
     online_transfer: "Online Transfer",
     bank: "Bank Transfer",
 };
+
+const VIRTUAL_OFFICE_STATUS_FLOW: Status[] = [
+    "pending",
+    "awaiting_payment",
+    "paid",
+    "payment_verification",
+    "contract_sent",
+    "completed",
+    "cancelled",
+];
+
+const OTHER_SERVICE_STATUS_FLOW: Status[] = [
+    "pending",
+    "paid",
+    "contract_sent",
+    "completed",
+    "cancelled",
+];
 
 function ModalBackdrop({
     onClose,
@@ -194,18 +217,6 @@ function formatDate(value: string | null) {
     return d.toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
 }
 
-function parseNumberish(value: string | number | null | undefined): number | null {
-    const normalized = typeof value === "string" ? value.replace(/[^0-9.-]/g, "") : value;
-    const numeric = Number(normalized ?? null);
-    return Number.isFinite(numeric) ? numeric : null;
-}
-
-function formatPhp(value: number | null | undefined): string {
-    const numeric = Number(value ?? 0);
-    if (Number.isNaN(numeric)) return "PHP 0.00";
-    return `PHP ${numeric.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 function getInitials(name: string | null | undefined) {
     if (!name) return "?";
     const parts = name.trim().split(/\s+/);
@@ -218,85 +229,13 @@ function isVirtualOffice(quote: Quotation) {
     return quote.service_name?.trim().toLowerCase() === "virtual office";
 }
 
-function buildDefaultContractContent(quote: Quotation) {
-    const detail = quote.detail;
-    const today = new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
-    const fullName = detail?.full_name ?? "Client";
-    const companyName = detail?.company_name ? ` of ${detail.company_name}` : "";
-    const packageName = quote.package ?? "—";
-    const duration = detail?.duration ?? "Month-to-month";
-    const startDate = detail?.date ? formatDate(detail.date) : "—";
-    const branch = quote.branch ?? null;
-    const paymentMethod = detail?.payment_method
-        ? PAYMENT_METHOD_LABELS[detail.payment_method] ?? detail.payment_method
-        : "N/A";
-    const idName = detail?.id_name ?? fullName;
+function getStatusFlowForQuotation(quote: Quotation): Status[] {
+    return isVirtualOffice(quote) ? VIRTUAL_OFFICE_STATUS_FLOW : OTHER_SERVICE_STATUS_FLOW;
+}
 
-    const monthlyFeeByPackage: Record<string, string> = {
-        Basic: "2000",
-        Standard: "3000",
-        Premium: "5000",
-    };
-
-    const monthlyFeeAmount = parseNumberish(detail?.package_price) ?? parseNumberish(monthlyFeeByPackage[quote.package ?? ""]);
-    const monthsCount = parseNumberish(detail?.months ?? detail?.duration) ?? 1;
-    const subtotalAmount = parseNumberish(detail?.subtotal);
-    const vatAmount = parseNumberish(detail?.vat_amount);
-    const vatPercent = parseNumberish(detail?.vat_percentage);
-    const contractFeeAmount = parseNumberish(detail?.contract_admin_fee);
-    const discountAmount = parseNumberish(detail?.discounts ?? detail?.discount);
-    const grandTotalAmount = parseNumberish(detail?.total);
-    const derivedDiscount = discountAmount ?? (
-        subtotalAmount != null && contractFeeAmount != null && grandTotalAmount != null
-            ? Math.max(0, subtotalAmount + contractFeeAmount - grandTotalAmount)
-            : null
-    );
-
-    const priceBreakdownLines = [
-        "Price Breakdown",
-        `Package Price: ${monthlyFeeAmount != null ? formatPhp(monthlyFeeAmount) : "—"}`,
-        `Quantity / Months: ${monthsCount}`,
-        `Subtotal: ${subtotalAmount != null ? formatPhp(subtotalAmount) : "—"}`,
-        `VAT${vatPercent != null ? ` (${vatPercent}%)` : ""}: ${vatAmount != null ? formatPhp(vatAmount) : "—"}`,
-        `Contract & Administrative Fee: ${contractFeeAmount != null ? formatPhp(contractFeeAmount) : "—"}`,
-        `Discounts: ${derivedDiscount != null ? formatPhp(derivedDiscount) : "—"}`,
-        `Total: ${grandTotalAmount != null ? formatPhp(grandTotalAmount) : "—"}`,
-    ];
-
-    const clientInfoLines = [
-        "3. Client Information",
-        `Name: ${idName}`,
-        detail?.id_type ? `ID Type: ${detail.id_type}` : null,
-        detail?.id_number ? `ID Number: ${detail.id_number}` : null,
-        detail?.company_name ? `Company: ${detail.company_name}` : null,
-        detail?.id_address ? `Address: ${detail.id_address}` : null,
-        detail?.signatory_details ? `Signatory Details: ${detail.signatory_details}` : null,
-        `Email: ${detail?.email ?? "—"}`,
-        `Phone: ${detail?.phone ?? "—"}`,
-    ].filter((line): line is string => Boolean(line));
-
-    return [
-        `Date Issued: ${today}`,
-        "",
-        "1. Parties",
-        `This Virtual Office Service Agreement (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and ${fullName}${companyName} (\"Client\"), effective as of the date of confirmed payment below.`,
-        "",
-        "2. Service Details",
-        `Service: ${quote.service_name || "Virtual Office"}`,
-        ...(branch ? [`Branch: ${branch}`] : []),
-        `Package: ${packageName}`,
-        `Duration: ${duration}`,
-        `Start Date: ${startDate}`,
-        `Payment Method: ${paymentMethod}`,
-        ...(detail?.transaction_id ? [`Reference No: ${detail.transaction_id}`] : []),
-        "",
-        ...priceBreakdownLines,
-        "",
-        ...clientInfoLines,
-        "",
-        "4. Terms & Conditions",
-        "The Client agrees to the Provider's standard terms of service, including monthly billing, renewal, and cancellation policies as outlined in the Provider's Terms of Use. This Agreement takes effect upon confirmed payment and remains in force on a month-to-month basis unless terminated by either party with thirty (30) days' written notice. All correspondence regarding this Agreement should be directed to salesofficer@heroph.net.",
-    ].join("\n");
+function getStatusOptionsForQuotation(quote: Quotation) {
+    const allowed = new Set(getStatusFlowForQuotation(quote));
+    return STATUSES.filter((status) => allowed.has(status.value));
 }
 
 function hasPricingData(detail: QuotationDetail) {
@@ -598,7 +537,13 @@ function isLinkableValue(value: string | null | undefined): value is string {
     return /^https?:\/\//i.test(value) || value.startsWith("/");
 }
 
-function SignatoryDetailsSection({ detail }: { detail: QuotationDetail }) {
+function SignatoryDetailsSection({
+    detail,
+    onViewId,
+}: {
+    detail: QuotationDetail;
+    onViewId: (doc: { title: string; url: string }) => void;
+}) {
     const sameAsHolder = Boolean(detail.signatory_same_as_id_holder);
 
     const signatoryDetailsValue = detail.signatory_details;
@@ -616,28 +561,128 @@ function SignatoryDetailsSection({ detail }: { detail: QuotationDetail }) {
     const idNumber = sameAsHolder ? detail.id_number : detail.signatory_id_number;
     const idAddress = sameAsHolder ? detail.id_address : detail.signatory_id_address;
 
-    const rawDocValue = sameAsHolder
+    const rawSignatoryDoc = sameAsHolder
         ? detail.government_id_url ?? detail.government_id_path ?? detail.government_id_file ?? null
         : detail.signatory_id_url ?? detail.signatory_id_path ?? detail.signatory_id_file ?? null;
+    const rawGovernmentDoc = detail.government_id_url ?? detail.government_id_path ?? detail.government_id_file ?? null;
 
-    const idDocUrl = isLinkableValue(rawDocValue) ? rawDocValue : null;
-    const idDocFilename = !idDocUrl && rawDocValue ? rawDocValue : null;
+    const signatoryDocUrl = isLinkableValue(rawSignatoryDoc) ? rawSignatoryDoc : null;
+    const governmentDocUrl = isLinkableValue(rawGovernmentDoc) ? rawGovernmentDoc : null;
 
-    const hasContent = [sameAsHolder, idType, idName, idNumber, idAddress, rawDocValue, signatoryDetailsText].some(Boolean);
+    const hasContent = [sameAsHolder, idType, idName, idNumber, idAddress, detail.signatory_role, rawSignatoryDoc, signatoryDetailsText].some(Boolean);
     if (!hasContent) return null;
 
     return (
         <ReceiptSection>
             <ReceiptHeading>Signatory Details</ReceiptHeading>
-            <ReceiptRow label="Same as ID holder" value={sameAsHolder ? "Yes" : "No"} />
-            {idName && <ReceiptRow label="Name" value={idName} />}
+            {idName && <ReceiptRow label="Signatory Name" value={idName} />}
+            {detail.signatory_role && <ReceiptRow label="Role / Position" value={detail.signatory_role} />}
             {idType && <ReceiptRow label="ID Type" value={idType} />}
+            <ReceiptRow label="Same as ID holder" value={sameAsHolder ? "Yes" : "No"} />
             {idNumber && <ReceiptRow label="ID Number" value={idNumber} />}
             {idAddress && <ReceiptRow label="Address" value={idAddress} />}
             {signatoryDetailsText && <ReceiptRow label="Signatory Notes" value={signatoryDetailsText} />}
-            {idDocUrl && <ReceiptRow label="ID Document" value="View uploaded document" href={idDocUrl} />}
-            {idDocFilename && <ReceiptRow label="ID Document" value={idDocFilename} />}
+
+            {(signatoryDocUrl || governmentDocUrl) && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                    {signatoryDocUrl && (
+                        <button
+                            onClick={() => onViewId({ title: "Signatory ID", url: signatoryDocUrl })}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#C5D2EC] bg-[#EEF2FB] text-[#1B3A8C] text-xs font-semibold hover:opacity-80 transition"
+                        >
+                            <IdCard className="w-3.5 h-3.5" />
+                            View Signatory ID
+                        </button>
+                    )}
+                    {governmentDocUrl && (
+                        <button
+                            onClick={() => onViewId({ title: "Government ID", url: governmentDocUrl })}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#C5D2EC] bg-[#EEF2FB] text-[#1B3A8C] text-xs font-semibold hover:opacity-80 transition"
+                        >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            View Government ID
+                        </button>
+                    )}
+                </div>
+            )}
         </ReceiptSection>
+    );
+}
+
+function IdViewerModal({
+    doc,
+    onClose,
+}: {
+    doc: { title: string; url: string } | null;
+    onClose: () => void;
+}) {
+    const [zoom, setZoom] = useState(1);
+    if (!doc) return null;
+    const isPdf = /\.pdf($|\?)/i.test(doc.url);
+
+    return (
+        <div className="fixed inset-0 z-80 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+            <div className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                <div className="shrink-0 px-5 py-4 border-b border-[#E5EAF2] flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <IdCard className="w-4 h-4 text-[#1B3A8C] shrink-0" />
+                        <h3 className="text-sm font-semibold text-[#0B1F4A] truncate">{doc.title}</h3>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        {!isPdf && (
+                            <>
+                                <button
+                                    onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
+                                    className="p-2 rounded-lg text-[#64748B] hover:bg-[#F0F4FB] transition"
+                                    aria-label="Zoom out"
+                                >
+                                    <ZoomOut className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)))}
+                                    className="p-2 rounded-lg text-[#64748B] hover:bg-[#F0F4FB] transition"
+                                    aria-label="Zoom in"
+                                >
+                                    <ZoomIn className="w-4 h-4" />
+                                </button>
+                            </>
+                        )}
+                        <a
+                            href={doc.url}
+                            download
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg text-[#64748B] hover:bg-[#F0F4FB] transition"
+                            aria-label="Download document"
+                        >
+                            <Download className="w-4 h-4" />
+                        </a>
+                        <button
+                            onClick={onClose}
+                            className="p-2 rounded-lg text-[#64748B] hover:bg-[#F0F4FB] transition"
+                            aria-label="Close ID viewer"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-auto flex items-center justify-center p-6 bg-[#0B1F4A0D]">
+                    {isPdf ? (
+                        <iframe title={doc.title} src={doc.url} className="w-full h-[70vh] rounded-lg border border-[#D9E2F0]" />
+                    ) : (
+                        <img
+                            src={doc.url}
+                            alt={doc.title}
+                            style={{ transform: `scale(${zoom})`, transition: "transform 0.15s ease" }}
+                            className="max-w-full rounded-lg shadow-sm select-none"
+                            draggable={false}
+                        />
+                    )}
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -687,7 +732,7 @@ export default function AdminQuotationsPage() {
     const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
     const [activeCard, setActiveCard] = useState<StatKey | null>(null);
 
-    // Email-to-client actions
+    const [idDoc, setIdDoc] = useState<{ title: string; url: string } | null>(null);
     const [sendingPaymentLinkId, setSendingPaymentLinkId] = useState<number | null>(null);
     const [sendingContractId, setSendingContractId] = useState<number | null>(null);
     const [contractModalQuote, setContractModalQuote] = useState<Quotation | null>(null);
@@ -795,9 +840,14 @@ export default function AdminQuotationsPage() {
         const previousStatus = quote.status;
         const statusLabel = STATUSES.find((s) => s.value === status)?.label ?? status;
         const who = quote.detail?.full_name ?? "Request";
+        const allowedStatuses = new Set(getStatusFlowForQuotation(quote));
 
         // Skip no-op updates
         if (previousStatus === status) return;
+        if (!allowedStatuses.has(status)) {
+            pushToast(`Status \"${statusLabel}\" is not valid for ${quote.service_name}.`, "error");
+            return;
+        }
 
         const previous = quotations;
         setQuotations((qs) => qs.map((q) => (q.id === quote.id ? { ...q, status } : q)));
@@ -859,8 +909,25 @@ export default function AdminQuotationsPage() {
         }
     };
 
-    const openContractViewer = (quote: Quotation) => {
-        const initial = quote.detail?.contract_content?.trim() || buildDefaultContractContent(quote);
+    const openContractViewer = async (quote: Quotation) => {
+        let initial = quote.detail?.contract_content?.trim() || "";
+
+        if (!initial) {
+            try {
+                const res = await fetch(`/api/quotations/${quote.id}/contract-content`, {
+                    method: "GET",
+                    headers: { Accept: "application/json" },
+                    cache: "no-store",
+                });
+                const payload = await res.json().catch(() => null);
+                if (res.ok && typeof payload?.content === "string") {
+                    initial = payload.content;
+                }
+            } catch {
+                // Leave draft empty when fallback retrieval fails.
+            }
+        }
+
         setContractModalQuote(quote);
         setContractEditMode(false);
         setContractDraft(initial);
@@ -1251,7 +1318,7 @@ export default function AdminQuotationsPage() {
                                     }}
                                     className="text-xs font-medium text-[#0B1F4A] bg-[#F8FAFD] border border-[#D9E2F0] rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1B3A8C] cursor-pointer"
                                 >
-                                    {STATUSES.map((s) => (
+                                    {getStatusOptionsForQuotation(selected).map((s) => (
                                         <option key={s.value} value={s.value}>{s.label}</option>
                                     ))}
                                 </select>
@@ -1262,18 +1329,21 @@ export default function AdminQuotationsPage() {
                                 <div>
                                     <ClientInfoSection detail={selected.detail} />
                                     <ReceiptDivider />
-                                    <SignatoryDetailsSection detail={selected.detail} />
+                                    <SignatoryDetailsSection detail={selected.detail} onViewId={setIdDoc} />
                                     <ReceiptDivider />
                                     <ServiceDetailsSection quote={selected} />
+                                </div>
+                            )}
+
+                            <IdViewerModal doc={idDoc} onClose={() => setIdDoc(null)} />
+
+                            {selected.detail && isVirtualOffice(selected) && (
+                                <div className="space-y-3">
                                     <ReceiptDivider />
                                     <PriceBreakdownSection detail={selected.detail} />
                                     <ReceiptDivider />
                                     <PaymentDetailsSection quote={selected} />
-                                </div>
-                            )}
 
-                            {selected.detail && isVirtualOffice(selected) && (
-                                <div className="space-y-3">
                                     <button
                                         onClick={() => handleSendPaymentLink(selected)}
                                         disabled={sendingPaymentLinkId === selected.id || (selected.detail?.payment_link_send_count ?? 0) >= 3}
@@ -1307,7 +1377,7 @@ export default function AdminQuotationsPage() {
                                 </div>
                             )}
 
-                            {selected.detail && isVirtualOffice(selected) && (selected.status === "payment_verification" || hasPaid(selected)) && (
+                            {selected.detail && (((isVirtualOffice(selected) && (selected.status === "payment_verification" || selected.status === "contract_sent" || selected.status === "completed")) || (!isVirtualOffice(selected) && (selected.status === "paid" || selected.status === "contract_sent" || selected.status === "completed")))) && (
                                 <div className="space-y-2.5">
                                     <p className="text-xs font-semibold text-[#64748B]">Contract</p>
                                     <button
@@ -1315,7 +1385,7 @@ export default function AdminQuotationsPage() {
                                         className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg border border-[#C5D2EC] bg-white text-[#1B3A8C] text-sm font-semibold hover:bg-[#EEF2FB] transition"
                                     >
                                         <FileText className="w-4 h-4" />
-                                        View Contract
+                                        Preview Contract
                                     </button>
                                     <button
                                         onClick={() => handleSendContract(selected)}
@@ -1382,9 +1452,7 @@ export default function AdminQuotationsPage() {
                                         <p className="text-xl font-bold text-[#1B3A8C]">Hero Serviced Office</p>
                                         <p className="text-sm text-[#64748B] mt-1">Virtual Office Service Agreement</p>
                                     </div>
-                                    <div className="whitespace-pre-wrap text-sm leading-7 text-[#0B1F4A]">
-                                        {contractDraft}
-                                    </div>
+                                    <div className="whitespace-pre-wrap text-sm leading-7 text-[#0B1F4A]">{contractDraft}</div>
                                 </div>
                             ) : (
                                 <div className="mx-auto max-w-3xl bg-white border border-[#D9E2F0] rounded-xl p-5 sm:p-6 shadow-sm space-y-3">
@@ -1476,7 +1544,7 @@ export default function AdminQuotationsPage() {
                                     onChange={(e) => setPendingStatus(e.target.value as Status)}
                                     className="w-full appearance-none px-4 py-3 pr-10 bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl text-sm font-medium text-[#0B1F4A] focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C] cursor-pointer"
                                 >
-                                    {STATUSES.map((s) => (
+                                    {getStatusOptionsForQuotation(statusEditTarget).map((s) => (
                                         <option key={s.value} value={s.value}>{s.label}</option>
                                     ))}
                                 </select>

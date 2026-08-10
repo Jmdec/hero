@@ -4,7 +4,44 @@ import { QuotationPayload, sendQuotationPaymentVerifiedAdminEmail } from "@/lib/
 const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
 
-async function handlePaymentApproved(id: string) {
+function isLocalhostUrl(value: string) {
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return false;
+  }
+}
+
+function resolvePublicBaseUrl(request: NextRequest, requestOrigin?: string) {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
+  const forwardedOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : null;
+
+  const candidates = [
+    forwardedOrigin,
+    requestOrigin,
+    request.nextUrl.origin,
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.APP_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.SITE_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+    "http://localhost:3000",
+  ].filter((value): value is string => Boolean(value));
+
+  const isProd = process.env.NODE_ENV === "production";
+  for (const candidate of candidates) {
+    const normalized = candidate.replace(/\/+$/g, "");
+    if (!/^https?:\/\//i.test(normalized)) continue;
+    if (isProd && isLocalhostUrl(normalized)) continue;
+    return normalized;
+  }
+
+  return "http://localhost:3000";
+}
+
+async function handlePaymentApproved(id: string, request: NextRequest, requestOrigin?: string) {
   const quoteRes = await fetch(`${LARAVEL_API_BASE}/quotations/${encodeURIComponent(id)}`, {
     method: "GET",
     headers: {
@@ -76,7 +113,7 @@ async function handlePaymentApproved(id: string) {
     console.error("Admin payment verification notification failed:", emailError);
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:8000";
+  const baseUrl = resolvePublicBaseUrl(request, requestOrigin);
   const approvalUrl = new URL("/payment-approved", baseUrl);
   approvalUrl.searchParams.set("id", String(id));
 
@@ -87,12 +124,12 @@ async function handlePaymentApproved(id: string) {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
-    const result = await handlePaymentApproved(id);
+    const result = await handlePaymentApproved(id, request, request.nextUrl.origin);
     return result.body;
   } catch (error) {
     console.error("payment-approved proxy error:", error);
@@ -104,12 +141,12 @@ export async function GET(
 }
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
-    const result = await handlePaymentApproved(id);
+    const result = await handlePaymentApproved(id, request, request.nextUrl.origin);
     return result.body;
   } catch (error) {
     console.error("payment-approved proxy error:", error);

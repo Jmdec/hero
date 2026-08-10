@@ -37,7 +37,6 @@ export async function sendVerificationEmail(
             `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
         to: email,
         subject: "Verify Your Email - Hero Serviced Office",
-
         html: `
             <!DOCTYPE html>
             <html>
@@ -45,107 +44,33 @@ export async function sendVerificationEmail(
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             <style>
-            body{
-                margin:0;
-                padding:0;
-                background:#f4f7fb;
-                font-family:Arial,Helvetica,sans-serif;
-            }
+            body{margin:0;padding:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;}
             </style>
             </head>
-
             <body>
-
             <div style="background:#f4f7fb;padding:40px 20px;">
-
             <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e8edf5;">
-
             <div style="height:6px;background:#0D47A1;"></div>
-
             <div style="padding:40px;text-align:center;">
-
-            <h1 style="margin:0;font-size:28px;color:#0D47A1;">
-            Hero Serviced Office
-            </h1>
-
-            <p style="margin-top:8px;color:#64748b;font-size:15px;">
-            Your Workspace for Success.
-            </p>
-
+            <h1 style="margin:0;font-size:28px;color:#0D47A1;">Hero Serviced Office</h1>
+            <p style="margin-top:8px;color:#64748b;font-size:15px;">Your Workspace for Success.</p>
             </div>
-
             <div style="padding:0 40px 40px;">
-
-            <h2 style="margin:0 0 20px;color:#1e293b;">
-            Welcome, ${name}!
-            </h2>
-
-            <p style="font-size:15px;line-height:1.8;color:#475569;">
-            Thank you for creating your Hero Serviced Office account.
-            Before you can access your account, please verify your email address by clicking the button below.
-            </p>
-
+            <h2 style="margin:0 0 20px;color:#1e293b;">Welcome, ${name}!</h2>
+            <p style="font-size:15px;line-height:1.8;color:#475569;">Thank you for creating your Hero Serviced Office account. Before you can access your account, please verify your email address by clicking the button below.</p>
             <div style="text-align:center;margin:40px 0;">
-
-            <a
-            href="${verificationUrl}"
-            style="
-            display:inline-block;
-            padding:16px 36px;
-            background:#0D47A1;
-            color:#ffffff;
-            text-decoration:none;
-            font-weight:bold;
-            border-radius:8px;
-            font-size:15px;
-            ">
-            Verify Email
-            </a>
-
+            <a href="${verificationUrl}" style="display:inline-block;padding:16px 36px;background:#0D47A1;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:8px;font-size:15px;">Verify Email</a>
             </div>
-
-            <p style="font-size:13px;color:#64748b;line-height:1.7;">
-            If the button doesn't work, copy and paste this link into your browser:
-            </p>
-
-            <p style="
-            font-size:12px;
-            word-break:break-all;
-            background:#f8fafc;
-            padding:12px;
-            border-radius:6px;
-            color:#0D47A1;
-            ">
-            ${verificationUrl}
-            </p>
-
-            <p style="margin-top:30px;font-size:13px;color:#64748b;">
-            If you didn't create an account, you can safely ignore this email.
-            </p>
-
+            <p style="font-size:13px;color:#64748b;line-height:1.7;">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="font-size:12px;word-break:break-all;background:#f8fafc;padding:12px;border-radius:6px;color:#0D47A1;">${verificationUrl}</p>
+            <p style="margin-top:30px;font-size:13px;color:#64748b;">If you didn't create an account, you can safely ignore this email.</p>
             </div>
-
-            <div style="
-            background:#f8fafc;
-            padding:20px;
-            text-align:center;
-            font-size:12px;
-            color:#94a3b8;
-            ">
-
-            © ${new Date().getFullYear()} Hero Serviced Office<br>
-            All rights reserved.
-
+            <div style="background:#f8fafc;padding:20px;text-align:center;font-size:12px;color:#94a3b8;">© ${new Date().getFullYear()} Hero Serviced Office<br>All rights reserved.</div>
             </div>
-
             </div>
-
-            </div>
-
             </body>
             </html>
-            `,
-
+        `,
         text: `
             Welcome to Hero Serviced Office, ${name}
 
@@ -156,33 +81,24 @@ export async function sendVerificationEmail(
             If you did not create this account, you may safely ignore this email.
 
             © ${new Date().getFullYear()} Hero Serviced Office
-            `,
+        `,
     };
 
     try {
         const info = await transporter.sendMail(mailOptions);
-
-        return {
-            success: true,
-            messageId: info.messageId,
-        };
+        return { success: true, messageId: info.messageId };
     } catch (error) {
         if (error instanceof Error) {
             if (error.message.includes("EAUTH")) {
-                throw new Error(
-                    "SMTP authentication failed. Check your email and App Password."
-                );
+                throw new Error("SMTP authentication failed. Check your email and App Password.");
             }
-
             if (error.message.includes("ECONNREFUSED")) {
                 throw new Error("Unable to connect to the SMTP server.");
             }
-
             if (error.message.includes("Invalid login")) {
                 throw new Error("Invalid SMTP credentials.");
             }
         }
-
         throw error;
     }
 }
@@ -263,10 +179,8 @@ const VO_PACKAGE_PRICES: Record<string, string> = {
 
 function formatDisplayDate(value?: string | null): string {
     if (!value) return "—";
-
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return value;
-
     return parsed.toLocaleDateString("en-PH", {
         year: "numeric",
         month: "long",
@@ -310,9 +224,7 @@ function buildQuotationPriceBreakdownRows(quotation: QuotationPayload): string {
         d.contract_admin_fee != null ||
         d.total != null;
 
-    if (!hasPrice) {
-        return "";
-    }
+    if (!hasPrice) return "";
 
     const rows = [
         quotationRow(
@@ -329,7 +241,7 @@ function buildQuotationPriceBreakdownRows(quotation: QuotationPayload): string {
         ),
         quotationRow("Subtotal", d.subtotal != null ? formatCurrency(d.subtotal) : undefined),
         quotationRow("Contract & Admin Fee", d.contract_admin_fee != null ? formatCurrency(d.contract_admin_fee) : undefined),
-        quotationRow("Total", d.total != null ? formatCurrency(d.total) : undefined)
+        quotationRow("Total", d.total != null ? formatCurrency(d.total) : undefined),
     ].join("");
 
     if (!rows) return "";
@@ -345,7 +257,6 @@ function formatQuotationDate(value?: string | null): string | null {
     if (!value) return null;
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return value;
-
     return parsed.toLocaleDateString("en-PH", {
         year: "numeric",
         month: "long",
@@ -438,12 +349,36 @@ const RECIPIENTS = {
 };
 
 function getPublicAppBaseUrl(): string {
-    const configuredBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL;
-    if (!configuredBaseUrl) {
-        return "http://localhost:8000";
+    const candidates = [
+        process.env.NEXT_PUBLIC_APP_URL,
+        process.env.APP_URL,
+        process.env.NEXT_PUBLIC_SITE_URL,
+        process.env.SITE_URL,
+        process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+        "http://localhost:3000",
+    ].filter((value): value is string => Boolean(value));
+
+    const isProd = process.env.NODE_ENV === "production";
+
+    for (const candidate of candidates) {
+        const normalized = candidate.replace(/\/+$/g, "");
+        if (!/^https?:\/\//i.test(normalized)) continue;
+
+        if (isProd) {
+            try {
+                const host = new URL(normalized).hostname.toLowerCase();
+                if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+                    continue;
+                }
+            } catch {
+                continue;
+            }
+        }
+
+        return normalized;
     }
 
-    return configuredBaseUrl.replace(/\/$/, "");
+    return "http://localhost:3000";
 }
 
 function toUniqueEmails(values: Array<string | null | undefined>): string[] {
@@ -564,15 +499,187 @@ function sanitizePdfText(text: string) {
         .trim();
 }
 
-/**
- * Generates a simple Virtual Office service agreement as a PDF buffer,
- * using pdf-lib (pure JS, embedded standard fonts — no filesystem font
- * lookups, so it works reliably in Next.js serverless/Vercel builds where
- * pdfkit's .afm font loading tends to fail silently).
- */
-async function generateVirtualOfficeContractPdf(
-    quotation: QuotationPayload
-): Promise<Buffer> {
+function parseNumberish(value: string | number | null | undefined): number | null {
+    const normalized = typeof value === "string" ? value.replace(/[^0-9.-]/g, "") : value;
+    const numeric = Number(normalized ?? null);
+    return Number.isFinite(numeric) ? numeric : null;
+}
+
+function formatPhp(value: number | null | undefined): string {
+    const numeric = Number(value ?? 0);
+    if (Number.isNaN(numeric)) return "PHP 0.00";
+    return `PHP ${numeric.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function buildContractTemplateVariables(quotation: QuotationPayload): Record<string, string> {
+    const d = quotation.detail;
+    const today = new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+    const fullName = d.full_name || "Client";
+    const companyName = d.company_name || "";
+    const idName = d.id_name || d.signatory_details || fullName;
+    const durationLabel = d.duration_type || d.duration || quotation.duration || "To be finalized";
+
+    const monthlyFee = VO_PACKAGE_PRICES[quotation.package || ""] ?? "—";
+    const monthlyFeeAmount = parseNumberish(d.package_price) ?? parseNumberish(monthlyFee);
+    const monthsCount = parseNumberish(d.months ?? d.duration) ?? 1;
+    const subtotalAmount = parseNumberish(d.subtotal);
+    const vatAmount = parseNumberish(d.vat_amount);
+    const vatPercent = parseNumberish(d.vat_percentage);
+    const contractFeeAmount = parseNumberish(d.contract_admin_fee);
+    const discountAmount = parseNumberish(d.discounts ?? d.discount);
+    const grandTotalAmount = parseNumberish(d.total);
+    const derivedDiscount = discountAmount ?? (
+        subtotalAmount != null && contractFeeAmount != null && grandTotalAmount != null
+            ? Math.max(0, subtotalAmount + contractFeeAmount - grandTotalAmount)
+            : null
+    );
+
+    return {
+        date_issued: today,
+        client_name: fullName,
+        company_name: companyName,
+        company_name_segment: companyName ? ` of ${companyName}` : "",
+        service_name: quotation.service_name || "Service",
+        branch: quotation.branch || "—",
+        package: quotation.package || d.package_name || "—",
+        duration: String(durationLabel),
+        start_date: formatDisplayDate(d.date),
+        payment_method: formatPaymentMethodLabel(d.payment_method),
+        transaction_id: d.transaction_id || "—",
+        id_type: d.id_type || "—",
+        id_number: d.id_number || "—",
+        id_name: idName,
+        id_address: d.id_address || "—",
+        signatory_details: d.signatory_details || "—",
+        signatory_name: d.signatory_details || idName,
+        email: d.email ?? "—",
+        phone: d.phone ?? "—",
+        package_fee: monthlyFeeAmount != null ? formatPhp(monthlyFeeAmount) : "—",
+        months: String(monthsCount),
+        subtotal: subtotalAmount != null ? formatPhp(subtotalAmount) : "—",
+        vat_percentage: vatPercent != null ? `${vatPercent}` : "—",
+        vat_amount: vatAmount != null ? formatPhp(vatAmount) : "—",
+        contract_admin_fee: contractFeeAmount != null ? formatPhp(contractFeeAmount) : "—",
+        discount: derivedDiscount != null ? formatPhp(derivedDiscount) : "—",
+        total: grandTotalAmount != null ? formatPhp(grandTotalAmount) : "—",
+    };
+}
+
+function resolveContractTemplate(template: string, variables: Record<string, string>): string {
+    return template.replace(/{{\s*([a-z0-9_]+)\s*}}/gi, (_, key: string) => variables[key] ?? "—");
+}
+
+function buildVirtualOfficeContractTemplate(): string {
+    return [
+        "Date Issued: {{date_issued}}",
+        "",
+        "1. Parties",
+        "This Virtual Office Service Agreement (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\"), effective as of the date of confirmed payment below.",
+        "",
+        "2. Service Details",
+        "Service: {{service_name}}",
+        "Branch: {{branch}}",
+        "Package: {{package}}",
+        "Duration: {{duration}}",
+        "Start Date: {{start_date}}",
+        "Payment Method: {{payment_method}}",
+        "Reference No: {{transaction_id}}",
+        "",
+        "3. Client Information",
+        "Name: {{id_name}}",
+        "ID Type: {{id_type}}",
+        "ID Number: {{id_number}}",
+        "Address: {{id_address}}",
+        "Signatory Details: {{signatory_details}}",
+        "Email: {{email}}",
+        "Phone: {{phone}}",
+        "",
+        "4. Price Breakdown",
+        "Package: {{package}}",
+        "Package Fee: {{package_fee}}",
+        "Number of months/duration: {{months}}",
+        "Subtotal: {{subtotal}}",
+        "VAT ({{vat_percentage}}%): {{vat_amount}}",
+        "Contract/Administrative Fee: {{contract_admin_fee}}",
+        "Discount: {{discount}}",
+        "Total: {{total}}",
+        "",
+        "5. Terms & Conditions",
+        "The Client agrees to the Provider's standard terms of service, including monthly billing, renewal, and cancellation policies as outlined in the Provider's Terms of Use. This Agreement takes effect upon confirmed payment and remains in force on a month-to-month basis unless terminated by either party with thirty (30) days' written notice.",
+        "",
+        "6. Signature Section",
+        "Provider: Hero PH Inc.",
+        "Client: {{signatory_name}}",
+    ].join("\n");
+}
+
+function buildOtherServiceContractTemplate(): string {
+    return [
+        "Date Issued: {{date_issued}}",
+        "",
+        "1. Parties",
+        "This {{service_name}} Service Agreement (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\").",
+        "",
+        "2. Service Details",
+        "Service: {{service_name}}",
+        "Branch: {{branch}}",
+        "Package/Plan: {{package}}",
+        "Duration: {{duration}}",
+        "Start Date: {{start_date}}",
+        "Payment Method: {{payment_method}}",
+        "Transaction/Reference Number: {{transaction_id}}",
+        "",
+        "3. Client Information",
+        "Client Name: {{client_name}}",
+        "Company: {{company_name}}",
+        "Signatory: {{signatory_name}}",
+        "Signatory Details: {{signatory_details}}",
+        "Email: {{email}}",
+        "Phone: {{phone}}",
+        "",
+        "4. Terms & Conditions",
+        "The Client agrees to the Provider's standard terms of service, including service availability, billing, renewal, and cancellation policies applicable to the selected service. This Agreement takes effect upon confirmed payment and remains in force until terminated according to the service terms.",
+        "",
+        "5. Signature Section",
+        "Provider: Hero PH Inc.",
+        "Client: {{signatory_name}}",
+    ].join("\n");
+}
+
+function buildVirtualOfficeContractContent(quotation: QuotationPayload): string {
+    return resolveContractTemplate(buildVirtualOfficeContractTemplate(), buildContractTemplateVariables(quotation));
+}
+
+function buildOtherServiceContractContent(quotation: QuotationPayload): string {
+    return resolveContractTemplate(buildOtherServiceContractTemplate(), buildContractTemplateVariables(quotation));
+}
+
+function buildServiceContractContentFromAdminTemplate(quotation: QuotationPayload): string {
+    return isVirtualOfficePaymongo(quotation)
+        ? buildVirtualOfficeContractContent(quotation)
+        : buildOtherServiceContractContent(quotation);
+}
+
+function resolveEditableContractContent(
+    quotation: QuotationPayload,
+    fallbackTemplateBuilder: (quotation: QuotationPayload) => string
+): string {
+    const raw = (quotation.detail.contract_content || "").trim();
+    if (!raw) return fallbackTemplateBuilder(quotation);
+    return resolveContractTemplate(raw, buildContractTemplateVariables(quotation));
+}
+
+export function buildResolvedQuotationContractContent(quotation: QuotationPayload): string {
+    return resolveEditableContractContent(quotation, buildServiceContractContentFromAdminTemplate);
+}
+
+async function renderContractPdfFromContent(args: {
+    title: string;
+    content: string;
+    signatoryLabel: string;
+}): Promise<Buffer> {
+    const { title, content, signatoryLabel } = args;
+
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -597,14 +704,12 @@ async function generateVirtualOfficeContractPdf(
         const gap = opts.gap ?? size * 1.4;
 
         ensureSpace(gap);
-
         const sanitizedText = sanitizePdfText(text);
         let x = MARGIN;
         if (opts.align === "center") {
             const textWidth = usedFont.widthOfTextAtSize(sanitizedText, size);
             x = (PAGE_WIDTH - textWidth) / 2;
         }
-
         page.drawText(sanitizedText, { x, y: cursorY - size, size, font: usedFont, color });
         cursorY -= gap;
     };
@@ -618,133 +723,62 @@ async function generateVirtualOfficeContractPdf(
         }
     };
 
-    const sectionTitle = (title: string) => {
-        cursorY -= 8;
-        drawLine(title, { size: 12, bold: true, color: COLOR_PRIMARY, gap: 18 });
-    };
-
-    const d = quotation.detail;
-    const customContractContent = (d.contract_content || "").trim();
-    const monthlyFee = VO_PACKAGE_PRICES[quotation.package || ""] ?? "—";
     const today = new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
-    const idName = d.id_name || d.full_name;
-    const signatoryLabel = d.signatory_details || idName;
-    const paymentMethodLabel = formatPaymentMethodLabel(d.payment_method);
-    const formattedStartDate = formatDisplayDate(d.date);
-
-    const parseNumberish = (value: string | number | null | undefined): number | null => {
-        const normalized = typeof value === "string" ? value.replace(/[^0-9.-]/g, "") : value;
-        const numeric = Number(normalized ?? null);
-        return Number.isFinite(numeric) ? numeric : null;
-    };
-    const formatPhp = (value: number | null | undefined): string => {
-        const numeric = Number(value ?? 0);
-        if (Number.isNaN(numeric)) return "PHP 0.00";
-        return `PHP ${numeric.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    };
-
-    const monthlyFeeAmount = parseNumberish(d.package_price) ?? parseNumberish(monthlyFee);
-    const monthsCount = parseNumberish(d.months ?? d.duration) ?? 1;
-    const subtotalAmount = parseNumberish(d.subtotal);
-    const vatAmount = parseNumberish(d.vat_amount);
-    const vatPercent = parseNumberish(d.vat_percentage);
-    const contractFeeAmount = parseNumberish(d.contract_admin_fee);
-    const discountAmount = parseNumberish(d.discounts ?? d.discount);
-    const grandTotalAmount = parseNumberish(d.total);
-
-    const derivedDiscount = discountAmount ?? (
-        subtotalAmount != null && contractFeeAmount != null && grandTotalAmount != null
-            ? Math.max(0, subtotalAmount + contractFeeAmount - grandTotalAmount)
-            : null
-    );
-
-
-
-    const durationLabel = d.duration || quotation.duration || "Month-to-month";
-
-    if (customContractContent) {
-        drawLine("Hero Serviced Office", { size: 20, bold: true, color: COLOR_PRIMARY, align: "center", gap: 26 });
-        drawLine("Virtual Office Service Agreement", { size: 11, color: COLOR_MUTED, align: "center", gap: 28 });
-        drawLine(`Date Issued: ${today}`, { size: 10, gap: 20 });
-
-        sectionTitle("Contract Content");
-        const blocks = customContractContent.split(/\r?\n\r?\n/).map((block) => block.trim()).filter(Boolean);
-        for (const block of blocks) {
-            drawParagraph(block);
-            cursorY -= 6;
-        }
-
-        cursorY -= 30;
-        drawLine("Hero PH Inc.", { bold: true, gap: 40 });
-        drawLine("_______________________________", { gap: 14 });
-        drawLine("Authorized Representative", { gap: 40 });
-
-        drawLine(`${signatoryLabel}`, { bold: true, gap: 40 });
-        drawLine("_______________________________", { gap: 14 });
-        drawLine("Client Signature");
-
-        ensureSpace(30);
-        drawLine(
-            "23F TOWER6789, Ayala Avenue 6789, Makati City 1209, Philippines · salesofficer@heroph.net",
-            { size: 8, color: COLOR_MUTED, align: "center" }
-        );
-
-        const bytes = await pdfDoc.save();
-        return Buffer.from(bytes);
-    }
-
     drawLine("Hero Serviced Office", { size: 20, bold: true, color: COLOR_PRIMARY, align: "center", gap: 26 });
-    drawLine("Virtual Office Service Agreement", { size: 11, color: COLOR_MUTED, align: "center", gap: 28 });
-
+    drawLine(title, { size: 11, color: COLOR_MUTED, align: "center", gap: 28 });
     drawLine(`Date Issued: ${today}`, { size: 10, gap: 20 });
 
-    sectionTitle("1. Parties");
-    drawParagraph(
-        `This Virtual Office Service Agreement ("Agreement") is entered into between Hero PH Inc. ("Provider") and ${d.full_name}${d.company_name ? ` of ${d.company_name}` : ""
-        } ("Client"), effective as of the date of confirmed payment below.`
-    );
+    const blocks = content.split(/\r?\n\r?\n/).map((block) => block.trim()).filter(Boolean);
+    for (const block of blocks) {
+        drawParagraph(block);
+        cursorY -= 6;
+    }
 
-    sectionTitle("2. Service Details");
-    drawLine(`Service: ${quotation.service_name || "Virtual Office"}`);
-    if (quotation.branch) drawLine(`Branch: ${quotation.branch}`);
-    drawLine(`Package: ${quotation.package || "—"}`);
-    drawLine(`Duration: ${durationLabel}`);
-    drawLine(`Start Date: ${formattedStartDate}`);
-    drawLine(`Payment Method: ${paymentMethodLabel}`);
-    if (d.transaction_id) drawLine(`Reference No: ${d.transaction_id}`);
-
-    sectionTitle("3. Client Information");
-    drawLine(`Name: ${idName}`);
-    if (d.id_type) drawLine(`ID Type: ${d.id_type}`);
-    if (d.id_number) drawLine(`ID Number: ${d.id_number}`);
-    if (d.company_name) drawLine(`Company: ${d.company_name}`);
-    if (d.id_address) drawLine(`Address: ${d.id_address}`);
-    if (d.signatory_details) drawLine(`Signatory Details: ${d.signatory_details}`);
-    drawLine(`Email: ${d.email}`);
-    drawLine(`Phone: ${d.phone}`);
-
-    sectionTitle("4. Terms & Conditions");
-    drawParagraph(
-        "The Client agrees to the Provider's standard terms of service, including monthly billing, renewal, and cancellation policies as outlined in the Provider's Terms of Use. This Agreement takes effect upon confirmed payment and remains in force on a month-to-month basis unless terminated by either party with thirty (30) days' written notice. All correspondence regarding this Agreement should be directed to salesofficer@heroph.net."
-    );
-
-    cursorY -= 40;
+    cursorY -= 30;
     drawLine("Hero PH Inc.", { bold: true, gap: 40 });
     drawLine("_______________________________", { gap: 14 });
     drawLine("Authorized Representative", { gap: 40 });
-
     drawLine(`${signatoryLabel}`, { bold: true, gap: 40 });
     drawLine("_______________________________", { gap: 14 });
     drawLine("Client Signature");
 
     ensureSpace(30);
     drawLine(
-        "23F TOWER6789, Ayala Avenue 6789, Makati City 1209, Philippines · .net",
+        "23F TOWER6789, Ayala Avenue 6789, Makati City 1209, Philippines · salesofficer@heroph.net",
         { size: 8, color: COLOR_MUTED, align: "center" }
     );
 
     const bytes = await pdfDoc.save();
     return Buffer.from(bytes);
+}
+
+async function generateNonVirtualOfficeContractPdf(quotation: QuotationPayload): Promise<Buffer> {
+    const content = resolveEditableContractContent(quotation, buildOtherServiceContractContent);
+    const signatoryLabel = quotation.detail.signatory_details || quotation.detail.id_name || quotation.detail.full_name;
+
+    return renderContractPdfFromContent({
+        title: `${quotation.service_name || "Service"} Service Agreement`,
+        content,
+        signatoryLabel,
+    });
+}
+
+async function generateVirtualOfficeContractPdf(quotation: QuotationPayload): Promise<Buffer> {
+    const content = resolveEditableContractContent(quotation, buildVirtualOfficeContractContent);
+    const signatoryLabel = quotation.detail.signatory_details || quotation.detail.id_name || quotation.detail.full_name;
+
+    return renderContractPdfFromContent({
+        title: "Virtual Office Service Agreement",
+        content,
+        signatoryLabel,
+    });
+}
+
+async function generateContractPdfByService(quotation: QuotationPayload): Promise<Buffer> {
+    if (isVirtualOfficePaymongo(quotation)) {
+        return generateVirtualOfficeContractPdf(quotation);
+    }
+    return generateNonVirtualOfficeContractPdf(quotation);
 }
 
 // User & Admin Notification Emails 
@@ -829,22 +863,24 @@ export async function sendQuotationContractEmail(
     const d = quotation.detail;
     const firstName = d.full_name.split(" ")[0] || d.full_name;
     const attachments = [...getDocumentCopyAttachments(options)];
-    const shouldAttachContract = isVirtualOfficePaymongo(quotation) || Boolean((d.contract_content || "").trim());
+    const contractBuffer = await generateContractPdfByService(quotation);
+    const serviceSlug = (quotation.service_name || "Service")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    const contractFilename = `Hero-${serviceSlug || "service"}-Contract.pdf`;
 
-    if (shouldAttachContract) {
-        const contractBuffer = await generateVirtualOfficeContractPdf(quotation);
-        attachments.push({
-            filename: "Hero-Virtual-Office-Contract.pdf",
-            content: contractBuffer,
-            contentType: "application/pdf",
-        });
+    attachments.push({
+        filename: contractFilename,
+        content: contractBuffer,
+        contentType: "application/pdf",
+    });
 
-        const hasContractAttachment = attachments.some((attachment) =>
-            attachment.filename === "Hero-Virtual-Office-Contract.pdf"
-        );
-        if (!hasContractAttachment) {
-            throw new Error("Contract PDF attachment missing. Contract email not sent.");
-        }
+    const hasContractAttachment = attachments.some((attachment) =>
+        attachment.filename === contractFilename
+    );
+    if (!hasContractAttachment) {
+        throw new Error("Contract PDF attachment missing. Contract email not sent.");
     }
 
     const body = `

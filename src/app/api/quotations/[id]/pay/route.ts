@@ -4,15 +4,48 @@ import { QuotationDocumentCopy, QuotationPayload, sendQuotationPaymentVerificati
 const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
 
+function isLocalhostUrl(value: string) {
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return false;
+  }
+}
+
+function resolvePublicBaseUrl(request: NextRequest) {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
+  const forwardedOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : null;
+
+  const candidates = [
+    forwardedOrigin,
+    request.nextUrl.origin,
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.APP_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.SITE_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+    "http://localhost:3000",
+  ].filter((value): value is string => Boolean(value));
+
+  const isProd = process.env.NODE_ENV === "production";
+  for (const candidate of candidates) {
+    const normalized = candidate.replace(/\/+$/g, "");
+    if (!/^https?:\/\//i.test(normalized)) continue;
+    if (isProd && isLocalhostUrl(normalized)) continue;
+    return normalized;
+  }
+
+  return "http://localhost:3000";
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const appBaseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_URL ||
-    request.nextUrl.origin;
+  const appBaseUrl = resolvePublicBaseUrl(request);
 
   try {
     const formData = await request.formData();
