@@ -101,14 +101,18 @@ export async function POST(request: NextRequest) {
       data?.data?.verification_url;
 
     if (!verificationUrl) {
-      console.error("Laravel did not return verification_url.");
+      console.warn("Laravel did not return verification_url. Skipping frontend verification mail send.");
 
       return NextResponse.json(
         {
-          success: false,
-          message: "Laravel did not return a verification URL.",
+          success: true,
+          message:
+            data.message ??
+            "Registration successful! Please check your email to verify your account.",
+          emailSent: Boolean(data?.email_sent ?? false),
+          data: data.data ?? data,
         },
-        { status: 500 }
+        { status: 200 }
       );
     }
 
