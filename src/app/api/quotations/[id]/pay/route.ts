@@ -9,6 +9,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const appBaseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    request.nextUrl.origin;
 
   try {
     const formData = await request.formData();
@@ -62,7 +66,7 @@ export async function POST(
           const quotation = (quotePayload?.data ?? quotePayload) as (QuotationPayload & { id?: string | number }) | null;
 
           if (quotation) {
-            const verifyPaymentUrl = `$/api/quotations/${encodeURIComponent(id)}/payment-approved?source=payment-verification`;
+            const verifyPaymentUrl = `${appBaseUrl.replace(/\/+$/g, "")}/api/quotations/${encodeURIComponent(id)}/payment-approved?source=payment-verification`;
             await sendQuotationPaymentVerificationEmail(quotation, {
               paymentProofCopy,
               verifyPaymentUrl,
