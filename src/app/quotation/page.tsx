@@ -1459,8 +1459,6 @@ function Step4({
     return [];
   };
 
-  // Every service (including VO) submits directly from Review now.
-  // VO payment is handled entirely out-of-band via the admin-emailed payment link.
   const nextLabel = "Get a Quote";
 
   return (

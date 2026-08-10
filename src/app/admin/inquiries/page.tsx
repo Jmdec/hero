@@ -18,9 +18,7 @@ import {
   Send,
   CheckCircle2,
   XCircle,
-  ChevronRight as ChevronRightIcon,
   TrendingUp,
-  TrendingDown,
 } from "lucide-react"
 
 interface Contact {
@@ -46,7 +44,17 @@ interface ContactStats {
 
 type StatKey = "total" | "new" | "contacted" | "completed"
 
-const STAT_TONE_STYLES: Record<"neutral" | "blue" | "amber" | "green", { bg: string; text: string }> = {
+type StatTone = "neutral" | "blue" | "amber" | "green"
+
+interface StatCardConfig {
+  id: StatKey
+  label: string
+  value: number
+  icon: React.ComponentType<{ className?: string }>
+  tone: StatTone
+}
+
+const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
   neutral: { bg: "bg-slate-100", text: "text-slate-600" },
   blue: { bg: "bg-blue-50", text: "text-blue-700" },
   amber: { bg: "bg-amber-50", text: "text-amber-700" },
@@ -376,6 +384,25 @@ function buildDrillDownData(stats: ContactStats, contacts: Contact[]) {
   } as Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>
 }
 
+function ModalBackdrop({
+  onClose,
+  children,
+}: {
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      onClick={onClose}
+    >
+      <div onClick={(e) => e.stopPropagation()} className="w-full flex justify-center">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function StatCard({
   id,
   label,
@@ -383,14 +410,7 @@ function StatCard({
   icon: Icon,
   tone,
   onClick,
-}: {
-  id: StatKey
-  label: string
-  value: number
-  icon: React.ComponentType<{ className?: string }>
-  tone: "neutral" | "blue" | "amber" | "green"
-  onClick: (id: StatKey) => void
-}) {
+}: StatCardConfig & { onClick: (id: StatKey) => void }) {
   const toneStyles = STAT_TONE_STYLES[tone]
 
   return (
@@ -455,11 +475,10 @@ export default function ContactsAdmin() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
+  const [activeCard, setActiveCard] = useState<StatKey | null>(null);
   const [stats, setStats] = useState<ContactStats>({ total: 0, new: 0, contacted: 0, completed: 0 })
   const [statsLoading, setStatsLoading] = useState(true)
   const [statsError, setStatsError] = useState<string | null>(null)
-  const [activeStat, setActiveStat] = useState<StatKey | null>(null)
 
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("")
@@ -626,7 +645,7 @@ export default function ContactsAdmin() {
       const token = localStorage.getItem("token")
       const apiStatus = mapApiStatus(statusValue)
 
-      await fetch(`/api/admin/contacts/${statusTarget.id}`, {
+      const res = await fetch(`/api/admin/contacts/${statusTarget.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -635,6 +654,8 @@ export default function ContactsAdmin() {
         body: JSON.stringify({ status: apiStatus }),
       })
 
+      if (!res.ok) throw new Error(`Request failed (${res.status})`)
+
       setContacts((prev) =>
         prev.map((c) =>
           c.id === statusTarget.id ? { ...c, status: mapDisplayStatus(apiStatus) } : c
@@ -642,8 +663,13 @@ export default function ContactsAdmin() {
       )
       setStatusOpen(false)
       setStatusTarget(null)
+      pushToast("Status updated.", "success")
       fetchStats()
-    } catch {
+    } catch (err) {
+      pushToast(
+        err instanceof Error ? err.message : "Could not update status. Please try again.",
+        "error"
+      )
       // keep dialog open so the admin can retry
     } finally {
       setStatusSaving(false)
@@ -662,18 +688,25 @@ export default function ContactsAdmin() {
     try {
       const token = localStorage.getItem("token")
 
-      await fetch(`/api/admin/contacts/${deleteTarget.id}`, {
+      const res = await fetch(`/api/admin/contacts/${deleteTarget.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
 
+      if (!res.ok) throw new Error(`Request failed (${res.status})`)
+
       setContacts((prev) => prev.filter((c) => c.id !== deleteTarget.id))
       setDeleteOpen(false)
       setDeleteTarget(null)
+      pushToast("Inquiry deleted.", "success")
       fetchStats()
-    } catch {
+    } catch (err) {
+      pushToast(
+        err instanceof Error ? err.message : "Could not delete this inquiry. Please try again.",
+        "error"
+      )
       // keep dialog open so the admin can retry
     } finally {
       setDeleting(false)
@@ -761,17 +794,29 @@ export default function ContactsAdmin() {
     [stats, contacts],
   );
 
-  const activeDrillDown = activeStat ? drillDownData[activeStat] : null;
+  const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
+
+  const statCards: StatCardConfig[] = useMemo(
+    () => [
+      { id: "total", label: "Total Inquiries", value: stats.total, icon: Inbox, tone: "neutral" },
+      { id: "new", label: "New", value: stats.new, icon: Mail, tone: "blue" },
+      { id: "contacted", label: "Contacted", value: stats.contacted, icon: TrendingUp, tone: "amber" },
+      { id: "completed", label: "Completed", value: stats.completed, icon: CheckCircle2, tone: "green" },
+    ],
+    [stats],
+  );
 
   return (
     <main className="min-h-screen">
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard id="total" label="Total Inquiries" value={stats.total} icon={Inbox} tone="neutral" onClick={setActiveStat} />
-          <StatCard id="new" label="New" value={stats.new} icon={Mail} tone="blue" onClick={setActiveStat} />
-          <StatCard id="contacted" label="Contacted" value={stats.contacted} icon={Send} tone="amber" onClick={setActiveStat} />
-          <StatCard id="completed" label="Completed" value={stats.completed} icon={CheckCircle2} tone="green" onClick={setActiveStat} />
+          {statsError && (
+            <p className="col-span-full text-xs text-red-500">{statsError}</p>
+          )}
+          {statCards.map((s) => (
+            <StatCard key={s.id} {...s} onClick={setActiveCard} />
+          ))}
         </div>
 
         {/* Filters */}
@@ -1048,37 +1093,38 @@ export default function ContactsAdmin() {
       </section>
 
       {activeDrillDown && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setActiveStat(null)} />
-          <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl">
+        <ModalBackdrop onClose={() => setActiveCard(null)}>
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">{activeDrillDown.title}</h2>
+              <h2 className="text-lg font-semibold text-slate-900">
+                {activeDrillDown.title}
+              </h2>
               <button
-                onClick={() => setActiveStat(null)}
+                onClick={() => setActiveCard(null)}
                 className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="grid grid-cols-1 gap-3 px-6 py-5 sm:grid-cols-2">
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-6 py-5">
               {activeDrillDown.items.map((item) => (
-                <div key={item.label} className="rounded-xl bg-slate-50 p-4">
+                <div
+                  key={item.label}
+                  className="rounded-xl bg-slate-50 p-4"
+                >
                   <p className="text-xs text-slate-500">{item.label}</p>
-                  <p className="mt-1 text-xl font-bold text-slate-900">{item.value}</p>
-                  {item.sub && <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>}
+                  <p className="mt-1 text-xl font-bold text-slate-900">
+                    {item.value}
+                  </p>
+                  {item.sub && (
+                    <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>
+                  )}
                 </div>
               ))}
             </div>
-            <div className="px-6 pb-6">
-              <button
-                onClick={() => setActiveStat(null)}
-                className="w-full rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-              >
-                Close
-              </button>
-            </div>
           </div>
-        </div>
+        </ModalBackdrop>
       )}
 
       {/* View Details Dialog */}

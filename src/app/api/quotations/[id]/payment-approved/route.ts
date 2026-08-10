@@ -76,7 +76,7 @@ async function handlePaymentApproved(id: string) {
     console.error("Admin payment verification notification failed:", emailError);
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:8000";
   const approvalUrl = new URL("/payment-approved", baseUrl);
   approvalUrl.searchParams.set("id", String(id));
 

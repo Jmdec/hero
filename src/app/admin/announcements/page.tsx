@@ -291,7 +291,7 @@ function StatCard({
       onClick={() => onClick(id)}
       className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
     >
-      <div className={`absolute top-0 left-0 w-1 h-full ${accent}`} />
+      <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
       <div className="flex items-start justify-between mb-4">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
           <Icon className={`w-5 h-5 ${t.text}`} />
@@ -352,11 +352,6 @@ function buildDrillDownData(stats: AnnouncementStats, items: Announcement[]) {
   } as Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>;
 }
 
-// Hoisted to module scope on purpose: defining this inside the component
-// body would create a brand-new component type on every render, forcing
-// React to unmount/remount the whole modal (including any inputs) each
-// time state changed — which is why typing felt like "one letter at a
-// time" before losing focus.
 function ModalBackdrop({
   onClose,
   children,
@@ -390,7 +385,6 @@ export default function AnnouncementsAdmin() {
   const [lastPage, setLastPage] = useState(1);
   const [total, setTotal] = useState(0);
 
-  // View dialog (read-only details + status-only update)
   const [viewTarget, setViewTarget] = useState<Announcement | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [statusDraft, setStatusDraft] = useState<Announcement["status"]>(
@@ -399,7 +393,6 @@ export default function AnnouncementsAdmin() {
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  // Create / Edit dialog
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Announcement | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -408,7 +401,6 @@ export default function AnnouncementsAdmin() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
-  // Delete dialog
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
@@ -512,11 +504,6 @@ export default function AnnouncementsAdmin() {
     setStatusError(null);
   }
 
-  // Status-only updates use PATCH, not PUT. The API's PUT handler expects a
-  // full resource replacement, so sending only `{ status }` via PUT was
-  // silently wiping every other field (title, content, tag, social media,
-  // etc). PATCH is the correct verb for a partial update and leaves the
-  // rest of the record untouched.
   async function saveStatus() {
     if (!viewTarget) return;
 
@@ -582,10 +569,6 @@ export default function AnnouncementsAdmin() {
     setFormOpen(true);
   }
 
-  // Social media rows — supports posting the same announcement across
-  // several platforms at once, each with its own post link. Each row picks
-  // a platform that isn't already used by another row, so the same
-  // platform can't be added twice.
   function addSocialMedia() {
     setForm((prev) => ({
       ...prev,
@@ -855,34 +838,6 @@ export default function AnnouncementsAdmin() {
   return (
     <main className="min-h-screen">
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
-        {activeDrillDown && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setActiveCard(null)} />
-            <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl">
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-                <h3 className="text-base font-bold text-slate-900">{activeDrillDown.title}</h3>
-                <button onClick={() => setActiveCard(null)} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-3 px-6 py-5 sm:grid-cols-2">
-                {activeDrillDown.items.map((item) => (
-                  <div key={item.label} className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
-                    <p className="mt-1 text-xl font-bold text-slate-900">{item.value}</p>
-                    {item.sub && <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>}
-                  </div>
-                ))}
-              </div>
-              <div className="px-6 pb-6">
-                <button onClick={() => setActiveCard(null)} className="w-full rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard id="total" label="Total announcements" value={String(stats.total)} icon={Megaphone} tone="neutral" onClick={setActiveCard} />
           <StatCard id="published" label="Published" value={String(stats.published)} icon={FileText} tone="green" onClick={setActiveCard} />
@@ -1142,6 +1097,42 @@ export default function AnnouncementsAdmin() {
           </div>
         )}
       </section>
+
+      {/* Drill-Down Modal */}
+      {activeDrillDown && (
+        <ModalBackdrop onClose={() => setActiveCard(null)}>
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {activeDrillDown.title}
+              </h2>
+              <button
+                onClick={() => setActiveCard(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-6 py-5">
+              {activeDrillDown.items.map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-xl bg-slate-50 p-4"
+                >
+                  <p className="text-xs text-slate-500">{item.label}</p>
+                  <p className="mt-1 text-xl font-bold text-slate-900">
+                    {item.value}
+                  </p>
+                  {item.sub && (
+                    <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </ModalBackdrop>
+      )}
 
       {/* View Dialog — read-only details, status is the only editable field */}
       {viewOpen && viewTarget && (

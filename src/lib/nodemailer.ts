@@ -440,7 +440,7 @@ const RECIPIENTS = {
 function getPublicAppBaseUrl(): string {
     const configuredBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL;
     if (!configuredBaseUrl) {
-        return "http://localhost:3000";
+        return "http://localhost:8000";
     }
 
     return configuredBaseUrl.replace(/\/$/, "");

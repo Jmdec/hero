@@ -17,7 +17,6 @@ import {
     Pencil,
     Link2,
     FileText,
-    Loader2,
     ChevronRight,
 } from "lucide-react";
 
@@ -142,6 +141,25 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
     bank: "Bank Transfer",
 };
 
+function ModalBackdrop({
+    onClose,
+    children,
+}: {
+    onClose: () => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+            onClick={onClose}
+        >
+            <div onClick={(e) => e.stopPropagation()} className="w-full flex justify-center">
+                {children}
+            </div>
+        </div>
+    );
+}
+
 function hasPaid(quote: Quotation) {
     return (
         quote.status === "paid" ||
@@ -213,7 +231,6 @@ function buildDefaultContractContent(quote: Quotation) {
         ? PAYMENT_METHOD_LABELS[detail.payment_method] ?? detail.payment_method
         : "N/A";
     const idName = detail?.id_name ?? fullName;
-    const signatoryLabel = detail?.signatory_details ?? idName;
 
     const monthlyFeeByPackage: Record<string, string> = {
         Basic: "2000",
@@ -296,8 +313,6 @@ function getPaymentLinkSentCount(detail: QuotationDetail | null | undefined) {
     return Number(detail.payment_link_sent_count ?? detail.payment_link_send_count ?? 0) || 0;
 }
 
-// Toast
-
 type ToastTone = "success" | "error";
 
 interface ToastItem {
@@ -337,8 +352,6 @@ function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id
     );
 }
 
-// Stats
-
 type StatTone = "neutral" | "amber" | "green" | "red";
 type StatKey = "total" | "needs_attention" | "value" | "cancelled";
 
@@ -351,7 +364,6 @@ const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
 
 function buildDrillDownData(quotations: Quotation[], counts: Record<Status | "all", number>, needsAttention: number, completedValue: number) {
     const paidCount = counts.paid + counts.contract_sent + counts.completed;
-    const pendingCount = counts.pending;
     const awaitingPaymentCount = counts.awaiting_payment + counts.payment_verification;
     const conversionRate = counts.all > 0 ? Math.round((paidCount / counts.all) * 100) : 0;
     const avgValue = counts.completed > 0 ? Math.round(completedValue / counts.completed) : 0;
@@ -360,40 +372,40 @@ function buildDrillDownData(quotations: Quotation[], counts: Record<Status | "al
         total: {
             title: "All Quotations",
             items: [
-                { label: "Pending", value: String(counts.pending), sub: `${Math.round((counts.pending / Math.max(counts.all, 1)) * 100)}% of total` },
-                { label: "Needs attention", value: String(needsAttention), sub: `${Math.round((needsAttention / Math.max(counts.all, 1)) * 100)}% of total` },
-                { label: "Completed", value: String(counts.completed), sub: `${Math.round((counts.completed / Math.max(counts.all, 1)) * 100)}% of total` },
-                { label: "Conversion rate", value: `${conversionRate}%`, sub: "Paid/contracted to completed" },
+                { label: "Pending", value: String(counts.pending) },
+                { label: "Needs attention", value: String(needsAttention) },
+                { label: "Completed", value: String(counts.completed) },
+                { label: "Conversion rate", value: `${conversionRate}%` },
             ],
         },
         needs_attention: {
             title: "Needs Attention",
             items: [
-                { label: "Pending", value: String(counts.pending), sub: `${pendingCount} awaiting action` },
-                { label: "Awaiting payment", value: String(awaitingPaymentCount), sub: `${awaitingPaymentCount} at risk of stalling` },
-                { label: "Cancelled", value: String(counts.cancelled), sub: `${Math.round((counts.cancelled / Math.max(counts.all, 1)) * 100)}% of total` },
-                { label: "Active requests", value: String(counts.all - counts.completed - counts.cancelled), sub: "Open pipeline" },
+                { label: "Pending", value: String(counts.pending) },
+                { label: "Awaiting payment", value: String(awaitingPaymentCount) },
+                { label: "Cancelled", value: String(counts.cancelled) },
+                { label: "Active requests", value: String(counts.all - counts.completed - counts.cancelled) },
             ],
         },
         value: {
             title: "Quotation Value",
             items: [
-                { label: "Completed value", value: `PHP ${completedValue.toLocaleString("en-PH")}`, sub: "Completed quotes only" },
-                { label: "Average completed value", value: `PHP ${avgValue.toLocaleString("en-PH")}`, sub: "Per completed request" },
-                { label: "Paid/contracted", value: String(paidCount), sub: `${conversionRate}% conversion` },
-                { label: "Open value", value: `PHP ${quotations.filter((q) => q.status !== "completed" && q.status !== "cancelled").reduce((sum, q) => sum + (q.detail ? Number(q.detail.total) || 0 : 0), 0).toLocaleString("en-PH")}`, sub: "Pending or active" },
+                { label: "Completed value", value: `PHP ${completedValue.toLocaleString("en-PH")}` },
+                { label: "Average completed value", value: `PHP ${avgValue.toLocaleString("en-PH")}` },
+                { label: "Paid/contracted", value: String(paidCount) },
+                { label: "Open value", value: `PHP ${quotations.filter((q) => q.status !== "completed" && q.status !== "cancelled").reduce((sum, q) => sum + (q.detail ? Number(q.detail.total) || 0 : 0), 0).toLocaleString("en-PH")}` },
             ],
         },
         cancelled: {
             title: "Cancelled Quotations",
             items: [
-                { label: "Cancelled count", value: String(counts.cancelled), sub: `${Math.round((counts.cancelled / Math.max(counts.all, 1)) * 100)}% of total` },
-                { label: "Pending before cancel", value: String(counts.pending), sub: "Can still be recovered" },
-                { label: "Awaiting payment before cancel", value: String(awaitingPaymentCount), sub: "At-risk flow" },
-                { label: "Completed quotes", value: String(counts.completed), sub: "Successful pipeline" },
+                { label: "Cancelled count", value: String(counts.cancelled) },
+                { label: "Pending before cancel", value: String(counts.pending) },
+                { label: "Awaiting payment before cancel", value: String(awaitingPaymentCount) },
+                { label: "Completed quotes", value: String(counts.completed) },
             ],
         },
-    } as Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>;
+    } as Record<StatKey, { title: string; items: { label: string; value: string; }[] }>;
 }
 
 function StatCard({
@@ -483,7 +495,6 @@ function ReceiptSection({ children }: { children: React.ReactNode }) {
     return <div>{children}</div>;
 }
 
-// Client Information — mirrors the quote form's "Contact" review block.
 function ClientInfoSection({ detail }: { detail: QuotationDetail }) {
     return (
         <ReceiptSection>
@@ -496,7 +507,6 @@ function ClientInfoSection({ detail }: { detail: QuotationDetail }) {
     );
 }
 
-// Service Details — service, package, date, duration, branch.
 function ServiceDetailsSection({ quote }: { quote: Quotation }) {
     const detail = quote.detail;
     const durationLabel =
@@ -537,8 +547,6 @@ function ServiceDetailsSection({ quote }: { quote: Quotation }) {
         </ReceiptSection>
     );
 }
-
-// Price breakdown
 
 function PriceBreakdownSection({ detail }: { detail: QuotationDetail }) {
     const nested = detail.price_breakdown;
@@ -584,8 +592,6 @@ function PriceBreakdownSection({ detail }: { detail: QuotationDetail }) {
         </ReceiptSection>
     );
 }
-
-// Signatory Details 
 
 function isLinkableValue(value: string | null | undefined): value is string {
     if (!value) return false;
@@ -635,7 +641,6 @@ function SignatoryDetailsSection({ detail }: { detail: QuotationDetail }) {
     );
 }
 
-// Payment Details — payment method, transaction id, paid date, receipt.
 function PaymentDetailsSection({ quote }: { quote: Quotation }) {
     const detail = quote.detail;
     if (!detail) return null;
@@ -665,8 +670,6 @@ function PaymentDetailsSection({ quote }: { quote: Quotation }) {
         </ReceiptSection>
     );
 }
-
-// Page
 
 export default function AdminQuotationsPage() {
     const [quotations, setQuotations] = useState<Quotation[]>([]);
@@ -1029,7 +1032,7 @@ export default function AdminQuotationsPage() {
         <main className="min-h-screen">
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
                 {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 space-y-6">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                     <StatCard id="total" label="Total requests" value={String(counts.all)} icon={Inbox} tone="neutral" onClick={setActiveCard} />
                     <StatCard id="needs_attention" label="Needs attention" value={String(needsAttention)} icon={AlertCircle} tone="amber" onClick={setActiveCard} />
                     <StatCard id="value" label="Quotation value" value={String(completed)} icon={Check} tone="green" onClick={setActiveCard} />
@@ -1040,40 +1043,6 @@ export default function AdminQuotationsPage() {
                     <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-300 bg-[#FFF5F5] px-4 py-3 text-sm text-red-600">
                         <AlertCircle className="w-4 h-4 shrink-0" />
                         {error}
-                    </div>
-                )}
-
-                {activeDrillDown && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setActiveCard(null)} />
-                        <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl">
-                            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-                                <h2 className="text-lg font-semibold text-slate-900">{activeDrillDown.title}</h2>
-                                <button
-                                    onClick={() => setActiveCard(null)}
-                                    className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                                >
-                                    <X className="h-5 w-5" />
-                                </button>
-                            </div>
-                            <div className="grid grid-cols-1 gap-3 px-6 py-5 sm:grid-cols-2">
-                                {activeDrillDown.items.map((item) => (
-                                    <div key={item.label} className="rounded-xl bg-slate-50 p-4">
-                                        <p className="text-xs text-slate-500">{item.label}</p>
-                                        <p className="mt-1 text-xl font-bold text-slate-900">{item.value}</p>
-                                        {item.sub && <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>}
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="px-6 pb-6">
-                                <button
-                                    onClick={() => setActiveCard(null)}
-                                    className="w-full rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-                                >
-                                    Close
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 )}
 
@@ -1204,6 +1173,38 @@ export default function AdminQuotationsPage() {
                     )}
                 </div>
             </section>
+
+            {activeDrillDown && (
+                <ModalBackdrop onClose={() => setActiveCard(null)}>
+                    <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+                        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                            <h2 className="text-lg font-semibold text-slate-900">
+                                {activeDrillDown.title}
+                            </h2>
+                            <button
+                                onClick={() => setActiveCard(null)}
+                                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-6 py-5">
+                            {activeDrillDown.items.map((item) => (
+                                <div
+                                    key={item.label}
+                                    className="rounded-xl bg-slate-50 p-4"
+                                >
+                                    <p className="text-xs text-slate-500">{item.label}</p>
+                                    <p className="mt-1 text-xl font-bold text-slate-900">
+                                        {item.value}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </ModalBackdrop>
+            )}
 
             {/* Detail modal — receipt-style layout */}
             {selected && (
@@ -1620,47 +1621,4 @@ export default function AdminQuotationsPage() {
             <ToastStack toasts={toasts} onDismiss={dismissToast} />
         </main>
     );
-}
-
-function formatPhpAmount(value: number | null | undefined) {
-    const numeric = Number(value ?? 0);
-    if (Number.isNaN(numeric)) return "PHP 0.00";
-    return `PHP ${numeric.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function toNumber(value: string | number | null | undefined): number | null {
-    const numeric = Number(value ?? null);
-    return Number.isFinite(numeric) ? numeric : null;
-}
-
-function getContractPriceBreakdown(detail: QuotationDetail | null | undefined) {
-    if (!detail) {
-        return null;
-    }
-
-    const packagePrice = toNumber(detail.package_price);
-    const months = toNumber(detail.months ?? detail.duration) ?? 1;
-    const subtotal = toNumber(detail.subtotal);
-    const vatAmount = toNumber(detail.vat_amount);
-    const vatPercentage = toNumber(detail.vat_percentage);
-    const contractFee = toNumber(detail.contract_admin_fee);
-    const explicitDiscount = toNumber(detail.discounts ?? detail.discount);
-    const grandTotal = toNumber(detail.total);
-
-    let computedDiscount = explicitDiscount;
-    if (computedDiscount == null && subtotal != null && contractFee != null && grandTotal != null) {
-        const derived = subtotal + contractFee - grandTotal;
-        computedDiscount = derived > 0 ? derived : 0;
-    }
-
-    return {
-        packagePrice,
-        months,
-        subtotal,
-        vatAmount,
-        vatPercentage,
-        contractFee,
-        discount: computedDiscount,
-        grandTotal,
-    };
 }

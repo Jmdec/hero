@@ -30,11 +30,11 @@ const menuItems = [
     items: [
       { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
       { title: "Quotation", href: "/admin/quotation", icon: FileSpreadsheet },
-      { title: "User", href: "/admin/users", icon: Users },
       { title: "Chat", href: "/admin/chats", icon: MessagesSquare },
       { title: "Inquiry", href: "/admin/inquiries", icon: MailQuestion },
       { title: "Announcement", href: "/admin/announcements", icon: Megaphone },
       { title: "Testimonial", href: "/admin/testimonials", icon: MessageCircleHeart },
+      { title: "User", href: "/admin/users", icon: Users },
     ],
   },
 ];

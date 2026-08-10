@@ -672,8 +672,8 @@ export default function TestimonialsAdmin() {
   }
 
   return (
-    <div className="min-h-screen">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
+    <main className="min-h-screen">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {statCards.map((s) => (
@@ -953,7 +953,7 @@ export default function TestimonialsAdmin() {
             </div>
           </div>
         )}
-      </main>
+      </section>
 
       {activeDrillDown && (
         <ModalBackdrop onClose={() => setActiveCard(null)}>
@@ -980,9 +980,6 @@ export default function TestimonialsAdmin() {
                   <p className="mt-1 text-xl font-bold text-slate-900">
                     {item.value}
                   </p>
-                  {item.sub && (
-                    <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>
-                  )}
                 </div>
               ))}
             </div>
@@ -1334,6 +1331,8 @@ export default function TestimonialsAdmin() {
           </div>
         </ModalBackdrop>
       )}
-    </div>
+
+      {/* <ToastStack toasts={toasts} onDismiss={dismissToast} /> */}
+    </main>
   );
 }

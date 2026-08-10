@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useToast } from "@/components/Toast";
 import {
     Users,
@@ -20,8 +20,6 @@ import {
     Trash2,
     Loader2,
     Tag,
-    TrendingDown,
-    TrendingUp,
     ChevronRight,
 } from "lucide-react";
 
@@ -39,86 +37,73 @@ interface UserRecord {
     created_at?: string;
 }
 
-/* Analytics types — shape expected by DrillDownModal */
-interface Analytics {
-    chat_leads: {
-        total: number;
-        conversations: number;
-        active: number;
-        agent_requested: number;
-        closed: number;
-    };
-    inquiries: {
-        new: number;
-        in_progress: number;
-        replied: number;
-        closed: number;
-        by_type: Record<string, number>;
-    };
-    announcements: {
-        total: number;
-        published: number;
-        draft: number;
-    };
-    quotations: {
-        revenue: number;
-        total: number;
-        by_status: Record<string, number>;
-    };
+function pct(part: number, total: number) {
+    if (total <= 0) return "0% of total";
+    return `${Math.round((part / total) * 100)}% of total`;
 }
 
-function formatInquiryType(key: string): string {
-    return key
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+function buildDrillDownData(users: UserRecord[], stats: { total: number; verified: number; unverified: number; admins: number }) {
+    const admins = users.filter((u) => u.role === "admin");
+    const regulars = users.filter((u) => (u.role ?? "user") === "user");
+    const verifiedAdmins = admins.filter((u) => u.email_verified).length;
+    const unverifiedAdmins = admins.length - verifiedAdmins;
+    const verifiedRegulars = regulars.filter((u) => u.email_verified).length;
+
+    const now = Date.now();
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+    const newThisMonth = users.filter((u) => u.created_at && new Date(u.created_at).getTime() >= startOfMonth).length;
+
+    const unverifiedUsers = users.filter((u) => !u.email_verified);
+    const oldestPending = unverifiedUsers.reduce<number | null>((oldest, u) => {
+        if (!u.created_at) return oldest;
+        const t = new Date(u.created_at).getTime();
+        return oldest === null || t < oldest ? t : oldest;
+    }, null);
+    const oldestPendingDays = oldestPending != null ? Math.floor((now - oldestPending) / (1000 * 60 * 60 * 24)) : null;
+    const atRiskCount = unverifiedUsers.filter((u) => {
+        if (!u.created_at) return false;
+        const days = (now - new Date(u.created_at).getTime()) / (1000 * 60 * 60 * 24);
+        return days > 7;
+    }).length;
+
+    return {
+        total: {
+            title: "Total Users Breakdown",
+            items: [
+                { label: "Regular Users", value: String(regulars.length), sub: pct(regulars.length, stats.total) },
+                { label: "Admins", value: String(admins.length), sub: pct(admins.length, stats.total) },
+                { label: "Verified Accounts", value: String(stats.verified), sub: pct(stats.verified, stats.total) },
+                { label: "Unverified Accounts", value: String(stats.unverified), sub: pct(stats.unverified, stats.total) },
+                { label: "New this month", value: String(newThisMonth) },
+            ],
+        },
+        verified: {
+            title: "Verified Users",
+            items: [
+                { label: "Email Verified", value: String(stats.verified), sub: pct(stats.verified, stats.total) },
+                { label: "Verified Admins", value: String(verifiedAdmins), sub: pct(verifiedAdmins, admins.length || 1) },
+                { label: "Verified Regular", value: String(verifiedRegulars), sub: pct(verifiedRegulars, regulars.length || 1) },
+                { label: "Verification rate", value: `${stats.total > 0 ? Math.round((stats.verified / stats.total) * 100) : 0}%` },
+            ],
+        },
+        unverified: {
+            title: "Unverified Users",
+            items: [
+                { label: "Pending Verification", value: String(stats.unverified), sub: pct(stats.unverified, stats.total) },
+                { label: "Oldest pending", value: oldestPendingDays != null ? `${oldestPendingDays} days` : "—" },
+                { label: "At risk (>7 days)", value: String(atRiskCount) },
+            ],
+        },
+        admins: {
+            title: "Administrators",
+            items: [
+                { label: "Total Admins", value: String(admins.length), sub: pct(admins.length, stats.total) },
+                { label: "Verified Admins", value: String(verifiedAdmins), sub: pct(verifiedAdmins, admins.length || 1) },
+                { label: "Unverified Admins", value: String(unverifiedAdmins), sub: pct(unverifiedAdmins, admins.length || 1) },
+            ],
+        },
+    } as Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>;
 }
-
-/* Drill-Down Data */
-
-const drillDownData: Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }> = {
-    total: {
-        title: "Total Users Breakdown",
-        items: [
-            { label: "Regular Users", value: "232", sub: "92.8% of total" },
-            { label: "Admins", value: "18", sub: "7.2% of total" },
-            { label: "Verified Accounts", value: "198", sub: "79.2% of total" },
-            { label: "Unverified Accounts", value: "52", sub: "20.8% of total" },
-            { label: "New this month", value: "47", sub: "vs 42 last month ↑" },
-            { label: "Avg. join rate", value: "36/mo", sub: "6-month average" },
-        ],
-    },
-    verified: {
-        title: "Verified Users",
-        items: [
-            { label: "Email Verified", value: "198", sub: "79.2% of total users" },
-            { label: "Verified Admins", value: "16", sub: "88.9% of admins" },
-            { label: "Verified Regular", value: "182", sub: "78.4% of regulars" },
-            { label: "Verified this month", value: "34", sub: "vs 28 last month ↑" },
-            { label: "Avg. time to verify", value: "2.1 hrs", sub: "After registration" },
-            { label: "Verification rate", value: "79.2%", sub: "Target: >85%" },
-        ],
-    },
-    unverified: {
-        title: "Unverified Users",
-        items: [
-            { label: "Pending Verification", value: "52", sub: "20.8% of total" },
-            { label: "Reminder sent", value: "38", sub: "73.1% of unverified" },
-            { label: "No reminder yet", value: "14", sub: "26.9% of unverified" },
-            { label: "Oldest pending", value: "14 days", sub: "Registered Jun 12" },
-            { label: "Avg. pending time", value: "4.7 days", sub: "Across unverified" },
-            { label: "At risk of churn", value: "9", sub: "Pending > 7 days" },
-        ],
-    },
-    admins: {
-        title: "Administrators",
-        items: [
-            { label: "Total Admins", value: "18", sub: "7.2% of total" },
-            { label: "Verified Admins", value: "16", sub: "88.9% of admins" },
-            { label: "Unverified Admins", value: "2", sub: "11.1% of admins" },
-            { label: "New admins this month", value: "1", sub: "vs 0 last month" },
-        ],
-    },
-};
 
 type StatTone = "neutral" | "amber" | "green" | "red";
 
@@ -155,86 +140,6 @@ function StatCard({ id, icon: Icon, label, value, tone = "neutral", onClick }: S
             <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
             <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
         </button>
-    );
-}
-
-/* Drill-Down Modal */
-function DrillDownModal({ id, data, onClose }: { id: StatKey; data: Analytics; onClose: () => void }) {
-    const drillMap: Record<string, { title: string; items: { label: string; value: string; sub?: string }[] }> = {
-        chat_leads: {
-            title: "Chatbot Lead Generation",
-            items: [
-                { label: "Total Leads Captured", value: String(data.chat_leads.total) },
-                { label: "Total Conversations", value: String(data.chat_leads.conversations) },
-                { label: "Active Conversations", value: String(data.chat_leads.active) },
-                { label: "Awaiting Agent", value: String(data.chat_leads.agent_requested) },
-                { label: "Closed", value: String(data.chat_leads.closed) },
-            ],
-        },
-        inquiries: {
-            title: "Inquiry Summary",
-            items: [
-                { label: "New", value: String(data.inquiries.new) },
-                { label: "In Progress", value: String(data.inquiries.in_progress) },
-                { label: "Replied", value: String(data.inquiries.replied) },
-                { label: "Closed", value: String(data.inquiries.closed) },
-                ...Object.entries(data.inquiries.by_type).map(([k, v]) => ({
-                    label: formatInquiryType(k), value: String(v),
-                })),
-            ],
-        },
-        announcements: {
-            title: "Announcement Overview",
-            items: [
-                { label: "Total", value: String(data.announcements.total) },
-                { label: "Published", value: String(data.announcements.published), sub: "Live on site" },
-                { label: "Draft", value: String(data.announcements.draft), sub: "Pending review" },
-                { label: "Archived", value: String(data.announcements.total - data.announcements.published - data.announcements.draft), sub: "Hidden" },
-            ],
-        },
-        revenue: {
-            title: "Quotation Summary",
-            items: [
-                { label: "Total Quotation Value", value: `₱${data.quotations.revenue.toLocaleString()}` },
-                { label: "Total Quotations", value: String(data.quotations.total) },
-                ...Object.entries(data.quotations.by_status).map(([k, v]) => ({
-                    label: k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()), value: String(v),
-                })),
-            ],
-        },
-    };
-
-    const modal = drillMap[id];
-    if (!modal) return null;
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-[#0D47A1]">
-                    <h3 className="text-base font-bold text-white">{modal.title}</h3>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
-                        <X className="w-4 h-4 text-white" />
-                    </button>
-                </div>
-                <div className="p-5 space-y-3">
-                    {modal.items.map((item, i) => (
-                        <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                            <div>
-                                <p className="text-sm font-medium text-gray-800">{item.label}</p>
-                                {item.sub && <p className="text-xs text-gray-400">{item.sub}</p>}
-                            </div>
-                            <span className="text-sm font-bold text-[#0D47A1]">{item.value}</span>
-                        </div>
-                    ))}
-                </div>
-                <div className="px-5 pb-5">
-                    <button onClick={onClose} className="w-full py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
     );
 }
 
@@ -416,6 +321,7 @@ export default function UsersPage() {
         return matchesSearch && matchesRole;
     });
 
+    const drillDownData = useMemo(() => buildDrillDownData(users, stats), [users, stats]);
     const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
 
     /* ── View ── */
@@ -546,24 +452,6 @@ export default function UsersPage() {
     return (
         <main className="min-h-screen">
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
-                {/* Error States */}
-                {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                            <p className="text-sm font-semibold text-red-900">{error}</p>
-                            <p className="text-xs text-red-700 mt-1">Please check your connection and try again.</p>
-                        </div>
-                        <button
-                            onClick={() => fetchUsers()}
-                            className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 shrink-0"
-                        >
-                            <RefreshCw className="w-3.5 h-3.5" />
-                            Retry
-                        </button>
-                    </div>
-                )}
-
                 {/* Stat Cards */}
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                     {statCards.map((s) => (
@@ -704,7 +592,7 @@ export default function UsersPage() {
                 </div>
             </section>
 
-            {/* ── Drill-Down Modal ── */}
+            {/* Drill-Down Modal */}
             {activeDrillDown && (
                 <ModalBackdrop onClose={() => setActiveCard(null)}>
                     <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
