@@ -5,7 +5,7 @@ import OpenAI from "openai";
 const humanDelay = () =>
   new Promise((res) => setTimeout(res, 1000 + Math.random() * 1000));
 
-// ── Server-side validation ────────────────────────────────────────────────────
+// ── Server-side validation 
 function sanitize(input: unknown): string {
   if (typeof input !== "string") return "";
   return input

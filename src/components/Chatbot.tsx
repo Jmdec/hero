@@ -624,7 +624,7 @@ const humanDelay = (replyLength = 0) => {
 };
 
 const quickReplyDelay = () =>
-  new Promise((res) => setTimeout(res, 10000 + Math.random() * 10000));
+  new Promise((res) => setTimeout(res, 1000 + Math.random() * 1500));
 
 const nextPaint = () =>
     new Promise<void>((resolve) => {
@@ -789,6 +789,16 @@ const Chatbot = () => {
                 setMessages((prev) => {
                     if (isProcessingLocalMessageRef.current) return prev;
 
+                    // Preserve CTAs from local state — server responses never carry CTA data.
+                    const prevCtaByText = new Map<string, CTA>();
+                    for (const m of prev) {
+                        if (m.cta) prevCtaByText.set(m.text, m.cta);
+                    }
+                    const enrichedMappedMessages = mappedMessages.map((m) => ({
+                        ...m,
+                        cta: prevCtaByText.get(m.text) ?? m.cta,
+                    }));
+
                     const current =
                         prev[0]?.type === "bot" && prev[0]?.text === WELCOME_MESSAGE.text
                             ? prev.slice(1)
@@ -799,7 +809,7 @@ const Chatbot = () => {
                             message.type === "user" &&
                             !message.id.startsWith("remote-") &&
                             pendingLocalUserTextsRef.current.has(message.text) &&
-                            !mappedMessages.some(
+                            !enrichedMappedMessages.some(
                                 (remote) =>
                                     remote.type === "user" && remote.text === message.text,
                             ),
@@ -808,7 +818,7 @@ const Chatbot = () => {
                     const previousText = current
                         .map((m) => `${m.type}:${m.text}`)
                         .join("|");
-                    const nextTextBase = mappedMessages
+                    const nextTextBase = enrichedMappedMessages
                         .map((m) => `${m.type}:${m.text}`)
                         .join("|");
                     const nextText =
@@ -820,7 +830,7 @@ const Chatbot = () => {
 
                     const finalMessagesBase = agentJustEnded
                         ? [
-                            ...mappedMessages,
+                            ...enrichedMappedMessages,
                             {
                                 id: makeId(),
                                 type: "bot" as const,
@@ -829,7 +839,7 @@ const Chatbot = () => {
                                 source: "AI Assistant",
                             },
                         ]
-                        : mappedMessages;
+                        : enrichedMappedMessages;
 
                     const finalMessages =
                         stillPendingLocalMessages.length > 0
@@ -1088,7 +1098,8 @@ const Chatbot = () => {
     };
 
     const handleQuickReply = async (reply: string) => {
-        if (conversationClosed) return;
+        // Live agent owns the chat — quick replies must not fire.
+        if (conversationClosed || agentRequested) return;
 
         if (reply === "Talk to an Agent") {
             await handleTalkToAgent();
@@ -1117,6 +1128,9 @@ const Chatbot = () => {
 
             const activeConversation = await ensureConversation();
 
+            // Persist the user's quick reply selection so it survives polling.
+            void persistMessage(activeConversation, "user", reply);
+
             await quickReplyDelay();
             setIsTyping(false);
             await nextPaint();
@@ -1128,7 +1142,7 @@ const Chatbot = () => {
                     type: "bot",
                     text: predefined.text,
                     time: formatTime(),
-                    source: "AI Assistant",
+                    source: "Quick Reply",
                     cta: predefined.cta,
                 },
             ]);
@@ -1845,6 +1859,7 @@ const Chatbot = () => {
                                             {!conversationClosed &&
                                                 !isTyping &&
                                                 !awaitingPreferredContact &&
+                                                !agentRequested &&
                                                 messages[messages.length - 1]?.type === "bot" && (
                                                     <motion.div
                                                         initial={{ opacity: 0, y: 6 }}

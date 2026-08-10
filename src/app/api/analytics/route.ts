@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-function resolveLaravelApiBase() {
-    const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
-    const normalized = configured.replace(/\/+$/g, "");
-    return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
-}
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "https://localhost:8000").replace(/\/+$/g, "");
+const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
+const LARAVEL_BASE_URL = process.env.LARAVEL_APP_URL ?? LARAVEL_API_BASE.replace(/\/api\/?$/, "");
 
 export async function GET(request: NextRequest) {
     try {
         const url = new URL(request.url);
-        const laravelUrl = `${resolveLaravelApiBase()}/admin/analytics${url.search}`;
+        const laravelUrl = `${LARAVEL_BASE_URL}/admin/analytics${url.search}`;
 
         const authHeader = request.headers.get("authorization") ?? "";
 
