@@ -48,9 +48,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, isAuthenticated, isAdmin, isAuthReady, logout } = useAuth();
 
   const handleLogout = async () => {
-    // Clear the server-side cookie so middleware also denies access
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
     } catch {
       // proceed with client cleanup regardless
     }

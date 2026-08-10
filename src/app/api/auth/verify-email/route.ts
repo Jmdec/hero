@@ -1,25 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+function resolveLaravelApiBase() {
+    const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
+    const normalized = configured.replace(/\/+$/g, "");
+    return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
+}
 
 export async function GET(request: NextRequest) {
     try {
-        const token = request.nextUrl.searchParams.get("token");
+        const search = request.nextUrl.search;
 
-        if (!token) {
+        if (!search || search === "?") {
             return NextResponse.json(
                 { success: false, message: "Verification token is required." },
                 { status: 400 }
             );
         }
 
-        const response = await fetch(
-            `${API_URL}/api/auth/verify-email?token=${encodeURIComponent(token)}`,
-            {
-                method: "GET",
-                headers: { Accept: "application/json" },
-            }
-        );
+        const response = await fetch(`${resolveLaravelApiBase()}/auth/verify-email${search}`, {
+            method: "GET",
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+        });
 
         const responseText = await response.text();
 

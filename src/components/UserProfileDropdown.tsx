@@ -11,12 +11,12 @@ export default function UserProfileDropdown() {
   const { user, logout } = useAuth();
 
   const handleLogout = async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
     try {
       await fetch('/api/auth/logout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
     } catch (error) {
       console.error('Logout error:', error);

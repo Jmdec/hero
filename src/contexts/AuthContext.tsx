@@ -28,9 +28,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthReady, setIsAuthReady] = useState(false);
 
   useEffect(() => {
-    // Check for stored user data on mount
+    // Bearer token is the source of truth; stale user data is ignored.
+    const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
+    if (storedUser && storedToken) {
       try {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
@@ -39,7 +40,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Failed to parse stored user:', error);
         localStorage.removeItem('user');
+        localStorage.removeItem('token');
       }
+    } else {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
     }
     setIsAuthReady(true);
   }, []);

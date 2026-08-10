@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const COOKIE_NAME = 'session'
-
-function clearSessionCookie() {
-  const secure = process.env.NODE_ENV === 'production' ? 'Secure; ' : ''
-  return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; ${secure}Max-Age=0`
-}
-
 export async function POST(request: NextRequest) {
   try {
     const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
     const fullUrl = `${API_URL}/api/auth/logout`
+    const authHeader = request.headers.get('authorization') ?? ''
 
     // Send to Laravel backend
     const response = await fetch(fullUrl, {
@@ -18,24 +12,28 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
     })
 
-    const data = await response.json()
+    const responseText = await response.text()
+    let data: any = {}
 
-    const headers = new Headers()
-    headers.append('Set-Cookie', clearSessionCookie())
+    try {
+      data = responseText ? JSON.parse(responseText) : {}
+    } catch {
+      data = { message: responseText || 'Logout failed' }
+    }
 
     if (response.ok) {
       return NextResponse.json({
         success: true,
         message: data.message || 'Logout successful',
-      }, { status: 200, headers })
+      }, { status: 200 })
     }
 
     return NextResponse.json(data, {
       status: response.status,
-      headers,
     })
   } catch (error: unknown) {
     console.error('Logout error:', error)
@@ -47,9 +45,6 @@ export async function POST(request: NextRequest) {
       },
       {
         status: 500,
-        headers: {
-          'Set-Cookie': clearSessionCookie(),
-        },
       }
     )
   }

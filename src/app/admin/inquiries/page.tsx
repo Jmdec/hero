@@ -1290,12 +1290,6 @@ export default function ContactsAdmin() {
             </div>
 
             <div className="flex justify-end gap-2 border-t border-[#E5EAF2] px-6 py-4">
-              <button
-                onClick={() => setReplyOpen(false)}
-                className="rounded-xl border border-[#D9E2F0] px-4 py-2 text-sm font-medium text-[#0B1F4A] hover:bg-[#F8FAFD] transition"
-              >
-                {sendSuccess ? "Close" : "Cancel"}
-              </button>
               {!sendSuccess && (
                 <button
                   onClick={confirmSendReply}

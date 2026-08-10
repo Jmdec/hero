@@ -12,12 +12,16 @@ type Status = "loading" | "success" | "error" | "missing";
 function VerifyEmailContent() {
     const searchParams = useSearchParams();
     const token = searchParams.get("token");
+    const verificationQuery = searchParams.toString();
+    const hasVerificationData = Boolean(
+        token || searchParams.get("id") || searchParams.get("hash") || searchParams.get("signature")
+    );
 
     const [status, setStatus] = useState<Status>("loading");
     const [message, setMessage] = useState("");
 
     useEffect(() => {
-        if (!token) {
+        if (!hasVerificationData) {
             setStatus("missing");
             setMessage("No verification token was provided.");
             return;
@@ -25,10 +29,10 @@ function VerifyEmailContent() {
 
         const verify = async () => {
             try {
-                const response = await fetch(
-                    `/api/auth/verify-email?token=${encodeURIComponent(token)}`,
-                    { method: "GET", headers: { Accept: "application/json" } }
-                );
+                const response = await fetch(`/api/auth/verify-email?${verificationQuery}`, {
+                    method: "GET",
+                    headers: { Accept: "application/json" },
+                });
 
                 const data = await response.json();
 
@@ -46,7 +50,7 @@ function VerifyEmailContent() {
         };
 
         verify();
-    }, [token]);
+    }, [hasVerificationData, verificationQuery, token]);
 
     return (
         <div className="min-h-screen bg-[#F5F5F3] flex items-center justify-center px-6">
