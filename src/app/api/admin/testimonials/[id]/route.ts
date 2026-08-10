@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
+const LARAVEL_API_BASE = API_URL.endsWith("/api")
+    ? API_URL
+    : `${API_URL}/api`;
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -9,7 +13,7 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json();
 
-  const res = await fetch(`${API_URL}/api/admin/testimonials/${id}`, {
+  const res = await fetch(`${LARAVEL_API_BASE}/admin/testimonials/${id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -31,7 +35,7 @@ export async function PUT(
   const { id } = await params;
   const body = await request.json();
 
-  const res = await fetch(`${API_URL}/api/admin/testimonials/${id}`, {
+  const res = await fetch(`${LARAVEL_API_BASE}/admin/testimonials/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -52,7 +56,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  const res = await fetch(`${API_URL}/api/admin/testimonials/${id}`, {
+  const res = await fetch(`${LARAVEL_API_BASE}/admin/testimonials/${id}`, {
     method: "DELETE",
     headers: {
       Accept: "application/json",

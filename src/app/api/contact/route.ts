@@ -54,7 +54,6 @@ function buildInternalInquiryHtml(payload: ContactInquiryPayload, openInquiryUrl
           </div>
           <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;">
             <a href="${openInquiryUrl}" style="display:inline-block;padding:12px 18px;background:#0D47A1;color:#ffffff;text-decoration:none;border-radius:999px;font-weight:700;font-size:14px;">Open Inquiry</a>
-            <a href="${replyUrl}" style="display:inline-block;padding:12px 18px;background:#FFC107;color:#1B3A8C;text-decoration:none;border-radius:999px;font-weight:700;font-size:14px;">Reply to Client</a>
           </div>
         </div>
       </div>
