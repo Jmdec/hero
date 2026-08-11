@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Wrench, Mail, Phone } from "lucide-react";
+import Link from "next/link";
+import { Compass, Mail, Phone, ArrowLeft } from "lucide-react";
 
 export default function NotFound() {
     return (
@@ -14,26 +15,34 @@ export default function NotFound() {
             >
                 {/* Icon */}
                 <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#EEF2FB] border border-[#C5D2EC]">
-                    <Wrench className="h-9 w-9 text-[#1B3A8C]" />
-                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-[#F5F5F3] animate-pulse" />
+                    <Compass className="h-9 w-9 text-[#1B3A8C]" />
                 </div>
 
                 {/* Copy */}
                 <div>
                     <p className="text-sm font-bold tracking-[0.2em] uppercase text-[#1B3A8C]">
-                        Scheduled Maintenance
+                        Error 404
                     </p>
-                    <h1 className="mt-2 text-3xl font-bold text-gray-900">We&apos;ll be right back</h1>
+                    <h1 className="mt-2 text-3xl font-bold text-gray-900">Page not found</h1>
                     <p className="mt-3 text-gray-600 leading-relaxed">
-                        HERO Serviced Office is undergoing scheduled maintenance to improve your experience.
-                        We appreciate your patience and expect to be back online shortly.
+                        The page you&apos;re looking for doesn&apos;t exist or may have been moved.
+                        Let&apos;s get you back on track.
                     </p>
                 </div>
+
+                {/* Back to home */}
+                <Link
+                    href="/"
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#1B3A8C] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#16316F] transition-colors"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to homepage
+                </Link>
 
                 {/* Contact fallback */}
                 <div className="rounded-xl border border-gray-200 bg-white px-5 py-4 space-y-3 text-left">
                     <p className="text-xs font-semibold tracking-wide uppercase text-gray-400">
-                        Need us urgently?
+                        Need help finding something?
                     </p>
                     <a
                         href="mailto:sales@heroph.net"
@@ -50,7 +59,7 @@ export default function NotFound() {
                         +63-(0)2-8801-3417
                     </a>
                 </div>
-            </motion.div>
-        </div>
+            </motion.div >
+        </div >
     );
 }

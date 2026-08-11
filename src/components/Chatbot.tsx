@@ -13,7 +13,7 @@ import {
     UserRound,
     ExternalLink,
 } from "lucide-react";
-import { chatApi } from "../lib/chatApi";
+import { chatApi, type ConversationResponse } from "../lib/chatApi";
 
 interface CTA {
     label: string;
@@ -339,6 +339,7 @@ type ConversationState = {
     id: number;
     session_id: string;
     remoteConversationId?: number;
+    status?: string;
 };
 
 type ConversationWithStatus = ConversationState & {
@@ -366,12 +367,6 @@ const WELCOME_MESSAGE: Message = {
     time: formatTime(),
     source: "AI Assistant",
 };
-
-const AGENT_ENDED_MESSAGE =
-    "🔴 The live agent ended the chat. You're back with our AI assistant — feel free to keep chatting or pick a quick reply below.";
-
-const AGENT_CONNECTING_MESSAGE =
-    "You will be connected to an agent";
 
 const BUSINESS_HOURS_WINDOW = {
     days: [1, 2, 3, 4, 5], // Mon–Fri
@@ -633,6 +628,37 @@ const nextPaint = () =>
         });
     });
 
+function isAgentRequestedStatus(status?: string | null): boolean {
+    return status === "waiting_admin" || status === "agent_requested";
+}
+
+function isLiveAgentActiveStatus(status?: string | null): boolean {
+    return status === "agent_active";
+}
+
+function isLiveAgentOwnedStatus(status?: string | null): boolean {
+    return isAgentRequestedStatus(status) || isLiveAgentActiveStatus(status);
+}
+
+function isConversationEndedStatus(status?: string | null): boolean {
+    return status === "agent_closed" || status === "closed";
+}
+
+function getPersistedMessageCta(text: string): CTA | undefined {
+    const predefined = Object.values(PREDEFINED_REPLIES).find((reply) => reply.text === text && reply.cta);
+    if (predefined?.cta) return predefined.cta;
+
+    if (
+        text === OUT_OF_HOURS_MESSAGE ||
+        text === PREFERRED_CONTACT_RECEIVED_MESSAGE ||
+        text.includes("reach us directly")
+    ) {
+        return CTA_LINKS.contact;
+    }
+
+    return getContextualCta(text);
+}
+
 const Chatbot = () => {
     const [isStarted, setIsStarted] = useState(false);
     const [leadSubmitted, setLeadSubmitted] = useState(false);
@@ -664,12 +690,15 @@ const Chatbot = () => {
     const [conversation, setConversation] = useState<ConversationState | null>(
         null,
     );
+    const [conversationStatus, setConversationStatus] = useState<string | null>(null);
     const [sendError, setSendError] = useState("");
     const [modal, setModal] = useState<"privacy" | "terms" | null>(null);
     const [agreedToPolicy, setAgreedToPolicy] = useState(false);
     const [agreementTouched, setAgreementTouched] = useState(false);
     const [agentRequested, setAgentRequested] = useState(false);
     const [agentRequestInFlight, setAgentRequestInFlight] = useState(false);
+    const [restoringConversation, setRestoringConversation] = useState(true);
+    const [endConversationOpen, setEndConversationOpen] = useState(false);
     const closeEmailSentRef = useRef(false);
     const conversationRef = useRef<ConversationState | null>(null);
     const leadSubmittedRef = useRef(false);
@@ -700,6 +729,117 @@ const Chatbot = () => {
         "Contact Info",
         "Talk to an Agent",
     ];
+
+    const showResumeNotice = useCallback(() => {
+        setResumed(true);
+        window.setTimeout(() => setResumed(false), 3500);
+    }, []);
+
+    const syncConversationSnapshot = useCallback(
+        (
+            latestConversation: ConversationResponse,
+            options?: { showResumed?: boolean; preservePending?: boolean },
+        ) => {
+            const preservePending = options?.preservePending ?? true;
+            const nextConversation: ConversationState = {
+                id: latestConversation.id,
+                session_id: latestConversation.session_id,
+                remoteConversationId: latestConversation.id,
+                status: latestConversation.status,
+            };
+
+            setConversation(nextConversation);
+            conversationRef.current = nextConversation;
+            setConversationStatus(latestConversation.status);
+            setLeadSubmitted(true);
+            setIsStarted(true);
+
+            const liveAgentOwned = isLiveAgentOwnedStatus(latestConversation.status);
+            const conversationEnded = isConversationEndedStatus(latestConversation.status);
+
+            setAgentRequested(liveAgentOwned);
+            setConversationClosed(conversationEnded);
+            setAgentRequestInFlight(false);
+            agentRequestInFlightRef.current = false;
+            leadSubmittedRef.current = true;
+            conversationClosedRef.current = conversationEnded;
+            previousStatusRef.current = latestConversation.status;
+
+            if (typeof window !== "undefined") {
+                window.localStorage.setItem(SESSION_STORAGE_KEY, latestConversation.session_id);
+                window.sessionStorage.setItem(SESSION_STORAGE_KEY, latestConversation.session_id);
+            }
+
+            for (const text of Array.from(pendingLocalUserTextsRef.current)) {
+                const confirmed = (latestConversation.messages ?? []).some(
+                    (remote) => remote.sender === "user" && remote.message === text,
+                );
+                if (confirmed) {
+                    pendingLocalUserTextsRef.current.delete(text);
+                }
+            }
+
+            setMessages((prev) => {
+                const prevCtaByText = new Map<string, CTA>();
+                for (const item of prev) {
+                    if (item.cta) prevCtaByText.set(item.text, item.cta);
+                }
+
+                const remoteMessages: Message[] = (latestConversation.messages ?? []).map((remote) => ({
+                    id: `remote-${latestConversation.id}-${remote.id}`,
+                    type: remote.sender === "user" ? "user" : "bot",
+                    text: remote.message,
+                    time: new Date(remote.sent_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                    }),
+                    source:
+                        remote.sender === "admin"
+                            ? "Live Agent"
+                            : remote.sender === "assistant"
+                                ? "AI Assistant"
+                                : remote.sender === "system"
+                                    ? "System"
+                                    : undefined,
+                    cta:
+                        remote.sender === "assistant" || remote.sender === "system"
+                            ? prevCtaByText.get(remote.message) ?? getPersistedMessageCta(remote.message)
+                            : undefined,
+                }));
+
+                const current =
+                    prev[0]?.type === "bot" && prev[0]?.text === WELCOME_MESSAGE.text
+                        ? prev.slice(1)
+                        : prev;
+
+                const pendingLocalMessages = preservePending
+                    ? current.filter(
+                        (message) =>
+                            message.type === "user" &&
+                            !message.id.startsWith("remote-") &&
+                            pendingLocalUserTextsRef.current.has(message.text) &&
+                            !remoteMessages.some(
+                                (remote) => remote.type === "user" && remote.text === message.text,
+                            ),
+                    )
+                    : [];
+
+                const nextMessages = pendingLocalMessages.length > 0
+                    ? [...remoteMessages, ...pendingLocalMessages]
+                    : remoteMessages;
+
+                const currentSignature = current.map((message) => `${message.type}:${message.text}`).join("|");
+                const nextSignature = nextMessages.map((message) => `${message.type}:${message.text}`).join("|");
+
+                return currentSignature === nextSignature ? prev : nextMessages;
+            });
+
+            if (options?.showResumed) {
+                showResumeNotice();
+            }
+        },
+        [showResumeNotice],
+    );
 
     const scrollToBottom = useCallback((instant: boolean = false) => {
         if (scrollRafRef.current !== null) {
@@ -739,132 +879,26 @@ const Chatbot = () => {
             const pollId = conversation.remoteConversationId ?? conversation.id;
 
             try {
-                const latestConversation = await chatApi.getConversation(
-                    pollId,
-                );
-                try { console.debug("CHAT: polled conversation", latestConversation.id, latestConversation.status, "messages", (latestConversation.messages || []).length); } catch {}
-
-                const rawStatus = latestConversation.status;
-
-                const mappedMessages: Message[] = (
-                    latestConversation.messages ?? []
-                ).map((message, idx) => ({
-                    id: `remote-${conversation.id}-${idx}-${message.sent_at}`,
-                    type: message.sender === "user" ? "user" : "bot",
-                    text: message.message,
-                    time: new Date(message.sent_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    }),
-                    source:
-                        message.sender === "admin"
-                            ? "Live Agent"
-                            : message.sender === "assistant"
-                                ? "AI Assistant"
-                                : message.sender === "system"
-                                    ? "Quick Reply"
-                                    : undefined,
-                }));
-
-                const previousStatus = previousStatusRef.current;
-                const agentJustEnded =
-                    (previousStatus === "agent_active" ||
-                        previousStatus === "agent_requested") &&
-                    (rawStatus === "agent_closed" || rawStatus === "closed");
-
-                previousStatusRef.current = rawStatus;
-
-                // Once the server confirms a locally-sent user message (by
-                // text match), stop treating it as pending so it no longer
-                // blocks anything.
-                for (const text of Array.from(pendingLocalUserTextsRef.current)) {
-                    const confirmed = mappedMessages.some(
-                        (remote) => remote.type === "user" && remote.text === text,
+                const latestConversation = await chatApi.getConversation(pollId);
+                try {
+                    console.debug(
+                        "CHAT: polled conversation",
+                        latestConversation.id,
+                        latestConversation.status,
+                        "messages",
+                        (latestConversation.messages || []).length,
                     );
-                    if (confirmed) {
-                        pendingLocalUserTextsRef.current.delete(text);
-                    }
-                }
+                } catch {}
 
-                setMessages((prev) => {
-                    if (isProcessingLocalMessageRef.current) return prev;
-
-                    // Preserve CTAs from local state — server responses never carry CTA data.
-                    const prevCtaByText = new Map<string, CTA>();
-                    for (const m of prev) {
-                        if (m.cta) prevCtaByText.set(m.text, m.cta);
-                    }
-                    const enrichedMappedMessages = mappedMessages.map((m) => ({
-                        ...m,
-                        cta: prevCtaByText.get(m.text) ?? m.cta,
-                    }));
-
-                    const current =
-                        prev[0]?.type === "bot" && prev[0]?.text === WELCOME_MESSAGE.text
-                            ? prev.slice(1)
-                            : prev;
-
-                    const stillPendingLocalMessages = current.filter(
-                        (message) =>
-                            message.type === "user" &&
-                            !message.id.startsWith("remote-") &&
-                            pendingLocalUserTextsRef.current.has(message.text) &&
-                            !enrichedMappedMessages.some(
-                                (remote) =>
-                                    remote.type === "user" && remote.text === message.text,
-                            ),
-                    );
-
-                    const previousText = current
-                        .map((m) => `${m.type}:${m.text}`)
-                        .join("|");
-                    const nextTextBase = enrichedMappedMessages
-                        .map((m) => `${m.type}:${m.text}`)
-                        .join("|");
-                    const nextText =
-                        stillPendingLocalMessages.length > 0
-                            ? `${nextTextBase}|${stillPendingLocalMessages
-                                  .map((m) => `${m.type}:${m.text}`)
-                                  .join("|")}`
-                            : nextTextBase;
-
-                    const finalMessagesBase = agentJustEnded
-                        ? [
-                            ...enrichedMappedMessages,
-                            {
-                                id: makeId(),
-                                type: "bot" as const,
-                                text: AGENT_ENDED_MESSAGE,
-                                time: formatTime(),
-                                source: "AI Assistant",
-                            },
-                        ]
-                        : enrichedMappedMessages;
-
-                    const finalMessages =
-                        stillPendingLocalMessages.length > 0
-                            ? [...finalMessagesBase, ...stillPendingLocalMessages]
-                            : finalMessagesBase;
-
-                    if (!agentJustEnded && previousText === nextText) {
-                        return prev;
-                    }
-
-                    return finalMessages;
-                });
-
-                if (agentJustEnded) {
-                    setAgentRequested(false);
-                    agentRequestInFlightRef.current = false;
-                    setSendError("");
-                }
+                syncConversationSnapshot(latestConversation);
+                setSendError("");
             } catch {
                 // Ignore transient polling errors so the chat stays responsive.
             }
         }, 3000);
 
         return () => window.clearInterval(interval);
-    }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted]);
+    }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted, syncConversationSnapshot]);
 
     useEffect(() => {
         if (!conversation?.id || !leadSubmitted) return;
@@ -916,22 +950,11 @@ const Chatbot = () => {
                 try {
                     // Close the conversation on the server and request transcript once.
                     await chatApi.closeConversation(targetId, true);
+                    const latestConversation = await chatApi.getConversation(targetId);
+                    syncConversationSnapshot(latestConversation, { preservePending: false });
                 } catch {
                     // ignore errors — best-effort
                 }
-
-                conversationClosedRef.current = true;
-                setConversationClosed(true);
-                setMessages((prev) => [
-                    ...prev,
-                    {
-                        id: makeId(),
-                        type: "bot",
-                        text: `Conversation Closed Automatically. A transcript has been generated and emailed to you if we have an address on file.`,
-                        time: formatTime(),
-                        source: "System",
-                    },
-                ]);
             }, INACTIVITY_MS);
         };
 
@@ -941,7 +964,7 @@ const Chatbot = () => {
         return () => {
             if (timer) window.clearTimeout(timer);
         };
-    }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted, messages.length, agentRequested]);
+    }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted, messages.length, agentRequested, syncConversationSnapshot]);
 
     const requestTranscriptEmail = useCallback(
         async (conversationId: number | undefined) => {
@@ -957,35 +980,68 @@ const Chatbot = () => {
 
     useEffect(() => {
         if (typeof window === "undefined") return;
-        try {
-            const raw = window.sessionStorage.getItem(CHAT_STATE_KEY);
-            if (!raw) return;
-            const parsed = JSON.parse(raw);
-            if (parsed?.conversation) {
-                setConversation(parsed.conversation);
-                conversationRef.current = parsed.conversation;
-                try {
-                    console.debug("CHAT: restored conversation", parsed.conversation);
-                } catch {}
+        let cancelled = false;
+
+        const restoreConversation = async () => {
+            try {
+                const raw = window.sessionStorage.getItem(CHAT_STATE_KEY);
+                const parsed = raw ? JSON.parse(raw) : null;
+                const storedConversation = parsed?.conversation as ConversationState | undefined;
+                const storedSessionId =
+                    storedConversation?.session_id ??
+                    window.localStorage.getItem(SESSION_STORAGE_KEY) ??
+                    window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+                const storedConversationId = storedConversation?.remoteConversationId ?? storedConversation?.id;
+
+                if (storedSessionId || storedConversationId) {
+                    try {
+                        const latestConversation = storedSessionId
+                            ? await chatApi.getConversationBySession(storedSessionId)
+                            : await chatApi.getConversation(storedConversationId as number);
+
+                        if (!cancelled) {
+                            syncConversationSnapshot(latestConversation, {
+                                showResumed: true,
+                                preservePending: false,
+                            });
+                        }
+
+                        return;
+                    } catch {
+                        window.localStorage.removeItem(SESSION_STORAGE_KEY);
+                        window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+                    }
+                }
+
+                if (!cancelled && parsed?.conversation && Array.isArray(parsed?.messages)) {
+                    setConversation(parsed.conversation);
+                    conversationRef.current = parsed.conversation;
+                    setMessages(parsed.messages);
+                    setLeadSubmitted(Boolean(parsed.leadSubmitted));
+                    setConversationClosed(Boolean(parsed.conversationClosed));
+                    setIsStarted(Boolean(parsed.leadSubmitted || parsed.messages.length > 0));
+                    setConversationStatus(parsed.conversation?.status ?? null);
+                    setAgentRequested(isLiveAgentOwnedStatus(parsed.conversation?.status ?? null));
+                    previousStatusRef.current = parsed.conversation?.status ?? null;
+                    if (parsed.leadSubmitted) {
+                        showResumeNotice();
+                    }
+                }
+            } catch {
+                // Ignore restore errors.
+            } finally {
+                if (!cancelled) {
+                    setRestoringConversation(false);
+                }
             }
-            if (Array.isArray(parsed?.messages)) {
-                setMessages(parsed.messages);
-            }
-            if (parsed?.leadSubmitted) {
-                setLeadSubmitted(true);
-                leadSubmittedRef.current = true;
-            }
-            if (parsed?.conversationClosed) {
-                setConversationClosed(Boolean(parsed.conversationClosed));
-                conversationClosedRef.current = Boolean(parsed.conversationClosed);
-            }
-            // Show a brief 'resumed' indicator when we restored state from storage.
-            setResumed(true);
-            window.setTimeout(() => setResumed(false), 3500);
-        } catch {
-            // Ignore parse errors
-        }
-    }, []);
+        };
+
+        void restoreConversation();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [showResumeNotice, syncConversationSnapshot]);
 
     // Persist chat state so refresh keeps the conversation intact.
     useEffect(() => {
@@ -1010,7 +1066,7 @@ const Chatbot = () => {
         try {
             console.debug("CHAT: conversation changed", conversation, { leadSubmitted, conversationClosed });
         } catch {}
-    }, [conversation, leadSubmitted, conversationClosed]);
+    }, [conversation, leadSubmitted, conversationClosed, conversationStatus]);
 
     useEffect(() => {
         return () => { };
@@ -1035,32 +1091,35 @@ const Chatbot = () => {
     }, [leadSubmitted, conversation?.id, conversationClosed]);
 
     const ensureConversation = useCallback(async (): Promise<ConversationState | null> => {
-        if (conversation) return conversation;
-
-        const newConversation: ConversationState = {
-            id: Date.now(),
-            session_id:
-                typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-                    ? crypto.randomUUID()
-                    : `local-${Date.now()}`,
-        };
-
-        setConversation(newConversation);
-        // Make sure our ref reflects the newly-created local conversation.
-        conversationRef.current = newConversation;
-        try {
-            console.debug("CHAT: created local conversation", newConversation);
-        } catch {}
-
-        if (typeof window !== "undefined") {
-            window.sessionStorage.setItem(
-                SESSION_STORAGE_KEY,
-                newConversation.session_id,
-            );
+        if (conversationRef.current?.remoteConversationId ?? conversationRef.current?.id) {
+            return conversationRef.current;
         }
 
-        return newConversation;
-    }, [conversation]);
+        if (typeof window === "undefined") {
+            return null;
+        }
+
+        const storedSessionId =
+            window.localStorage.getItem(SESSION_STORAGE_KEY) ??
+            window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+
+        if (!storedSessionId) {
+            return null;
+        }
+
+        try {
+            const latestConversation = await chatApi.getConversationBySession(storedSessionId);
+            syncConversationSnapshot(latestConversation, { preservePending: false });
+            return {
+                id: latestConversation.id,
+                session_id: latestConversation.session_id,
+                remoteConversationId: latestConversation.id,
+                status: latestConversation.status,
+            };
+        } catch {
+            return null;
+        }
+    }, [syncConversationSnapshot]);
 
     const persistMessage = useCallback(
         async (
@@ -1099,7 +1158,7 @@ const Chatbot = () => {
 
     const handleQuickReply = async (reply: string) => {
         // Live agent owns the chat — quick replies must not fire.
-        if (conversationClosed || agentRequested) return;
+        if (conversationClosed || agentRequested || isLiveAgentOwnedStatus(conversationStatus)) return;
 
         if (reply === "Talk to an Agent") {
             await handleTalkToAgent();
@@ -1156,6 +1215,7 @@ const Chatbot = () => {
         if (
             conversationClosed ||
             agentRequested ||
+            isLiveAgentOwnedStatus(conversationStatus) ||
             awaitingPreferredContact ||
             agentRequestInFlight
         ) {
@@ -1217,20 +1277,6 @@ const Chatbot = () => {
                 return;
             }
 
-            setAgentRequested(true);
-
-            const connectingMessageId = makeId();
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: connectingMessageId,
-                    type: "bot",
-                    text: AGENT_CONNECTING_MESSAGE,
-                    time: formatTime(),
-                    source: "AI Assistant",
-                },
-            ]);
-
             try {
                 const targetId =
                     conversation?.remoteConversationId ?? conversation?.id ??
@@ -1239,32 +1285,10 @@ const Chatbot = () => {
                 try { console.debug("CHAT: requestAgent -> targetId", targetId, "conversationRef", conversationRef.current, "activeConversation", activeConversation); } catch {}
 
                 if (targetId) {
-                    await chatApi.requestAgent(targetId, userText);
-                    setAgentRequested(true);
-                    previousStatusRef.current = "agent_requested";
+                    const result = await chatApi.requestAgent(targetId, userText);
+                    syncConversationSnapshot(result.conversation, { preservePending: false });
                 }
-
-                void persistMessage(activeConversation, "assistant", AGENT_CONNECTING_MESSAGE);
-
-                await new Promise((res) => setTimeout(res, 500));
-
-                const agentReply =
-                    "In the meantime, you can also reach us directly:\n\n📧 info@heroph.net\n📞 Mon–Fri, 8AM–8PM (Tower 6789) or 24/7 (Insular Life)\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
-
-                setMessages((prev) => [
-                    ...prev,
-                    {
-                        id: makeId(),
-                        type: "bot",
-                        text: agentReply,
-                        time: formatTime(),
-                        source: "AI Assistant",
-                        cta: CTA_LINKS.contact,
-                    },
-                ]);
-                void persistMessage(activeConversation, "assistant", agentReply);
             } catch {
-                setMessages((prev) => prev.filter((msg) => msg.id !== connectingMessageId));
                 setSendError(
                     "We could not connect you to an agent right now. Please try again.",
                 );
@@ -1291,6 +1315,9 @@ const Chatbot = () => {
         if (conversationClosed) return;
         if (!message.trim()) return;
 
+        const liveAgentOwnsConversation =
+            agentRequested || isLiveAgentOwnedStatus(conversationStatus);
+
         isProcessingLocalMessageRef.current = true;
 
         try {
@@ -1304,14 +1331,14 @@ const Chatbot = () => {
 
             setMessages((prev) => [...prev, userMessage]);
             setMessage("");
-            setIsTyping(true);
-            await nextPaint();
             setSendError("");
 
             const activeConversation = await ensureConversation();
             await persistMessage(activeConversation, "user", userMessage.text);
 
             if (awaitingPreferredContact) {
+                setIsTyping(true);
+                await nextPaint();
                 await quickReplyDelay();
 
                 setIsTyping(false);
@@ -1350,13 +1377,14 @@ const Chatbot = () => {
                 return;
             }
 
-            if (agentRequested) {
-                setIsTyping(false);
-                await nextPaint();
+            if (liveAgentOwnsConversation) {
                 return;
             }
 
             const { text: replyText, cta } = getLocalBotReply(userMessage.text);
+
+            setIsTyping(true);
+            await nextPaint();
 
             await humanDelay(replyText.length);
 
@@ -1384,6 +1412,25 @@ const Chatbot = () => {
             }
         } finally {
             isProcessingLocalMessageRef.current = false;
+        }
+    };
+
+    const handleEndLiveAgentConversation = async () => {
+        const targetId =
+            conversation?.remoteConversationId ?? conversation?.id ??
+            conversationRef.current?.remoteConversationId ?? conversationRef.current?.id;
+
+        setEndConversationOpen(false);
+
+        if (!targetId) {
+            return;
+        }
+
+        try {
+            const result = await chatApi.endLiveAgent(targetId);
+            syncConversationSnapshot(result.conversation, { preservePending: false });
+        } catch (err) {
+            setSendError(err instanceof Error ? err.message : "Unable to end the live-agent conversation.");
         }
     };
 
@@ -1438,6 +1485,7 @@ const Chatbot = () => {
                 id: startResponse.conversation_id,
                 session_id: startResponse.session_id,
                 remoteConversationId: startResponse.conversation_id,
+                status: "active",
             };
 
             setConversation(newConversation);
@@ -1450,7 +1498,19 @@ const Chatbot = () => {
                     SESSION_STORAGE_KEY,
                     newConversation.session_id,
                 );
+                window.sessionStorage.setItem(
+                    SESSION_STORAGE_KEY,
+                    newConversation.session_id,
+                );
             }
+
+            setConversationStatus("active");
+            previousStatusRef.current = "active";
+            setConversationClosed(false);
+            setAgentRequested(false);
+            setAwaitingPreferredContact(false);
+            setIsStarted(true);
+            leadSubmittedRef.current = true;
 
             const greeting = `Thanks, ${leadInfo.name.trim()}! Your details have been received. How can I help you today?`;
             setMessages([
@@ -1551,8 +1611,17 @@ const Chatbot = () => {
                                 </div>
                             )}
 
+                            {restoringConversation && (
+                                <div className="flex h-full items-center justify-center px-6">
+                                    <div className="flex items-center gap-2 rounded-full border border-gray-100 bg-white px-4 py-2 text-sm text-gray-500 shadow-sm">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Restoring conversation...
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Welcome screen */}
-                            {!isStarted && (
+                            {!restoringConversation && !isStarted && (
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -1584,7 +1653,7 @@ const Chatbot = () => {
                             )}
 
                             {/* Lead form */}
-                            {isStarted && !leadSubmitted && (
+                            {!restoringConversation && isStarted && !leadSubmitted && (
                                 <motion.div
                                     initial={{ opacity: 0, x: 12 }}
                                     animate={{ opacity: 1, x: 0 }}
@@ -1737,7 +1806,7 @@ const Chatbot = () => {
                             )}
 
                             {/* Messages */}
-                            {leadSubmitted && (
+                            {!restoringConversation && leadSubmitted && (
                                 <LayoutGroup>
                                     <div className="p-4 space-y-3">
                                         <AnimatePresence initial={false}>
@@ -1906,6 +1975,24 @@ const Chatbot = () => {
                         {/* Input area */}
                         {leadSubmitted && !conversationClosed && (
                             <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
+                                {isAgentRequestedStatus(conversationStatus) && (
+                                    <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                                        Your live-agent request has been sent. The AI assistant is paused while you wait for a human agent.
+                                    </div>
+                                )}
+                                {isLiveAgentActiveStatus(conversationStatus) && (
+                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-[#1B3A8C]">
+                                        <span>You&apos;re connected to a live agent. AI replies are paused.</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEndConversationOpen(true)}
+                                            className="inline-flex items-center gap-1.5 rounded-full border border-[#1B3A8C]/20 bg-white px-3 py-1.5 text-xs font-semibold text-[#1B3A8C] transition hover:bg-[#1B3A8C]/5"
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                            End Live Agent Chat
+                                        </button>
+                                    </div>
+                                )}
                                 <div className="flex items-center gap-2">
                                     <input
                                         ref={inputRef}
@@ -1923,7 +2010,7 @@ const Chatbot = () => {
                                     />
                                     <button
                                         onClick={handleSendMessage}
-                                        disabled={!message.trim()}
+                                        disabled={!message.trim() || restoringConversation}
                                         className="w-9 h-9 rounded-full bg-[#1B3A8C] hover:bg-[#16318a] active:scale-95 flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
                                         aria-label="Send message"
                                     >
@@ -1969,6 +2056,34 @@ const Chatbot = () => {
                 title="Terms of Service"
             >
                 <TermsOfServiceContent />
+            </Modal>
+
+            <Modal
+                open={endConversationOpen}
+                onClose={() => setEndConversationOpen(false)}
+                title="End this conversation?"
+            >
+                <div className="space-y-4">
+                    <p>
+                        Are you sure you want to end the live-agent conversation? You can start a new conversation anytime, or continue with the AI assistant.
+                    </p>
+                    <div className="flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setEndConversationOpen(false)}
+                            className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void handleEndLiveAgentConversation()}
+                            className="rounded-full bg-[#1B3A8C] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#16318a]"
+                        >
+                            End Conversation
+                        </button>
+                    </div>
+                </div>
             </Modal>
         </>
     );

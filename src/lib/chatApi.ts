@@ -26,6 +26,13 @@ export interface ChatConversation {
     created_at: string;
     updated_at: string;
     addressed_at?: string | null;
+    agent_requested_at?: string | null;
+    agent_started_at?: string | null;
+    agent_ended_at?: string | null;
+    last_message_at?: string | null;
+    agent_id?: number | null;
+    preferred_contact_details?: string | null;
+    preferred_contact_method?: "email" | "phone" | "either" | null;
     inquiry?: {
         id: number;
         full_name: string;
@@ -47,6 +54,11 @@ export interface ChatMessage {
 
 export interface ConversationResponse extends ChatConversation {
     messages: ChatMessage[];
+}
+
+export interface ConversationActionResponse {
+    message: string;
+    conversation: ConversationResponse;
 }
 
 export interface PreferredContactPayload {
@@ -136,14 +148,14 @@ export const chatApi = {
     },
 
     requestAgent(conversationId: number, message = "I'd like to talk to a live agent.") {
-        return request(`/chat/${conversationId}/agent-request`, {
+        return request<ConversationActionResponse>(`/chat/${conversationId}/agent-request`, {
             method: "POST",
             body: JSON.stringify({ message }),
         });
     },
 
     submitPreferredContact(conversationId: number, payload: PreferredContactPayload) {
-        return request(`/chat/${conversationId}/preferred-contact`, {
+        return request<ConversationActionResponse>(`/chat/${conversationId}/preferred-contact`, {
             method: "POST",
             body: JSON.stringify(payload),
         });
@@ -162,15 +174,26 @@ export const chatApi = {
         );
     },
 
+    getConversationBySession(sessionId: string) {
+        return request<ConversationResponse>(`/chat/session/${sessionId}`);
+    },
+
     switchMode(
         conversationId: number,
         mode: "assistant" | "admin"
     ) {
-        return request(`/chat/${conversationId}/mode`, {
+        return request<ConversationActionResponse>(`/chat/${conversationId}/mode`, {
             method: "PATCH",
             body: JSON.stringify({
                 chat_mode: mode,
             }),
+        });
+    },
+
+    endLiveAgent(conversationId: number) {
+        return request<ConversationActionResponse>(`/chat/${conversationId}/end-live-agent`, {
+            method: "PATCH",
+            body: JSON.stringify({}),
         });
     },
 
