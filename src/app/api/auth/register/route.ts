@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendVerificationEmail } from "@/lib/nodemailer";
 
-const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+function resolveLaravelApiBase() {
+  const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
+  const normalized = configured.replace(/\/+$/g, "");
+  return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
+}
 
 function isValidVerificationUrl(url: string): boolean {
   try {
@@ -59,7 +63,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await fetch(`${API_URL}/api/auth/register`, {
+    const response = await fetch(`${resolveLaravelApiBase()}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -202,7 +206,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const response = await fetch(`${API_URL}/api/auth/resend-verification`, {
+    const response = await fetch(`${resolveLaravelApiBase()}/auth/resend-verification`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
