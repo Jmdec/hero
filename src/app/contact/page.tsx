@@ -15,6 +15,7 @@ import {
   Phone,
   Mail,
   Check,
+  X,
 } from "lucide-react";
 
 const inputCls =
@@ -62,8 +63,6 @@ function SelectWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Step progress indicator
-
 function StepProgress({ step }: { step: 1 | 2 }) {
   const steps = [
     { n: 1, label: "Your Details" },
@@ -106,11 +105,6 @@ function StepProgress({ step }: { step: 1 | 2 }) {
     </div>
   );
 }
-
-// Dynamic Fields (Step 2)
-// NOTE: "partnership" and "others" are intentionally excluded here.
-// Any inquiryType not listed in SERVICES_WITH_FIELDS has no Step 2 and
-// submits directly from Step 1.
 
 const SERVICES_WITH_FIELDS = [
   "private-office",
@@ -325,8 +319,6 @@ function DynamicFields({
   }
 }
 
-// Multi-Step Form
-
 const inquiryTypes = [
   { value: "", label: "Select Inquiry Type" },
   { value: "private-office", label: "Private Office" },
@@ -338,6 +330,60 @@ const inquiryTypes = [
   { value: "partnership", label: "Partnership" },
   { value: "others", label: "Others" },
 ];
+
+// Generic modal shell used for the post-submit confirmation.
+function Modal({
+  open,
+  onClose,
+  title,
+  hideClose = false,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title?: string;
+  hideClose?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.2 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {!hideClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 function MultiStepForm() {
   const [step, setStep] = useState<1 | 2>(1);
@@ -356,9 +402,11 @@ function MultiStepForm() {
   });
   const [dynamicData, setDynamicData] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "error">("idle");
+  // Tracks the success modal, and remembers whether the submitted inquiry
+  // was a Virtual Office request (since formData gets reset right after).
+  const [modal, setModal] = useState<"idle" | "success">("idle");
+  const [lastSubmittedWasVO, setLastSubmittedWasVO] = useState(false);
 
   const hasDynamicFields = SERVICES_WITH_FIELDS.includes(formData.inquiryType);
 
@@ -398,6 +446,10 @@ function MultiStepForm() {
     setStep(1);
   };
 
+  const handleSuccessClose = () => {
+    setModal("idle");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -428,7 +480,8 @@ function MultiStepForm() {
         throw new Error("Failed");
       }
 
-      setSubmitStatus("success");
+      setLastSubmittedWasVO(formData.inquiryType === "virtual-office");
+      setModal("success");
       setPhoneTouched(false);
       setPhoneError(null);
 
@@ -473,26 +526,20 @@ function MultiStepForm() {
 
       <StepProgress step={step} />
 
-      {/* Success / Error banners */}
+      {/* Success modal, shown after a successful submit */}
+      <Modal
+        open={modal === "success"}
+        onClose={handleSuccessClose}
+        title="Request Submitted"
+      >
+        <SuccessModalContent
+          isVO={lastSubmittedWasVO}
+          onClose={handleSuccessClose}
+        />
+      </Modal>
+
+      {/* Error banner */}
       <AnimatePresence>
-        {submitStatus === "success" && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3"
-          >
-            <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-            <div>
-              <p className="font-medium text-green-900">
-                Message sent successfully! We&apos;ll get back to you as soon as possible.
-              </p>
-              <p className="text-sm text-green-700">
-                Thank you for reaching out to HERO Serviced Office.
-              </p>
-            </div>
-          </motion.div>
-        )}
         {submitStatus === "error" && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -1001,8 +1048,6 @@ function FaqTabs() {
   );
 }
 
-// Map card — one office location with its own independent loading state
-
 function MapCard({
   title,
   src,
@@ -1047,11 +1092,77 @@ function MapCard({
   );
 }
 
-const contactChannels = [
-  { icon: MapPin, label: "Visit us", value: "Ayala Avenue, Makati City" },
-  { icon: Phone, label: "Call us", value: "+63 2 8888 0000" },
-  { icon: Mail, label: "Email us", value: "hello@heroph.com" },
-];
+// Success Modal Content
+function SuccessModalContent({
+  isVO,
+  onClose,
+}: {
+  isVO: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div className="text-center py-4">
+      <div className="w-16 h-16 bg-[#EEF2FB] rounded-full flex items-center justify-center mx-auto mb-5">
+        <CheckCircle2 className="w-8 h-8 text-[#1B3A8C]" />
+      </div>
+
+      <p className="text-[10px] tracking-[0.25em] uppercase text-[#64748B] mb-2">
+        {isVO ? "Virtual Office Request" : "Quotation Received"}
+      </p>
+      <h3 className="text-2xl font-bold text-[#0B1F4A] mb-3">Thank You!</h3>
+
+      {isVO ? (
+        <p className="text-[#64748B] text-sm leading-relaxed mb-6">
+          Your virtual office request has been received. Our admin team will review your
+          details and, once verified, email you a secure link to complete payment.
+        </p>
+      ) : (
+        <p className="text-[#64748B] text-sm leading-relaxed mb-6">
+          Your quotation request has been received. {" "}
+          A HERO Serviced Office representative will contact you within <strong>24 business hours</strong>.
+        </p>
+      )}
+
+      <div className="bg-[#F4F6FB] rounded-2xl p-5 text-left mb-6 space-y-3">
+        {(isVO
+          ? [
+            "Our admin team will review and verify your submitted request",
+            "Once verified, we'll email you a secure link to complete payment",
+            "After payment is confirmed, our admin will formally contact you to finalize your contract",
+          ]
+          : [
+            "We'll review your service requirements and preferences",
+            "A customised quotation will be prepared for you",
+            "Our team will reach out via email or phone to discuss next steps",
+          ]
+        ).map((s, i) => (
+          <div key={i} className="flex items-start gap-3">
+            <span className="w-5 h-5 rounded-full bg-[#0B1F4A] text-white text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-bold">
+              {i + 1}
+            </span>
+            <p className="text-sm text-[#4A5568] leading-relaxed">{s}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-8 py-3 text-[#0B1F4A] bg-[#FFC107] rounded-full text-sm font-semibold hover:bg-[#FFC107]/80 transition"
+        >
+          Submit another request
+        </button>
+        <a
+          href="/"
+          className="px-8 py-3 bg-[#F0EDE6] text-[#4A4740] rounded-full text-sm font-semibold hover:bg-[#E5E1D9] transition"
+        >
+          Back to home
+        </a>
+      </div>
+    </div>
+  );
+}
 
 export default function ContactPage() {
   return (

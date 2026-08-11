@@ -1,34 +1,36 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
+    Bot,
     MessageSquare,
-    Megaphone,
+    Star,
     PhilippinePeso,
     TrendingUp,
     TrendingDown,
-    X,
     ChevronRight,
-    Clock,
-    Building2,
+    X,
     RefreshCw,
     AlertCircle,
-    Bot,
 } from "lucide-react";
 import {
-    AreaChart,
     Area,
-    BarChart,
+    AreaChart,
     Bar,
+    BarChart,
+    Cell,
+    CartesianGrid,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
     XAxis,
     YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
 } from "recharts";
+
+type StatKey = "chat_leads" | "inquiries" | "testimonials" | "quotations";
+type StatTone = "neutral" | "amber" | "green" | "red";
 
 interface MonthPoint {
     month: string;
@@ -36,107 +38,165 @@ interface MonthPoint {
 }
 
 interface Analytics {
-    users: { total: number; verified: number; admins: number };
     chat_leads: {
-        total: number; active: number; agent_requested: number;
-        closed: number; conversations: number;
+        total: number;
+        active: number;
+        agent_requested: number;
+        closed: number;
+        conversations: number;
+        escalation_rate: number;
+        average_messages: number;
+        completion_rate: number;
+        escalation: { this_month: number; last_month: number; three_month_average: number };
+        completion: { this_month: number; last_month: number; three_month_average: number };
     };
     inquiries: {
-        total: number; new: number; in_progress: number;
-        replied: number; closed: number; by_type: Record<string, number>;
+        total: number;
+        new: number;
+        in_progress: number;
+        replied: number;
+        closed: number;
+        contacted?: number;
+        top_service?: string | null;
+        by_type: Record<string, number>;
     };
     announcements: { total: number; published: number; draft: number };
-    quotations: { total: number; revenue: number; by_status: Record<string, number> };
+    quotations: {
+        total: number;
+        revenue: number;
+        by_status: Record<string, number>;
+        by_service: Record<string, number>;
+        converted: number;
+        conversion_rate: number;
+        conversion: { this_month: number; last_month: number; three_month_average: number };
+    };
+    testimonials: {
+        total: number;
+        average_rating: number;
+        by_status: Record<string, number>;
+        by_rating: Record<string, number>;
+        rating: { this_month: number; last_month: number; three_month_average: number };
+        monthly_average_rating: MonthPoint[];
+    };
     monthly: {
         chat_leads: MonthPoint[];
         inquiries: MonthPoint[];
+        quotations: MonthPoint[];
         revenue: MonthPoint[];
-        announcements: MonthPoint[];
+        testimonials: MonthPoint[];
+        testimonial_ratings: MonthPoint[];
+        quotation_conversion: MonthPoint[];
     };
-    recent_inquiries: {
-        id: number; name: string; company: string | null;
-        inquiry_type: string; branch: string; status: string; created_at: string;
-    }[];
+    recent_inquiries: Array<{
+        id: number;
+        name: string;
+        company: string | null;
+        inquiry_type: string;
+        branch: string;
+        status: string;
+        created_at: string;
+    }>;
+    recent_testimonials: Array<{
+        id: number;
+        name: string | null;
+        rating: number;
+        quote: string | null;
+        service_type: string | null;
+        status: "pending" | "approved" | "rejected";
+        created_at: string;
+    }>;
 }
+
+const PIE_COLORS = ["#0D47A1", "#1565C0", "#1976D2", "#64B5F6", "#FFC107", "#F57F17"];
 
 function authHeaders() {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    return { Authorization: `Bearer ${token ?? ""}`, "Content-Type": "application/json" };
+    return {
+        Authorization: `Bearer ${token ?? ""}`,
+        "Content-Type": "application/json",
+    };
 }
 
 function formatCurrency(value: number) {
-    if (value >= 1_000_000) return `₱${(value / 1_000_000).toFixed(1)}M`;
-    if (value >= 1_000) return `₱${(value / 1_000).toFixed(0)}k`;
-    return `₱${value.toLocaleString()}`;
+    if (value >= 1_000_000) return `P${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `P${(value / 1_000).toFixed(0)}k`;
+    return `P${value.toLocaleString()}`;
+}
+
+function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString("en-PH", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
 }
 
 function formatInquiryType(raw: string) {
     return raw.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+function truncateText(value: string, max = 90) {
+    if (value.length <= max) return value;
+    return `${value.slice(0, max)}...`;
 }
 
-function getTrendValue(points: MonthPoint[]) {
-    if (!points.length) return "";
+const TESTIMONIAL_STATUS_STYLES: Record<string, string> = {
+    pending: "bg-amber-50 text-amber-700",
+    approved: "bg-emerald-50 text-emerald-700",
+    rejected: "bg-red-50 text-red-700",
+};
 
+function getTrendValue(points: MonthPoint[]) {
+    if (!points.length) return "No change";
     const latest = points[points.length - 1]?.total ?? 0;
     const previous = points[points.length - 2]?.total ?? latest;
     const delta = latest - previous;
-
-    if (delta === 0) return "";
-
+    if (delta === 0) return "No change";
     const percent = previous === 0 ? (latest > 0 ? 100 : 0) : Math.round((delta / previous) * 100);
     return `${delta > 0 ? "+" : "-"}${Math.abs(percent)}%`;
 }
 
-const PIE_COLORS = ["#0D47A1", "#1565C0", "#1976D2", "#64B5F6", "#FFC107", "#F57F17"];
-
-type StatKey = "chat_leads" | "inquiries" | "announcements" | "revenue";
-type StatTone = "neutral" | "amber" | "green" | "red";
+const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string; accent: string }> = {
+    neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]", accent: "bg-[#0D47A1]" },
+    amber: { bg: "bg-amber-50", text: "text-amber-700", accent: "bg-amber-500" },
+    green: { bg: "bg-green-50", text: "text-green-700", accent: "bg-green-500" },
+    red: { bg: "bg-red-50", text: "text-red-600", accent: "bg-red-500" },
+};
 
 type StatCardProps = {
     id: StatKey;
     icon: React.ElementType;
     label: string;
     value: string;
-    tone?: StatTone;
-    trend?: string;
+    trend: string;
+    tone: StatTone;
     onClick: (id: StatKey) => void;
 };
 
-const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
-    neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]" },
-    amber: { bg: "bg-amber-50", text: "text-amber-700" },
-    green: { bg: "bg-green-50", text: "text-green-700" },
-    red: { bg: "bg-red-50", text: "text-red-600" },
-};
-
-function StatCard({ id, icon: Icon, label, value, tone = "neutral", trend, onClick }: StatCardProps) {
-    const t = STAT_TONE_STYLES[tone];
-    const accent = tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]";
-    const trendTone = trend?.startsWith("+") ? "text-green-600" : trend?.startsWith("-") ? "text-red-600" : "text-slate-500";
-    const showTrendIcon = trend?.startsWith("+") ? <TrendingUp className="w-3.5 h-3.5" /> : trend?.startsWith("-") ? <TrendingDown className="w-3.5 h-3.5" /> : null;
+function StatCard({ id, icon: Icon, label, value, trend, tone, onClick }: StatCardProps) {
+    const style = STAT_TONE_STYLES[tone];
+    const trendTone = trend.startsWith("+") ? "text-green-600" : trend.startsWith("-") ? "text-red-600" : "text-slate-500";
 
     return (
         <button
             onClick={() => onClick(id)}
-            className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
+            className="group relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-6 text-left shadow transition-all duration-200 hover:border-[#C5D2EC] hover:shadow-lg"
         >
-            <div className={`absolute top-0 left-0 w-1 h-full ${accent}`} />
-            <div className="flex items-start justify-between mb-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
-                    <Icon className={`w-5 h-5 ${t.text}`} />
+            <div className={`absolute left-0 top-0 h-full w-1 ${style.accent}`} />
+            <div className="mb-4 flex items-start justify-between">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${style.bg}`}>
+                    <Icon className={`h-5 w-5 ${style.text}`} />
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
+                <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-[#0D47A1]" />
             </div>
-            <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
-            <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+            <p className="mb-1 text-sm font-medium text-gray-500">{label}</p>
+            <p className="mb-2 text-3xl font-bold text-gray-900">{value}</p>
             <div className={`flex items-center gap-1 text-xs font-semibold ${trendTone}`}>
-                {showTrendIcon}
-                {trend ? trend : "No change"}
+                {trend.startsWith("+") && <TrendingUp className="h-3.5 w-3.5" />}
+                {trend.startsWith("-") && <TrendingDown className="h-3.5 w-3.5" />}
+                {trend}
             </div>
+            <p className="mt-2 text-xs font-semibold text-[#0D47A1]">View details -&gt;</p>
         </button>
     );
 }
@@ -145,114 +205,518 @@ function ModalBackdrop({ onClose, children }: { onClose: () => void; children: R
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl">{children}</div>
+            <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl">{children}</div>
         </div>
     );
 }
 
-/* Drill-Down Modal */
+function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
+    return (
+        <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+            <p className="mt-1 text-lg font-bold text-slate-900">{value}</p>
+            {sub ? <p className="mt-0.5 text-xs text-slate-400">{sub}</p> : null}
+        </div>
+    );
+}
+
+function TrendChart({ title, data }: { title: string; data: MonthPoint[] }) {
+    return (
+        <div className="rounded-xl border border-slate-100 bg-white p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+            <ResponsiveContainer width="100%" height={180}>
+                <AreaChart data={data} margin={{ top: 4, right: 6, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} allowDecimals />
+                    <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }} />
+                    <Area type="monotone" dataKey="total" stroke="#0D47A1" strokeWidth={2.5} fill="#0D47A1" fillOpacity={0.12} dot={{ r: 3, fill: "#0D47A1" }} />
+                </AreaChart>
+            </ResponsiveContainer>
+        </div>
+    );
+}
+
+function SkeletonBlock({ className }: { className: string }) {
+    return <div className={`animate-pulse rounded bg-slate-200/90 ${className}`} />;
+}
+
+function StatCardSkeleton() {
+    return (
+        <div className="relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-6 shadow">
+            <div className="absolute left-0 top-0 h-full w-1 bg-slate-200" />
+            <div className="mb-4 flex items-start justify-between">
+                <SkeletonBlock className="h-10 w-10 rounded-xl" />
+                <SkeletonBlock className="h-4 w-4" />
+            </div>
+            <SkeletonBlock className="mb-3 h-4 w-28" />
+            <SkeletonBlock className="mb-3 h-9 w-24" />
+            <div className="mb-2 flex items-center gap-2">
+                <SkeletonBlock className="h-3.5 w-3.5 rounded-full" />
+                <SkeletonBlock className="h-3.5 w-14" />
+            </div>
+            <SkeletonBlock className="h-3 w-24" />
+        </div>
+    );
+}
+
+function StatisticsCardsSkeleton() {
+    return (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+                <StatCardSkeleton key={i} />
+            ))}
+        </div>
+    );
+}
+
+function LeadGenerationChartSkeleton() {
+    return (
+        <article className="rounded-2xl bg-white p-5 shadow lg:col-span-2">
+            <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                    <SkeletonBlock className="h-4 w-44" />
+                    <SkeletonBlock className="h-3 w-56" />
+                </div>
+                <SkeletonBlock className="h-8 w-32 rounded-lg" />
+            </div>
+            <div className="h-55 rounded-xl bg-slate-50 p-3">
+                <div className="flex h-full items-end gap-2">
+                    <div className="relative flex h-full w-full items-end">
+                        <div className="absolute inset-0 flex flex-col justify-between py-2">
+                            <SkeletonBlock className="h-px w-full" />
+                            <SkeletonBlock className="h-px w-full" />
+                            <SkeletonBlock className="h-px w-full" />
+                            <SkeletonBlock className="h-px w-full" />
+                        </div>
+                        <div className="relative z-10 flex h-full w-full items-end justify-between pb-5">
+                            {[30, 55, 42, 70, 52, 74, 66].map((h, i) => (
+                                <SkeletonBlock key={i} className="w-8 rounded-md" />
+                            ))}
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 flex justify-between">
+                            {Array.from({ length: 7 }).map((_, i) => (
+                                <SkeletonBlock key={i} className="h-2.5 w-6" />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </article>
+    );
+}
+
+function InquiryTypeChartSkeleton() {
+    return (
+        <article className="rounded-2xl bg-white p-5 shadow">
+            <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                    <SkeletonBlock className="h-4 w-28" />
+                    <SkeletonBlock className="h-3 w-44" />
+                </div>
+                <SkeletonBlock className="h-8 w-28 rounded-lg" />
+            </div>
+            <div className="mb-4 flex h-40 items-center justify-center">
+                <div className="relative h-32 w-32">
+                    <div className="absolute inset-0 animate-pulse rounded-full border-16 border-slate-200" />
+                    <div className="absolute inset-5.5 rounded-full bg-white" />
+                </div>
+            </div>
+            <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <SkeletonBlock className="h-2.5 w-2.5 rounded-full" />
+                            <SkeletonBlock className="h-3 w-20" />
+                        </div>
+                        <SkeletonBlock className="h-3 w-14" />
+                    </div>
+                ))}
+            </div>
+        </article>
+    );
+}
+
+function VerticalBarsSkeleton({ colorClass }: { colorClass: string }) {
+    return (
+        <div className="h-55 rounded-xl bg-slate-50 p-3">
+            <div className="relative flex h-full items-end pb-5">
+                <div className="absolute inset-0 flex flex-col justify-between py-2">
+                    <SkeletonBlock className="h-px w-full" />
+                    <SkeletonBlock className="h-px w-full" />
+                    <SkeletonBlock className="h-px w-full" />
+                    <SkeletonBlock className="h-px w-full" />
+                </div>
+                <div className="relative z-10 flex w-full items-end justify-between px-1">
+                    {[90, 128, 74, 148, 106, 133, 98].map((height, i) => (
+                        <div
+                            key={i}
+                            className={`w-7 animate-pulse rounded-t-md ${colorClass}`}
+                            style={{ height }}
+                        />
+                    ))}
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 flex justify-between">
+                    {Array.from({ length: 7 }).map((_, i) => (
+                        <SkeletonBlock key={i} className="h-2.5 w-6" />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function MonthlyQuotationChartSkeleton() {
+    return (
+        <article className="rounded-2xl bg-white p-5 shadow">
+            <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                    <SkeletonBlock className="h-4 w-32" />
+                    <SkeletonBlock className="h-3 w-44" />
+                </div>
+                <SkeletonBlock className="h-8 w-28 rounded-lg" />
+            </div>
+            <VerticalBarsSkeleton colorClass="bg-slate-300" />
+        </article>
+    );
+}
+
+function MonthlyInquiryChartSkeleton() {
+    return (
+        <article className="rounded-2xl bg-white p-5 shadow">
+            <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                    <SkeletonBlock className="h-4 w-30" />
+                    <SkeletonBlock className="h-3 w-42" />
+                </div>
+                <SkeletonBlock className="h-8 w-24 rounded-lg" />
+            </div>
+            <VerticalBarsSkeleton colorClass="bg-slate-300" />
+        </article>
+    );
+}
+
+function RecentTestimonialsSkeleton() {
+    return (
+        <article className="overflow-hidden rounded-2xl bg-white shadow">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                <div className="space-y-2">
+                    <SkeletonBlock className="h-4 w-36" />
+                    <SkeletonBlock className="h-3 w-24" />
+                </div>
+                <SkeletonBlock className="h-8 w-36 rounded-lg" />
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-left">
+                        <tr>
+                            <th className="px-5 py-3"><SkeletonBlock className="h-3 w-14" /></th>
+                            <th className="px-5 py-3"><SkeletonBlock className="h-3 w-12" /></th>
+                            <th className="px-5 py-3"><SkeletonBlock className="h-3 w-18" /></th>
+                            <th className="px-5 py-3"><SkeletonBlock className="h-3 w-12" /></th>
+                            <th className="px-5 py-3"><SkeletonBlock className="h-3 w-10" /></th>
+                            <th className="px-5 py-3"><SkeletonBlock className="h-3 w-12" /></th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {Array.from({ length: 7 }).map((_, row) => (
+                            <tr key={row}>
+                                <td className="px-5 py-3.5"><SkeletonBlock className="h-3.5 w-24" /></td>
+                                <td className="px-5 py-3.5">
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                            <SkeletonBlock key={i} className="h-3.5 w-3.5 rounded-full" />
+                                        ))}
+                                    </div>
+                                </td>
+                                <td className="px-5 py-3.5">
+                                    <div className="space-y-1.5">
+                                        <SkeletonBlock className="h-3 w-[320px] max-w-full" />
+                                        <SkeletonBlock className="h-3 w-65 max-w-full" />
+                                    </div>
+                                </td>
+                                <td className="px-5 py-3.5"><SkeletonBlock className="h-3.5 w-24" /></td>
+                                <td className="px-5 py-3.5"><SkeletonBlock className="h-3.5 w-20" /></td>
+                                <td className="px-5 py-3.5"><SkeletonBlock className="h-6 w-16 rounded-full" /></td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    );
+}
+
+function DashboardSkeleton() {
+    return (
+        <main className="min-h-screen">
+            <section className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-4">
+                <div className="flex items-center justify-between">
+                    <SkeletonBlock className="h-7 w-64" />
+                    <SkeletonBlock className="h-9 w-24 rounded-xl" />
+                </div>
+
+                <StatisticsCardsSkeleton />
+
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                    <LeadGenerationChartSkeleton />
+                    <InquiryTypeChartSkeleton />
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                    <MonthlyQuotationChartSkeleton />
+                    <MonthlyInquiryChartSkeleton />
+                </div>
+
+                <RecentTestimonialsSkeleton />
+            </section>
+        </main>
+    );
+}
+
 function DrillDownModal({ id, data, onClose }: { id: StatKey; data: Analytics; onClose: () => void }) {
-    const drillMap: Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }> = {
-        chat_leads: {
-            title: "Chatbot Lead Generation",
-            items: [
-                { label: "Total leads captured", value: String(data.chat_leads.total), sub: "All lead conversations" },
-                { label: "Active conversations", value: String(data.chat_leads.active), sub: "Currently live" },
-                { label: "Awaiting agent", value: String(data.chat_leads.agent_requested), sub: "Needs handoff" },
-                { label: "Closed conversations", value: String(data.chat_leads.closed), sub: "Resolved or archived" },
-                { label: "Agent handoff rate", value: `${Math.round((data.chat_leads.agent_requested / Math.max(data.chat_leads.total, 1)) * 100)}%`, sub: "Of all leads" },
-            ],
-        },
-        inquiries: {
-            title: "Contact Inquiry Overview",
-            items: [
-                { label: "New", value: String(data.inquiries.new), sub: `${Math.round((data.inquiries.new / Math.max(data.inquiries.total, 1)) * 100)}% of total` },
-                { label: "In progress", value: String(data.inquiries.in_progress), sub: "Awaiting a reply" },
-                { label: "Replied", value: String(data.inquiries.replied), sub: "Actioned this week" },
-                { label: "Closed", value: String(data.inquiries.closed), sub: "Completed requests" },
-                { label: "Response rate", value: `${Math.round((data.inquiries.replied / Math.max(data.inquiries.total, 1)) * 100)}%`, sub: "Replied vs total" },
-                ...Object.entries(data.inquiries.by_type).slice(0, 3).map(([k, v]) => ({
-                    label: formatInquiryType(k), value: String(v), sub: "By inquiry type",
-                })),
-            ],
-        },
-        announcements: {
-            title: "Announcement Overview",
-            items: [
-                { label: "Total announcements", value: String(data.announcements.total), sub: "All drafts and posts" },
-                { label: "Published", value: String(data.announcements.published), sub: "Live on the site" },
-                { label: "Draft", value: String(data.announcements.draft), sub: "Pending approval" },
-                { label: "Archived", value: String(Math.max(data.announcements.total - data.announcements.published - data.announcements.draft, 0)), sub: "Hidden from live view" },
-                { label: "Publish share", value: `${Math.round((data.announcements.published / Math.max(data.announcements.total, 1)) * 100)}%`, sub: "Published vs total" },
-            ],
-        },
-        revenue: {
-            title: "Quotation Revenue",
-            items: [
-                { label: "Total quotations", value: String(data.quotations.total), sub: "All requests logged" },
-                { label: "Revenue", value: `₱${data.quotations.revenue.toLocaleString()}`, sub: "Current quotation value" },
-                { label: "Pending", value: String(data.quotations.by_status.pending || 0), sub: "Awaiting follow-up" },
-                { label: "Completed", value: String(data.quotations.by_status.completed || 0), sub: "Closed wins" },
-                { label: "Average value", value: `₱${Math.round(data.quotations.revenue / Math.max(data.quotations.total, 1)).toLocaleString()}`, sub: "Per quotation" },
-            ],
-        },
+    const [range, setRange] = useState("last_6_months");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+    const [detailData, setDetailData] = useState<Analytics>(data);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        setDetailData(data);
+    }, [data]);
+
+    useEffect(() => {
+        if (range === "custom" && (!startDate || !endDate)) return;
+
+        const params = new URLSearchParams({ range });
+        if (range === "custom") {
+            params.set("start_date", startDate);
+            params.set("end_date", endDate);
+        }
+
+        async function load() {
+            setLoading(true);
+            try {
+                const res = await fetch(`/api/analytics?${params.toString()}`, {
+                    headers: authHeaders(),
+                    cache: "no-store",
+                });
+                if (!res.ok) throw new Error(`Error ${res.status}`);
+                setDetailData(await res.json());
+            } catch {
+                // Keep previous values if filtered request fails.
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        void load();
+    }, [range, startDate, endDate]);
+
+    const title: Record<StatKey, string> = {
+        chat_leads: "Chatbot Lead Analytics",
+        inquiries: "Inquiry Analytics",
+        testimonials: "Testimonial Analytics",
+        quotations: "Quotation Analytics",
     };
 
-    const modal = drillMap[id];
-    if (!modal) return null;
+    const inquiryServices = Object.entries(detailData.inquiries.by_type)
+        .map(([service, total]) => ({
+            service: formatInquiryType(service),
+            total,
+            pct: Math.round((total / Math.max(detailData.inquiries.total, 1)) * 100),
+        }))
+        .sort((a, b) => b.total - a.total);
+
+    const quotationServices = Object.entries(detailData.quotations.by_service)
+        .map(([service, total]) => ({
+            service,
+            total,
+            pct: Math.round((total / Math.max(detailData.quotations.total, 1)) * 100),
+        }))
+        .sort((a, b) => b.total - a.total);
+
+    const testimonialStars = [5, 4, 3, 2, 1].map((star) => ({
+        star,
+        total: detailData.testimonials.by_rating[String(star)] ?? 0,
+    }));
 
     return (
         <ModalBackdrop onClose={onClose}>
-            <div className="rounded-2xl bg-white shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-                    <h3 className="text-base font-bold text-slate-900">{modal.title}</h3>
-                    <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700">
+            <div className="border-b border-slate-100 px-6 py-4">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-base font-bold text-slate-900">{title[id]}</h3>
+                    <button
+                        onClick={onClose}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                    >
                         <X className="h-4 w-4" />
                     </button>
                 </div>
-                <div className="grid grid-cols-1 gap-3 px-6 py-5 sm:grid-cols-2">
-                    {modal.items.map((item) => (
-                        <div key={item.label} className="rounded-xl bg-slate-50 p-4">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
-                            <p className="mt-1 text-xl font-bold text-slate-900">{item.value}</p>
-                            {item.sub && <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>}
-                        </div>
-                    ))}
+            </div>
+
+            <div className="border-b border-slate-100 px-6 py-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                    <select
+                        value={range}
+                        onChange={(e) => setRange(e.target.value)}
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700"
+                    >
+                        <option value="this_month">This Month</option>
+                        <option value="last_month">Last Month</option>
+                        <option value="last_3_months">Last 3 Months</option>
+                        <option value="last_6_months">Last 6 Months</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+
+                    {range === "custom" ? (
+                        <>
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700"
+                            />
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700"
+                            />
+                        </>
+                    ) : null}
                 </div>
+            </div>
+
+            <div className="max-h-[72vh] space-y-4 overflow-y-auto px-6 py-5">
+                {loading ? <p className="text-xs font-medium text-slate-500">Refreshing analytics...</p> : null}
+
+                {id === "chat_leads" ? (
+                    <>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Metric label="Total Conversations" value={String(detailData.chat_leads.conversations)} />
+                            <Metric label="Agent Escalation Rate" value={`${detailData.chat_leads.escalation_rate.toFixed(2)}%`} />
+                            <Metric label="Average Messages" value={detailData.chat_leads.average_messages.toFixed(1)} />
+                            <Metric label="Completed Rate" value={`${detailData.chat_leads.completion_rate.toFixed(2)}%`} />
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                            <Metric label="This Month" value={`${detailData.chat_leads.escalation.this_month.toFixed(1)}%`} />
+                            <Metric label="Last Month" value={`${detailData.chat_leads.escalation.last_month.toFixed(1)}%`} />
+                            <Metric label="3-Month Avg" value={`${detailData.chat_leads.escalation.three_month_average.toFixed(1)}%`} />
+                        </div>
+                        <TrendChart title="Conversation Trend" data={detailData.monthly.chat_leads} />
+                    </>
+                ) : null}
+
+                {id === "inquiries" ? (
+                    <>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Metric label="Total Inquiries" value={String(detailData.inquiries.total)} />
+                            <Metric label="Contacted Number" value={String(detailData.inquiries.contacted ?? 0)} />
+                            <Metric label="Most Requested Service" value={detailData.inquiries.top_service ? formatInquiryType(detailData.inquiries.top_service) : "-"} />
+                            <Metric
+                                label="Contact Rate"
+                                value={`${Math.round(((detailData.inquiries.contacted ?? 0) / Math.max(detailData.inquiries.total, 1)) * 100)}%`}
+                            />
+                        </div>
+                        <div className="rounded-xl bg-slate-50 p-4">
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Service Breakdown</p>
+                            <div className="space-y-2">
+                                {inquiryServices.map((row) => (
+                                    <div key={row.service} className="flex items-center justify-between text-sm text-slate-700">
+                                        <span>{row.service}</span>
+                                        <span className="font-semibold">{row.total} ({row.pct}%)</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <TrendChart title="Inquiry Trend" data={detailData.monthly.inquiries} />
+                    </>
+                ) : null}
+
+                {id === "testimonials" ? (
+                    <>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Metric label="Total Testimonials" value={String(detailData.testimonials.total)} />
+                            <Metric label="Average Rating" value={`${detailData.testimonials.average_rating.toFixed(2)}/5`} />
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                            <Metric label="This Month" value={detailData.testimonials.rating.this_month.toFixed(2)} />
+                            <Metric label="Last Month" value={detailData.testimonials.rating.last_month.toFixed(2)} />
+                            <Metric label="3-Month Avg" value={detailData.testimonials.rating.three_month_average.toFixed(2)} />
+                        </div>
+                        <div className="rounded-xl bg-slate-50 p-4">
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Rating Distribution</p>
+                            <div className="space-y-1.5">
+                                {testimonialStars.map((row) => (
+                                    <div key={row.star} className="flex items-center justify-between text-sm text-slate-700">
+                                        <span className="inline-flex items-center gap-1">
+                                            {row.star} <Star className="h-3.5 w-3.5 fill-[#F59E0B] text-[#F59E0B]" />
+                                        </span>
+                                        <span className="font-semibold">{row.total}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <TrendChart title="Average Rating Trend" data={detailData.monthly.testimonial_ratings} />
+                    </>
+                ) : null}
+
+                {id === "quotations" ? (
+                    <>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Metric label="Total Quotations" value={String(detailData.quotations.total)} />
+                            <Metric label="Conversion Rate" value={`${detailData.quotations.conversion_rate.toFixed(2)}%`} />
+                            <Metric label="Pending" value={String(detailData.quotations.by_status.pending ?? 0)} />
+                            <Metric label="Paid" value={String(detailData.quotations.by_status.paid ?? 0)} />
+                            <Metric
+                                label="Contract Sent"
+                                value={String((detailData.quotations.by_status.contract_sent ?? 0) + (detailData.quotations.by_status["contract-sent"] ?? 0))}
+                            />
+                            <Metric label="Completed" value={String(detailData.quotations.by_status.completed ?? 0)} />
+                        </div>
+                        <div className="rounded-xl bg-slate-50 p-4">
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Service Breakdown</p>
+                            <div className="space-y-2">
+                                {quotationServices.map((row) => (
+                                    <div key={row.service} className="flex items-center justify-between text-sm text-slate-700">
+                                        <span>{row.service}</span>
+                                        <span className="font-semibold">{row.total} ({row.pct}%)</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                            <Metric label="This Month" value={`${detailData.quotations.conversion.this_month.toFixed(1)}%`} />
+                            <Metric label="Last Month" value={`${detailData.quotations.conversion.last_month.toFixed(1)}%`} />
+                            <Metric label="3-Month Avg" value={`${detailData.quotations.conversion.three_month_average.toFixed(1)}%`} />
+                        </div>
+                        <TrendChart title="Conversion Trend" data={detailData.monthly.quotation_conversion} />
+                    </>
+                ) : null}
             </div>
         </ModalBackdrop>
     );
 }
 
-/* Status Badge */
-const statusStyles: Record<string, string> = {
-    new: "bg-blue-50 text-blue-700",
-    in_progress: "bg-yellow-50 text-yellow-700",
-    replied: "bg-purple-50 text-purple-700",
-    closed: "bg-green-50 text-green-700",
-};
-
-const statusLabel: Record<string, string> = {
-    new: "New",
-    in_progress: "In Progress",
-    replied: "Replied",
-    closed: "Closed",
-};
-
-/* ─── Main Dashboard ─── */
 export default function AdminDashboard() {
     const [analytics, setAnalytics] = useState<Analytics | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeCard, setActiveCard] = useState<StatKey | null>(null);
     const [refreshing, setRefreshing] = useState(false);
+    const [expandedTestimonialId, setExpandedTestimonialId] = useState<number | null>(null);
 
     const fetchAnalytics = useCallback(async (silent = false) => {
-        if (!silent) setLoading(true);
-        else setRefreshing(true);
+        if (silent) setRefreshing(true);
+        else setLoading(true);
+
         setError(null);
         try {
-            const res = await fetch("/api/analytics", { headers: authHeaders(), cache: "no-store" });
+            const res = await fetch("/api/analytics", {
+                headers: authHeaders(),
+                cache: "no-store",
+            });
             if (!res.ok) throw new Error(`Error ${res.status}`);
             setAnalytics(await res.json());
         } catch (e) {
@@ -264,105 +728,71 @@ export default function AdminDashboard() {
     }, []);
 
     useEffect(() => {
-        const timeoutId = window.setTimeout(() => {
-            void fetchAnalytics();
-        }, 0);
-
-        return () => window.clearTimeout(timeoutId);
+        void fetchAnalytics();
     }, [fetchAnalytics]);
 
     const inquiryPieData = useMemo(() => {
         if (!analytics) return [];
-
         return Object.entries(analytics.inquiries.by_type).map(([name, value], i) => ({
-            name: formatInquiryType(name), value, color: PIE_COLORS[i % PIE_COLORS.length],
+            name: formatInquiryType(name),
+            value,
+            color: PIE_COLORS[i % PIE_COLORS.length],
         }));
     }, [analytics]);
 
-    const stats = useMemo<StatCardProps[]>(() => {
+    const cards = useMemo(() => {
         if (!analytics) return [];
 
-        const { monthly, chat_leads, inquiries, announcements, quotations } = analytics;
-        const chatTrend = getTrendValue(monthly.chat_leads);
-        const inquiryTrend = getTrendValue(monthly.inquiries);
-        const announcementTrend = getTrendValue(monthly.announcements);
-        const revenueTrend = getTrendValue(monthly.revenue);
-
         return [
-            { id: "chat_leads", icon: Bot, label: "Chatbot Leads", value: chat_leads.total.toLocaleString(), tone: "neutral", trend: chatTrend, onClick: setActiveCard },
-            { id: "inquiries", icon: MessageSquare, label: "Contact Inquiries", value: inquiries.total.toLocaleString(), tone: "amber", trend: inquiryTrend, onClick: setActiveCard },
-            { id: "announcements", icon: Megaphone, label: "Announcements", value: announcements.total.toLocaleString(), tone: "green", trend: announcementTrend, onClick: setActiveCard },
-            { id: "revenue", icon: PhilippinePeso, label: "Quotation Revenue", value: formatCurrency(quotations.revenue), tone: "red", trend: revenueTrend, onClick: setActiveCard },
+            {
+                id: "chat_leads" as const,
+                icon: Bot,
+                label: "Chatbot Leads",
+                value: analytics.chat_leads.conversations.toLocaleString(),
+                trend: getTrendValue(analytics.monthly.chat_leads),
+                tone: "neutral" as const,
+            },
+            {
+                id: "inquiries" as const,
+                icon: MessageSquare,
+                label: "Inquiries",
+                value: analytics.inquiries.total.toLocaleString(),
+                trend: getTrendValue(analytics.monthly.inquiries),
+                tone: "amber" as const,
+            },
+            {
+                id: "testimonials" as const,
+                icon: Star,
+                label: "Testimonials",
+                value: analytics.testimonials.total.toLocaleString(),
+                trend: `Star ${analytics.testimonials.average_rating.toFixed(1)}`,
+                tone: "green" as const,
+            },
+            {
+                id: "quotations" as const,
+                icon: PhilippinePeso,
+                label: "Quotation Requests",
+                value: analytics.quotations.total.toLocaleString(),
+                trend: getTrendValue(analytics.monthly.revenue),
+                tone: "red" as const,
+            },
         ];
     }, [analytics]);
 
-    const drillDownData = useMemo(() => {
-        if (!analytics) return null;
-
-        const { chat_leads, inquiries, announcements, quotations } = analytics;
-
-        return {
-            chat_leads: {
-                title: "Chatbot Lead Generation",
-                items: [
-                    { label: "Total leads captured", value: String(chat_leads.total), sub: "All lead conversations" },
-                    { label: "Active conversations", value: String(chat_leads.active), sub: "Currently live" },
-                    { label: "Awaiting agent", value: String(chat_leads.agent_requested), sub: "Needs handoff" },
-                    { label: "Closed conversations", value: String(chat_leads.closed), sub: "Resolved or archived" },
-                    { label: "Agent handoff rate", value: `${Math.round((chat_leads.agent_requested / Math.max(chat_leads.total, 1)) * 100)}%`, sub: "Of all leads" },
-                ],
-            },
-            inquiries: {
-                title: "Contact Inquiry Overview",
-                items: [
-                    { label: "New", value: String(inquiries.new), sub: `${Math.round((inquiries.new / Math.max(inquiries.total, 1)) * 100)}% of total` },
-                    { label: "In progress", value: String(inquiries.in_progress), sub: "Awaiting a reply" },
-                    { label: "Replied", value: String(inquiries.replied), sub: "Actioned this week" },
-                    { label: "Closed", value: String(inquiries.closed), sub: "Completed requests" },
-                    { label: "Response rate", value: `${Math.round((inquiries.replied / Math.max(inquiries.total, 1)) * 100)}%`, sub: "Replied vs total" },
-                ],
-            },
-            announcements: {
-                title: "Announcement Overview",
-                items: [
-                    { label: "Total announcements", value: String(announcements.total), sub: "All drafts and posts" },
-                    { label: "Published", value: String(announcements.published), sub: "Live on the site" },
-                    { label: "Draft", value: String(announcements.draft), sub: "Pending approval" },
-                    { label: "Archived", value: String(Math.max(announcements.total - announcements.published - announcements.draft, 0)), sub: "Hidden from live view" },
-                    { label: "Publish share", value: `${Math.round((announcements.published / Math.max(announcements.total, 1)) * 100)}%`, sub: "Published vs total" },
-                ],
-            },
-            revenue: {
-                title: "Quotation Revenue",
-                items: [
-                    { label: "Total quotations", value: String(quotations.total), sub: "All requests logged" },
-                    { label: "Revenue", value: `₱${quotations.revenue.toLocaleString()}`, sub: "Current quotation value" },
-                    { label: "Pending", value: String(quotations.by_status.pending || 0), sub: "Awaiting follow-up" },
-                    { label: "Completed", value: String(quotations.by_status.completed || 0), sub: "Closed wins" },
-                    { label: "Average value", value: `₱${Math.round(quotations.revenue / Math.max(quotations.total, 1)).toLocaleString()}`, sub: "Per quotation" },
-                ],
-            },
-        };
-    }, [analytics]);
-
     if (loading) {
-        return (
-            <section className="p-4 flex items-center justify-center min-h-[60vh]">
-                <div className="text-center space-y-3">
-                    <div className="w-10 h-10 border-4 border-[#0D47A1] border-t-transparent rounded-full animate-spin mx-auto" />
-                    <p className="text-sm text-gray-500">Loading dashboard…</p>
-                </div>
-            </section>
-        );
+        return <DashboardSkeleton />;
     }
 
-    if (error || !analytics || !drillDownData) {
+    if (error || !analytics) {
         return (
-            <section className="p-4 flex items-center justify-center min-h-[60vh]">
-                <div className="text-center space-y-4 max-w-sm">
-                    <AlertCircle className="w-10 h-10 text-red-400 mx-auto" />
-                    <p className="text-sm text-gray-700 font-medium">{error ?? "Could not load dashboard data."}</p>
-                    <button onClick={() => fetchAnalytics()} className="px-4 py-2 text-sm font-semibold bg-[#0D47A1] text-white rounded-xl hover:bg-[#1565C0] transition-colors">
+            <section className="flex min-h-[60vh] items-center justify-center p-4">
+                <div className="max-w-sm space-y-4 text-center">
+                    <AlertCircle className="mx-auto h-10 w-10 text-red-400" />
+                    <p className="text-sm font-medium text-gray-700">{error ?? "Could not load dashboard data."}</p>
+                    <button
+                        onClick={() => fetchAnalytics()}
+                        className="rounded-xl bg-[#0D47A1] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1565C0]"
+                    >
                         Retry
                     </button>
                 </div>
@@ -370,230 +800,255 @@ export default function AdminDashboard() {
         );
     }
 
-    const { inquiries, announcements, quotations, monthly, recent_inquiries, chat_leads } = analytics;
-
-    const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
-
     return (
         <main className="min-h-screen">
-            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
-
-                {/* Header */}
+            <section className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-4">
                 <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-lg font-semibold text-gray-900">Live data · {formatDate(new Date().toISOString())}</p>
-                    </div>
+                    <p className="text-lg font-semibold text-gray-900">Live data · {formatDate(new Date().toISOString())}</p>
                     <button
                         onClick={() => fetchAnalytics(true)}
                         disabled={refreshing}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-[#0D47A1] border border-[#C5D2EC] rounded-xl hover:bg-[#EEF2FB] transition-colors disabled:opacity-60"
+                        className="flex items-center gap-1.5 rounded-xl border border-[#C5D2EC] px-3 py-1.5 text-sm font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB] disabled:opacity-60"
                     >
-                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                        <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
                         Refresh
                     </button>
                 </div>
 
-                {/* Stat Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-                    {stats.map((s) => <StatCard key={s.id} {...s} />)}
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                    {cards.map((card) => (
+                        <StatCard key={card.id} {...card} onClick={setActiveCard} />
+                    ))}
                 </div>
 
-                {/* Charts Row */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
-                    {/* Lead generation */}
-                    <div className="lg:col-span-2 bg-white rounded-2xl shadow p-5">
-                        <div className="flex items-center justify-between mb-4">
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                    <article className="rounded-2xl bg-white p-5 shadow lg:col-span-2">
+                        <div className="mb-4 flex items-start justify-between gap-3">
                             <div>
-                                <h3 className="text-sm font-bold text-gray-800">Lead Generation</h3>
-                                <p className="text-xs text-gray-400">Chatbot leads captured · last 6 months</p>
+                                <h3 className="text-sm font-bold text-gray-800">Chatbot Lead Generation</h3>
+                                <p className="text-xs text-gray-400">Monthly conversation trend and lead volume</p>
                             </div>
-                            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">{chat_leads.total} total leads</span>
+                            <Link
+                                href="/admin/chats"
+                                className="rounded-lg border border-[#C5D2EC] px-3 py-1.5 text-xs font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
+                            >
+                                View Chatbot Leads
+                            </Link>
                         </div>
-                        <ResponsiveContainer width="100%" height={180}>
-                            <AreaChart data={monthly.chat_leads} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="leadGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#0D47A1" stopOpacity={0.15} />
-                                        <stop offset="95%" stopColor="#0D47A1" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
-                                    labelStyle={{ fontWeight: 700, color: "#0D47A1" }}
-                                    formatter={(v) => [Number(v ?? 0), "New Leads"]}
-                                />
-                                <Area type="monotone" dataKey="total" stroke="#0D47A1" strokeWidth={2.5} fill="url(#leadGrad)" dot={{ r: 3, fill: "#0D47A1" }} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                        {/* Mini stats strip */}
-                        <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-50">
-                            <div className="text-center">
-                                <p className="text-lg font-bold text-gray-900">{chat_leads.active}</p>
-                                <p className="text-xs text-gray-400">Active</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-lg font-bold text-amber-600">{chat_leads.agent_requested}</p>
-                                <p className="text-xs text-gray-400">Awaiting Agent</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-lg font-bold text-gray-400">{chat_leads.closed}</p>
-                                <p className="text-xs text-gray-400">Closed</p>
-                            </div>
-                        </div>
-                    </div>
 
-                    {/* Inquiries by type */}
-                    <div className="bg-white rounded-2xl shadow p-5">
-                        <div className="mb-4">
-                            <h3 className="text-sm font-bold text-gray-800">Inquiries by Type</h3>
-                            <p className="text-xs text-gray-400">All time</p>
+                        {analytics.monthly.chat_leads.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={220}>
+                                <AreaChart data={analytics.monthly.chat_leads} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
+                                        formatter={(v) => [Number(v ?? 0), "Leads"]}
+                                    />
+                                    <Area type="monotone" dataKey="total" stroke="#0D47A1" strokeWidth={2.5} fill="#0D47A1" fillOpacity={0.12} dot={{ r: 3, fill: "#0D47A1" }} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex h-55 items-center justify-center text-xs text-slate-400">No chatbot trend data yet</div>
+                        )}
+                    </article>
+
+                    <article className="rounded-2xl bg-white p-5 shadow">
+                        <div className="mb-4 flex items-start justify-between gap-3">
+                            <div>
+                                <h3 className="text-sm font-bold text-gray-800">Inquiry by Type</h3>
+                                <p className="text-xs text-gray-400">Distribution across inquiry services</p>
+                            </div>
+                            <Link
+                                href="/admin/inquiries"
+                                className="rounded-lg border border-[#C5D2EC] px-3 py-1.5 text-xs font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
+                            >
+                                View All Inquiries
+                            </Link>
                         </div>
+
                         {inquiryPieData.length > 0 ? (
                             <>
-                                <ResponsiveContainer width="100%" height={140}>
+                                <ResponsiveContainer width="100%" height={160}>
                                     <PieChart>
-                                        <Pie data={inquiryPieData} cx="50%" cy="50%" innerRadius={38} outerRadius={60} paddingAngle={3} dataKey="value">
-                                            {inquiryPieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                                        <Pie data={inquiryPieData} cx="50%" cy="50%" innerRadius={44} outerRadius={68} paddingAngle={3} dataKey="value">
+                                            {inquiryPieData.map((entry, i) => (
+                                                <Cell key={entry.name} fill={entry.color} />
+                                            ))}
                                         </Pie>
-                                        <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 11 }} />
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
+                                            formatter={(v) => [Number(v ?? 0), "Inquiries"]}
+                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
-                                <div className="space-y-1.5 mt-2">
-                                    {inquiryPieData.map((item) => (
-                                        <div key={item.name} className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                                                <span className="text-xs text-gray-600 truncate max-w-27.5">{item.name}</span>
+                                <div className="space-y-1.5">
+                                    {inquiryPieData.map((item) => {
+                                        const pct = Math.round((item.value / Math.max(analytics.inquiries.total, 1)) * 100);
+                                        return (
+                                            <div key={item.name} className="flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-2 text-slate-600">
+                                                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                                    <span>{item.name}</span>
+                                                </div>
+                                                <span className="font-semibold text-slate-800">{item.value} ({pct}%)</span>
                                             </div>
-                                            <span className="text-xs font-bold text-gray-800">{item.value}</span>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </>
                         ) : (
-                            <div className="flex items-center justify-center h-40 text-xs text-gray-400">No inquiry data yet</div>
+                            <div className="flex h-55 items-center justify-center text-xs text-slate-400">No inquiry type data yet</div>
                         )}
-                    </div>
+                    </article>
                 </div>
 
-                {/* Revenue + Inquiries Trend */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-                    {/* Revenue bar */}
-                    <div className="bg-white rounded-2xl shadow p-5">
-                        <div className="flex items-center justify-between mb-4">
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                    <article className="rounded-2xl bg-white p-5 shadow">
+                        <div className="mb-4 flex items-start justify-between gap-3">
                             <div>
-                                <h3 className="text-sm font-bold text-gray-800">Monthly Quotation Value</h3>
-                                <p className="text-xs text-gray-400">Last 6 months · paid &amp; completed</p>
+                                <h3 className="text-sm font-bold text-gray-800">Monthly Quotations</h3>
+                                <p className="text-xs text-gray-400">Quotation request count by month</p>
                             </div>
-                            <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">{formatCurrency(quotations.revenue)}</span>
+                            <Link
+                                href="/admin/quotation"
+                                className="rounded-lg border border-[#C5D2EC] px-3 py-1.5 text-xs font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
+                            >
+                                View Quotations
+                            </Link>
                         </div>
-                        <ResponsiveContainer width="100%" height={180}>
-                            <BarChart data={monthly.revenue} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={(v) => v >= 1000 ? `₱${(v / 1000).toFixed(0)}k` : `₱${v}`} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
-                                    formatter={(v) => [`₱${Number(v ?? 0).toLocaleString()}`, "Quotation Value"]}
-                                    labelStyle={{ fontWeight: 700, color: "#0D47A1" }}
-                                />
-                                <Bar dataKey="total" fill="#0D47A1" radius={[6, 6, 0, 0]} maxBarSize={36} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
 
-                    {/* Monthly inquiries bar */}
-                    <div className="bg-white rounded-2xl shadow p-5">
-                        <div className="flex items-center justify-between mb-4">
+                        {analytics.monthly.quotations.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={220}>
+                                <BarChart data={analytics.monthly.quotations} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
+                                        formatter={(v) => [Number(v ?? 0), "Quotations"]}
+                                    />
+                                    <Bar dataKey="total" fill="#0D47A1" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex h-55 items-center justify-center text-xs text-slate-400">No quotation trend data yet</div>
+                        )}
+                    </article>
+
+                    <article className="rounded-2xl bg-white p-5 shadow">
+                        <div className="mb-4 flex items-start justify-between gap-3">
                             <div>
                                 <h3 className="text-sm font-bold text-gray-800">Monthly Inquiries</h3>
-                                <p className="text-xs text-gray-400">Last 6 months</p>
+                                <p className="text-xs text-gray-400">Inquiry volume comparison by month</p>
                             </div>
-                            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">{inquiries.total} total</span>
+                            <Link
+                                href="/admin/inquiries"
+                                className="rounded-lg border border-[#C5D2EC] px-3 py-1.5 text-xs font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
+                            >
+                                View Inquiries
+                            </Link>
                         </div>
-                        <ResponsiveContainer width="100%" height={180}>
-                            <BarChart data={monthly.inquiries} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
-                                    labelStyle={{ fontWeight: 700, color: "#1565C0" }}
-                                    formatter={(v) => [Number(v ?? 0), "Inquiries"]}
-                                />
-                                <Bar dataKey="total" fill="#1565C0" radius={[6, 6, 0, 0]} maxBarSize={36} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+
+                        {analytics.monthly.inquiries.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={220}>
+                                <BarChart data={analytics.monthly.inquiries} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }}
+                                        formatter={(v) => [Number(v ?? 0), "Inquiries"]}
+                                    />
+                                    <Bar dataKey="total" fill="#1565C0" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex h-55 items-center justify-center text-xs text-slate-400">No monthly inquiry data yet</div>
+                        )}
+                    </article>
                 </div>
 
-                {/* Recent Contact Inquiries Table */}
-                <div className="bg-white rounded-2xl shadow overflow-hidden">
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <article className="overflow-hidden rounded-2xl bg-white shadow">
+                    <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
                         <div>
-                            <h3 className="text-sm font-bold text-gray-800">Recent Inquiries</h3>
-                            <p className="text-xs text-gray-400">Latest 7 contact submissions</p>
+                            <h3 className="text-sm font-bold text-gray-800">Recent Testimonials</h3>
+                            <p className="text-xs text-gray-400">Latest 7 submissions</p>
                         </div>
-                        <a href="/admin/inquiries" className="text-xs font-semibold text-[#0D47A1] hover:underline">View all →</a>
+                        <Link
+                            href="/admin/testimonials"
+                            className="rounded-lg border border-[#C5D2EC] px-3 py-1.5 text-xs font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
+                        >
+                            View All Testimonials
+                        </Link>
                     </div>
-                    {recent_inquiries.length === 0 ? (
-                        <div className="py-16 text-center text-sm text-gray-400">No inquiries yet</div>
+
+                    {analytics.recent_testimonials.length === 0 ? (
+                        <div className="py-16 text-center text-sm text-slate-400">No testimonials yet</div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="bg-gray-50 text-left">
-                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">ID</th>
-                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Contact</th>
-                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Type</th>
-                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Branch</th>
-                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Date</th>
-                                        <th className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</th>
+                                <thead className="bg-slate-50 text-left">
+                                    <tr>
+                                        <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Client</th>
+                                        <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Rating</th>
+                                        <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Testimonial</th>
+                                        <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Service</th>
+                                        <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Date</th>
+                                        <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {recent_inquiries.map((inq) => (
-                                        <tr key={inq.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-5 py-3.5 text-xs font-mono text-gray-400">#{inq.id}</td>
-                                            <td className="px-5 py-3.5">
-                                                <p className="font-semibold text-gray-800 text-xs">{inq.name}</p>
-                                                {inq.company && <p className="text-xs text-gray-400">{inq.company}</p>}
-                                            </td>
-                                            <td className="px-5 py-3.5">
-                                                <span className="flex items-center gap-1.5 text-xs text-gray-700">
-                                                    <Building2 className="w-3.5 h-3.5 text-[#0D47A1]" />
-                                                    {formatInquiryType(inq.inquiry_type)}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3.5 text-xs text-gray-600">{inq.branch}</td>
-                                            <td className="px-5 py-3.5">
-                                                <span className="flex items-center gap-1 text-xs text-gray-400">
-                                                    <Clock className="w-3 h-3" />
-                                                    {formatDate(inq.created_at)}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3.5">
-                                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyles[inq.status] ?? "bg-gray-100 text-gray-600"}`}>
-                                                    {statusLabel[inq.status] ?? inq.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                <tbody className="divide-y divide-slate-100">
+                                    {analytics.recent_testimonials.map((item) => {
+                                        const isExpanded = expandedTestimonialId === item.id;
+                                        const quote = item.quote ?? "";
+                                        return (
+                                            <tr key={item.id} className="hover:bg-slate-50/70">
+                                                <td className="px-5 py-3.5 text-xs font-semibold text-slate-800">{item.name ?? ""}</td>
+                                                <td className="px-5 py-3.5">
+                                                    <div className="flex items-center gap-0.5">
+                                                        {Array.from({ length: 5 }).map((_, i) => (
+                                                            <Star
+                                                                key={`${item.id}-star-${i}`}
+                                                                className={`h-3.5 w-3.5 ${i < item.rating ? "fill-[#F59E0B] text-[#F59E0B]" : "fill-slate-100 text-slate-200"}`}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3.5 text-xs text-slate-600">
+                                                    <p className="max-w-[320px] leading-relaxed">
+                                                        {isExpanded ? quote : truncateText(quote)}
+                                                    </p>
+                                                    {quote.length > 90 ? (
+                                                        <button
+                                                            onClick={() => setExpandedTestimonialId(isExpanded ? null : item.id)}
+                                                            className="mt-1 text-[11px] font-semibold text-[#0D47A1] hover:underline"
+                                                        >
+                                                            {isExpanded ? "Show less" : "View full testimonial"}
+                                                        </button>
+                                                    ) : null}
+                                                </td>
+                                                <td className="px-5 py-3.5 text-xs text-slate-600">{item.service_type ?? ""}</td>
+                                                <td className="px-5 py-3.5 text-xs text-slate-500">{formatDate(item.created_at)}</td>
+                                                <td className="px-5 py-3.5">
+                                                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${TESTIMONIAL_STATUS_STYLES[item.status] ?? "bg-slate-100 text-slate-600"}`}>
+                                                        {item.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
                     )}
-                </div>
-
+                </article>
             </section>
 
-            {/* Drill-Down Modal */}
-            {activeDrillDown && <DrillDownModal id={activeCard!} data={analytics} onClose={() => setActiveCard(null)} />} 
+            {activeCard ? (
+                <DrillDownModal id={activeCard} data={analytics} onClose={() => setActiveCard(null)} />
+            ) : null}
         </main>
     );
 }
