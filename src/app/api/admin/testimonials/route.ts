@@ -9,7 +9,7 @@ const LARAVEL_API_BASE = API_URL.endsWith("/api")
 export async function GET(request: NextRequest) {
   const query = new URL(request.url).search;
 
-  const res = await fetch(`${LARAVEL_API_BASE}/api/admin/testimonials${query}`, {
+  const res = await fetch(`${LARAVEL_API_BASE}/admin/testimonials${query}`, {
     headers: {
       Accept: "application/json",
       Authorization: request.headers.get("authorization") ?? "",
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
-  const res = await fetch(`${LARAVEL_API_BASE}/api/admin/testimonials`, {
+  const res = await fetch(`${LARAVEL_API_BASE}/admin/testimonials`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
