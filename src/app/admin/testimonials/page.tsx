@@ -30,12 +30,13 @@ type StatTone = "neutral" | "amber" | "green" | "red";
 
 interface Testimonial {
   id: number;
-  name: string;
-  title: string;
+  name: string | null;
+  title: string | null;
   company: string | null;
-  email: string;
+  service_type: string | null;
+  email: string | null;
   rating: number;
-  quote: string;
+  quote: string | null;
   status: "pending" | "approved" | "rejected";
   created_at?: string;
   updated_at?: string;
@@ -57,6 +58,17 @@ const STATUS_STYLES: Record<string, string> = {
 
 const STATUS_OPTIONS = ["pending", "approved", "rejected"] as const;
 
+const SERVICE_TYPE_OPTIONS = [
+  "Virtual Office",
+  "Coworking Space",
+  "Private Office",
+  "Meeting Room",
+  "Event Activity",
+  "Other",
+] as const;
+
+const PLACEHOLDER_VALUES = new Set(["n/a", "unknown", "unnamed", "submitted"]);
+
 const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
   neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]" },
   amber: { bg: "bg-amber-50", text: "text-amber-700" },
@@ -68,6 +80,7 @@ const EMPTY_FORM = {
   name: "",
   title: "",
   company: "",
+  service_type: "",
   email: "",
   rating: 5,
   quote: "",
@@ -210,6 +223,14 @@ function getAgeInDays(value?: string) {
   if (Number.isNaN(date.getTime())) return null;
   const diff = Date.now() - date.getTime();
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+}
+
+function normalizeNullableField(value: string | null | undefined) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (PLACEHOLDER_VALUES.has(trimmed.toLowerCase())) return null;
+  return trimmed;
 }
 
 export default function TestimonialsAdmin() {
@@ -562,12 +583,13 @@ export default function TestimonialsAdmin() {
   function openEdit(t: Testimonial) {
     setEditing(t);
     setForm({
-      name: t.name,
-      title: t.title,
-      company: t.company ?? "",
-      email: t.email,
+      name: normalizeNullableField(t.name) ?? "",
+      title: normalizeNullableField(t.title) ?? "",
+      company: normalizeNullableField(t.company) ?? "",
+      service_type: normalizeNullableField(t.service_type) ?? "",
+      email: normalizeNullableField(t.email) ?? "",
       rating: t.rating,
-      quote: t.quote,
+      quote: normalizeNullableField(t.quote) ?? "",
     });
     setFormErrors({});
     setFormOpen(true);
@@ -585,7 +607,13 @@ export default function TestimonialsAdmin() {
     // Status is preserved as-is on edit, and defaults to "pending" on
     // create — it is never set from this form.
     const body = {
-      ...form,
+      name: normalizeNullableField(form.name),
+      title: normalizeNullableField(form.title),
+      company: normalizeNullableField(form.company),
+      service_type: normalizeNullableField(form.service_type),
+      email: normalizeNullableField(form.email),
+      quote: normalizeNullableField(form.quote) ?? "",
+      rating: form.rating,
       status: isEdit ? editing!.status : "pending",
     };
 
@@ -825,10 +853,10 @@ export default function TestimonialsAdmin() {
                 {!loading && !error && items.map((t) => (
                   <tr key={t.id} className="hover:bg-blue-50/40">
                     <td className="px-5 py-4">
-                      <p className="font-semibold text-slate-900">{t.name}</p>
+                      <p className="font-semibold text-slate-900">{normalizeNullableField(t.name) ?? ""}</p>
                       <p className="line-clamp-1 text-xs text-slate-500">
-                        {t.title}
-                        {t.company ? ` · ${t.company}` : ""}
+                        {normalizeNullableField(t.title) ?? ""}
+                        {normalizeNullableField(t.company) ? ` · ${normalizeNullableField(t.company)}` : ""}
                       </p>
                     </td>
 
@@ -859,7 +887,7 @@ export default function TestimonialsAdmin() {
                     <td className="px-5 py-4 text-slate-500">
                       <div className="flex items-center gap-1.5">
                         <Mail className="h-3.5 w-3.5 text-slate-400" />
-                        {t.email}
+                        {normalizeNullableField(t.email) ?? ""}
                       </div>
                     </td>
 
@@ -1021,7 +1049,7 @@ export default function TestimonialsAdmin() {
                   <Quote className="h-5 w-5 text-slate-200" />
                 </div>
                 <p className="text-sm leading-relaxed text-slate-700">
-                  &ldquo;{viewTarget.quote}&rdquo;
+                  &ldquo;{normalizeNullableField(viewTarget.quote) ?? ""}&rdquo;
                 </p>
               </div>
 
@@ -1029,32 +1057,38 @@ export default function TestimonialsAdmin() {
               <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <dt className="text-xs font-medium text-slate-400">Name</dt>
-                  <dd className="mt-0.5 text-sm font-medium text-slate-900">
-                    {viewTarget.name}
+                  <dd className="mt-0.5 min-h-5 text-sm font-medium text-slate-900">
+                    {normalizeNullableField(viewTarget.name) ?? ""}
                   </dd>
                 </div>
                 <div>
                   <dt className="flex items-center gap-1 text-xs font-medium text-slate-400">
                     <Mail className="h-3 w-3" /> Email
                   </dt>
-                  <dd className="mt-0.5 text-sm text-slate-700">
-                    {viewTarget.email}
+                  <dd className="mt-0.5 min-h-5 text-sm text-slate-700">
+                    {normalizeNullableField(viewTarget.email) ?? ""}
                   </dd>
                 </div>
                 <div>
                   <dt className="flex items-center gap-1 text-xs font-medium text-slate-400">
                     <Briefcase className="h-3 w-3" /> Job title
                   </dt>
-                  <dd className="mt-0.5 text-sm text-slate-700">
-                    {viewTarget.title || "—"}
+                  <dd className="mt-0.5 min-h-5 text-sm text-slate-700">
+                    {normalizeNullableField(viewTarget.title) ?? ""}
                   </dd>
                 </div>
                 <div>
                   <dt className="flex items-center gap-1 text-xs font-medium text-slate-400">
                     <Building2 className="h-3 w-3" /> Company
                   </dt>
-                  <dd className="mt-0.5 text-sm text-slate-700">
-                    {viewTarget.company || "—"}
+                  <dd className="mt-0.5 min-h-5 text-sm text-slate-700">
+                    {normalizeNullableField(viewTarget.company) ?? ""}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-slate-400">Service type</dt>
+                  <dd className="mt-0.5 min-h-5 text-sm text-slate-700">
+                    {normalizeNullableField(viewTarget.service_type) ?? ""}
                   </dd>
                 </div>
                 {viewTarget.created_at && (
@@ -1246,6 +1280,29 @@ export default function TestimonialsAdmin() {
                 {formErrors.email && (
                   <p className="mt-1 text-xs text-red-600">
                     {formErrors.email}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  Service Type
+                </label>
+                <select
+                  value={form.service_type}
+                  onChange={(e) => updateField("service_type", e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  <option value="">Select service type</option>
+                  {SERVICE_TYPE_OPTIONS.map((service) => (
+                    <option key={service} value={service}>
+                      {service}
+                    </option>
+                  ))}
+                </select>
+                {formErrors.service_type && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {formErrors.service_type}
                   </p>
                 )}
               </div>

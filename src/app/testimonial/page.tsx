@@ -24,15 +24,17 @@ import {
 
 interface Testimonial {
   id: number;
-  name: string;
-  title: string;
-  company: string;
+  name: string | null;
+  title: string | null;
+  company: string | null;
+  service_type: string | null;
   rating: number;
-  quote: string;
+  quote: string | null;
   status: "pending" | "approved" | "rejected";
 }
 
-function getInitials(name: string) {
+function getInitials(name: string | null | undefined) {
+  if (!name) return "";
   return name
     .trim()
     .split(/\s+/)
@@ -45,6 +47,7 @@ interface FormData {
   name: string;
   title: string;
   company: string;
+  service_type: string;
   email: string;
   rating: number;
   quote: string;
@@ -54,10 +57,30 @@ const empty: FormData = {
   name: "",
   title: "",
   company: "",
+  service_type: "",
   email: "",
   rating: 5,
   quote: "",
 };
+
+const SERVICE_TYPE_OPTIONS = [
+  "Virtual Office",
+  "Coworking Space",
+  "Private Office",
+  "Meeting Room",
+  "Event Activity",
+  "Other",
+] as const;
+
+const PLACEHOLDER_VALUES = new Set(["n/a", "unknown", "unnamed", "submitted"]);
+
+function normalizeNullableField(value: string | null | undefined) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (PLACEHOLDER_VALUES.has(trimmed.toLowerCase())) return null;
+  return trimmed;
+}
 
 const PAGE_SIZE = 6;
 
@@ -148,10 +171,11 @@ export default function TestimonialPage() {
       const matchesRating = ratingFilter === 0 || t.rating === ratingFilter;
       const matchesQuery =
         q.length === 0 ||
-        t.name.toLowerCase().includes(q) ||
-        t.company?.toLowerCase().includes(q) ||
-        t.title?.toLowerCase().includes(q) ||
-        t.quote.toLowerCase().includes(q);
+        (t.name ?? "").toLowerCase().includes(q) ||
+        (t.company ?? "").toLowerCase().includes(q) ||
+        (t.title ?? "").toLowerCase().includes(q) ||
+        (t.service_type ?? "").toLowerCase().includes(q) ||
+        (t.quote ?? "").toLowerCase().includes(q);
       return matchesRating && matchesQuery;
     });
   }, [testimonials, query, ratingFilter]);
@@ -184,12 +208,13 @@ export default function TestimonialPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name,
-          title: form.title,
-          company: form.company,
+          name: normalizeNullableField(form.name),
+          title: normalizeNullableField(form.title),
+          company: normalizeNullableField(form.company),
+          service_type: normalizeNullableField(form.service_type),
           rating: form.rating,
-          quote: form.quote,
-          email: form.email,
+          quote: normalizeNullableField(form.quote) ?? "",
+          email: normalizeNullableField(form.email),
         }),
       });
 
@@ -242,7 +267,7 @@ export default function TestimonialPage() {
             unoptimized
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
+          <div className="absolute inset-0 bg-linear-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
         </div>
         <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
@@ -482,7 +507,7 @@ export default function TestimonialPage() {
 
                     {/* Quote */}
                     <p className="text-sm text-gray-700 leading-relaxed flex-1 mb-6">
-                      &ldquo;{t.quote}&rdquo;
+                      &ldquo;{normalizeNullableField(t.quote) ?? ""}&rdquo;
                     </p>
 
                     {/* Divider */}
@@ -495,11 +520,11 @@ export default function TestimonialPage() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-gray-900">
-                            {t.name}
+                            {normalizeNullableField(t.name) ?? ""}
                           </p>
                           <p className="text-xs text-gray-400 mt-0.5">
-                            {t.title}
-                            {t.company ? ` · ${t.company}` : ""}
+                            {normalizeNullableField(t.title) ?? ""}
+                            {normalizeNullableField(t.company) ? ` · ${normalizeNullableField(t.company)}` : ""}
                           </p>
                         </div>
                       </div>
@@ -661,7 +686,7 @@ export default function TestimonialPage() {
                             <Star className="h-7 w-7 fill-green-500 text-green-500" />
                           </div>
                           <h3 className="text-lg font-bold text-gray-900 mb-2">
-                            Thank you, {form.name.split(" ")[0]}!
+                            Thank you, {(form.name.trim() || "there").split(" ")[0]}!
                           </h3>
                           <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">
                             Your testimonial has been submitted!
@@ -726,11 +751,9 @@ export default function TestimonialPage() {
                             {/* Email */}
                             <div>
                               <label htmlFor="testimonial-email" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                Email address{" "}
-                                <span className="text-red-400">*</span>
+                                Email address
                               </label>
                               <input
-                                required
                                 id="testimonial-email"
                                 name="email"
                                 type="email"
@@ -746,10 +769,9 @@ export default function TestimonialPage() {
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label htmlFor="testimonial-title" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                Job title <span className="text-red-400">*</span>
+                                Job title
                               </label>
                               <input
-                                required
                                 id="testimonial-title"
                                 name="title"
                                 type="text"
@@ -761,10 +783,9 @@ export default function TestimonialPage() {
                             </div>
                             <div>
                               <label htmlFor="testimonial-company" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                Company <span className="text-red-400">*</span>
+                                Company
                               </label>
                               <input
-                                required
                                 id="testimonial-company"
                                 name="company"
                                 type="text"
@@ -774,6 +795,26 @@ export default function TestimonialPage() {
                                 className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                               />
                             </div>
+                          </div>
+
+                          <div>
+                            <label htmlFor="testimonial-service-type" className="block text-xs font-semibold text-gray-700 mb-1.5">
+                              Service type
+                            </label>
+                            <select
+                              id="testimonial-service-type"
+                              name="service_type"
+                              value={form.service_type}
+                              onChange={(e) => set("service_type", e.target.value)}
+                              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
+                            >
+                              <option value="">Select service type</option>
+                              {SERVICE_TYPE_OPTIONS.map((service) => (
+                                <option key={service} value={service}>
+                                  {service}
+                                </option>
+                              ))}
+                            </select>
                           </div>
 
                           {/* quote */}
