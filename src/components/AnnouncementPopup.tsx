@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { X, Calendar, ExternalLink } from "lucide-react";
 
 interface SocialMediaEntry {
@@ -75,6 +76,7 @@ export default function AnnouncementPopup() {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [open, setOpen] = useState(false);
   const shouldReduceMotion = useReducedMotion();
+  const router = useRouter();
 
   // --- Data loading (unchanged) ---
   useEffect(() => {
@@ -116,6 +118,11 @@ export default function AnnouncementPopup() {
   const handleClose = useCallback(() => {
     setOpen(false);
   }, []);
+
+  const handleOpenAnnouncement = useCallback(() => {
+    if (!announcement) return;
+    router.push(`/announcement?id=${announcement.id}`);
+  }, [announcement, router]);
 
   // Close on Escape only. No scroll lock — the page stays fully interactive
   // while the widget floats above it.
@@ -161,9 +168,18 @@ export default function AnnouncementPopup() {
 
           {/* Note card */}
           <motion.div
-            role="dialog"
+            role="button"
             aria-modal="false"
             aria-labelledby="announcement-title"
+            aria-label={announcement ? `Open announcement: ${announcement.title}` : "Open announcement"}
+            tabIndex={0}
+            onClick={handleOpenAnnouncement}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleOpenAnnouncement();
+              }
+            }}
             initial={
               shouldReduceMotion
                 ? { opacity: 0 }
@@ -184,13 +200,16 @@ export default function AnnouncementPopup() {
                 ? { duration: 0.15 }
                 : { type: "spring", stiffness: 260, damping: 22, delay: 0.08 }
             }
-            className="pointer-events-auto relative bottom-10 -ml-3 w-68 max-w-[calc(100vw-2rem)] sm:w-75"
+            className="pointer-events-auto relative bottom-10 -ml-3 w-68 max-w-[calc(100vw-2rem)] cursor-pointer rounded-[18px] outline-none transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_42px_-14px_rgba(13,25,54,0.4)] focus-visible:ring-2 focus-visible:ring-[#00D1B2] focus-visible:ring-offset-2 sm:w-75"
           >
             <div className="overflow-hidden rounded-[18px] border border-[#0D2A5C]/10 bg-[#FBFAF6] shadow-[0_18px_40px_-12px_rgba(13,25,54,0.35)]">
 
               <div className="max-h-[46vh] overflow-y-auto px-4 pb-4 pt-3.5">
                   <button
-                    onClick={handleClose}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleClose();
+                    }}
                     className="absolute top-3 right-3 h-6 w-6 shrink-0 items-end justify-end rounded-full text-[#0D2A5C] transition-colors hover:text-gray-400 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-[#00D1B2]"
                     aria-label="Close announcement"
                   >
@@ -221,6 +240,7 @@ export default function AnnouncementPopup() {
                           href={entry.link}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
                           className="inline-flex items-center gap-1 rounded-full bg-[#0D1E3F]/6 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0D1E3F] transition-colors hover:bg-[#0D1E3F]/12"
                         >
                           {formatSocialPlatform(entry.platform)}

@@ -653,7 +653,7 @@ export default function TestimonialPage() {
                   className="pointer-events-auto w-full max-w-2xl rounded-2xl border border-gray-100 bg-white shadow-2xl flex flex-col max-h-[calc(100vh-4rem)]"
                 >
                   {/* Header */}
-                  <div className="flex items-center justify-between px-7 pt-6 pb-4 shrink-0">
+                  <div className="flex items-center justify-between px-7 py-4 shrink-0">
                     <div>
                       <h2 className="text-lg font-bold text-gray-900">
                         Share your experience

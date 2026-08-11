@@ -783,7 +783,6 @@ export default function TestimonialsAdmin() {
                   <th className="px-5 py-3 text-left">Name</th>
                   <th className="px-5 py-3 text-left">Rating</th>
                   <th className="px-5 py-3 text-left">Status</th>
-                  <th className="px-5 py-3 text-left">Email</th>
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -882,13 +881,6 @@ export default function TestimonialsAdmin() {
                       >
                         {t.status}
                       </span>
-                    </td>
-
-                    <td className="px-5 py-4 text-slate-500">
-                      <div className="flex items-center gap-1.5">
-                        <Mail className="h-3.5 w-3.5 text-slate-400" />
-                        {normalizeNullableField(t.email) ?? ""}
-                      </div>
                     </td>
 
                     <td className="px-5 py-4">

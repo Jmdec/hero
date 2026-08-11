@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   ArrowRight,
@@ -355,6 +356,9 @@ export default function AnnouncementPage() {
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     let cancelled = false;
@@ -431,6 +435,50 @@ export default function AnnouncementPage() {
     setTagFilter(null);
   };
 
+  function setAnnouncementIdQuery(id: number | null) {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (id === null) {
+      params.delete("id");
+    } else {
+      params.set("id", String(id));
+    }
+
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }
+
+  function handleSelectAnnouncement(item: Announcement) {
+    setSelected(item);
+    setAnnouncementIdQuery(item.id);
+  }
+
+  function handleCloseAnnouncementModal() {
+    setSelected(null);
+    setAnnouncementIdQuery(null);
+  }
+
+  useEffect(() => {
+    if (loading || announcements.length === 0) return;
+
+    const requestedId = searchParams.get("id");
+    if (!requestedId) return;
+
+    const numericId = Number(requestedId);
+    if (!Number.isInteger(numericId) || numericId <= 0) {
+      setAnnouncementIdQuery(null);
+      return;
+    }
+
+    const matched = announcements.find((item) => item.id === numericId);
+    if (!matched) {
+      setAnnouncementIdQuery(null);
+      return;
+    }
+
+    setSelected((prev) => (prev?.id === matched.id ? prev : matched));
+  }, [announcements, loading, searchParams]);
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -444,7 +492,7 @@ export default function AnnouncementPage() {
             unoptimized
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
+          <div className="absolute inset-0 bg-linear-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
         </div>
 
         <div className="px-4 sm:px-6 lg:px-8 relative z-10">
@@ -628,7 +676,7 @@ export default function AnnouncementPage() {
                     key={item.id}
                     item={item}
                     index={i}
-                    onSelect={setSelected}
+                    onSelect={handleSelectAnnouncement}
                   />
                 ))}
               </div>
@@ -814,7 +862,7 @@ export default function AnnouncementPage() {
         {selected && (
           <AnnouncementModal
             item={selected}
-            onClose={() => setSelected(null)}
+            onClose={handleCloseAnnouncementModal}
           />
         )}
       </AnimatePresence>
