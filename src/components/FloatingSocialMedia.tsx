@@ -1,5 +1,6 @@
 "use client"
-import { useState } from "react"
+import type { ComponentType } from "react"
+import { useEffect, useState } from "react"
 import { Plus, X, MessageCircle } from "lucide-react"
 
 const FacebookIcon = ({ className }: { className?: string }) => (
@@ -40,7 +41,24 @@ const ViberIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
-const socialLinks = [
+type SocialLink = {
+  name: string
+  icon: ComponentType<{ className?: string }>
+  href: string
+  color: string
+}
+
+const iconMap: Record<string, SocialLink["icon"]> = {
+  facebook: FacebookIcon,
+  instagram: InstagramIcon,
+  linkedin: LinkedinIcon,
+  tiktok: TikTokIcon,
+  youtube: YouTubeIcon,
+  whatsapp: MessageCircle,
+  viber: ViberIcon,
+}
+
+const defaultSocialLinks: SocialLink[] = [
   { name: "Facebook", icon: FacebookIcon, href: "https://www.facebook.com/heroservicedoffice", color: "#1877F2" },
   { name: "Instagram", icon: InstagramIcon, href: "https://www.instagram.com/heroso.ph", color: "#DD2A7B" },
   { name: "LinkedIn", icon: LinkedinIcon, href: "https://www.linkedin.com/company/hero-serviced-office-inc/", color: "#0A66C2" },
@@ -50,8 +68,66 @@ const socialLinks = [
   { name: "Viber", icon: ViberIcon, href: "viber://chat?number=%2B639171262939", color: "#7360F2" },
 ].filter((s) => s.href?.trim())
 
+type CmsContent = {
+  title?: string | null
+  data?: {
+    href?: string
+    color?: string
+    icon?: string
+  }
+}
+
 const FloatingSocialMedia = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>(defaultSocialLinks)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadCmsSocialLinks() {
+      try {
+        const res = await fetch("/api/cms-contents?section=global&type=social&subsection=floating", {
+          cache: "no-store",
+        })
+
+        if (!res.ok) return
+
+        const payload = await res.json().catch(() => [])
+        const list = Array.isArray(payload) ? payload : []
+
+        const cmsLinks = list
+          .map((item: CmsContent) => {
+            const name = (item.title || "").trim()
+            const href = item.data?.href?.trim() || ""
+            const color = item.data?.color?.trim() || "#0D47A1"
+            const iconKey = (item.data?.icon || "").trim().toLowerCase()
+            const icon = iconMap[iconKey] ?? MessageCircle
+
+            if (!name || !href) return null
+
+            return {
+              name,
+              href,
+              color,
+              icon,
+            } satisfies SocialLink
+          })
+          .filter((item): item is SocialLink => Boolean(item))
+
+        if (!cancelled && cmsLinks.length > 0) {
+          setSocialLinks(cmsLinks)
+        }
+      } catch {
+        // Keep default fallback links when CMS is unavailable.
+      }
+    }
+
+    loadCmsSocialLinks()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <>

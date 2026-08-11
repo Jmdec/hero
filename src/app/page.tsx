@@ -32,6 +32,15 @@ interface Testimonial {
   status: "pending" | "approved" | "rejected";
 }
 
+interface CmsContent {
+  title?: string | null;
+  image_url?: string | null;
+  image?: string | null;
+  data?: {
+    location?: string;
+  };
+}
+
 function getInitials(name: string) {
   return name
     .trim()
@@ -61,9 +70,21 @@ const empty: FormData = {
 
 const FEATURED_COUNT = 3;
 
+const defaultHeroSlides = [
+  {
+    image: "/tower_6789.webp",
+    location: "Tower 6789, Ayala Avenue, Makati City",
+  },
+  {
+    image: "/insular_life.webp",
+    location: "Insular Life Building, Ayala Avenue, Makati City",
+  },
+];
+
 export default function Home() {
   const [heroSlide, setHeroSlide] = useState(0);
   const [spaceSlide, setSpaceSlide] = useState(0);
+  const [heroSlides, setHeroSlides] = useState(defaultHeroSlides);
 
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,16 +100,47 @@ export default function Home() {
 
   const [servicesLoading, setServicesLoading] = useState(true);
 
-  const heroSlides = [
-    {
-      image: "/tower_6789.webp",
-      location: "Tower 6789, Ayala Avenue, Makati City",
-    },
-    {
-      image: "/insular_life.webp",
-      location: "Insular Life Building, Ayala Avenue, Makati City",
-    },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadHeroSlides() {
+      try {
+        const res = await fetch(
+          "/api/cms-contents?section=home&type=hero&subsection=slides",
+          { cache: "no-store" },
+        );
+
+        if (!res.ok) return;
+
+        const payload = await res.json().catch(() => []);
+        const list = Array.isArray(payload) ? payload : [];
+
+        const cmsSlides = list
+          .map((item: CmsContent) => {
+            const image = item.image_url || item.image || "";
+            const location = item.data?.location || item.title || "";
+
+            if (!image || !location) return null;
+
+            return { image, location };
+          })
+          .filter((slide): slide is { image: string; location: string } => Boolean(slide));
+
+        if (!cancelled && cmsSlides.length > 0) {
+          setHeroSlides(cmsSlides);
+          setHeroSlide(0);
+        }
+      } catch {
+        // Keep default fallback slides when CMS is unavailable.
+      }
+    }
+
+    loadHeroSlides();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {

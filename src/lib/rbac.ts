@@ -2,6 +2,7 @@ export type AppRole = "admin" | "manager" | "guest";
 
 export type AdminModuleKey =
   | "dashboard"
+  | "cms"
   | "quotation"
   | "users"
   | "chats"
@@ -19,6 +20,7 @@ export const ROLE_DISPLAY_NAMES: Record<AppRole, string> = {
 export const rolePermissions: Record<AppRole, AdminModuleKey[]> = {
   admin: [
     "dashboard",
+    "cms",
     "quotation",
     "users",
     "chats",
@@ -29,6 +31,7 @@ export const rolePermissions: Record<AppRole, AdminModuleKey[]> = {
   ],
   manager: [
     "dashboard",
+    "cms",
     "quotation",
     "chats",
     "inquiry",
@@ -68,6 +71,7 @@ export function hasModuleAccess(
 export function moduleForAdminPath(pathname: string): AdminModuleKey | null {
   if (!pathname.startsWith("/admin")) return null;
   if (pathname === "/admin" || pathname.startsWith("/admin?")) return "dashboard";
+  if (pathname.startsWith("/admin/cms")) return "cms";
   if (pathname.startsWith("/admin/quotation")) return "quotation";
   if (pathname.startsWith("/admin/users")) return "users";
   if (pathname.startsWith("/admin/chats")) return "chats";
@@ -80,6 +84,7 @@ export function moduleForAdminPath(pathname: string): AdminModuleKey | null {
 
 export function moduleForApiPath(pathname: string): AdminModuleKey | null {
   if (pathname.startsWith("/api/analytics")) return "dashboard";
+  if (pathname.startsWith("/api/admin/cms-contents")) return "cms";
   if (pathname.startsWith("/api/admin/testimonials")) return "testimonials";
   if (pathname.startsWith("/api/admin/announcements")) return "announcements";
   if (pathname.startsWith("/api/admin/inquiries")) return "inquiry";
