@@ -899,155 +899,190 @@ export default function AnnouncementsAdmin() {
 
         {/* Table */}
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
-                <tr>
-                  <th className="px-5 py-3 text-left">Title</th>
-                  <th className="px-5 py-3 text-left">Tag</th>
-                  <th className="px-5 py-3 text-left">Status</th>
-                  <th className="px-5 py-3 text-left">Date</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100">
-                {loading && (
-                  <tr>
-                    <td colSpan={5} className="px-5 py-12 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
-                        <span className="text-sm text-[#64748B]">Loading announcements...</span>
-                      </div>
-                    </td>
-                  </tr>
+          {loading ? (
+            <div className="px-5 py-12 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm text-[#64748B]">Loading announcements...</span>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="px-5 py-14 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-50">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                </div>
+                <p className="text-sm font-medium text-slate-700">{error}</p>
+                <button
+                  onClick={() => setRetryCount((c) => c + 1)}
+                  className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Try again
+                </button>
+              </div>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="px-5 py-14 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100">
+                  <Inbox className="h-5 w-5 text-slate-400" />
+                </div>
+                <p className="text-sm font-medium text-slate-700">No announcements found</p>
+                <p className="text-xs text-slate-400">
+                  {hasActiveFilters
+                    ? "Try a different search term or clear your filters."
+                    : "New announcements will show up here."}
+                </p>
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="mt-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                  >
+                    Clear filters
+                  </button>
                 )}
-
-                {!loading && error && (
-                  <tr>
-                    <td colSpan={5} className="px-5 py-14 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-50">
-                          <AlertTriangle className="h-5 w-5 text-red-500" />
-                        </div>
-                        <p className="text-sm font-medium text-slate-700">
-                          {error}
-                        </p>
-                        <button
-                          onClick={() => setRetryCount((c) => c + 1)}
-                          className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                        >
-                          <RefreshCw className="h-3.5 w-3.5" />
-                          Try again
-                        </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3 p-4 lg:hidden">
+                {items.map((a) => (
+                  <article key={a.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{a.title}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">{a.tag}</p>
                       </div>
-                    </td>
-                  </tr>
-                )}
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs capitalize ${STATUS_STYLES[a.status] ??
+                          "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
+                          }`}
+                      >
+                        {a.status}
+                      </span>
+                    </div>
 
-                {!loading && !error && items.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-5 py-14 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100">
-                          <Inbox className="h-5 w-5 text-slate-400" />
-                        </div>
-                        <p className="text-sm font-medium text-slate-700">
-                          No announcements found
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          {hasActiveFilters
-                            ? "Try a different search term or clear your filters."
-                            : "New announcements will show up here."}
-                        </p>
-                        {hasActiveFilters && (
-                          <button
-                            onClick={clearFilters}
-                            className="mt-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                          >
-                            Clear filters
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )}
+                    <div className="mt-3 text-xs text-slate-500">
+                      <span className="font-semibold text-slate-700">Date:</span> {formatDate(a.date)}
+                    </div>
 
-                {!loading &&
-                  !error &&
-                  items.map((a) => (
-                    <tr
-                      key={a.id}
-                      onClick={() => openView(a)}
-                      className="cursor-pointer hover:bg-blue-50/40"
-                    >
-                      <td className="px-5 py-4">
-                        <p className="font-semibold text-slate-900">
-                          {a.title}
-                        </p>
-                      </td>
+                    <div className="mt-4 flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => openView(a)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                        title="View"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        View
+                      </button>
 
-                      <td className="px-5 py-4">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                          {a.tag}
-                        </span>
-                      </td>
+                      <button
+                        onClick={() => openEdit(a)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                        title="Edit"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </button>
 
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs capitalize ${STATUS_STYLES[a.status] ??
-                            "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
-                            }`}
-                        >
-                          {a.status}
-                        </span>
-                      </td>
+                      <button
+                        onClick={() => openDeleteDialog(a)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
 
-                      <td className="px-5 py-4 text-slate-500 text-xs">
-                        {formatDate(a.date)}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openView(a);
-                            }}
-                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-                            title="View"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEdit(a);
-                            }}
-                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-                            title="Edit"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDeleteDialog(a);
-                            }}
-                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full text-sm">
+                  <thead className="bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                    <tr>
+                      <th className="px-5 py-3 text-left">Title</th>
+                      <th className="px-5 py-3 text-left">Tag</th>
+                      <th className="px-5 py-3 text-left">Status</th>
+                      <th className="px-5 py-3 text-left">Date</th>
+                      <th className="px-5 py-3 text-right">Actions</th>
                     </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-100">
+                    {items.map((a) => (
+                      <tr
+                        key={a.id}
+                        onClick={() => openView(a)}
+                        className="cursor-pointer hover:bg-blue-50/40"
+                      >
+                        <td className="px-5 py-4">
+                          <p className="font-semibold text-slate-900">{a.title}</p>
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                            {a.tag}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <span
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs capitalize ${STATUS_STYLES[a.status] ??
+                              "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
+                              }`}
+                          >
+                            {a.status}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-4 text-slate-500 text-xs">{formatDate(a.date)}</td>
+
+                        <td className="px-5 py-4">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openView(a);
+                              }}
+                              className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                              title="View"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEdit(a);
+                              }}
+                              className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                              title="Edit"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDeleteDialog(a);
+                              }}
+                              className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Pagination */}

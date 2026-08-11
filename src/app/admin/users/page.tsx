@@ -37,74 +37,6 @@ interface UserRecord {
     created_at?: string;
 }
 
-function pct(part: number, total: number) {
-    if (total <= 0) return "0% of total";
-    return `${Math.round((part / total) * 100)}% of total`;
-}
-
-function buildDrillDownData(users: UserRecord[], stats: { total: number; verified: number; unverified: number; admins: number }) {
-    const admins = users.filter((u) => u.role === "admin");
-    const regulars = users.filter((u) => (u.role ?? "user") === "user");
-    const verifiedAdmins = admins.filter((u) => u.email_verified).length;
-    const unverifiedAdmins = admins.length - verifiedAdmins;
-    const verifiedRegulars = regulars.filter((u) => u.email_verified).length;
-
-    const now = Date.now();
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
-    const newThisMonth = users.filter((u) => u.created_at && new Date(u.created_at).getTime() >= startOfMonth).length;
-
-    const unverifiedUsers = users.filter((u) => !u.email_verified);
-    const oldestPending = unverifiedUsers.reduce<number | null>((oldest, u) => {
-        if (!u.created_at) return oldest;
-        const t = new Date(u.created_at).getTime();
-        return oldest === null || t < oldest ? t : oldest;
-    }, null);
-    const oldestPendingDays = oldestPending != null ? Math.floor((now - oldestPending) / (1000 * 60 * 60 * 24)) : null;
-    const atRiskCount = unverifiedUsers.filter((u) => {
-        if (!u.created_at) return false;
-        const days = (now - new Date(u.created_at).getTime()) / (1000 * 60 * 60 * 24);
-        return days > 7;
-    }).length;
-
-    return {
-        total: {
-            title: "Total Users Breakdown",
-            items: [
-                { label: "Regular Users", value: String(regulars.length), sub: pct(regulars.length, stats.total) },
-                { label: "Admins", value: String(admins.length), sub: pct(admins.length, stats.total) },
-                { label: "Verified Accounts", value: String(stats.verified), sub: pct(stats.verified, stats.total) },
-                { label: "Unverified Accounts", value: String(stats.unverified), sub: pct(stats.unverified, stats.total) },
-                { label: "New this month", value: String(newThisMonth) },
-            ],
-        },
-        verified: {
-            title: "Verified Users",
-            items: [
-                { label: "Email Verified", value: String(stats.verified), sub: pct(stats.verified, stats.total) },
-                { label: "Verified Admins", value: String(verifiedAdmins), sub: pct(verifiedAdmins, admins.length || 1) },
-                { label: "Verified Regular", value: String(verifiedRegulars), sub: pct(verifiedRegulars, regulars.length || 1) },
-                { label: "Verification rate", value: `${stats.total > 0 ? Math.round((stats.verified / stats.total) * 100) : 0}%` },
-            ],
-        },
-        unverified: {
-            title: "Unverified Users",
-            items: [
-                { label: "Pending Verification", value: String(stats.unverified), sub: pct(stats.unverified, stats.total) },
-                { label: "Oldest pending", value: oldestPendingDays != null ? `${oldestPendingDays} days` : "—" },
-                { label: "At risk (>7 days)", value: String(atRiskCount) },
-            ],
-        },
-        admins: {
-            title: "Administrators",
-            items: [
-                { label: "Total Admins", value: String(admins.length), sub: pct(admins.length, stats.total) },
-                { label: "Verified Admins", value: String(verifiedAdmins), sub: pct(verifiedAdmins, admins.length || 1) },
-                { label: "Unverified Admins", value: String(unverifiedAdmins), sub: pct(unverifiedAdmins, admins.length || 1) },
-            ],
-        },
-    } as Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>;
-}
-
 type StatTone = "neutral" | "amber" | "green" | "red";
 
 const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
@@ -115,31 +47,88 @@ const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
 };
 
 type StatCardProps = {
-    id: StatKey;
     icon: React.ElementType;
     label: string;
     value: string;
+    supporting?: string;
+    trend?: string;
     tone?: StatTone;
-    onClick: (id: StatKey) => void;
 };
 
-function StatCard({ id, icon: Icon, label, value, tone = "neutral", onClick }: StatCardProps) {
+function UserStatCard({ icon: Icon, label, value, supporting, trend, tone = "neutral" }: StatCardProps) {
     const t = STAT_TONE_STYLES[tone];
+    const trendTone = trend?.startsWith("+")
+        ? "text-green-600"
+        : trend?.startsWith("-")
+            ? "text-red-600"
+            : "text-slate-500";
+
     return (
-        <button
-            onClick={() => onClick(id)}
-            className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
-        >
+        <article className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent">
             <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
             <div className="flex items-start justify-between mb-4">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
                     <Icon className={`w-5 h-5 ${t.text}`} />
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
+                {trend ? <p className={`text-xs font-semibold ${trendTone}`}>{trend}</p> : null}
             </div>
             <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
             <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+            <p className="text-xs text-slate-400">{supporting ?? " "}</p>
+        </article>
+    );
+}
+
+function AdministratorBreakdownCard({
+    value,
+    onClick,
+}: {
+    value: string;
+    onClick: () => void;
+}) {
+    const t = STAT_TONE_STYLES.amber;
+
+    return (
+        <button
+            onClick={onClick}
+            className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
+        >
+            <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
+            <div className="flex items-start justify-between mb-4">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
+                    <ShieldCheck className={`w-5 h-5 ${t.text}`} />
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
+            </div>
+            <p className="text-sm text-gray-500 font-medium mb-1">Administrators</p>
+            <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+            <p className="text-xs font-semibold text-[#0D47A1]">View Administrators →</p>
         </button>
+    );
+}
+
+function StatCardSkeleton() {
+    return (
+        <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent animate-pulse">
+            <div className="absolute top-0 left-0 w-1 h-full bg-slate-200" />
+            <div className="flex items-start justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-slate-200" />
+                <div className="h-3 w-12 rounded bg-slate-200" />
+            </div>
+            <div className="h-4 w-28 rounded bg-slate-200 mb-3" />
+            <div className="h-9 w-20 rounded bg-slate-200 mb-3" />
+            <div className="h-3 w-26 rounded bg-slate-200" />
+        </div>
+    );
+}
+
+function UserStatsSkeleton() {
+    return (
+        <>
+            {Array.from({ length: 4 }).map((_, i) => (
+                <StatCardSkeleton key={i} />
+            ))}
+        </>
     );
 }
 
@@ -193,7 +182,10 @@ function ModalBackdrop({
 
 export default function UsersPage() {
     const { showToast } = useToast();
-    const [activeCard, setActiveCard] = useState<StatKey | null>(null);
+    const [adminBreakdownOpen, setAdminBreakdownOpen] = useState(false);
+    const [adminBreakdownLoading, setAdminBreakdownLoading] = useState(false);
+    const [adminBreakdownError, setAdminBreakdownError] = useState<string | null>(null);
+    const [adminUsers, setAdminUsers] = useState<UserRecord[]>([]);
     const [search, setSearch] = useState("");
     const [roleFilter, setRoleFilter] = useState<"all" | Role>("all");
     const [loading, setLoading] = useState(true);
@@ -238,6 +230,12 @@ export default function UsersPage() {
         setConfirmState(next);
     }
 
+    function getTrendText(current: number, previous: number) {
+        const delta = current - previous;
+        if (delta === 0) return "No change";
+        return `${delta > 0 ? "+" : ""}${delta} vs last month`;
+    }
+
     async function handleConfirmAction() {
         if (!confirmState) return;
         setConfirmState(null);
@@ -280,34 +278,50 @@ export default function UsersPage() {
         fetchUsers();
     }, [fetchUsers]);
 
-    const statCards: Omit<StatCardProps, "onClick">[] = [
+    const monthlyUserTrend = useMemo(() => {
+        const now = new Date();
+        const thisMonth = users.filter((u) => {
+            if (!u.created_at) return false;
+            const d = new Date(u.created_at);
+            return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        }).length;
+
+        const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const prevMonth = users.filter((u) => {
+            if (!u.created_at) return false;
+            const d = new Date(u.created_at);
+            return d.getFullYear() === prevDate.getFullYear() && d.getMonth() === prevDate.getMonth();
+        }).length;
+
+        return {
+            current: thisMonth,
+            previous: prevMonth,
+            trend: getTrendText(thisMonth, prevMonth),
+        };
+    }, [users]);
+
+    const statCards: StatCardProps[] = [
         {
-            id: "total",
             icon: Users,
             label: "Total Users",
             value: stats.total.toString(),
             tone: "neutral",
+            trend: monthlyUserTrend.trend,
+            supporting: `This month: ${monthlyUserTrend.current}`,
         },
         {
-            id: "verified",
             icon: UserCheck,
             label: "Verified Users",
             value: stats.verified.toString(),
             tone: "green",
+            supporting: `${stats.total > 0 ? Math.round((stats.verified / stats.total) * 100) : 0}% of total`,
         },
         {
-            id: "unverified",
             icon: UserX,
             label: "Pending Verification",
             value: stats.unverified.toString(),
             tone: "red",
-        },
-        {
-            id: "admins",
-            icon: ShieldCheck,
-            label: "Administrators",
-            value: stats.admins.toString(),
-            tone: "amber",
+            supporting: `${stats.total > 0 ? Math.round((stats.unverified / stats.total) * 100) : 0}% of total`,
         },
     ];
 
@@ -321,8 +335,32 @@ export default function UsersPage() {
         return matchesSearch && matchesRole;
     });
 
-    const drillDownData = useMemo(() => buildDrillDownData(users, stats), [users, stats]);
-    const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
+    const loadAdminBreakdown = useCallback(async () => {
+        setAdminBreakdownLoading(true);
+        setAdminBreakdownError(null);
+
+        try {
+            const res = await fetch("/api/users", { cache: "no-store", headers: authHeaders() });
+            if (res.status === 401 || res.status === 403) {
+                throw new Error("You are not authorized to view administrator data.");
+            }
+            if (!res.ok) throw new Error(`Failed to load administrators (status ${res.status})`);
+
+            const data = await res.json();
+            const list: UserRecord[] = data.data ?? data ?? [];
+            setAdminUsers((Array.isArray(list) ? list : []).filter((u) => (u.role ?? "user") === "admin"));
+        } catch (err) {
+            setAdminUsers([]);
+            setAdminBreakdownError(err instanceof Error ? err.message : "Could not load administrators.");
+        } finally {
+            setAdminBreakdownLoading(false);
+        }
+    }, []);
+
+    async function openAdminBreakdown() {
+        setAdminBreakdownOpen(true);
+        await loadAdminBreakdown();
+    }
 
     /* ── View ── */
     function openView(u: UserRecord) {
@@ -454,9 +492,16 @@ export default function UsersPage() {
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
                 {/* Stat Cards */}
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                    {statCards.map((s) => (
-                        <StatCard key={s.id} {...s} onClick={setActiveCard} />
-                    ))}
+                    {loading ? (
+                        <UserStatsSkeleton />
+                    ) : (
+                        <>
+                            {statCards.map((s) => (
+                                <UserStatCard key={s.label} {...s} />
+                            ))}
+                            <AdministratorBreakdownCard value={stats.admins.toString()} onClick={() => { void openAdminBreakdown(); }} />
+                        </>
+                    )}
                 </div>
 
                 {/* Filters */}
@@ -497,132 +542,226 @@ export default function UsersPage() {
 
                 {/* User Overview Table */}
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead className="bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
-                                <tr>
-                                    <th className="px-5 py-3 text-left">User</th>
-                                    <th className="px-5 py-3 text-left">Role</th>
-                                    <th className="px-5 py-3 text-left">Joined</th>
-                                    <th className="px-5 py-3 text-left">Status</th>
-                                    <th className="px-5 py-3 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {loading ? (
-                                    <tr>
-                                        <td colSpan={6} className="px-5 py-8 text-center text-xs text-gray-400">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <div className="w-4 h-4 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
-                                                Loading users...
+                    {loading ? (
+                        <div className="px-5 py-8 text-center text-xs text-gray-400">
+                            <div className="flex items-center justify-center gap-2">
+                                <div className="w-4 h-4 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
+                                Loading users...
+                            </div>
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div className="px-5 py-8 text-center text-xs text-gray-400">
+                            {search || roleFilter !== "all" ? "No users match your filters." : "No users found."}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="space-y-3 p-4 lg:hidden">
+                                {filtered.map((user) => (
+                                    <article key={user.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-semibold text-gray-800">{user.name || "Unknown"}</p>
+                                                <p className="mt-0.5 truncate text-xs text-gray-500">{user.email || "—"}</p>
                                             </div>
-                                        </td>
-                                    </tr>
-                                ) : filtered.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={6} className="px-5 py-8 text-center text-xs text-gray-400">
-                                            {search || roleFilter !== "all" ? "No users match your filters." : "No users found."}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filtered.map((user) => (
-                                        <tr
-                                            key={user.id}
-                                            onClick={() => openView(user)}
-                                            className="cursor-pointer hover:bg-gray-50 transition-colors"
-                                        >
-                                            <td className="px-5 py-3.5">
-                                                <p className="font-semibold text-gray-800 text-sm">{user.name || "Unknown"}</p>
-                                                <span className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
-                                                    <Mail className="w-3 h-3" /> {user.email || "—"} | <Phone className="w-3 h-3" /> {user.phone || "—"}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3.5">
-                                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${roleStyles[user.role ?? "user"] || roleStyles.user}`}>
-                                                    {user.role === "admin" ? "Admin" : "User"}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3.5">
-                                                <span className="flex items-center gap-1 text-xs text-gray-400">
-                                                    <Clock className="w-3 h-3" />
-                                                    {user.created_at
-                                                        ? new Date(user.created_at).toLocaleDateString("en-US", {
-                                                            year: "numeric",
-                                                            month: "short",
-                                                            day: "numeric"
-                                                        })
-                                                        : "—"}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3.5">
-                                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyles[user.email_verified ? "Verified" : "Unverified"]}`}>
-                                                    {user.email_verified ? "Verified" : "Unverified"}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3.5">
-                                                <div className="flex justify-end gap-2">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            openView(user);
-                                                        }}
-                                                        className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-                                                        title="View"
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            openDeleteDialog(user);
-                                                        }}
-                                                        className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            </td>
+                                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyles[user.email_verified ? "Verified" : "Unverified"]}`}>
+                                                {user.email_verified ? "Verified" : "Unverified"}
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-3 grid grid-cols-1 gap-1.5 text-xs text-gray-500">
+                                            <p>
+                                                <span className="font-semibold text-gray-700">Role:</span> {user.role === "admin" ? "Admin" : "User"}
+                                            </p>
+                                            <p>
+                                                <span className="font-semibold text-gray-700">Phone:</span> {user.phone || "—"}
+                                            </p>
+                                            <p>
+                                                <span className="font-semibold text-gray-700">Joined:</span>{" "}
+                                                {user.created_at
+                                                    ? new Date(user.created_at).toLocaleDateString("en-US", {
+                                                        year: "numeric",
+                                                        month: "short",
+                                                        day: "numeric",
+                                                    })
+                                                    : "—"}
+                                            </p>
+                                        </div>
+
+                                        <div className="mt-4 flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => openView(user)}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                                                title="View"
+                                            >
+                                                <Eye className="h-3.5 w-3.5" />
+                                                View
+                                            </button>
+                                            <button
+                                                onClick={() => openEdit(user)}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                                                title="Edit"
+                                            >
+                                                <Pencil className="h-3.5 w-3.5" />
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => openDeleteDialog(user)}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+
+                            <div className="hidden overflow-x-auto lg:block">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                                        <tr>
+                                            <th className="px-5 py-3 text-left">User</th>
+                                            <th className="px-5 py-3 text-left">Role</th>
+                                            <th className="px-5 py-3 text-left">Joined</th>
+                                            <th className="px-5 py-3 text-left">Status</th>
+                                            <th className="px-5 py-3 text-right">Actions</th>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {filtered.map((user) => (
+                                            <tr
+                                                key={user.id}
+                                                onClick={() => openView(user)}
+                                                className="cursor-pointer hover:bg-gray-50 transition-colors"
+                                            >
+                                                <td className="px-5 py-3.5">
+                                                    <p className="font-semibold text-gray-800 text-sm">{user.name || "Unknown"}</p>
+                                                    <span className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                                                        <Mail className="w-3 h-3" /> {user.email || "—"} | <Phone className="w-3 h-3" /> {user.phone || "—"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-3.5">
+                                                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${roleStyles[user.role ?? "user"] || roleStyles.user}`}>
+                                                        {user.role === "admin" ? "Admin" : "User"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-3.5">
+                                                    <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                        <Clock className="w-3 h-3" />
+                                                        {user.created_at
+                                                            ? new Date(user.created_at).toLocaleDateString("en-US", {
+                                                                year: "numeric",
+                                                                month: "short",
+                                                                day: "numeric"
+                                                            })
+                                                            : "—"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-3.5">
+                                                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyles[user.email_verified ? "Verified" : "Unverified"]}`}>
+                                                        {user.email_verified ? "Verified" : "Unverified"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-3.5">
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                openView(user);
+                                                            }}
+                                                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                                                            title="View"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                openEdit(user);
+                                                            }}
+                                                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                                                            title="Edit"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                openDeleteDialog(user);
+                                                            }}
+                                                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    )}
                 </div>
             </section>
 
-            {/* Drill-Down Modal */}
-            {activeDrillDown && (
-                <ModalBackdrop onClose={() => setActiveCard(null)}>
-                    <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+            {/* Administrator Breakdown Modal */}
+            {adminBreakdownOpen && (
+                <ModalBackdrop onClose={() => setAdminBreakdownOpen(false)}>
+                    <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl">
                         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-                            <h2 className="text-lg font-semibold text-slate-900">
-                                {activeDrillDown.title}
-                            </h2>
+                            <div>
+                                <h2 className="text-lg font-semibold text-slate-900">Administrator Breakdown</h2>
+                                <p className="text-xs text-slate-400">Total administrators: {adminUsers.length}</p>
+                            </div>
                             <button
-                                onClick={() => setActiveCard(null)}
+                                onClick={() => setAdminBreakdownOpen(false)}
                                 className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                             >
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-6 py-5">
-                            {activeDrillDown.items.map((item) => (
-                                <div
-                                    key={item.label}
-                                    className="rounded-xl bg-slate-50 p-4"
-                                >
-                                    <p className="text-xs text-slate-500">{item.label}</p>
-                                    <p className="mt-1 text-xl font-bold text-slate-900">
-                                        {item.value}
-                                    </p>
-                                    {item.sub && (
-                                        <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>
-                                    )}
+                        <div className="max-h-[60vh] overflow-y-auto px-6 py-5">
+                            {adminBreakdownLoading ? (
+                                <div className="space-y-3">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                        <div key={i} className="animate-pulse rounded-xl border border-slate-100 p-4">
+                                            <div className="h-4 w-36 rounded bg-slate-200 mb-2" />
+                                            <div className="h-3 w-56 rounded bg-slate-200" />
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
+                            ) : adminBreakdownError ? (
+                                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                                    {adminBreakdownError}
+                                </div>
+                            ) : adminUsers.length === 0 ? (
+                                <div className="rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">
+                                    No administrators found.
+                                </div>
+                            ) : (
+                                <div className="overflow-hidden rounded-xl border border-slate-200">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-slate-50 text-left">
+                                            <tr>
+                                                <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Name</th>
+                                                <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Email</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {adminUsers.map((admin) => (
+                                                <tr key={String(admin.id)}>
+                                                    <td className="px-4 py-3 text-slate-800">{admin.name || "Unknown"}</td>
+                                                    <td className="px-4 py-3 text-slate-600">{admin.email || "—"}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </ModalBackdrop>

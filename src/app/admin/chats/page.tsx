@@ -11,7 +11,6 @@ import {
     Inbox,
     Mail,
     MailCheck,
-    Menu,
     RefreshCw,
     Search,
     Send,
@@ -348,7 +347,6 @@ export default function AdminChatsPage() {
         previous: { total: 0, liveRequests: 0, convertedLeads: 0, responseTotalSeconds: 0, responseCount: 0 },
     });
 
-    const [sidebarOpen, setSidebarOpen] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -636,7 +634,6 @@ export default function AdminChatsPage() {
 
     const handleSelectConversation = (id: number) => {
         setSelectedConversationId(id);
-        setSidebarOpen(false);
     };
 
     useEffect(() => {
@@ -808,13 +805,7 @@ export default function AdminChatsPage() {
             <section className="mx-auto flex w-full min-h-0 max-w-7xl flex-1 flex-col overflow-hidden">
                 {/* Mobile/tablet top bar */}
                 <div className="flex shrink-0 items-center justify-between gap-2 px-1 pb-2 lg:hidden">
-                    <button
-                        onClick={() => setSidebarOpen(true)}
-                        aria-label="Open conversations menu"
-                        className="flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1]"
-                    >
-                        <Menu className="h-4 w-4" />
-                    </button>
+                    <p className="text-sm font-semibold text-slate-800">Conversations</p>
                     <button
                         onClick={() => void handleManualRefresh()}
                         disabled={refreshing || loading}
@@ -854,24 +845,56 @@ export default function AdminChatsPage() {
 
                 {/* Queue summary + Refresh */}
                 <div className="mb-2 flex shrink-0 items-stretch gap-2">
-                    <div className="grid flex-1 grid-cols-2 gap-3 lg:grid-cols-4">
+                    <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         {statsLoading ? (
                             <ChatStatsSkeleton />
                         ) : (
                             statCards.map((s) => <ChatStatCard key={s.label} {...s} />)
                         )}
                     </div>
+                </div>
 
-                    <button
-                        onClick={() => void handleManualRefresh()}
-                        disabled={refreshing || loading}
-                        title="Refresh conversations"
-                        aria-label="Refresh conversations"
-                        className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-                        <span className="hidden sm:inline">Refresh</span>
-                    </button>
+                {/* Mobile/tablet conversation list cards */}
+                <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm lg:hidden">
+                    {sidebarSearchHeader}
+                    <div className="max-h-72 space-y-1.5 overflow-y-auto p-1.5">
+                        {loading || refreshing ? (
+                            <ConversationListSkeleton />
+                        ) : filteredConversations.length === 0 ? (
+                            <div className="flex flex-col items-center gap-2 rounded-xl bg-slate-50 p-6 text-center">
+                                <Inbox className="h-5 w-5 text-slate-300" />
+                                <p className="text-sm text-slate-500">
+                                    {conversations.length === 0 ? "No conversations yet." : "Nothing matches that filter."}
+                                </p>
+                            </div>
+                        ) : (
+                            filteredConversations.map((conversation) => {
+                                const isActive = conversation.id === selectedConversationId;
+                                const s = statusOf(conversation.status);
+                                const name = conversation.inquiry?.full_name ?? "Guest visitor";
+                                return (
+                                    <button
+                                        key={`mobile-${conversation.id}`}
+                                        onClick={() => handleSelectConversation(conversation.id)}
+                                        className={`group relative flex w-full items-start gap-3 overflow-hidden rounded-xl border p-2.5 pl-3.5 text-left transition ${isActive ? "border-[#0D47A1]/30 bg-[#0D47A1]/4" : "border-transparent hover:bg-slate-50"
+                                            }`}
+                                    >
+                                        <span className={`absolute inset-y-2 left-0 w-0.75 rounded-full ${s.rail}`} />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
+                                                <span className="shrink-0 font-mono text-[10px] text-slate-400">{timeAgo(conversation.updated_at)}</span>
+                                            </div>
+                                            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5">
+                                                <p className="truncate text-xs text-slate-500">{conversation.inquiry?.email_address ?? "No email"}</p>
+                                                <span className="font-mono text-[10px] text-slate-400">{conversation.message_count} msgs</span>
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -880,30 +903,6 @@ export default function AdminChatsPage() {
                         {sidebarSearchHeader}
                         {sidebarListBody}
                     </div>
-
-                    {/* Mobile/tablet off-canvas drawer with the same content */}
-                    {sidebarOpen ? (
-                        <div className="fixed inset-0 z-50 lg:hidden">
-                            <div
-                                className="absolute inset-0 bg-slate-900/40"
-                                onClick={() => setSidebarOpen(false)}
-                            />
-                            <div className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm flex-col overflow-hidden bg-white shadow-xl">
-                                <div className="flex shrink-0 items-center justify-between border-b border-slate-100 p-3">
-                                    <p className="text-sm font-semibold text-slate-800">Conversations</p>
-                                    <button
-                                        onClick={() => setSidebarOpen(false)}
-                                        aria-label="Close conversations menu"
-                                        className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100"
-                                    >
-                                        <X className="h-5 w-5" />
-                                    </button>
-                                </div>
-                                {sidebarSearchHeader}
-                                {sidebarListBody}
-                            </div>
-                        </div>
-                    ) : null}
 
                     <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                         {selectedConversationId === null ? (

@@ -137,18 +137,6 @@ function TestimonialStatCard({
         {valuePrefix}
         <p className="text-3xl font-bold text-gray-900">{value}</p>
       </div>
-
-      {typeof ratingValue === "number" ? (
-        <div className="mb-2 flex items-center gap-0.5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Star
-              key={i}
-              className={`h-3.5 w-3.5 ${i < Math.round(ratingValue) ? "fill-[#1B3A8C] text-[#1B3A8C]" : "fill-slate-100 text-slate-200"}`}
-            />
-          ))}
-        </div>
-      ) : null}
-
       <p className="text-xs text-slate-400">{trendText || supporting || " "}</p>
     </article>
   );
