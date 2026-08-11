@@ -23,27 +23,18 @@ import {
 } from "lucide-react";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/contexts/AuthContext";
-import { AdminModuleKey, hasModuleAccess, moduleForAdminPath } from "@/lib/rbac";
 
-type MenuItem = {
-  title: string;
-  href: string;
-  icon: React.ElementType;
-  module: AdminModuleKey;
-};
-
-const menuItems: { section: string; items: MenuItem[] }[] = [
+const menuItems = [
   {
     section: "Menu",
     items: [
-      { title: "Dashboard", href: "/admin", icon: LayoutDashboard, module: "dashboard" },
-      { title: "Quotation", href: "/admin/quotation", icon: FileSpreadsheet, module: "quotation" },
-      { title: "Chat", href: "/admin/chats", icon: MessagesSquare, module: "chats" },
-      { title: "Inquiry", href: "/admin/inquiries", icon: MailQuestion, module: "inquiry" },
-      { title: "Announcement", href: "/admin/announcements", icon: Megaphone, module: "announcements" },
-      { title: "Testimonial", href: "/admin/testimonials", icon: MessageCircleHeart, module: "testimonials" },
-      { title: "User", href: "/admin/users", icon: Users, module: "users" },
-      { title: "Profile Settings", href: "/admin/settings", icon: Settings, module: "profile" },
+      { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
+      { title: "Quotation", href: "/admin/quotation", icon: FileSpreadsheet },
+      { title: "Chat", href: "/admin/chats", icon: MessagesSquare },
+      { title: "Inquiry", href: "/admin/inquiries", icon: MailQuestion },
+      { title: "Announcement", href: "/admin/announcements", icon: Megaphone },
+      { title: "Testimonial", href: "/admin/testimonials", icon: MessageCircleHeart },
+      { title: "User", href: "/admin/users", icon: Users },
     ],
   },
 ];
@@ -54,12 +45,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isOpen, setIsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { user, role, isAuthenticated, canAccessAdmin, isAuthReady, logout } = useAuth();
-
-  const visibleMenuItems = menuItems.map((section) => ({
-    ...section,
-    items: section.items.filter((item) => hasModuleAccess(role, item.module)),
-  }));
+  const { user, isAuthenticated, isAdmin, isAuthReady, logout } = useAuth();
 
   const handleLogout = async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -88,19 +74,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       return;
     }
 
-    if (!canAccessAdmin) {
-      router.replace("/login");
-      return;
-    }
-
-    const activeModule = moduleForAdminPath(pathname);
-    if (activeModule && !hasModuleAccess(role, activeModule)) {
-      router.replace("/admin");
+    if (!isAdmin) {
+      router.replace("/");
       return;
     }
 
     setLoading(false);
-  }, [canAccessAdmin, isAuthReady, isAuthenticated, pathname, role, router, user]);
+  }, [isAuthReady, isAuthenticated, isAdmin, router, user]);
 
   if (loading) {
     return (
@@ -152,7 +132,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-3">
-          {visibleMenuItems.map(({ section, items }) => (
+          {menuItems.map(({ section, items }) => (
             <div key={section}>
               {items
                 .filter((item) => item?.href?.trim())

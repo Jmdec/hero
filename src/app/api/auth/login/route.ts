@@ -86,21 +86,9 @@ export async function POST(request: NextRequest) {
       }, { status: 403 })
     }
 
-    const nextResponse = NextResponse.json(data, {
+    return NextResponse.json(data, {
       status: response.status,
     })
-
-    const token = data?.token ?? data?.access_token
-    if (response.ok && typeof token === "string" && token.trim() !== "") {
-      nextResponse.cookies.set("session", token, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-      })
-    }
-
-    return nextResponse
   } catch (error: unknown) {
     console.error("=== LOGIN ERROR ===")
 

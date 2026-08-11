@@ -48,7 +48,6 @@ export async function POST(
                 Accept: "application/json",
                 "Content-Type": "application/json",
                 "X-Frontend-Origin": request.nextUrl.origin,
-                Authorization: request.headers.get("authorization") ?? "",
             },
         });
 

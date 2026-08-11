@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { normalizeRole } from "@/lib/rbac";
 
 interface LoginResponse {
   user: any;
@@ -110,8 +109,8 @@ export default function LoginPage() {
       login(data.user, token)
       showToast("Login successful!", "success");
 
-      const role = normalizeRole(data.user?.role);
-      if (role === "admin" || role === "manager") {
+      const role = data.user.role;
+      if (role === "admin") {
         router.push("/admin");
       } else {
         router.push("/");
