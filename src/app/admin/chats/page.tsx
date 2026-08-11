@@ -6,6 +6,7 @@ import {
     ArrowRightLeft,
     Bot,
     CheckCircle2,
+    EllipsisVertical,
     Headset,
     Inbox,
     Mail,
@@ -201,8 +202,10 @@ export default function AdminChatsPage() {
     const [agentRequestNotice, setAgentRequestNotice] = useState<string | null>(null);
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const actionsMenuRef = useRef<HTMLDivElement>(null);
 
     const notifiedRequestIds = useRef<Set<number>>(new Set());
 
@@ -309,6 +312,34 @@ export default function AdminChatsPage() {
         }, 2000); // every 2 seconds
 
         return () => clearInterval(interval);
+    }, [selectedConversationId]);
+
+    useEffect(() => {
+        if (!actionsMenuOpen) return;
+
+        const handlePointerDown = (event: MouseEvent) => {
+            if (!actionsMenuRef.current?.contains(event.target as Node)) {
+                setActionsMenuOpen(false);
+            }
+        };
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setActionsMenuOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handlePointerDown);
+        document.addEventListener("keydown", handleEscape);
+
+        return () => {
+            document.removeEventListener("mousedown", handlePointerDown);
+            document.removeEventListener("keydown", handleEscape);
+        };
+    }, [actionsMenuOpen]);
+
+    useEffect(() => {
+        setActionsMenuOpen(false);
     }, [selectedConversationId]);
 
     const refresh = async () => {
@@ -712,58 +743,93 @@ export default function AdminChatsPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex flex-wrap gap-2">
+                                        <div ref={actionsMenuRef} className="relative ml-auto shrink-0 self-start">
                                             <button
-                                                onClick={() => void handleToggleAddressed()}
-                                                disabled={markingAddressed}
-                                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedIsAddressed
-                                                    ? "border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100"
-                                                    : "border-slate-200 text-slate-700 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
-                                                    }`}
+                                                type="button"
+                                                onClick={() => setActionsMenuOpen((open) => !open)}
+                                                aria-label="Open conversation actions"
+                                                aria-haspopup="menu"
+                                                aria-expanded={actionsMenuOpen}
+                                                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1]"
                                             >
-                                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                                {selectedIsAddressed ? "Addressed" : "Mark as addressed"}
+                                                <EllipsisVertical className="h-4 w-4" />
                                             </button>
-                                            <button
-                                                onClick={() => void handleSendHistory()}
-                                                disabled={sendingHistory || !selectedHasEmail}
-                                                title={
-                                                    selectedHasEmail
-                                                        ? "Email the full chat transcript to the visitor"
-                                                        : "No email on file for this visitor"
-                                                }
-                                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedRequestedHistory
-                                                    ? "border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100"
-                                                    : "border-slate-200 text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
-                                                    }`}
-                                            >
-                                                <Mail className="h-3.5 w-3.5" />
-                                                {sendingHistory ? "Sending…" : "Send history"}
-                                            </button>
-                                            <button
-                                                onClick={() => void handleTakeOver()}
-                                                disabled={selectedIsEnded}
-                                                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                                            >
-                                                <Headset className="h-3.5 w-3.5" />
-                                                Take over
-                                            </button>
-                                            <button
-                                                onClick={() => void handleReturnToAI()}
-                                                disabled={selectedIsEnded}
-                                                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                                            >
-                                                <Bot className="h-3.5 w-3.5" />
-                                                Return to AI
-                                            </button>
-                                            <button
-                                                onClick={() => void handleCloseConversation()}
-                                                disabled={selectedIsEnded}
-                                                className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                                            >
-                                                <XCircle className="h-3.5 w-3.5" />
-                                                Close
-                                            </button>
+
+                                            {actionsMenuOpen ? (
+                                                <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActionsMenuOpen(false);
+                                                            void handleToggleAddressed();
+                                                        }}
+                                                        disabled={markingAddressed}
+                                                        className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedIsAddressed
+                                                            ? "bg-teal-50 text-teal-700 hover:bg-teal-100"
+                                                            : "text-slate-700 hover:bg-teal-50 hover:text-teal-700"
+                                                            }`}
+                                                    >
+                                                        <CheckCircle2 className="h-4 w-4" />
+                                                        {selectedIsAddressed ? "Addressed" : "Mark as addressed"}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActionsMenuOpen(false);
+                                                            void handleSendHistory();
+                                                        }}
+                                                        disabled={sendingHistory || !selectedHasEmail}
+                                                        title={
+                                                            selectedHasEmail
+                                                                ? "Email the full chat transcript to the visitor"
+                                                                : "No email on file for this visitor"
+                                                        }
+                                                        className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedRequestedHistory
+                                                            ? "bg-sky-50 text-sky-700 hover:bg-sky-100"
+                                                            : "text-slate-700 hover:bg-sky-50 hover:text-sky-700"
+                                                            }`}
+                                                    >
+                                                        <Mail className="h-4 w-4" />
+                                                        {sendingHistory ? "Sending…" : "Send history"}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActionsMenuOpen(false);
+                                                            void handleTakeOver();
+                                                        }}
+                                                        disabled={selectedIsEnded}
+                                                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-40"
+                                                    >
+                                                        <Headset className="h-4 w-4" />
+                                                        Take over
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActionsMenuOpen(false);
+                                                            void handleReturnToAI();
+                                                        }}
+                                                        disabled={selectedIsEnded}
+                                                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    >
+                                                        <Bot className="h-4 w-4" />
+                                                        Return to AI
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActionsMenuOpen(false);
+                                                            void handleCloseConversation();
+                                                        }}
+                                                        disabled={selectedIsEnded}
+                                                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    >
+                                                        <XCircle className="h-4 w-4" />
+                                                        Close
+                                                    </button>
+                                                </div>
+                                            ) : null}
                                         </div>
                                     </div>
                                 </div>
