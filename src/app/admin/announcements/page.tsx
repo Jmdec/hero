@@ -238,21 +238,6 @@ function getPageNumbers(current: number, last: number): (number | "…")[] {
   return result;
 }
 
-function isSameMonth(date: Date, now: Date) {
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
-}
-
-function isPreviousMonth(date: Date, now: Date) {
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  return date.getFullYear() === prev.getFullYear() && date.getMonth() === prev.getMonth();
-}
-
-function getTrendText(current: number, previous: number) {
-  const delta = current - previous;
-  if (delta === 0) return "";
-  return `${delta > 0 ? "+" : ""}${delta} vs last month`;
-}
-
 type ConfirmState = {
   title: string;
   description: string;
@@ -315,14 +300,6 @@ function StatCard({
       </div>
       <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
       <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-      {trend ? (
-        <p className={`flex items-center gap-1 text-xs font-medium ${trendTone}`}>
-          {showTrendIcon}
-          {trend}
-        </p>
-      ) : (
-        <div className="h-4.5" />
-      )}
     </button>
   );
 }
@@ -513,71 +490,6 @@ export default function AnnouncementsAdmin() {
 
   const drillDownData = useMemo(() => buildDrillDownData(stats, items), [stats, items]);
   const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
-
-  const statCards = useMemo(() => {
-    const now = new Date();
-    const monthly = items.reduce(
-      (acc, item) => {
-        const source = item.date || item.created_at;
-        const date = new Date(source);
-        if (Number.isNaN(date.getTime())) return acc;
-
-        const normalizedStatus = item.status === "posted" ? "published" : item.status;
-        if (isSameMonth(date, now)) {
-          acc.current.total += 1;
-          if (normalizedStatus === "published") acc.current.published += 1;
-          if (normalizedStatus === "scheduled") acc.current.scheduled += 1;
-          if (normalizedStatus === "draft") acc.current.draft += 1;
-        } else if (isPreviousMonth(date, now)) {
-          acc.previous.total += 1;
-          if (normalizedStatus === "published") acc.previous.published += 1;
-          if (normalizedStatus === "scheduled") acc.previous.scheduled += 1;
-          if (normalizedStatus === "draft") acc.previous.draft += 1;
-        }
-
-        return acc;
-      },
-      {
-        current: { total: 0, published: 0, scheduled: 0, draft: 0 },
-        previous: { total: 0, published: 0, scheduled: 0, draft: 0 },
-      },
-    );
-
-    return [
-      {
-        id: "total" as const,
-        label: "Total announcements",
-        value: String(stats.total),
-        icon: Megaphone,
-        tone: "neutral" as const,
-        trend: getTrendText(monthly.current.total, monthly.previous.total),
-      },
-      {
-        id: "published" as const,
-        label: "Published",
-        value: String(stats.published),
-        icon: FileText,
-        tone: "green" as const,
-        trend: getTrendText(monthly.current.published, monthly.previous.published),
-      },
-      {
-        id: "scheduled" as const,
-        label: "Scheduled",
-        value: String(stats.scheduled),
-        icon: Calendar,
-        tone: "amber" as const,
-        trend: getTrendText(monthly.current.scheduled, monthly.previous.scheduled),
-      },
-      {
-        id: "draft" as const,
-        label: "Draft",
-        value: String(stats.draft),
-        icon: Clock,
-        tone: "red" as const,
-        trend: getTrendText(monthly.current.draft, monthly.previous.draft),
-      },
-    ];
-  }, [items, stats]);
 
   function openView(a: Announcement) {
     setViewTarget(a);
@@ -927,9 +839,10 @@ export default function AnnouncementsAdmin() {
     <main className="min-h-screen">
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {statCards.map((card) => (
-            <StatCard key={card.id} {...card} onClick={setActiveCard} />
-          ))}
+          <StatCard id="total" label="Total announcements" value={String(stats.total)} icon={Megaphone} tone="neutral" onClick={setActiveCard} />
+          <StatCard id="published" label="Published" value={String(stats.published)} icon={FileText} tone="green" onClick={setActiveCard} />
+          <StatCard id="scheduled" label="Scheduled" value={String(stats.scheduled)} icon={Calendar} tone="amber" onClick={setActiveCard} />
+          <StatCard id="draft" label="Draft" value={String(stats.draft)} icon={Clock} tone="red" onClick={setActiveCard} />
         </div>
 
         {/* Filters */}

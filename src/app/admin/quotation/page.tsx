@@ -23,8 +23,6 @@ import {
     ZoomIn,
     ZoomOut,
     Download,
-    TrendingUp,
-    TrendingDown,
 } from "lucide-react";
 
 type Status =
@@ -294,109 +292,82 @@ function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id
 }
 
 type StatTone = "neutral" | "amber" | "green" | "red";
-type StatKey = "total" | "needs_attention" | "value" | "cancelled";
 
-const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
-    neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]" },
-    amber: { bg: "bg-amber-50", text: "text-amber-700" },
-    green: { bg: "bg-green-50", text: "text-green-700" },
-    red: { bg: "bg-red-50", text: "text-red-600" },
-};
-
-function buildDrillDownData(quotations: Quotation[], counts: Record<Status | "all", number>, needsAttention: number, completedValue: number) {
-    const paidCount = counts.paid + counts.contract_sent + counts.completed;
-    const awaitingPaymentCount = counts.awaiting_payment + counts.payment_verification;
-    const conversionRate = counts.all > 0 ? Math.round((paidCount / counts.all) * 100) : 0;
-    const avgValue = counts.completed > 0 ? Math.round(completedValue / counts.completed) : 0;
-    const pendingShare = counts.all > 0 ? Math.round((counts.pending / counts.all) * 100) : 0;
-    const activeShare = counts.all > 0 ? Math.round(((counts.all - counts.completed - counts.cancelled) / counts.all) * 100) : 0;
-    const cancelledShare = counts.all > 0 ? Math.round((counts.cancelled / counts.all) * 100) : 0;
-    const openValue = quotations
-        .filter((q) => q.status !== "completed" && q.status !== "cancelled")
-        .reduce((sum, q) => sum + (q.detail ? Number(q.detail.total) || 0 : 0), 0);
-
-    return {
-        total: {
-            title: "All Quotations",
-            items: [
-                { label: "Pending", value: String(counts.pending), sub: `${pendingShare}% of all requests` },
-                { label: "Needs attention", value: String(needsAttention), sub: "Pending and payment follow-ups" },
-                { label: "Completed", value: String(counts.completed), sub: `${counts.all > 0 ? Math.round((counts.completed / counts.all) * 100) : 0}% completion rate` },
-                { label: "Conversion rate", value: `${conversionRate}%`, sub: "Paid, contract sent, or completed" },
-            ],
-        },
-        needs_attention: {
-            title: "Needs Attention",
-            items: [
-                { label: "Pending", value: String(counts.pending), sub: "Waiting for first action" },
-                { label: "Awaiting payment", value: String(awaitingPaymentCount), sub: "Client payment reminders" },
-                { label: "Cancelled", value: String(counts.cancelled), sub: `${cancelledShare}% cancellation rate` },
-                { label: "Active requests", value: String(counts.all - counts.completed - counts.cancelled), sub: `${activeShare}% still in pipeline` },
-            ],
-        },
-        value: {
-            title: "Quotation Value",
-            items: [
-                { label: "Completed value", value: `PHP ${completedValue.toLocaleString("en-PH")}`, sub: "Closed won quotations" },
-                { label: "Average completed value", value: `PHP ${avgValue.toLocaleString("en-PH")}`, sub: "Mean completed deal size" },
-                { label: "Paid/contracted", value: String(paidCount), sub: `${conversionRate}% of all requests` },
-                { label: "Open value", value: `PHP ${openValue.toLocaleString("en-PH")}`, sub: "Potential value in active pipeline" },
-            ],
-        },
-        cancelled: {
-            title: "Cancelled Quotations",
-            items: [
-                { label: "Cancelled count", value: String(counts.cancelled), sub: `${cancelledShare}% of all requests` },
-                { label: "Pending before cancel", value: String(counts.pending), sub: "Open requests that may churn" },
-                { label: "Awaiting payment before cancel", value: String(awaitingPaymentCount), sub: "Likely drop-off segment" },
-                { label: "Completed quotes", value: String(counts.completed), sub: "Successful closures" },
-            ],
-        },
-    } as Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>;
-}
-
-function StatCard({
-    id,
-    label,
-    value,
-    icon: Icon,
-    trend,
-    tone = "neutral",
-    onClick,
-}: {
-    id: StatKey;
+type QuotationStatCardData = {
     label: string;
     value: string;
-    icon: React.ComponentType<{ className?: string }>;
     trend?: string;
-    tone?: StatTone;
-    onClick: (id: StatKey) => void;
-}) {
+    note?: string;
+    icon: React.ComponentType<{ className?: string }>;
+    tone: StatTone;
+};
+
+const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string; accent: string }> = {
+    neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]", accent: "bg-[#0D47A1]" },
+    amber: { bg: "bg-amber-50", text: "text-amber-700", accent: "bg-amber-500" },
+    green: { bg: "bg-green-50", text: "text-green-700", accent: "bg-green-500" },
+    red: { bg: "bg-red-50", text: "text-red-600", accent: "bg-red-500" },
+};
+
+function formatTrend(current: number, previous: number) {
+    if (previous === 0) {
+        if (current === 0) return "No change";
+        return "+100%";
+    }
+    const delta = Math.round(((current - previous) / previous) * 100);
+    if (delta === 0) return "No change";
+    return `${delta > 0 ? "+" : ""}${delta}%`;
+}
+
+function QuotationStatCard({ label, value, trend, note, icon: Icon, tone = "neutral" }: QuotationStatCardData) {
     const t = STAT_TONE_STYLES[tone];
-    const trendTone = trend?.startsWith("+") ? "text-green-600" : trend?.startsWith("-") ? "text-red-600" : "text-slate-500";
+    const trendTone = trend?.startsWith("+")
+        ? "text-green-600"
+        : trend?.startsWith("-")
+            ? "text-red-600"
+            : "text-[#64748B]";
+
     return (
-        <button
-            onClick={() => onClick(id)}
-            className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
-        >
-            <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
+        <article className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent">
+            <div className={`absolute top-0 left-0 w-1 h-full ${t.accent}`} />
             <div className="flex items-start justify-between mb-4">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
                     <Icon className={`w-5 h-5 ${t.text}`} />
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
+                {trend ? <p className={`text-xs font-semibold ${trendTone}`}>{trend}</p> : null}
             </div>
             <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
             <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-            {trend ? (
-                <p className={`flex items-center gap-1 text-xs font-medium ${trendTone}`}>
-                    {trend.startsWith("+") ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                    {trend}
-                </p>
-            ) : (
-                <div className="h-4.5" />
-            )}
-        </button>
+            <p className="text-xs text-[#64748B]">{note ?? " "}</p>
+        </article>
+    );
+}
+
+function QuotationStatCardSkeleton() {
+    return (
+        <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent animate-pulse">
+            <div className="absolute top-0 left-0 w-1 h-full bg-slate-200" />
+            <div className="flex items-start justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-slate-200" />
+                <div className="h-3 w-12 rounded bg-slate-200" />
+            </div>
+            <div className="h-4 w-28 rounded bg-slate-200 mb-3" />
+            <div className="h-9 w-20 rounded bg-slate-200 mb-3" />
+            <div className="flex items-center gap-2">
+                <div className="h-3 w-14 rounded bg-slate-200" />
+                <div className="h-3 w-10 rounded bg-slate-200" />
+            </div>
+        </div>
+    );
+}
+
+function QuotationStatsSkeleton() {
+    return (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+                <QuotationStatCardSkeleton key={i} />
+            ))}
+        </div>
     );
 }
 
@@ -749,7 +720,6 @@ export default function AdminQuotationsPage() {
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const [statusEditTarget, setStatusEditTarget] = useState<Quotation | null>(null);
     const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
-    const [activeCard, setActiveCard] = useState<StatKey | null>(null);
 
     const [idDoc, setIdDoc] = useState<{ title: string; url: string } | null>(null);
     const [sendingPaymentLinkId, setSendingPaymentLinkId] = useState<number | null>(null);
@@ -848,80 +818,86 @@ export default function AdminQuotationsPage() {
             .reduce((sum, q) => sum + (q.detail ? Number(q.detail.total) || 0 : 0), 0);
     }, [quotations]);
 
-    const drillDownData = useMemo(
-        () => buildDrillDownData(quotations, counts, needsAttention, completed),
-        [quotations, counts, needsAttention, completed],
-    );
-
-    const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
-
-    const statCards = useMemo(() => {
+    const periodStats = useMemo(() => {
         const now = new Date();
-        const monthly = quotations.reduce(
-            (acc, quote) => {
-                const created = new Date(quote.created_at);
-                if (Number.isNaN(created.getTime())) return acc;
-                const quoteValue = quote.detail ? Number(quote.detail.total) || 0 : 0;
+        const currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-                if (isSameMonth(created, now)) {
-                    acc.current.total += 1;
-                    if (["pending", "awaiting_payment", "payment_verification"].includes(quote.status)) {
-                        acc.current.needsAttention += 1;
-                    }
-                    if (quote.status === "completed") acc.current.value += quoteValue;
-                    if (quote.status === "cancelled") acc.current.cancelled += 1;
-                } else if (isPreviousMonth(created, now)) {
-                    acc.previous.total += 1;
-                    if (["pending", "awaiting_payment", "payment_verification"].includes(quote.status)) {
-                        acc.previous.needsAttention += 1;
-                    }
-                    if (quote.status === "completed") acc.previous.value += quoteValue;
-                    if (quote.status === "cancelled") acc.previous.cancelled += 1;
-                }
+        const isConverted = (quote: Quotation) => quote.status === "contract_sent" || quote.status === "completed";
 
-                return acc;
-            },
-            {
-                current: { total: 0, needsAttention: 0, value: 0, cancelled: 0 },
-                previous: { total: 0, needsAttention: 0, value: 0, cancelled: 0 },
-            },
-        );
+        let currentTotal = 0;
+        let previousTotal = 0;
+        let currentConverted = 0;
+        let previousConverted = 0;
+
+        quotations.forEach((quote) => {
+            const created = new Date(quote.created_at);
+            if (Number.isNaN(created.getTime())) return;
+
+            if (created >= currentStart) {
+                currentTotal += 1;
+                if (isConverted(quote)) currentConverted += 1;
+                return;
+            }
+
+            if (created >= previousStart && created < currentStart) {
+                previousTotal += 1;
+                if (isConverted(quote)) previousConverted += 1;
+            }
+        });
+
+        const currentRate = currentTotal > 0 ? Math.round((currentConverted / currentTotal) * 100) : 0;
+        const previousRate = previousTotal > 0 ? Math.round((previousConverted / previousTotal) * 100) : 0;
+
+        return {
+            currentTotal,
+            previousTotal,
+            currentRate,
+            previousRate,
+            totalTrend: formatTrend(currentTotal, previousTotal),
+            conversionTrend: formatTrend(currentRate, previousRate),
+        };
+    }, [quotations]);
+
+    const quotationStatsCards = useMemo<QuotationStatCardData[]>(() => {
+        const convertedCount = counts.contract_sent + counts.completed;
+        const conversionRate = counts.all > 0 ? Math.round((convertedCount / counts.all) * 100) : 0;
 
         return [
             {
-                id: "total" as const,
-                label: "Total requests",
+                label: "Total Quotations",
                 value: String(counts.all),
+                trend: periodStats.totalTrend,
+                note: `This month: ${periodStats.currentTotal}`,
                 icon: Inbox,
-                tone: "neutral" as const,
-                trend: getTrendText(monthly.current.total, monthly.previous.total),
+                tone: "neutral",
             },
             {
-                id: "needs_attention" as const,
-                label: "Needs attention",
-                value: String(needsAttention),
+                label: "Pending",
+                value: String(counts.pending),
+                trend: `${counts.all > 0 ? Math.round((counts.pending / counts.all) * 100) : 0}%`,
+                note: "Awaiting initial action",
                 icon: AlertCircle,
-                tone: "amber" as const,
-                trend: getTrendText(monthly.current.needsAttention, monthly.previous.needsAttention),
+                tone: "amber",
             },
             {
-                id: "value" as const,
-                label: "Quotation value",
-                value: formatCurrency(completed),
-                icon: Check,
-                tone: "green" as const,
-                trend: getTrendText(Math.round(monthly.current.value), Math.round(monthly.previous.value)),
+                label: "Contract Sent",
+                value: String(counts.contract_sent),
+                trend: `${counts.all > 0 ? Math.round((counts.contract_sent / counts.all) * 100) : 0}%`,
+                note: "Ready for client signing",
+                icon: FileText,
+                tone: "green",
             },
             {
-                id: "cancelled" as const,
-                label: "Cancelled",
-                value: String(counts.cancelled),
-                icon: XCircle,
-                tone: "red" as const,
-                trend: getTrendText(monthly.current.cancelled, monthly.previous.cancelled),
+                label: "Conversion Rate",
+                value: `${conversionRate}%`,
+                trend: periodStats.conversionTrend,
+                note: `Prev period: ${periodStats.previousRate}%`,
+                icon: CheckCircle2,
+                tone: "red",
             },
         ];
-    }, [quotations, counts, needsAttention, completed]);
+    }, [counts, periodStats]);
 
     const handleStatusUpdate = async (quote: Quotation, status: Status) => {
         const previousStatus = quote.status;
@@ -1186,11 +1162,15 @@ export default function AdminQuotationsPage() {
         <main className="min-h-screen">
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
                 {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                    {statCards.map((card) => (
-                        <StatCard key={card.id} {...card} onClick={setActiveCard} />
-                    ))}
-                </div>
+                {loading ? (
+                    <QuotationStatsSkeleton />
+                ) : (
+                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                        {quotationStatsCards.map((card) => (
+                            <QuotationStatCard key={card.label} {...card} />
+                        ))}
+                    </div>
+                )}
 
                 {error && (
                     <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-300 bg-[#FFF5F5] px-4 py-3 text-sm text-red-600">
@@ -1326,41 +1306,6 @@ export default function AdminQuotationsPage() {
                     )}
                 </div>
             </section>
-
-            {activeDrillDown && (
-                <ModalBackdrop onClose={() => setActiveCard(null)}>
-                    <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-                        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-                            <h2 className="text-lg font-semibold text-slate-900">
-                                {activeDrillDown.title}
-                            </h2>
-                            <button
-                                onClick={() => setActiveCard(null)}
-                                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-6 py-5">
-                            {activeDrillDown.items.map((item) => (
-                                <div
-                                    key={item.label}
-                                    className="rounded-xl bg-slate-50 p-4"
-                                >
-                                    <p className="text-xs text-slate-500">{item.label}</p>
-                                    <p className="mt-1 text-xl font-bold text-slate-900">
-                                        {item.value}
-                                    </p>
-                                    {item.sub ? (
-                                        <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>
-                                    ) : null}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </ModalBackdrop>
-            )}
 
             {/* Detail modal — receipt-style layout */}
             {selected && (
@@ -1778,19 +1723,4 @@ export default function AdminQuotationsPage() {
             <ToastStack toasts={toasts} onDismiss={dismissToast} />
         </main>
     );
-}
-
-function isSameMonth(date: Date, now: Date) {
-    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
-}
-
-function isPreviousMonth(date: Date, now: Date) {
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return date.getFullYear() === prev.getFullYear() && date.getMonth() === prev.getMonth();
-}
-
-function getTrendText(current: number, previous: number) {
-    const delta = current - previous;
-    if (delta === 0) return "";
-    return `${delta > 0 ? "+" : ""}${delta} vs last month`;
 }

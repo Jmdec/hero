@@ -5,8 +5,8 @@ import {
     AlertCircle,
     ArrowRightLeft,
     Bot,
-    ChevronRight,
     CheckCircle2,
+    Clock3,
     Headset,
     Inbox,
     Mail,
@@ -15,17 +15,37 @@ import {
     RefreshCw,
     Search,
     Send,
-    TrendingDown,
-    TrendingUp,
     User,
+    UserCheck,
     X,
     XCircle,
 } from "lucide-react";
 import { chatApi, type ChatConversation, type ConversationResponse } from "@/lib/chatApi";
 
 type StatusKey = "active" | "waiting_admin" | "agent_requested" | "agent_active" | "agent_closed" | "closed";
-type StatKey = "total" | "needs_you" | "live" | "addressed";
 type StatTone = "neutral" | "amber" | "green" | "red";
+
+type StatsPeriod = {
+    total: number;
+    liveRequests: number;
+    convertedLeads: number;
+    responseTotalSeconds: number;
+    responseCount: number;
+};
+
+type ChatStatsSnapshot = {
+    current: StatsPeriod;
+    previous: StatsPeriod;
+};
+
+type ChatStatCardData = {
+    label: string;
+    value: string;
+    trend?: string;
+    note?: string;
+    icon: React.ElementType;
+    tone: StatTone;
+};
 
 const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
     neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]" },
@@ -44,7 +64,6 @@ const STATUS: Record<StatusKey, { label: string; rail: string; dot: string; chip
 };
 
 const NEEDS_ADMIN: StatusKey[] = ["waiting_admin", "agent_requested"];
-
 const AGENT_OWNED: StatusKey[] = ["waiting_admin", "agent_requested", "agent_active"];
 
 const HISTORY_REQUEST_KEYWORDS = [
@@ -161,6 +180,64 @@ function durationSince(iso: string) {
     return `${hrs}h ${rem}m`;
 }
 
+function startOfMonth(ref: Date) {
+    return new Date(ref.getFullYear(), ref.getMonth(), 1);
+}
+
+function startOfPreviousMonth(ref: Date) {
+    return new Date(ref.getFullYear(), ref.getMonth() - 1, 1);
+}
+
+function statusIsLiveRequest(status: string) {
+    const key = status as StatusKey;
+    return key === "waiting_admin" || key === "agent_requested" || key === "agent_active" || key === "agent_closed";
+}
+
+function statusIsConvertedLead(status: string, addressedAt?: string | null) {
+    const key = status as StatusKey;
+    return key === "agent_active" || key === "agent_closed" || Boolean(addressedAt);
+}
+
+function getFirstResponseSeconds(conversation: ConversationResponse) {
+    const sorted = [...conversation.messages].sort(
+        (a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime(),
+    );
+
+    const firstClient = sorted.find((m) => m.sender === "user");
+    if (!firstClient) return null;
+
+    const firstAgentReply = sorted.find(
+        (m) => (m.sender === "assistant" || m.sender === "admin") && new Date(m.sent_at).getTime() >= new Date(firstClient.sent_at).getTime(),
+    );
+    if (!firstAgentReply) return null;
+
+    const seconds = Math.round((new Date(firstAgentReply.sent_at).getTime() - new Date(firstClient.sent_at).getTime()) / 1000);
+    return seconds >= 0 ? seconds : null;
+}
+
+function formatDurationFromSeconds(seconds: number) {
+    if (!Number.isFinite(seconds) || seconds <= 0) return "0s";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins === 0) return `${secs}s`;
+    return `${mins}m ${secs}s`;
+}
+
+function formatPercent(value: number, total: number) {
+    if (!total) return "0.0%";
+    return `${((value / total) * 100).toFixed(1)}%`;
+}
+
+function getPercentTrendText(current: number, previous: number) {
+    if (previous === 0) {
+        if (current === 0) return "No change";
+        return "+100%";
+    }
+    const delta = Math.round(((current - previous) / previous) * 100);
+    if (delta === 0) return "No change";
+    return `${delta > 0 ? "+" : ""}${delta}%`;
+}
+
 function ConversationSkeleton() {
     return (
         <div className="flex h-full flex-col">
@@ -211,7 +288,11 @@ export default function AdminChatsPage() {
     const [query, setQuery] = useState("");
     const [addressedFilter, setAddressedFilter] = useState<AddressedFilter>("all");
     const [agentRequestNotice, setAgentRequestNotice] = useState<string | null>(null);
-    const [activeCard, setActiveCard] = useState<StatKey | null>(null);
+    const [statsLoading, setStatsLoading] = useState(true);
+    const [statsSnapshot, setStatsSnapshot] = useState<ChatStatsSnapshot>({
+        current: { total: 0, liveRequests: 0, convertedLeads: 0, responseTotalSeconds: 0, responseCount: 0 },
+        previous: { total: 0, liveRequests: 0, convertedLeads: 0, responseTotalSeconds: 0, responseCount: 0 },
+    });
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -219,8 +300,56 @@ export default function AdminChatsPage() {
 
     const notifiedRequestIds = useRef<Set<number>>(new Set());
 
+    const buildStatsSnapshot = async (items: ChatConversation[]) => {
+        const now = new Date();
+        const currentStart = startOfMonth(now);
+        const previousStart = startOfPreviousMonth(now);
+
+        const snapshot: ChatStatsSnapshot = {
+            current: { total: 0, liveRequests: 0, convertedLeads: 0, responseTotalSeconds: 0, responseCount: 0 },
+            previous: { total: 0, liveRequests: 0, convertedLeads: 0, responseTotalSeconds: 0, responseCount: 0 },
+        };
+
+        const details = await Promise.allSettled(
+            items.map(async (item) => {
+                try {
+                    return await chatApi.getConversation(item.id);
+                } catch {
+                    return null;
+                }
+            }),
+        );
+
+        items.forEach((conversation, index) => {
+            const created = new Date(conversation.created_at);
+            if (Number.isNaN(created.getTime())) return;
+
+            const bucket = created >= currentStart
+                ? snapshot.current
+                : created >= previousStart && created < currentStart
+                    ? snapshot.previous
+                    : null;
+
+            if (!bucket) return;
+
+            bucket.total += 1;
+            if (statusIsLiveRequest(conversation.status)) bucket.liveRequests += 1;
+            if (statusIsConvertedLead(conversation.status, conversation.addressed_at)) bucket.convertedLeads += 1;
+
+            const detailResult = details[index];
+            if (detailResult.status !== "fulfilled" || !detailResult.value) return;
+            const responseSeconds = getFirstResponseSeconds(detailResult.value);
+            if (responseSeconds == null) return;
+            bucket.responseTotalSeconds += responseSeconds;
+            bucket.responseCount += 1;
+        });
+
+        return snapshot;
+    };
+
     const loadConversations = async () => {
         setLoading(true);
+        setStatsLoading(true);
         setError("");
 
         try {
@@ -229,6 +358,9 @@ export default function AdminChatsPage() {
             setConversations(items);
             checkForNewAgentRequests(items);
 
+            const snapshot = await buildStatsSnapshot(items);
+            setStatsSnapshot(snapshot);
+
             if (!selectedConversationId && items[0]?.id) {
                 setSelectedConversationId(items[0].id);
             }
@@ -236,6 +368,7 @@ export default function AdminChatsPage() {
             setError(err instanceof Error ? err.message : "Unable to load conversations.");
         } finally {
             setLoading(false);
+            setStatsLoading(false);
         }
     };
 
@@ -486,153 +619,57 @@ export default function AdminChatsPage() {
         );
     }, [conversations, query, addressedFilter]);
 
-    // Conversation overview — quick counts across the whole queue.
-    const overview = useMemo(() => {
-        const total = conversations.length;
-        const needsYou = conversations.filter((c) => NEEDS_ADMIN.includes(c.status as StatusKey)).length;
-        const live = conversations.filter((c) => (c.status as StatusKey) === "agent_active").length;
-        const ended = conversations.filter((c) => statusOf(c.status).ended).length;
-        const addressed = conversations.filter(isAddressed).length;
-        const needsResponse = total - addressed;
-        return { total, needsYou, live, ended, addressed, needsResponse };
-    }, [conversations]);
+    const statCards = useMemo<ChatStatCardData[]>(() => {
+        const currentResponseAvgSeconds = statsSnapshot.current.responseCount > 0
+            ? Math.round(statsSnapshot.current.responseTotalSeconds / statsSnapshot.current.responseCount)
+            : 0;
 
-    const statCards = useMemo<Omit<StatCardProps, "onClick">[]>(() => {
-        const now = new Date();
-        const monthStats = conversations.reduce(
-            (acc, c) => {
-                const created = new Date(c.created_at);
-                if (Number.isNaN(created.getTime())) return acc;
+        const previousResponseAvgSeconds = statsSnapshot.previous.responseCount > 0
+            ? Math.round(statsSnapshot.previous.responseTotalSeconds / statsSnapshot.previous.responseCount)
+            : 0;
 
-                const bucket = isSameMonth(created, now)
-                    ? acc.current
-                    : isPreviousMonth(created, now)
-                        ? acc.previous
-                        : null;
-                if (!bucket) return acc;
-
-                bucket.total += 1;
-                if (NEEDS_ADMIN.includes(c.status as StatusKey)) bucket.needsYou += 1;
-                if ((c.status as StatusKey) === "agent_active") bucket.live += 1;
-                if (isAddressed(c)) bucket.addressed += 1;
-                return acc;
-            },
-            {
-                current: { total: 0, needsYou: 0, live: 0, addressed: 0 },
-                previous: { total: 0, needsYou: 0, live: 0, addressed: 0 },
-            },
-        );
+        const currentLeadRate = statsSnapshot.current.total > 0
+            ? (statsSnapshot.current.convertedLeads / statsSnapshot.current.total) * 100
+            : 0;
+        const previousLeadRate = statsSnapshot.previous.total > 0
+            ? (statsSnapshot.previous.convertedLeads / statsSnapshot.previous.total) * 100
+            : 0;
 
         return [
             {
-                id: "total",
-                icon: Inbox,
                 label: "Total Conversations",
-                value: String(overview.total),
+                value: String(conversations.length),
+                trend: getPercentTrendText(statsSnapshot.current.total, statsSnapshot.previous.total),
+                note: `This month: ${statsSnapshot.current.total}`,
+                icon: Inbox,
                 tone: "neutral",
-                trend: getTrendText(monthStats.current.total, monthStats.previous.total),
             },
             {
-                id: "needs_you",
+                label: "Live Agent Requests",
+                value: String(conversations.filter((c) => statusIsLiveRequest(c.status)).length),
+                trend: getPercentTrendText(statsSnapshot.current.liveRequests, statsSnapshot.previous.liveRequests),
+                note: `${formatPercent(statsSnapshot.current.liveRequests, Math.max(statsSnapshot.current.total, 1))} of current period`,
                 icon: Headset,
-                label: "Needs You",
-                value: String(overview.needsYou),
                 tone: "amber",
-                trend: getTrendText(monthStats.current.needsYou, monthStats.previous.needsYou),
             },
             {
-                id: "live",
-                icon: Bot,
-                label: "Live Now",
-                value: String(overview.live),
+                label: "Average Response Time",
+                value: formatDurationFromSeconds(currentResponseAvgSeconds),
+                trend: getPercentTrendText(previousResponseAvgSeconds, currentResponseAvgSeconds),
+                note: `From ${statsSnapshot.current.responseCount} measured replies`,
+                icon: Clock3,
                 tone: "green",
-                trend: getTrendText(monthStats.current.live, monthStats.previous.live),
             },
             {
-                id: "addressed",
-                icon: CheckCircle2,
-                label: "Addressed",
-                value: String(overview.addressed),
+                label: "Lead Conversion",
+                value: `${currentLeadRate.toFixed(1)}%`,
+                trend: getPercentTrendText(Math.round(currentLeadRate), Math.round(previousLeadRate)),
+                note: `Prev period: ${previousLeadRate.toFixed(1)}%`,
+                icon: UserCheck,
                 tone: "red",
-                trend: getTrendText(monthStats.current.addressed, monthStats.previous.addressed),
             },
         ];
-    }, [conversations, overview]);
-
-    const drillDownData = useMemo<Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>>(() => {
-        const waitingQueue = conversations.filter((c) => NEEDS_ADMIN.includes(c.status as StatusKey));
-        const liveQueue = conversations.filter((c) => (c.status as StatusKey) === "agent_active");
-        const addressedQueue = conversations.filter((c) => isAddressed(c));
-        const unaddressedQueue = conversations.filter((c) => !isAddressed(c));
-        const endedQueue = conversations.filter((c) => statusOf(c.status).ended);
-        const longWaiting = waitingQueue.filter((c) => {
-            const mins = Math.round((Date.now() - new Date(c.updated_at).getTime()) / 60000);
-            return mins > 15;
-        }).length;
-        const staleUnaddressed = unaddressedQueue.filter((c) => {
-            const mins = Math.round((Date.now() - new Date(c.updated_at).getTime()) / 60000);
-            return mins > 30;
-        }).length;
-        const avgMessages = conversations.length
-            ? (conversations.reduce((sum, c) => sum + c.message_count, 0) / conversations.length).toFixed(1)
-            : "0.0";
-        const liveOver30m = liveQueue.filter((c) => {
-            const mins = Math.round((Date.now() - new Date(c.started_at).getTime()) / 60000);
-            return mins > 30;
-        }).length;
-        const longestLive = liveQueue
-            .map((c) => Math.round((Date.now() - new Date(c.started_at).getTime()) / 60000))
-            .sort((a, b) => b - a)[0];
-
-        return {
-            total: {
-                title: "Conversation Volume",
-                items: [
-                    { label: "Total conversations", value: String(overview.total), sub: "All tracked chat sessions" },
-                    { label: "Needs response", value: String(overview.needsResponse), sub: `${percent(overview.needsResponse, overview.total)} of total` },
-                    { label: "Addressed", value: String(overview.addressed), sub: `${percent(overview.addressed, overview.total)} of total` },
-                    { label: "Ended", value: String(overview.ended), sub: `${percent(overview.ended, overview.total)} of total` },
-                    { label: "Avg. messages/chat", value: avgMessages, sub: "Across all conversations" },
-                    { label: "Agent escalation rate", value: percent(overview.needsYou + overview.live, overview.total), sub: "Requested or live with admin" },
-                ],
-            },
-            needs_you: {
-                title: "Needs You Queue",
-                items: [
-                    { label: "Waiting for admin", value: String(overview.needsYou), sub: `${percent(overview.needsYou, overview.total)} of total` },
-                    { label: "Waiting > 15 min", value: String(longWaiting), sub: "At-risk response delay" },
-                    { label: "Unaddressed in queue", value: String(waitingQueue.filter((c) => !isAddressed(c)).length), sub: "Still pending triage" },
-                    { label: "Addressed but open", value: String(waitingQueue.filter((c) => isAddressed(c)).length), sub: "Marked handled, not closed" },
-                    { label: "Avg. queue messages", value: waitingQueue.length ? (waitingQueue.reduce((sum, c) => sum + c.message_count, 0) / waitingQueue.length).toFixed(1) : "0.0", sub: "Per waiting conversation" },
-                    { label: "Share of open queue", value: percent(overview.needsYou, Math.max(overview.total - overview.ended, 1)), sub: "Among non-ended chats" },
-                ],
-            },
-            live: {
-                title: "Live Admin Sessions",
-                items: [
-                    { label: "Live now", value: String(overview.live), sub: `${percent(overview.live, overview.total)} of total` },
-                    { label: "Live > 30 min", value: String(liveOver30m), sub: "Potential long-resolution chats" },
-                    { label: "Longest live", value: longestLive !== undefined ? `${longestLive}m` : "—", sub: "Current active sessions" },
-                    { label: "Avg. live messages", value: liveQueue.length ? (liveQueue.reduce((sum, c) => sum + c.message_count, 0) / liveQueue.length).toFixed(1) : "0.0", sub: "Per live conversation" },
-                    { label: "Addressed live", value: String(liveQueue.filter((c) => isAddressed(c)).length), sub: "Already marked addressed" },
-                    { label: "Unaddressed live", value: String(liveQueue.filter((c) => !isAddressed(c)).length), sub: "Needs follow-through" },
-                ],
-            },
-            addressed: {
-                title: "Addressing Health",
-                items: [
-                    { label: "Addressed total", value: String(overview.addressed), sub: `${percent(overview.addressed, overview.total)} coverage` },
-                    { label: "Unaddressed total", value: String(overview.needsResponse), sub: `${percent(overview.needsResponse, overview.total)} backlog` },
-                    { label: "Unaddressed > 30 min", value: String(staleUnaddressed), sub: "Aging unresolved chats" },
-                    { label: "Addressed and ended", value: String(addressedQueue.filter((c) => statusOf(c.status).ended).length), sub: "Fully completed" },
-                    { label: "Addressed but still open", value: String(addressedQueue.filter((c) => !statusOf(c.status).ended).length), sub: "Monitor until closure" },
-                    { label: "Unaddressed and ended", value: String(endedQueue.filter((c) => !isAddressed(c)).length), sub: "Process hygiene gap" },
-                ],
-            },
-        };
-    }, [conversations, overview]);
-
-    const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
+    }, [conversations, statsSnapshot]);
 
     const selectedIsEnded = selectedConversation ? statusOf(selectedConversation.status).ended : false;
     const selectedIsAddressed = selectedConversation ? isAddressed(selectedConversation) : false;
@@ -757,11 +794,13 @@ export default function AdminChatsPage() {
                 ) : null}
 
                 {/* Queue summary + Refresh */}
-                <div className="hidden shrink-0 items-stretch gap-2 mb-2 lg:flex">
+                <div className="mb-2 flex shrink-0 items-stretch gap-2">
                     <div className="grid flex-1 grid-cols-2 gap-3 lg:grid-cols-4">
-                        {statCards.map((s) => (
-                            <StatCard key={s.id} {...s} onClick={setActiveCard} />
-                        ))}
+                        {statsLoading ? (
+                            <ChatStatsSkeleton />
+                        ) : (
+                            statCards.map((s) => <ChatStatCard key={s.label} {...s} />)
+                        )}
                     </div>
 
                     <button
@@ -1017,120 +1056,64 @@ export default function AdminChatsPage() {
                 </div>
             </main>
 
-            {activeDrillDown && (
-                <ModalBackdrop onClose={() => setActiveCard(null)}>
-                    <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-                        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-                            <h2 className="text-lg font-semibold text-slate-900">
-                                {activeDrillDown.title}
-                            </h2>
-                            <button
-                                onClick={() => setActiveCard(null)}
-                                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3 px-6 py-5 sm:grid-cols-2">
-                            {activeDrillDown.items.map((item) => (
-                                <div key={item.label} className="rounded-xl bg-slate-50 p-4">
-                                    <p className="text-xs text-slate-500">{item.label}</p>
-                                    <p className="mt-1 text-xl font-bold text-slate-900">
-                                        {item.value}
-                                    </p>
-                                    {item.sub && (
-                                        <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </ModalBackdrop>
-            )}
-        </div>
-    );
-}
-
-function ModalBackdrop({
-    onClose,
-    children,
-}: {
-    onClose: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
-            onClick={onClose}
-        >
-            <div onClick={(e) => e.stopPropagation()} className="w-full flex justify-center">
-                {children}
-            </div>
         </div>
     );
 }
 
 type StatCardProps = {
-    id: StatKey;
     icon: React.ElementType;
     label: string;
     value: string;
     trend?: string;
+    note?: string;
     tone?: StatTone;
-    onClick: (id: StatKey) => void;
 };
 
-function StatCard({ id, icon: Icon, label, value, trend, tone = "neutral", onClick }: StatCardProps) {
+function ChatStatCard({ icon: Icon, label, value, trend, note, tone = "neutral" }: StatCardProps) {
     const t = STAT_TONE_STYLES[tone];
-    const trendUp = Boolean(trend && trend.startsWith("+"));
+    const trendTone = trend?.startsWith("+")
+        ? "text-green-600"
+        : trend?.startsWith("-")
+            ? "text-red-600"
+            : "text-slate-500";
 
     return (
-        <button
-            onClick={() => onClick(id)}
-            className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
-        >
-            <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
-            <div className="flex items-start justify-between mb-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
-                    <Icon className={`w-5 h-5 ${t.text}`} />
+        <article className="relative overflow-hidden rounded-2xl border border-transparent bg-white p-6 text-left shadow">
+            <div className={`absolute top-0 left-0 h-full w-1 ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
+            <div className="mb-4 flex items-start justify-between">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${t.bg}`}>
+                    <Icon className={`h-5 w-5 ${t.text}`} />
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
+                <p className={`text-xs font-semibold ${trendTone}`}>{trend ?? "No change"}</p>
             </div>
-            <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
-            <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-            {trend ? (
-                <p className={`flex items-center gap-1 text-xs font-medium ${trendUp ? "text-green-600" : "text-red-600"}`}>
-                    {trendUp ? (
-                        <TrendingUp className="h-3.5 w-3.5" />
-                    ) : (
-                        <TrendingDown className="h-3.5 w-3.5" />
-                    )}
-                    {trend}
-                </p>
-            ) : (
-                <p className="text-xs font-medium text-slate-400">No change</p>
-            )}
-        </button>
+            <p className="mb-1 text-sm font-medium text-gray-500">{label}</p>
+            <p className="mb-2 text-3xl font-bold text-gray-900">{value}</p>
+            <p className="text-xs text-slate-400">{note ?? " "}</p>
+        </article>
     );
 }
 
-function isSameMonth(date: Date, now: Date) {
-    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+function ChatStatCardSkeleton() {
+    return (
+        <div className="relative overflow-hidden rounded-2xl border border-transparent bg-white p-6 text-left shadow animate-pulse">
+            <div className="absolute top-0 left-0 h-full w-1 bg-slate-200" />
+            <div className="mb-4 flex items-start justify-between">
+                <div className="h-10 w-10 rounded-xl bg-slate-200" />
+                <div className="h-3 w-14 rounded bg-slate-200" />
+            </div>
+            <div className="mb-3 h-4 w-32 rounded bg-slate-200" />
+            <div className="mb-3 h-9 w-20 rounded bg-slate-200" />
+            <div className="h-3 w-32 rounded bg-slate-200" />
+        </div>
+    );
 }
 
-function isPreviousMonth(date: Date, now: Date) {
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return date.getFullYear() === prev.getFullYear() && date.getMonth() === prev.getMonth();
-}
-
-function getTrendText(current: number, previous: number) {
-    const delta = current - previous;
-    if (delta === 0) return "";
-    return `${delta > 0 ? "+" : ""}${delta} vs last month`;
-}
-
-function percent(value: number, total: number) {
-    if (!total) return "0.0%";
-    return `${((value / total) * 100).toFixed(1)}%`;
+function ChatStatsSkeleton() {
+    return (
+        <>
+            {Array.from({ length: 4 }).map((_, i) => (
+                <ChatStatCardSkeleton key={i} />
+            ))}
+        </>
+    );
 }

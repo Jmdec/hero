@@ -19,7 +19,6 @@ import {
   CheckCircle2,
   XCircle,
   TrendingUp,
-  TrendingDown,
 } from "lucide-react"
 
 interface Contact {
@@ -53,7 +52,6 @@ interface StatCardConfig {
   value: number
   icon: React.ComponentType<{ className?: string }>
   tone: StatTone
-  trend?: string
 }
 
 const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
@@ -335,21 +333,6 @@ function getPageNumbers(current: number, last: number): (number | "…")[] {
   return result;
 }
 
-function isSameMonth(date: Date, now: Date) {
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
-}
-
-function isPreviousMonth(date: Date, now: Date) {
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  return date.getFullYear() === prev.getFullYear() && date.getMonth() === prev.getMonth()
-}
-
-function getTrendText(current: number, previous: number) {
-  const delta = current - previous
-  if (delta === 0) return ""
-  return `${delta > 0 ? "+" : ""}${delta} vs last month`
-}
-
 function buildDrillDownData(stats: ContactStats, contacts: Contact[]) {
   const byType = contacts.reduce<Record<string, number>>((acc, contact) => {
     const label = INQUIRY_LABELS[contact.inquiry_type] ?? contact.inquiry_type
@@ -363,27 +346,14 @@ function buildDrillDownData(stats: ContactStats, contacts: Contact[]) {
     .map(([label, count]) => ({ label, value: String(count) }))
 
   const percentageText = (n: number) => (stats.total > 0 ? `${Math.round((n / stats.total) * 100)}% of total` : "—")
-  const unresolved = stats.new + stats.contacted
-  const contactRate = stats.total > 0 ? Math.round((stats.contacted / stats.total) * 100) : 0
-  const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
-  const agedNew = contacts.filter((contact) => {
-    if (contact.status !== "new") return false
-    const createdAt = new Date(contact.created_at)
-    if (Number.isNaN(createdAt.getTime())) return false
-    const ageMs = Date.now() - createdAt.getTime()
-    return ageMs > 1000 * 60 * 60 * 24 * 3
-  }).length
 
   return {
     total: {
       title: "All Inquiries",
       items: [
-        { label: "Open Pipeline", value: String(unresolved), sub: percentageText(unresolved) },
         { label: "New", value: String(stats.new), sub: percentageText(stats.new) },
         { label: "Contacted", value: String(stats.contacted), sub: percentageText(stats.contacted) },
         { label: "Completed", value: String(stats.completed), sub: percentageText(stats.completed) },
-        { label: "Contact Rate", value: `${contactRate}%`, sub: "Moved from new to contacted" },
-        { label: "Completion Rate", value: `${completionRate}%`, sub: "Closed inquiries out of total" },
         ...topTypes,
       ],
     },
@@ -392,7 +362,6 @@ function buildDrillDownData(stats: ContactStats, contacts: Contact[]) {
       items: [
         { label: "Count", value: String(stats.new), sub: percentageText(stats.new) },
         { label: "Awaiting first reply", value: String(stats.new) },
-        { label: "Aging > 3 days", value: String(agedNew), sub: "Needs follow-up soon" },
         ...topTypes,
       ],
     },
@@ -401,7 +370,6 @@ function buildDrillDownData(stats: ContactStats, contacts: Contact[]) {
       items: [
         { label: "Count", value: String(stats.contacted), sub: percentageText(stats.contacted) },
         { label: "Replied via email", value: String(stats.contacted) },
-        { label: "Still open", value: String(stats.contacted), sub: "Awaiting final resolution" },
         ...topTypes,
       ],
     },
@@ -410,7 +378,6 @@ function buildDrillDownData(stats: ContactStats, contacts: Contact[]) {
       items: [
         { label: "Count", value: String(stats.completed), sub: percentageText(stats.completed) },
         { label: "Closed out", value: String(stats.completed) },
-        { label: "Share of pipeline", value: `${completionRate}%`, sub: "Completion among all inquiries" },
         ...topTypes,
       ],
     },
@@ -442,11 +409,9 @@ function StatCard({
   value,
   icon: Icon,
   tone,
-  trend,
   onClick,
 }: StatCardConfig & { onClick: (id: StatKey) => void }) {
   const toneStyles = STAT_TONE_STYLES[tone]
-  const trendTone = trend?.startsWith("+") ? "text-green-600" : trend?.startsWith("-") ? "text-red-600" : "text-slate-500"
 
   return (
     <button
@@ -462,14 +427,6 @@ function StatCard({
       </div>
       <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
       <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-      {trend ? (
-        <p className={`flex items-center gap-1 text-xs font-medium ${trendTone}`}>
-          {trend.startsWith("+") ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-          {trend}
-        </p>
-      ) : (
-        <div className="h-4.5" />
-      )}
     </button>
   )
 }
@@ -840,70 +797,13 @@ export default function ContactsAdmin() {
   const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
 
   const statCards: StatCardConfig[] = useMemo(
-    () => {
-      const now = new Date()
-      const monthStats = contacts.reduce(
-        (acc, contact) => {
-          const createdAt = new Date(contact.created_at)
-          if (Number.isNaN(createdAt.getTime())) return acc
-
-          const status = mapDisplayStatus(contact.status)
-          if (isSameMonth(createdAt, now)) {
-            acc.current.total += 1
-            if (status === "new") acc.current.new += 1
-            if (status === "contacted") acc.current.contacted += 1
-            if (status === "completed") acc.current.completed += 1
-          } else if (isPreviousMonth(createdAt, now)) {
-            acc.previous.total += 1
-            if (status === "new") acc.previous.new += 1
-            if (status === "contacted") acc.previous.contacted += 1
-            if (status === "completed") acc.previous.completed += 1
-          }
-
-          return acc
-        },
-        {
-          current: { total: 0, new: 0, contacted: 0, completed: 0 },
-          previous: { total: 0, new: 0, contacted: 0, completed: 0 },
-        },
-      )
-
-      return [
-        {
-          id: "total" as const,
-          label: "Total Inquiries",
-          value: stats.total,
-          icon: Inbox,
-          tone: "neutral" as const,
-          trend: getTrendText(monthStats.current.total, monthStats.previous.total),
-        },
-        {
-          id: "new" as const,
-          label: "New",
-          value: stats.new,
-          icon: Mail,
-          tone: "blue" as const,
-          trend: getTrendText(monthStats.current.new, monthStats.previous.new),
-        },
-        {
-          id: "contacted" as const,
-          label: "Contacted",
-          value: stats.contacted,
-          icon: TrendingUp,
-          tone: "amber" as const,
-          trend: getTrendText(monthStats.current.contacted, monthStats.previous.contacted),
-        },
-        {
-          id: "completed" as const,
-          label: "Completed",
-          value: stats.completed,
-          icon: CheckCircle2,
-          tone: "green" as const,
-          trend: getTrendText(monthStats.current.completed, monthStats.previous.completed),
-        },
-      ]
-    },
-    [contacts, stats],
+    () => [
+      { id: "total", label: "Total Inquiries", value: stats.total, icon: Inbox, tone: "neutral" },
+      { id: "new", label: "New", value: stats.new, icon: Mail, tone: "blue" },
+      { id: "contacted", label: "Contacted", value: stats.contacted, icon: TrendingUp, tone: "amber" },
+      { id: "completed", label: "Completed", value: stats.completed, icon: CheckCircle2, tone: "green" },
+    ],
+    [stats],
   );
 
   return (

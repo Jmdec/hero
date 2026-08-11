@@ -21,8 +21,6 @@ import {
     Loader2,
     Tag,
     ChevronRight,
-    TrendingUp,
-    TrendingDown,
 } from "lucide-react";
 
 type StatKey = "total" | "verified" | "unverified" | "admins";
@@ -44,28 +42,12 @@ function pct(part: number, total: number) {
     return `${Math.round((part / total) * 100)}% of total`;
 }
 
-function isSameMonth(date: Date, now: Date) {
-    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
-}
-
-function isPreviousMonth(date: Date, now: Date) {
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return date.getFullYear() === prev.getFullYear() && date.getMonth() === prev.getMonth();
-}
-
-function getTrendText(current: number, previous: number) {
-    const delta = current - previous;
-    if (delta === 0) return "";
-    return `${delta > 0 ? "+" : ""}${delta} vs last month`;
-}
-
 function buildDrillDownData(users: UserRecord[], stats: { total: number; verified: number; unverified: number; admins: number }) {
     const admins = users.filter((u) => u.role === "admin");
     const regulars = users.filter((u) => (u.role ?? "user") === "user");
     const verifiedAdmins = admins.filter((u) => u.email_verified).length;
     const unverifiedAdmins = admins.length - verifiedAdmins;
     const verifiedRegulars = regulars.filter((u) => u.email_verified).length;
-    const unverifiedRegulars = regulars.length - verifiedRegulars;
 
     const now = Date.now();
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
@@ -82,13 +64,6 @@ function buildDrillDownData(users: UserRecord[], stats: { total: number; verifie
         if (!u.created_at) return false;
         const days = (now - new Date(u.created_at).getTime()) / (1000 * 60 * 60 * 24);
         return days > 7;
-    }).length;
-
-    const newAdminsThisMonth = admins.filter((u) => {
-        if (!u.created_at) return false;
-        const created = new Date(u.created_at);
-        if (Number.isNaN(created.getTime())) return false;
-        return isSameMonth(created, new Date());
     }).length;
 
     return {
@@ -108,7 +83,6 @@ function buildDrillDownData(users: UserRecord[], stats: { total: number; verifie
                 { label: "Email Verified", value: String(stats.verified), sub: pct(stats.verified, stats.total) },
                 { label: "Verified Admins", value: String(verifiedAdmins), sub: pct(verifiedAdmins, admins.length || 1) },
                 { label: "Verified Regular", value: String(verifiedRegulars), sub: pct(verifiedRegulars, regulars.length || 1) },
-                { label: "Unverified Regular", value: String(unverifiedRegulars), sub: pct(unverifiedRegulars, regulars.length || 1) },
                 { label: "Verification rate", value: `${stats.total > 0 ? Math.round((stats.verified / stats.total) * 100) : 0}%` },
             ],
         },
@@ -126,7 +100,6 @@ function buildDrillDownData(users: UserRecord[], stats: { total: number; verifie
                 { label: "Total Admins", value: String(admins.length), sub: pct(admins.length, stats.total) },
                 { label: "Verified Admins", value: String(verifiedAdmins), sub: pct(verifiedAdmins, admins.length || 1) },
                 { label: "Unverified Admins", value: String(unverifiedAdmins), sub: pct(unverifiedAdmins, admins.length || 1) },
-                { label: "New Admins This Month", value: String(newAdminsThisMonth), sub: "Recently onboarded" },
             ],
         },
     } as Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>;
@@ -146,14 +119,12 @@ type StatCardProps = {
     icon: React.ElementType;
     label: string;
     value: string;
-    trend?: string;
     tone?: StatTone;
     onClick: (id: StatKey) => void;
 };
 
-function StatCard({ id, icon: Icon, label, value, trend, tone = "neutral", onClick }: StatCardProps) {
+function StatCard({ id, icon: Icon, label, value, tone = "neutral", onClick }: StatCardProps) {
     const t = STAT_TONE_STYLES[tone];
-    const trendTone = trend?.startsWith("+") ? "text-green-600" : trend?.startsWith("-") ? "text-red-600" : "text-slate-500";
     return (
         <button
             onClick={() => onClick(id)}
@@ -168,89 +139,7 @@ function StatCard({ id, icon: Icon, label, value, trend, tone = "neutral", onCli
             </div>
             <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
             <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-            {trend ? (
-                <p className={`flex items-center gap-1 text-xs font-medium ${trendTone}`}>
-                    {trend.startsWith("+") ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                    {trend}
-                </p>
-            ) : (
-                <div className="h-4.5" />
-            )}
         </button>
-    );
-}
-
-function SkeletonBlock({ className }: { className: string }) {
-    return <div className={`animate-pulse rounded bg-slate-200/90 ${className}`} />;
-}
-
-function UsersStatCardSkeleton() {
-    return (
-        <div className="relative overflow-hidden rounded-2xl border border-transparent bg-white p-6 shadow">
-            <div className="absolute left-0 top-0 h-full w-1 bg-slate-200" />
-            <div className="mb-4 flex items-start justify-between">
-                <SkeletonBlock className="h-10 w-10 rounded-xl" />
-                <SkeletonBlock className="h-4 w-4" />
-            </div>
-            <SkeletonBlock className="mb-2 h-4 w-28" />
-            <SkeletonBlock className="mb-2 h-9 w-20" />
-            <SkeletonBlock className="h-4.5 w-24" />
-        </div>
-    );
-}
-
-function UsersPageSkeleton() {
-    return (
-        <main className="min-h-screen">
-            <section className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-4">
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <UsersStatCardSkeleton key={i} />
-                    ))}
-                </div>
-
-                <div className="flex flex-col gap-3 lg:flex-row">
-                    <SkeletonBlock className="h-11 flex-1 rounded-xl" />
-                    <SkeletonBlock className="h-11 w-full rounded-xl lg:w-56" />
-                    <SkeletonBlock className="h-11 w-full rounded-xl lg:w-28" />
-                </div>
-
-                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead className="bg-blue-50">
-                                <tr>
-                                    <th className="px-5 py-3 text-left"><SkeletonBlock className="h-3 w-12" /></th>
-                                    <th className="px-5 py-3 text-left"><SkeletonBlock className="h-3 w-10" /></th>
-                                    <th className="px-5 py-3 text-left"><SkeletonBlock className="h-3 w-12" /></th>
-                                    <th className="px-5 py-3 text-left"><SkeletonBlock className="h-3 w-12" /></th>
-                                    <th className="px-5 py-3 text-right"><SkeletonBlock className="ml-auto h-3 w-12" /></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {Array.from({ length: 8 }).map((_, row) => (
-                                    <tr key={row}>
-                                        <td className="px-5 py-3.5">
-                                            <SkeletonBlock className="mb-2 h-4 w-32" />
-                                            <SkeletonBlock className="h-3 w-56" />
-                                        </td>
-                                        <td className="px-5 py-3.5"><SkeletonBlock className="h-6 w-16 rounded-full" /></td>
-                                        <td className="px-5 py-3.5"><SkeletonBlock className="h-3.5 w-28" /></td>
-                                        <td className="px-5 py-3.5"><SkeletonBlock className="h-6 w-20 rounded-full" /></td>
-                                        <td className="px-5 py-3.5">
-                                            <div className="flex justify-end gap-2">
-                                                <SkeletonBlock className="h-8 w-8 rounded-lg" />
-                                                <SkeletonBlock className="h-8 w-8 rounded-lg" />
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-        </main>
     );
 }
 
@@ -391,71 +280,36 @@ export default function UsersPage() {
         fetchUsers();
     }, [fetchUsers]);
 
-    const statCards: Omit<StatCardProps, "onClick">[] = useMemo(() => {
-        const now = new Date();
-        const monthStats = users.reduce(
-            (acc, user) => {
-                if (!user.created_at) return acc;
-                const created = new Date(user.created_at);
-                if (Number.isNaN(created.getTime())) return acc;
-                const isAdmin = user.role === "admin";
-                const isVerified = Boolean(user.email_verified);
-
-                if (isSameMonth(created, now)) {
-                    acc.current.total += 1;
-                    if (isVerified) acc.current.verified += 1;
-                    if (!isVerified) acc.current.unverified += 1;
-                    if (isAdmin) acc.current.admins += 1;
-                } else if (isPreviousMonth(created, now)) {
-                    acc.previous.total += 1;
-                    if (isVerified) acc.previous.verified += 1;
-                    if (!isVerified) acc.previous.unverified += 1;
-                    if (isAdmin) acc.previous.admins += 1;
-                }
-
-                return acc;
-            },
-            {
-                current: { total: 0, verified: 0, unverified: 0, admins: 0 },
-                previous: { total: 0, verified: 0, unverified: 0, admins: 0 },
-            },
-        );
-
-        return [
-            {
-                id: "total" as const,
-                icon: Users,
-                label: "Total Users",
-                value: stats.total.toString(),
-                tone: "neutral" as const,
-                trend: getTrendText(monthStats.current.total, monthStats.previous.total),
-            },
-            {
-                id: "verified" as const,
-                icon: UserCheck,
-                label: "Verified Users",
-                value: stats.verified.toString(),
-                tone: "green" as const,
-                trend: getTrendText(monthStats.current.verified, monthStats.previous.verified),
-            },
-            {
-                id: "unverified" as const,
-                icon: UserX,
-                label: "Pending Verification",
-                value: stats.unverified.toString(),
-                tone: "red" as const,
-                trend: getTrendText(monthStats.current.unverified, monthStats.previous.unverified),
-            },
-            {
-                id: "admins" as const,
-                icon: ShieldCheck,
-                label: "Administrators",
-                value: stats.admins.toString(),
-                tone: "amber" as const,
-                trend: getTrendText(monthStats.current.admins, monthStats.previous.admins),
-            },
-        ];
-    }, [stats, users]);
+    const statCards: Omit<StatCardProps, "onClick">[] = [
+        {
+            id: "total",
+            icon: Users,
+            label: "Total Users",
+            value: stats.total.toString(),
+            tone: "neutral",
+        },
+        {
+            id: "verified",
+            icon: UserCheck,
+            label: "Verified Users",
+            value: stats.verified.toString(),
+            tone: "green",
+        },
+        {
+            id: "unverified",
+            icon: UserX,
+            label: "Pending Verification",
+            value: stats.unverified.toString(),
+            tone: "red",
+        },
+        {
+            id: "admins",
+            icon: ShieldCheck,
+            label: "Administrators",
+            value: stats.admins.toString(),
+            tone: "amber",
+        },
+    ];
 
     const filtered = users.filter((u) => {
         const q = search.toLowerCase();
@@ -595,10 +449,6 @@ export default function UsersPage() {
         }
     }
 
-    if (loading) {
-        return <UsersPageSkeleton />;
-    }
-
     return (
         <main className="min-h-screen">
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
@@ -659,7 +509,16 @@ export default function UsersPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {filtered.length === 0 ? (
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-5 py-8 text-center text-xs text-gray-400">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <div className="w-4 h-4 border-2 border-[#0D47A1] border-t-transparent rounded-full animate-spin" />
+                                                Loading users...
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : filtered.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} className="px-5 py-8 text-center text-xs text-gray-400">
                                             {search || roleFilter !== "all" ? "No users match your filters." : "No users found."}
