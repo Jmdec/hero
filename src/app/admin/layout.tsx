@@ -13,7 +13,6 @@ import {
   MailQuestion,
   Megaphone,
   MessageCircleHeart,
-  FilePenLine,
   ArrowLeft,
   Menu,
   Bell,
@@ -38,7 +37,6 @@ const menuItems: { section: string; items: MenuItem[] }[] = [
     section: "Menu",
     items: [
       { title: "Dashboard", href: "/admin", icon: LayoutDashboard, module: "dashboard" },
-      { title: "CMS", href: "/admin/cms", icon: FilePenLine, module: "cms" },
       { title: "Quotation", href: "/admin/quotation", icon: FileSpreadsheet, module: "quotation" },
       { title: "Chat", href: "/admin/chats", icon: MessagesSquare, module: "chats" },
       { title: "Inquiry", href: "/admin/inquiries", icon: MailQuestion, module: "inquiry" },
