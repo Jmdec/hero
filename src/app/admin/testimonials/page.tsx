@@ -126,6 +126,12 @@ function StatCard({
 }: StatCardProps) {
   const t = STAT_TONE_STYLES[tone];
   const trendUp = Boolean(trend && trend.startsWith("+"));
+  const trendDown = Boolean(trend && trend.startsWith("-"));
+  const trendTone = trendUp
+    ? "text-green-600"
+    : trendDown
+      ? "text-red-600"
+      : "text-slate-500";
 
   return (
     <button
@@ -141,6 +147,15 @@ function StatCard({
       </div>
       <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
       <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+      {trend ? (
+        <p className={`flex items-center gap-1 text-xs font-medium ${trendTone}`}>
+          {trendUp ? <TrendingUp className="h-3.5 w-3.5" /> : null}
+          {trendDown ? <TrendingDown className="h-3.5 w-3.5" /> : null}
+          {trend}
+        </p>
+      ) : (
+        <div className="h-4.5" />
+      )}
     </button>
   );
 }

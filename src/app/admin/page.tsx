@@ -6,13 +6,14 @@ import {
     Bot,
     MessageSquare,
     Star,
-    PhilippinePeso,
     TrendingUp,
     TrendingDown,
     ChevronRight,
     X,
     RefreshCw,
     AlertCircle,
+    ScrollText,
+    MoveRight,
 } from "lucide-react";
 import {
     Area,
@@ -196,7 +197,6 @@ function StatCard({ id, icon: Icon, label, value, trend, tone, onClick }: StatCa
                 {trend.startsWith("-") && <TrendingDown className="h-3.5 w-3.5" />}
                 {trend}
             </div>
-            <p className="mt-2 text-xs font-semibold text-[#0D47A1]">View details -&gt;</p>
         </button>
     );
 }
@@ -474,6 +474,61 @@ function DashboardSkeleton() {
     );
 }
 
+function TestimonialDetailModal({
+    testimonial,
+    onClose,
+}: {
+    testimonial: Analytics["recent_testimonials"][number];
+    onClose: () => void;
+}) {
+    return (
+        <ModalBackdrop onClose={onClose}>
+            <div className="border-b border-slate-100 px-6 py-4">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-base font-bold text-slate-900">Testimonial Details</h3>
+                    <button
+                        onClick={onClose}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+            </div>
+
+            <div className="space-y-4 px-6 py-5">
+                <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-800">{testimonial.name ?? "Anonymous"}</p>
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${TESTIMONIAL_STATUS_STYLES[testimonial.status] ?? "bg-slate-100 text-slate-600"}`}>
+                        {testimonial.status}
+                    </span>
+                </div>
+
+                <div className="flex items-center gap-0.5">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                            key={`modal-star-${testimonial.id}-${i}`}
+                            className={`h-4 w-4 ${i < testimonial.rating ? "fill-[#F59E0B] text-[#F59E0B]" : "fill-slate-100 text-slate-200"}`}
+                        />
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 text-xs text-slate-500 sm:grid-cols-2">
+                    <p>
+                        <span className="font-semibold text-slate-600">Service:</span> {testimonial.service_type ?? "-"}
+                    </p>
+                    <p>
+                        <span className="font-semibold text-slate-600">Date:</span> {formatDate(testimonial.created_at)}
+                    </p>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">
+                    {testimonial.quote?.trim() ? testimonial.quote : "No testimonial quote provided."}
+                </div>
+            </div>
+        </ModalBackdrop>
+    );
+}
+
 function DrillDownModal({ id, data, onClose }: { id: StatKey; data: Analytics; onClose: () => void }) {
     const [range, setRange] = useState("last_6_months");
     const [startDate, setStartDate] = useState("");
@@ -546,29 +601,31 @@ function DrillDownModal({ id, data, onClose }: { id: StatKey; data: Analytics; o
             <div className="border-b border-slate-100 px-6 py-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-base font-bold text-slate-900">{title[id]}</h3>
-                    <button
-                        onClick={onClose}
-                        className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
-                    >
-                        <X className="h-4 w-4" />
-                    </button>
+                    <div>
+                        <select
+                            value={range}
+                            onChange={(e) => setRange(e.target.value)}
+                            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700"
+                        >
+                            <option value="this_month">This Month</option>
+                            <option value="last_month">Last Month</option>
+                            <option value="last_3_months">Last 3 Months</option>
+                            <option value="last_6_months">Last 6 Months</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+
+                        <button
+                            onClick={onClose}
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <div className="border-b border-slate-100 px-6 py-3">
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
-                    <select
-                        value={range}
-                        onChange={(e) => setRange(e.target.value)}
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700"
-                    >
-                        <option value="this_month">This Month</option>
-                        <option value="last_month">Last Month</option>
-                        <option value="last_3_months">Last 3 Months</option>
-                        <option value="last_6_months">Last 6 Months</option>
-                        <option value="custom">Custom Range</option>
-                    </select>
-
                     {range === "custom" ? (
                         <>
                             <input
@@ -705,7 +762,7 @@ export default function AdminDashboard() {
     const [error, setError] = useState<string | null>(null);
     const [activeCard, setActiveCard] = useState<StatKey | null>(null);
     const [refreshing, setRefreshing] = useState(false);
-    const [expandedTestimonialId, setExpandedTestimonialId] = useState<number | null>(null);
+    const [selectedTestimonial, setSelectedTestimonial] = useState<Analytics["recent_testimonials"][number] | null>(null);
 
     const fetchAnalytics = useCallback(async (silent = false) => {
         if (silent) setRefreshing(true);
@@ -770,7 +827,7 @@ export default function AdminDashboard() {
             },
             {
                 id: "quotations" as const,
-                icon: PhilippinePeso,
+                icon: ScrollText,
                 label: "Quotation Requests",
                 value: analytics.quotations.total.toLocaleString(),
                 trend: getTrendValue(analytics.monthly.revenue),
@@ -830,9 +887,9 @@ export default function AdminDashboard() {
                             </div>
                             <Link
                                 href="/admin/chats"
-                                className="rounded-lg border border-[#C5D2EC] px-3 py-1.5 text-xs font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
+                                className="text-sm font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
                             >
-                                View Chatbot Leads
+                                <MoveRight className="mr-1 h-3.5 w-3.5" />
                             </Link>
                         </div>
 
@@ -862,12 +919,11 @@ export default function AdminDashboard() {
                             </div>
                             <Link
                                 href="/admin/inquiries"
-                                className="rounded-lg border border-[#C5D2EC] px-3 py-1.5 text-xs font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
+                                className="text-sm font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
                             >
-                                View All Inquiries
+                                <MoveRight className="mr-1 h-3.5 w-3.5" />
                             </Link>
                         </div>
-
                         {inquiryPieData.length > 0 ? (
                             <>
                                 <ResponsiveContainer width="100%" height={160}>
@@ -913,9 +969,9 @@ export default function AdminDashboard() {
                             </div>
                             <Link
                                 href="/admin/quotation"
-                                className="rounded-lg border border-[#C5D2EC] px-3 py-1.5 text-xs font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
+                                className="text-sm font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
                             >
-                                View Quotations
+                                <MoveRight className="mr-1 h-3.5 w-3.5" />
                             </Link>
                         </div>
 
@@ -945,9 +1001,9 @@ export default function AdminDashboard() {
                             </div>
                             <Link
                                 href="/admin/inquiries"
-                                className="rounded-lg border border-[#C5D2EC] px-3 py-1.5 text-xs font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
+                                className="text-sm font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
                             >
-                                View Inquiries
+                                <MoveRight className="mr-1 h-3.5 w-3.5" />
                             </Link>
                         </div>
 
@@ -978,9 +1034,9 @@ export default function AdminDashboard() {
                         </div>
                         <Link
                             href="/admin/testimonials"
-                            className="rounded-lg border border-[#C5D2EC] px-3 py-1.5 text-xs font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
+                            className="text-sm font-semibold text-[#0D47A1] transition-colors hover:bg-[#EEF2FB]"
                         >
-                            View All Testimonials
+                            <MoveRight className="mr-1 h-3.5 w-3.5" />
                         </Link>
                     </div>
 
@@ -1001,7 +1057,6 @@ export default function AdminDashboard() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {analytics.recent_testimonials.map((item) => {
-                                        const isExpanded = expandedTestimonialId === item.id;
                                         const quote = item.quote ?? "";
                                         return (
                                             <tr key={item.id} className="hover:bg-slate-50/70">
@@ -1018,14 +1073,14 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td className="px-5 py-3.5 text-xs text-slate-600">
                                                     <p className="max-w-[320px] leading-relaxed">
-                                                        {isExpanded ? quote : truncateText(quote)}
+                                                        {truncateText(quote)}
                                                     </p>
                                                     {quote.length > 90 ? (
                                                         <button
-                                                            onClick={() => setExpandedTestimonialId(isExpanded ? null : item.id)}
+                                                            onClick={() => setSelectedTestimonial(item)}
                                                             className="mt-1 text-[11px] font-semibold text-[#0D47A1] hover:underline"
                                                         >
-                                                            {isExpanded ? "Show less" : "View full testimonial"}
+                                                            View full testimonial
                                                         </button>
                                                     ) : null}
                                                 </td>
@@ -1048,6 +1103,10 @@ export default function AdminDashboard() {
 
             {activeCard ? (
                 <DrillDownModal id={activeCard} data={analytics} onClose={() => setActiveCard(null)} />
+            ) : null}
+
+            {selectedTestimonial ? (
+                <TestimonialDetailModal testimonial={selectedTestimonial} onClose={() => setSelectedTestimonial(null)} />
             ) : null}
         </main>
     );
