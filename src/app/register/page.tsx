@@ -278,8 +278,8 @@ export default function SignupPage() {
   const handleResendVerification = async () => {
     setIsResending(true);
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'PUT',
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: registeredEmail, name: registeredName }),
       });
