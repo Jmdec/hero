@@ -42,14 +42,19 @@ interface ContactStats {
   completed: number
 }
 
-type StatKey = "total" | "new" | "contacted" | "completed"
+type TypeBreakdownRow = {
+  label: string
+  count: number
+  pct: number
+}
 
 type StatTone = "neutral" | "blue" | "amber" | "green"
 
 interface StatCardConfig {
-  id: StatKey
   label: string
-  value: number
+  value: string
+  supporting?: string
+  trend?: string
   icon: React.ComponentType<{ className?: string }>
   tone: StatTone
 }
@@ -333,55 +338,43 @@ function getPageNumbers(current: number, last: number): (number | "…")[] {
   return result;
 }
 
-function buildDrillDownData(stats: ContactStats, contacts: Contact[]) {
+function formatTrend(current: number, previous: number) {
+  if (previous === 0) {
+    if (current === 0) return "No change"
+    return "+100%"
+  }
+  const delta = Math.round(((current - previous) / previous) * 100)
+  if (delta === 0) return "No change"
+  return `${delta > 0 ? "+" : ""}${delta}%`
+}
+
+function formatDuration(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0s"
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+  if (hours > 0) return `${hours}h ${minutes}m`
+  if (minutes > 0) return `${minutes}m ${secs}s`
+  return `${secs}s`
+}
+
+function buildInquiryTypeBreakdown(contacts: Contact[]): TypeBreakdownRow[] {
+  const total = contacts.length
+  if (total === 0) return []
+
   const byType = contacts.reduce<Record<string, number>>((acc, contact) => {
-    const label = INQUIRY_LABELS[contact.inquiry_type] ?? contact.inquiry_type
+    const label = INQUIRY_LABELS[contact.inquiry_type] ?? formatLabel(contact.inquiry_type)
     acc[label] = (acc[label] ?? 0) + 1
     return acc
   }, {})
 
-  const topTypes = Object.entries(byType)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-    .map(([label, count]) => ({ label, value: String(count) }))
-
-  const percentageText = (n: number) => (stats.total > 0 ? `${Math.round((n / stats.total) * 100)}% of total` : "—")
-
-  return {
-    total: {
-      title: "All Inquiries",
-      items: [
-        { label: "New", value: String(stats.new), sub: percentageText(stats.new) },
-        { label: "Contacted", value: String(stats.contacted), sub: percentageText(stats.contacted) },
-        { label: "Completed", value: String(stats.completed), sub: percentageText(stats.completed) },
-        ...topTypes,
-      ],
-    },
-    new: {
-      title: "New Inquiries",
-      items: [
-        { label: "Count", value: String(stats.new), sub: percentageText(stats.new) },
-        { label: "Awaiting first reply", value: String(stats.new) },
-        ...topTypes,
-      ],
-    },
-    contacted: {
-      title: "Contacted Inquiries",
-      items: [
-        { label: "Count", value: String(stats.contacted), sub: percentageText(stats.contacted) },
-        { label: "Replied via email", value: String(stats.contacted) },
-        ...topTypes,
-      ],
-    },
-    completed: {
-      title: "Completed Inquiries",
-      items: [
-        { label: "Count", value: String(stats.completed), sub: percentageText(stats.completed) },
-        { label: "Closed out", value: String(stats.completed) },
-        ...topTypes,
-      ],
-    },
-  } as Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>
+  return Object.entries(byType)
+    .map(([label, count]) => ({
+      label,
+      count,
+      pct: Number(((count / total) * 100).toFixed(1)),
+    }))
+    .sort((a, b) => b.count - a.count)
 }
 
 function ModalBackdrop({
@@ -403,22 +396,59 @@ function ModalBackdrop({
   );
 }
 
-function StatCard({
-  id,
+function InquiryStatCard({
   label,
   value,
+  supporting,
+  trend,
+  icon: Icon,
+  tone,
+}: StatCardConfig) {
+  const toneStyles = STAT_TONE_STYLES[tone]
+  const trendTone = trend?.startsWith("+")
+    ? "text-emerald-600"
+    : trend?.startsWith("-")
+      ? "text-red-600"
+      : "text-slate-500"
+
+  return (
+    <article className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent">
+      <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : "bg-[#0D47A1]"}`} />
+      <div className="flex items-start justify-between mb-4">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${toneStyles.bg}`}>
+          <Icon className={`w-5 h-5 ${toneStyles.text}`} />
+        </div>
+        <p className={`text-xs font-semibold ${trendTone}`}>{trend ?? "No change"}</p>
+      </div>
+      <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
+      <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+      <p className="text-xs text-slate-400">{supporting ?? " "}</p>
+    </article>
+  )
+}
+
+function InquiryTypeStatCard({
+  label,
+  value,
+  supporting,
+  trend,
   icon: Icon,
   tone,
   onClick,
-}: StatCardConfig & { onClick: (id: StatKey) => void }) {
+}: StatCardConfig & { onClick: () => void }) {
   const toneStyles = STAT_TONE_STYLES[tone]
+  const trendTone = trend?.startsWith("+")
+    ? "text-emerald-600"
+    : trend?.startsWith("-")
+      ? "text-red-600"
+      : "text-slate-500"
 
   return (
     <button
-      onClick={() => onClick(id)}
+      onClick={onClick}
       className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
     >
-      <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : "bg-[#0D47A1]"}`} />
+      <div className="absolute top-0 left-0 w-1 h-full bg-[#0D47A1]" />
       <div className="flex items-start justify-between mb-4">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${toneStyles.bg}`}>
           <Icon className={`w-5 h-5 ${toneStyles.text}`} />
@@ -426,8 +456,37 @@ function StatCard({
         <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
       </div>
       <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
-      <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+      <p className="text-2xl font-bold text-gray-900 mb-2">{value}</p>
+      <p className={`text-xs font-semibold ${trendTone}`}>{trend ?? "No change"}</p>
+      <p className="mt-1 text-xs text-[#0D47A1] font-semibold">{supporting ?? "View breakdown"}</p>
     </button>
+  )
+}
+
+function StatCardSkeleton({ interactive = false }: { interactive?: boolean }) {
+  return (
+    <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent animate-pulse">
+      <div className="absolute top-0 left-0 w-1 h-full bg-slate-200" />
+      <div className="flex items-start justify-between mb-4">
+        <div className="h-10 w-10 rounded-xl bg-slate-200" />
+        <div className="h-3 w-12 rounded bg-slate-200" />
+      </div>
+      <div className="h-4 w-28 rounded bg-slate-200 mb-3" />
+      <div className="h-9 w-20 rounded bg-slate-200 mb-3" />
+      <div className="h-3 w-24 rounded bg-slate-200" />
+      {interactive ? <div className="mt-2 h-3 w-24 rounded bg-slate-200" /> : null}
+    </div>
+  )
+}
+
+function InquiryStatsSkeleton() {
+  return (
+    <>
+      <StatCardSkeleton />
+      <StatCardSkeleton />
+      <StatCardSkeleton interactive />
+      <StatCardSkeleton />
+    </>
   )
 }
 
@@ -475,8 +534,9 @@ export default function ContactsAdmin() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activeCard, setActiveCard] = useState<StatKey | null>(null);
+  const [typeBreakdownOpen, setTypeBreakdownOpen] = useState(false)
   const [stats, setStats] = useState<ContactStats>({ total: 0, new: 0, contacted: 0, completed: 0 })
+  const [statsContacts, setStatsContacts] = useState<Contact[]>([])
   const [statsLoading, setStatsLoading] = useState(true)
   const [statsError, setStatsError] = useState<string | null>(null)
 
@@ -591,6 +651,10 @@ export default function ContactsAdmin() {
 
       const data = await res.json()
       const list = Array.isArray(data.data) ? data.data : []
+      const mappedList = list.map((contact: Contact) => ({
+        ...contact,
+        status: mapDisplayStatus(contact.status),
+      }))
       const statsData = list.reduce(
         (acc: ContactStats, inquiry: Contact) => {
           const displayStatus = mapDisplayStatus(inquiry.status)
@@ -608,10 +672,12 @@ export default function ContactsAdmin() {
       )
 
       setStats(statsData)
+      setStatsContacts(mappedList)
     } catch (err) {
       setStatsError(
         err instanceof Error ? err.message : "Could not load stats."
       )
+      setStatsContacts([])
     } finally {
       setStatsLoading(false)
     }
@@ -789,22 +855,109 @@ export default function ContactsAdmin() {
     [page, lastPage],
   );
 
-  const drillDownData = useMemo(
-    () => buildDrillDownData(stats, contacts),
-    [stats, contacts],
-  );
+  const typeBreakdown = useMemo(
+    () => buildInquiryTypeBreakdown(statsContacts),
+    [statsContacts],
+  )
 
-  const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
+  const totalTrend = useMemo(() => {
+    const now = new Date()
+    const currentStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+
+    let current = 0
+    let previous = 0
+
+    statsContacts.forEach((inquiry) => {
+      const created = new Date(inquiry.created_at)
+      if (isNaN(created.getTime())) return
+      if (created >= currentStart) {
+        current += 1
+      } else if (created >= previousStart && created < currentStart) {
+        previous += 1
+      }
+    })
+
+    return {
+      current,
+      trend: formatTrend(current, previous),
+    }
+  }, [statsContacts])
+
+  const responseTimeStats = useMemo(() => {
+    const now = new Date()
+    const currentStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+
+    let currentSum = 0
+    let currentCount = 0
+    let previousSum = 0
+    let previousCount = 0
+
+    statsContacts.forEach((inquiry) => {
+      if (!inquiry.updated_at || inquiry.status === "new") return
+      const created = new Date(inquiry.created_at)
+      const updated = new Date(inquiry.updated_at)
+      if (isNaN(created.getTime()) || isNaN(updated.getTime())) return
+      const seconds = Math.round((updated.getTime() - created.getTime()) / 1000)
+      if (seconds < 0) return
+
+      if (created >= currentStart) {
+        currentSum += seconds
+        currentCount += 1
+      } else if (created >= previousStart && created < currentStart) {
+        previousSum += seconds
+        previousCount += 1
+      }
+    })
+
+    const currentAvg = currentCount > 0 ? Math.round(currentSum / currentCount) : 0
+    const previousAvg = previousCount > 0 ? Math.round(previousSum / previousCount) : 0
+
+    return {
+      currentAvg,
+      previousAvg,
+      trend: formatTrend(previousAvg, currentAvg),
+      measuredCount: currentCount,
+    }
+  }, [statsContacts])
 
   const statCards: StatCardConfig[] = useMemo(
     () => [
-      { id: "total", label: "Total Inquiries", value: stats.total, icon: Inbox, tone: "neutral" },
-      { id: "new", label: "New", value: stats.new, icon: Mail, tone: "blue" },
-      { id: "contacted", label: "Contacted", value: stats.contacted, icon: TrendingUp, tone: "amber" },
-      { id: "completed", label: "Completed", value: stats.completed, icon: CheckCircle2, tone: "green" },
+      {
+        label: "Total Inquiries",
+        value: String(stats.total),
+        icon: Inbox,
+        tone: "neutral",
+        trend: totalTrend.trend,
+        supporting: `This month: ${totalTrend.current}`,
+      },
+      {
+        label: "New Inquiries",
+        value: String(stats.new),
+        icon: Mail,
+        tone: "blue",
+        supporting: "Requires admin attention",
+      },
+      {
+        label: "Inquiries by Type",
+        value: typeBreakdown[0]?.label ?? "No data",
+        icon: TrendingUp,
+        tone: "amber",
+        trend: typeBreakdown[0] ? `${typeBreakdown[0].pct}%` : "No change",
+        supporting: "View breakdown",
+      },
+      {
+        label: "Average Response Time",
+        value: formatDuration(responseTimeStats.currentAvg),
+        icon: CheckCircle2,
+        tone: "green",
+        trend: responseTimeStats.trend,
+        supporting: `${responseTimeStats.measuredCount} responded inquiries`,
+      },
     ],
-    [stats],
-  );
+    [stats, totalTrend, typeBreakdown, responseTimeStats],
+  )
 
   return (
     <main className="min-h-screen">
@@ -814,9 +967,16 @@ export default function ContactsAdmin() {
           {statsError && (
             <p className="col-span-full text-xs text-red-500">{statsError}</p>
           )}
-          {statCards.map((s) => (
-            <StatCard key={s.id} {...s} onClick={setActiveCard} />
-          ))}
+          {statsLoading ? (
+            <InquiryStatsSkeleton />
+          ) : (
+            <>
+              <InquiryStatCard {...statCards[0]} />
+              <InquiryStatCard {...statCards[1]} />
+              <InquiryTypeStatCard {...statCards[2]} onClick={() => setTypeBreakdownOpen(true)} />
+              <InquiryStatCard {...statCards[3]} />
+            </>
+          )}
         </div>
 
         {/* Filters */}
@@ -1092,36 +1252,44 @@ export default function ContactsAdmin() {
         )}
       </section>
 
-      {activeDrillDown && (
-        <ModalBackdrop onClose={() => setActiveCard(null)}>
+      {typeBreakdownOpen && (
+        <ModalBackdrop onClose={() => setTypeBreakdownOpen(false)}>
           <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-900">
-                {activeDrillDown.title}
+                Inquiry Breakdown by Type
               </h2>
               <button
-                onClick={() => setActiveCard(null)}
+                onClick={() => setTypeBreakdownOpen(false)}
                 className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-6 py-5">
-              {activeDrillDown.items.map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-xl bg-slate-50 p-4"
-                >
-                  <p className="text-xs text-slate-500">{item.label}</p>
-                  <p className="mt-1 text-xl font-bold text-slate-900">
-                    {item.value}
-                  </p>
-                  {item.sub && (
-                    <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>
-                  )}
+            <div className="px-6 py-5 space-y-4">
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-xs text-slate-500">Total inquiries</p>
+                <p className="mt-1 text-xl font-bold text-slate-900">{stats.total}</p>
+              </div>
+
+              {typeBreakdown.length === 0 ? (
+                <p className="text-sm text-slate-500">No inquiry data available yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {typeBreakdown.map((row) => (
+                    <div key={row.label}>
+                      <div className="mb-1.5 flex items-center justify-between text-sm">
+                        <span className="font-medium text-slate-700">{row.label}</span>
+                        <span className="text-slate-600">{row.count} <span className="text-slate-400">({row.pct}%)</span></span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full bg-[#1B3A8C]" style={{ width: `${Math.min(100, row.pct)}%` }} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </ModalBackdrop>

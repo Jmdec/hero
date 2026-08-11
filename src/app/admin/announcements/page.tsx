@@ -21,8 +21,6 @@ import {
   Clock,
   Link2,
   Megaphone,
-  TrendingUp,
-  TrendingDown,
 } from "lucide-react";
 
 interface SocialMediaEntry {
@@ -38,6 +36,8 @@ interface Announcement {
   excerpt: string;
   content: string;
   image?: string | string[] | null;
+  image_url?: string | null;
+  image_urls?: string[] | null;
   status: "draft" | "scheduled" | "posted" | "published" | "archived";
   scheduled_at?: string | null;
   social_platforms?: string[] | null;
@@ -156,7 +156,16 @@ function authHeaders(json = false) {
   };
 }
 
-function getAnnouncementImageUrls(image?: string | string[] | null) {
+function getAnnouncementImageUrls(
+  image?: string | string[] | null,
+  imageUrls?: string[] | null,
+  imageUrl?: string | null,
+) {
+  const direct = [imageUrl, ...(Array.isArray(imageUrls) ? imageUrls : [])]
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(Boolean);
+
+  if (direct.length > 0) return direct;
   if (!image) return [];
 
   const toArray = (value: unknown): string[] => {
@@ -190,19 +199,19 @@ function getAnnouncementImageUrls(image?: string | string[] | null) {
   const values = Array.isArray(image) ? image : [image];
   const paths = values.flatMap((value) => toArray(value));
 
+  const configured =
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.LARAVEL_API_URL ||
+    "http://localhost:8000";
+  const normalized = configured.replace(/\/+$/g, "");
+  const base = normalized.endsWith("/api")
+    ? normalized.replace(/\/api$/, "")
+    : normalized;
+
   return paths.map((path) => {
     if (!path) return null;
     if (/^https?:\/\//i.test(path)) return path;
-    if (path.startsWith("/storage/")) return path;
-
-    const configured =
-      process.env.NEXT_PUBLIC_API_URL ||
-      process.env.LARAVEL_API_URL ||
-      "http://localhost:8000";
-    const normalized = configured.replace(/\/+$/g, "");
-    const base = normalized.endsWith("/api")
-      ? normalized.replace(/\/api$/, "")
-      : normalized;
+    if (path.startsWith("/storage/")) return `${base}${path}`;
 
     return `${base}/storage/${path.replace(/^\/+/, "")}`;
   }).filter(Boolean) as string[];
@@ -246,7 +255,6 @@ type ConfirmState = {
   onConfirm: () => void | Promise<void>;
 };
 
-type StatKey = "total" | "published" | "scheduled" | "draft";
 type StatTone = "neutral" | "amber" | "green" | "red";
 
 type AnnouncementStats = {
@@ -265,91 +273,55 @@ const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
 };
 
 function StatCard({
-  id,
   label,
   value,
+  supporting,
   icon: Icon,
   tone = "neutral",
-  trend,
-  onClick,
 }: {
-  id: StatKey;
   label: string;
   value: string;
+  supporting?: string;
   icon: React.ComponentType<{ className?: string }>;
   tone?: StatTone;
-  trend?: string;
-  onClick: (id: StatKey) => void;
 }) {
   const t = STAT_TONE_STYLES[tone];
-  const accent = tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]";
-  const trendTone = trend?.startsWith("+") ? "text-green-600" : trend?.startsWith("-") ? "text-red-600" : "text-slate-500";
-  const showTrendIcon = trend?.startsWith("+") ? <TrendingUp className="w-3.5 h-3.5" /> : trend?.startsWith("-") ? <TrendingDown className="w-3.5 h-3.5" /> : null;
 
   return (
-    <button
-      onClick={() => onClick(id)}
-      className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
-    >
+    <article className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent">
       <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
       <div className="flex items-start justify-between mb-4">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
           <Icon className={`w-5 h-5 ${t.text}`} />
         </div>
-        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
       </div>
       <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
       <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-    </button>
+      <p className="text-xs text-slate-400">{supporting ?? " "}</p>
+    </article>
   );
 }
 
-function buildDrillDownData(stats: AnnouncementStats, items: Announcement[]) {
-  const publishedPercent = stats.total > 0 ? Math.round((stats.published / stats.total) * 100) : 0;
-  const draftPercent = stats.total > 0 ? Math.round((stats.draft / stats.total) * 100) : 0;
-  const scheduledPercent = stats.total > 0 ? Math.round((stats.scheduled / stats.total) * 100) : 0;
-  const archivedPercent = stats.total > 0 ? Math.round((stats.archived / stats.total) * 100) : 0;
-  const liveCount = items.filter((item) => item.status === "published" || item.status === "posted").length;
+function StatCardSkeleton() {
+  return (
+    <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent animate-pulse">
+      <div className="absolute top-0 left-0 w-1 h-full bg-slate-200" />
+      <div className="mb-4 h-10 w-10 rounded-xl bg-slate-200" />
+      <div className="h-4 w-30 rounded bg-slate-200 mb-3" />
+      <div className="h-9 w-20 rounded bg-slate-200 mb-3" />
+      <div className="h-3 w-28 rounded bg-slate-200" />
+    </div>
+  );
+}
 
-  return {
-    total: {
-      title: "Announcement Overview",
-      items: [
-        { label: "Published", value: String(stats.published), sub: `${publishedPercent}% of total` },
-        { label: "Scheduled", value: String(stats.scheduled), sub: `${scheduledPercent}% of total` },
-        { label: "Draft", value: String(stats.draft), sub: `${draftPercent}% of total` },
-        { label: "Archived", value: String(stats.archived), sub: `${archivedPercent}% of total` },
-        { label: "Live now", value: String(liveCount), sub: "Published or posted" },
-      ],
-    },
-    published: {
-      title: "Published Announcements",
-      items: [
-        { label: "Published count", value: String(stats.published), sub: `${publishedPercent}% of total` },
-        { label: "Live on site", value: String(stats.published), sub: "Visible to visitors" },
-        { label: "Recently updated", value: String(items.filter((item) => item.status === "published").length), sub: "Current published set" },
-        { label: "Ready for review", value: String(Math.max(stats.draft, 0)), sub: "Pending approval" },
-      ],
-    },
-    scheduled: {
-      title: "Scheduled Announcements",
-      items: [
-        { label: "Scheduled count", value: String(stats.scheduled), sub: `${scheduledPercent}% of total` },
-        { label: "Upcoming launches", value: String(stats.scheduled), sub: "Planned for release" },
-        { label: "At-risk timing", value: String(Math.max(stats.scheduled - 1, 0)), sub: "Needs a reminder" },
-        { label: "Pending action", value: String(stats.draft), sub: "Drafts still open" },
-      ],
-    },
-    draft: {
-      title: "Draft Announcements",
-      items: [
-        { label: "Draft count", value: String(stats.draft), sub: `${draftPercent}% of total` },
-        { label: "Waiting review", value: String(stats.draft), sub: "Needs editorial check" },
-        { label: "Ready to publish", value: String(Math.max(stats.draft - 1, 0)), sub: "Qualified for rollout" },
-        { label: "Archived backlog", value: String(stats.archived), sub: "Hidden from live view" },
-      ],
-    },
-  } as Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>;
+function AnnouncementStatsSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <StatCardSkeleton key={i} />
+      ))}
+    </>
+  );
 }
 
 function ModalBackdrop({
@@ -404,7 +376,14 @@ export default function AnnouncementsAdmin() {
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
-  const [activeCard, setActiveCard] = useState<StatKey | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsData, setStatsData] = useState<AnnouncementStats>({
+    total: 0,
+    published: 0,
+    scheduled: 0,
+    draft: 0,
+    archived: 0,
+  });
 
   function requestConfirmation(next: ConfirmState) {
     setConfirmState(next);
@@ -467,6 +446,39 @@ export default function AnnouncementsAdmin() {
     };
   }, [page, search, status, retryCount]);
 
+  async function loadStats() {
+    setStatsLoading(true);
+    try {
+      const params = new URLSearchParams({ per_page: "1000", page: "1" });
+      const res = await fetch(`/api/admin/announcements?${params.toString()}`, {
+        headers: authHeaders(),
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+
+      const data = await res.json();
+      const list: Announcement[] = Array.isArray(data?.data) ? data.data : [];
+
+      const nextStats: AnnouncementStats = {
+        total: list.length,
+        published: list.filter((item) => item.status === "published" || item.status === "posted").length,
+        scheduled: list.filter((item) => item.status === "scheduled").length,
+        draft: list.filter((item) => item.status === "draft").length,
+        archived: list.filter((item) => item.status === "archived").length,
+      };
+
+      setStatsData(nextStats);
+    } catch {
+      // Keep previous stats on background failure.
+    } finally {
+      setStatsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadStats();
+  }, [retryCount]);
+
   const hasActiveFilters = Boolean(search || status);
 
   function clearFilters() {
@@ -480,16 +492,7 @@ export default function AnnouncementsAdmin() {
     [page, lastPage],
   );
 
-  const stats = useMemo<AnnouncementStats>(() => ({
-    total,
-    published: items.filter((item) => item.status === "published" || item.status === "posted").length,
-    scheduled: items.filter((item) => item.status === "scheduled").length,
-    draft: items.filter((item) => item.status === "draft").length,
-    archived: items.filter((item) => item.status === "archived").length,
-  }), [items, total]);
-
-  const drillDownData = useMemo(() => buildDrillDownData(stats, items), [stats, items]);
-  const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
+  const stats = statsData;
 
   function openView(a: Announcement) {
     setViewTarget(a);
@@ -527,6 +530,7 @@ export default function AnnouncementsAdmin() {
       );
       setViewTarget(saved);
       setViewOpen(false);
+      await loadStats();
       showToast("Announcement status updated.", "success");
     } catch {
       setStatusError("Could not update status. Please try again.");
@@ -565,7 +569,7 @@ export default function AnnouncementsAdmin() {
     });
     setFormErrors({});
     setImageFiles([]);
-    setImagePreviews(getAnnouncementImageUrls(a.image));
+    setImagePreviews(getAnnouncementImageUrls(a.image, a.image_urls, a.image_url));
     setFormOpen(true);
   }
 
@@ -726,6 +730,7 @@ export default function AnnouncementsAdmin() {
             : [saved, ...prev],
         ),
       );
+      await loadStats();
 
       setFormOpen(false);
       setEditing(null);
@@ -797,6 +802,7 @@ export default function AnnouncementsAdmin() {
 
       setItems((prev) => prev.filter((a) => a.id !== target.id));
       setDeleteTarget(null);
+      await loadStats();
       showToast("Announcement deleted.", "success");
     } catch {
       showToast("Could not delete announcement. Please try again.", "error");
@@ -839,10 +845,16 @@ export default function AnnouncementsAdmin() {
     <main className="min-h-screen">
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard id="total" label="Total announcements" value={String(stats.total)} icon={Megaphone} tone="neutral" onClick={setActiveCard} />
-          <StatCard id="published" label="Published" value={String(stats.published)} icon={FileText} tone="green" onClick={setActiveCard} />
-          <StatCard id="scheduled" label="Scheduled" value={String(stats.scheduled)} icon={Calendar} tone="amber" onClick={setActiveCard} />
-          <StatCard id="draft" label="Draft" value={String(stats.draft)} icon={Clock} tone="red" onClick={setActiveCard} />
+          {statsLoading ? (
+            <AnnouncementStatsSkeleton />
+          ) : (
+            <>
+              <StatCard label="Total announcements" value={String(stats.total)} icon={Megaphone} tone="neutral" supporting="All records" />
+              <StatCard label="Published" value={String(stats.published)} icon={FileText} tone="green" supporting="Live on public site" />
+              <StatCard label="Scheduled" value={String(stats.scheduled)} icon={Calendar} tone="amber" supporting="Queued for release" />
+              <StatCard label="Draft" value={String(stats.draft)} icon={Clock} tone="red" supporting="Not yet published" />
+            </>
+          )}
         </div>
 
         {/* Filters */}
@@ -1097,42 +1109,6 @@ export default function AnnouncementsAdmin() {
           </div>
         )}
       </section>
-
-      {/* Drill-Down Modal */}
-      {activeDrillDown && (
-        <ModalBackdrop onClose={() => setActiveCard(null)}>
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {activeDrillDown.title}
-              </h2>
-              <button
-                onClick={() => setActiveCard(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-6 py-5">
-              {activeDrillDown.items.map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-xl bg-slate-50 p-4"
-                >
-                  <p className="text-xs text-slate-500">{item.label}</p>
-                  <p className="mt-1 text-xl font-bold text-slate-900">
-                    {item.value}
-                  </p>
-                  {item.sub && (
-                    <p className="mt-0.5 text-xs text-slate-400">{item.sub}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </ModalBackdrop>
-      )}
 
       {/* View Dialog — read-only details, status is the only editable field */}
       {viewOpen && viewTarget && (
@@ -1411,7 +1387,7 @@ export default function AnnouncementsAdmin() {
                   }}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700"
                 />
-                {(imagePreviews.length > 0 || (editing && getAnnouncementImageUrls(editing.image).length > 0)) && (
+                {(imagePreviews.length > 0 || (editing && getAnnouncementImageUrls(editing.image, editing.image_urls, editing.image_url).length > 0)) && (
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     {imagePreviews.length > 0
                       ? imagePreviews.map((preview, index) => (
@@ -1419,7 +1395,7 @@ export default function AnnouncementsAdmin() {
                           <img src={preview} alt={`Announcement preview ${index + 1}`} className="h-32 w-full object-cover" />
                         </div>
                       ))
-                      : getAnnouncementImageUrls(editing?.image).map((preview, index) => (
+                      : getAnnouncementImageUrls(editing?.image, editing?.image_urls, editing?.image_url).map((preview, index) => (
                         <div key={`${preview}-${index}`} className="overflow-hidden rounded-lg border border-slate-200">
                           <img src={preview} alt={`Announcement image ${index + 1}`} className="h-32 w-full object-cover" />
                         </div>

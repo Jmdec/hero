@@ -33,6 +33,7 @@ export async function POST(
             headers: {
                 Accept: "application/json",
                 "Content-Type": "application/json",
+                Authorization: request.headers.get("authorization") ?? "",
             },
             body: await request.text(),
         });

@@ -29,7 +29,9 @@ interface Announcement {
   id: number;
   tag: string;
   date: string;
-  image?: string | null;
+  image?: string | string[] | null;
+  image_url?: string | null;
+  image_urls?: string[] | null;
   title: string;
   excerpt: string;
   content: string;
@@ -55,8 +57,12 @@ function tagClass(tag: string) {
   return tag ? TAG_STYLE : FALLBACK_TAG_STYLE;
 }
 
-function getAnnouncementImageUrl(image?: string | null) {
-  if (!image) return null;
+function getAnnouncementImageUrl(item: Announcement) {
+  if (item.image_url) return item.image_url;
+
+  if (Array.isArray(item.image_urls) && item.image_urls.length > 0) {
+    return item.image_urls[0];
+  }
 
   const configured =
     process.env.NEXT_PUBLIC_API_URL ||
@@ -67,7 +73,37 @@ function getAnnouncementImageUrl(image?: string | null) {
     ? normalized.replace(/\/api$/, "")
     : normalized;
 
-  return `${base}/storage/${image.replace(/^\/+/, "")}`;
+  const normalizeInput = (input: string | string[] | null | undefined): string[] => {
+    if (!input) return [];
+
+    if (Array.isArray(input)) {
+      return input
+        .map((entry) => entry?.trim())
+        .filter((entry): entry is string => Boolean(entry));
+    }
+
+    const trimmed = input.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+          .filter(Boolean);
+      }
+    } catch {
+      // fall through
+    }
+
+    return [trimmed];
+  };
+
+  const first = normalizeInput(item.image)[0];
+  if (!first) return null;
+  if (/^https?:\/\//i.test(first)) return first;
+  if (first.startsWith("/storage/")) return `${base}${first}`;
+  return `${base}/storage/${first.replace(/^\/+/, "")}`;
 }
 
 function formatDate(value: string) {
@@ -168,7 +204,7 @@ function AnnouncementCard({
     item.social_platforms,
     item.social_links,
   );
-  const imageUrl = getAnnouncementImageUrl(item.image);
+  const imageUrl = getAnnouncementImageUrl(item);
   const [imageFailed, setImageFailed] = useState(false);
 
   return (
@@ -249,7 +285,7 @@ function AnnouncementModal({
     item.social_platforms,
     item.social_links,
   );
-  const imageUrl = getAnnouncementImageUrl(item.image);
+  const imageUrl = getAnnouncementImageUrl(item);
   const [imageFailed, setImageFailed] = useState(false);
 
   return (

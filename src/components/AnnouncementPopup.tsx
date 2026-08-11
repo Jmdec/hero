@@ -17,7 +17,9 @@ interface Announcement {
   date: string;
   title: string;
   content: string;
-  image?: string | null;
+  image?: string | string[] | null;
+  image_url?: string | null;
+  image_urls?: string[] | null;
   created_at: string;
   social_platforms?: string[] | null;
   social_links?: Array<string | null> | null;

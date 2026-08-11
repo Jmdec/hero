@@ -20,11 +20,7 @@ import {
   Quote,
   RefreshCw,
   Inbox,
-  TrendingUp,
-  TrendingDown,
 } from "lucide-react";
-
-type StatKey = "total" | "pending" | "approved" | "rejected";
 
 type StatTone = "neutral" | "amber" | "green" | "red";
 
@@ -46,7 +42,7 @@ interface TestimonialStats {
   total: number;
   pending: number;
   approved: number;
-  rejected: number;
+  averageApprovedRating: number;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -105,43 +101,182 @@ function ModalBackdrop({
   );
 }
 
-type StatCardProps = {
-  id: StatKey;
+type TestimonialStatCardProps = {
   icon: React.ElementType;
   label: string;
   value: string;
-  trend?: string;
+  supporting?: string;
+  trendText?: string;
   tone?: StatTone;
-  onClick: (id: StatKey) => void;
+  valuePrefix?: React.ReactNode;
+  ratingValue?: number;
 };
 
-function StatCard({
-  id,
+function TestimonialStatCard({
   icon: Icon,
   label,
   value,
-  trend,
+  supporting,
+  trendText,
   tone = "neutral",
-  onClick,
-}: StatCardProps) {
+  valuePrefix,
+  ratingValue,
+}: TestimonialStatCardProps) {
   const t = STAT_TONE_STYLES[tone];
-  const trendUp = Boolean(trend && trend.startsWith("+"));
 
   return (
-    <button
-      onClick={() => onClick(id)}
-      className="group relative overflow-hidden bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-all duration-200 text-left w-full border border-transparent hover:border-[#C5D2EC]"
-    >
+    <article className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent">
       <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
       <div className="flex items-start justify-between mb-4">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
           <Icon className={`w-5 h-5 ${t.text}`} />
         </div>
-        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
       </div>
       <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
-      <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-    </button>
+      <div className="mb-2 flex items-center gap-2">
+        {valuePrefix}
+        <p className="text-3xl font-bold text-gray-900">{value}</p>
+      </div>
+
+      {typeof ratingValue === "number" ? (
+        <div className="mb-2 flex items-center gap-0.5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Star
+              key={i}
+              className={`h-3.5 w-3.5 ${i < Math.round(ratingValue) ? "fill-[#1B3A8C] text-[#1B3A8C]" : "fill-slate-100 text-slate-200"}`}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      <p className="text-xs text-slate-400">{trendText || supporting || " "}</p>
+    </article>
+  );
+}
+
+function StatCardSkeleton() {
+  return (
+    <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent animate-pulse">
+      <div className="absolute top-0 left-0 w-1 h-full bg-slate-200" />
+      <div className="mb-4 h-10 w-10 rounded-xl bg-slate-200" />
+      <div className="mb-3 h-4 w-30 rounded bg-slate-200" />
+      <div className="mb-3 h-9 w-28 rounded bg-slate-200" />
+      <div className="mb-2 flex gap-1">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-3.5 w-3.5 rounded-full bg-slate-200" />
+        ))}
+      </div>
+      <div className="h-3 w-32 rounded bg-slate-200" />
+    </div>
+  );
+}
+
+function TestimonialStatsSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <StatCardSkeleton key={index} />
+      ))}
+    </>
+  );
+}
+
+function TestimonialStatistics({
+  stats,
+  allItems,
+}: {
+  stats: TestimonialStats;
+  allItems: Testimonial[];
+}) {
+  const now = new Date();
+  const monthlyCounts = allItems.reduce(
+    (acc, item) => {
+      if (!item.created_at) return acc;
+      const created = new Date(item.created_at);
+      if (Number.isNaN(created.getTime())) return acc;
+
+      if (isSameMonth(created, now)) {
+        acc.current.total += 1;
+        acc.current[item.status] += 1;
+      } else if (isPreviousMonth(created, now)) {
+        acc.previous.total += 1;
+        acc.previous[item.status] += 1;
+      }
+
+      return acc;
+    },
+    {
+      current: { total: 0, pending: 0, approved: 0, rejected: 0 },
+      previous: { total: 0, pending: 0, approved: 0, rejected: 0 },
+    },
+  );
+
+  const approvedCurrent = allItems.filter((item) => {
+    if (item.status !== "approved" || !item.created_at) return false;
+    const created = new Date(item.created_at);
+    return !Number.isNaN(created.getTime()) && isSameMonth(created, now);
+  });
+  const approvedPrevious = allItems.filter((item) => {
+    if (item.status !== "approved" || !item.created_at) return false;
+    const created = new Date(item.created_at);
+    return !Number.isNaN(created.getTime()) && isPreviousMonth(created, now);
+  });
+
+  const currentApprovedAvg = approvedCurrent.length
+    ? approvedCurrent.reduce((sum, item) => sum + item.rating, 0) / approvedCurrent.length
+    : 0;
+  const previousApprovedAvg = approvedPrevious.length
+    ? approvedPrevious.reduce((sum, item) => sum + item.rating, 0) / approvedPrevious.length
+    : 0;
+
+  const cards: TestimonialStatCardProps[] = [
+    {
+      icon: Quote,
+      label: "Total Testimonials",
+      value: String(stats.total),
+      tone: "neutral",
+      trendText: getTrendText(monthlyCounts.current.total, monthlyCounts.previous.total),
+      supporting: "All submissions",
+    },
+    {
+      icon: Inbox,
+      label: "Pending Review",
+      value: String(stats.pending),
+      tone: "amber",
+      trendText: getTrendText(monthlyCounts.current.pending, monthlyCounts.previous.pending),
+      supporting: "Awaiting admin action",
+    },
+    {
+      icon: Star,
+      label: "Approved",
+      value: String(stats.approved),
+      tone: "green",
+      trendText: getTrendText(monthlyCounts.current.approved, monthlyCounts.previous.approved),
+      supporting: "Eligible for public display",
+    },
+    {
+      icon: Star,
+      label: "Average Rating",
+      value: `${stats.averageApprovedRating.toFixed(1)} / 5`,
+      tone: "neutral",
+      ratingValue: stats.averageApprovedRating,
+      supporting: "From approved testimonials",
+    },
+  ];
+
+  const averageTrendText = getTrendText(
+    Number(currentApprovedAvg.toFixed(1)),
+    Number(previousApprovedAvg.toFixed(1)),
+  );
+  cards[3].trendText = averageTrendText || cards[3].supporting;
+  cards[3].valuePrefix = <Star className="h-5 w-5 fill-[#1B3A8C] text-[#1B3A8C]" />;
+
+  return (
+    <>
+      {cards.map((card) => (
+        <TestimonialStatCard key={card.label} {...card} />
+      ))}
+    </>
   );
 }
 
@@ -206,25 +341,6 @@ function getTrendText(current: number, previous: number) {
   return `${delta > 0 ? "+" : ""}${delta} vs last month`;
 }
 
-function getPercent(value: number, total: number) {
-  if (!total) return "0.0%";
-  return `${((value / total) * 100).toFixed(1)}%`;
-}
-
-function getAverageRating(items: Testimonial[]) {
-  if (!items.length) return "0.0";
-  const total = items.reduce((sum, item) => sum + item.rating, 0);
-  return (total / items.length).toFixed(1);
-}
-
-function getAgeInDays(value?: string) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  const diff = Date.now() - date.getTime();
-  return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
-}
-
 function normalizeNullableField(value: string | null | undefined) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
@@ -238,14 +354,14 @@ export default function TestimonialsAdmin() {
   const [allItems, setAllItems] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false)
+  const [statsLoading, setStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [activeCard, setActiveCard] = useState<StatKey | null>(null);
   const [stats, setStats] = useState<TestimonialStats>({
     total: 0,
     pending: 0,
     approved: 0,
-    rejected: 0,
+    averageApprovedRating: 0,
   });
 
   const [search, setSearch] = useState("");
@@ -279,6 +395,7 @@ export default function TestimonialsAdmin() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchStats = useCallback(async () => {
+    setStatsLoading(true);
     try {
       const res = await fetch(`/api/admin/testimonials?per_page=1000`, {
         headers: authHeaders(),
@@ -288,17 +405,24 @@ export default function TestimonialsAdmin() {
 
       const data = await res.json();
       const list: Testimonial[] = data.data ?? [];
+      const approvedItems = list.filter((item) => item.status === "approved");
+      const approvedAverage = approvedItems.length
+        ? approvedItems.reduce((sum, item) => sum + item.rating, 0) /
+          approvedItems.length
+        : 0;
 
       setAllItems(list);
       setStats({
         total: list.length,
         pending: list.filter((item) => item.status === "pending").length,
         approved: list.filter((item) => item.status === "approved").length,
-        rejected: list.filter((item) => item.status === "rejected").length,
+        averageApprovedRating: approvedAverage,
       });
     } catch {
       setAllItems([]);
-      setStats({ total: 0, pending: 0, approved: 0, rejected: 0 });
+      setStats({ total: 0, pending: 0, approved: 0, averageApprovedRating: 0 });
+    } finally {
+      setStatsLoading(false);
     }
   }, []);
 
@@ -371,154 +495,6 @@ export default function TestimonialsAdmin() {
     () => getPageNumbers(page, lastPage),
     [page, lastPage],
   );
-
-  const statCards = useMemo<Omit<StatCardProps, "onClick">[]>(() => {
-    const now = new Date();
-    const monthlyCounts = allItems.reduce(
-      (acc, item) => {
-        if (!item.created_at) return acc;
-        const created = new Date(item.created_at);
-        if (Number.isNaN(created.getTime())) return acc;
-
-        if (isSameMonth(created, now)) {
-          acc.current.total += 1;
-          acc.current[item.status] += 1;
-        } else if (isPreviousMonth(created, now)) {
-          acc.previous.total += 1;
-          acc.previous[item.status] += 1;
-        }
-
-        return acc;
-      },
-      {
-        current: { total: 0, pending: 0, approved: 0, rejected: 0 },
-        previous: { total: 0, pending: 0, approved: 0, rejected: 0 },
-      },
-    );
-
-    return [
-      {
-        id: "total",
-        icon: Quote,
-        label: "Total Testimonials",
-        value: stats.total.toString(),
-        tone: "neutral",
-        trend: getTrendText(monthlyCounts.current.total, monthlyCounts.previous.total),
-      },
-      {
-        id: "pending",
-        icon: Inbox,
-        label: "Pending Review",
-        value: stats.pending.toString(),
-        tone: "amber",
-        trend: getTrendText(monthlyCounts.current.pending, monthlyCounts.previous.pending),
-      },
-      {
-        id: "approved",
-        icon: Star,
-        label: "Approved",
-        value: stats.approved.toString(),
-        tone: "green",
-        trend: getTrendText(monthlyCounts.current.approved, monthlyCounts.previous.approved),
-      },
-      {
-        id: "rejected",
-        icon: X,
-        label: "Rejected",
-        value: stats.rejected.toString(),
-        tone: "red",
-        trend: getTrendText(monthlyCounts.current.rejected, monthlyCounts.previous.rejected),
-      },
-    ];
-  }, [allItems, stats]);
-
-  const drillDownData = useMemo<Record<StatKey, { title: string; items: { label: string; value: string; sub?: string }[] }>>(() => {
-    const now = new Date();
-    const approvedItems = allItems.filter((item) => item.status === "approved");
-    const pendingItems = allItems.filter((item) => item.status === "pending");
-    const rejectedItems = allItems.filter((item) => item.status === "rejected");
-    const currentMonthItems = allItems.filter((item) => {
-      if (!item.created_at) return false;
-      const created = new Date(item.created_at);
-      return !Number.isNaN(created.getTime()) && isSameMonth(created, now);
-    });
-    const previousMonthItems = allItems.filter((item) => {
-      if (!item.created_at) return false;
-      const created = new Date(item.created_at);
-      return !Number.isNaN(created.getTime()) && isPreviousMonth(created, now);
-    });
-    const fiveStarCount = allItems.filter((item) => item.rating === 5).length;
-    const lowRatingCount = allItems.filter((item) => item.rating <= 3).length;
-    const stalePending = pendingItems.filter((item) => {
-      const age = getAgeInDays(item.created_at);
-      return age !== null && age > 7;
-    }).length;
-    const newestPendingAge = pendingItems
-      .map((item) => getAgeInDays(item.created_at))
-      .filter((age): age is number => age !== null)
-      .sort((a, b) => b - a)[0];
-    const approvedWithCompany = approvedItems.filter((item) => Boolean(item.company)).length;
-    const rejectedThisMonth = rejectedItems.filter((item) => {
-      if (!item.created_at) return false;
-      const created = new Date(item.created_at);
-      return !Number.isNaN(created.getTime()) && isSameMonth(created, now);
-    }).length;
-
-    return {
-      total: {
-        title: "Total Testimonials Breakdown",
-        items: [
-          { label: "Approved", value: String(stats.approved), sub: `${getPercent(stats.approved, stats.total)} of total` },
-          { label: "Pending review", value: String(stats.pending), sub: `${getPercent(stats.pending, stats.total)} of total` },
-          { label: "Rejected", value: String(stats.rejected), sub: `${getPercent(stats.rejected, stats.total)} of total` },
-          { label: "Average rating", value: getAverageRating(allItems), sub: "Across all testimonials" },
-          { label: "5-star submissions", value: String(fiveStarCount), sub: `${getPercent(fiveStarCount, stats.total)} of total` },
-          { label: "This month", value: String(currentMonthItems.length), sub: `${currentMonthItems.length - previousMonthItems.length >= 0 ? "+" : ""}${currentMonthItems.length - previousMonthItems.length} vs last month` },
-        ],
-      },
-      pending: {
-        title: "Pending Testimonials",
-        items: [
-          { label: "Awaiting review", value: String(stats.pending), sub: `${getPercent(stats.pending, stats.total)} of total` },
-          { label: "Pending 5-star", value: String(pendingItems.filter((item) => item.rating === 5).length), sub: "High-priority social proof" },
-          { label: "Pending low-rated", value: String(pendingItems.filter((item) => item.rating <= 3).length), sub: "Needs moderation review" },
-          { label: "Aging > 7 days", value: String(stalePending), sub: "At risk of going stale" },
-          { label: "Oldest pending", value: newestPendingAge !== undefined ? `${newestPendingAge} days` : "—", sub: "Since submission" },
-          { label: "Avg. pending rating", value: getAverageRating(pendingItems), sub: "Across pending queue" },
-        ],
-      },
-      approved: {
-        title: "Approved Testimonials",
-        items: [
-          { label: "Approved total", value: String(stats.approved), sub: `${getPercent(stats.approved, stats.total)} approval rate` },
-          {
-            label: "Approved this month", value: String(approvedItems.filter((item) => {
-              if (!item.created_at) return false;
-              const created = new Date(item.created_at);
-              return !Number.isNaN(created.getTime()) && isSameMonth(created, now);
-            }).length), sub: "Fresh social proof"
-          },
-          { label: "Average approved rating", value: getAverageRating(approvedItems), sub: "Across approved testimonials" },
-          { label: "With company listed", value: String(approvedWithCompany), sub: `${getPercent(approvedWithCompany, Math.max(approvedItems.length, 1))} of approved` },
-          { label: "5-star approved", value: String(approvedItems.filter((item) => item.rating === 5).length), sub: "Top-tier testimonials" },
-          { label: "Approved with titles", value: String(approvedItems.filter((item) => Boolean(item.title)).length), sub: "Ready for publication" },
-        ],
-      },
-      rejected: {
-        title: "Rejected Testimonials",
-        items: [
-          { label: "Rejected total", value: String(stats.rejected), sub: `${getPercent(stats.rejected, stats.total)} of total` },
-          { label: "Rejected this month", value: String(rejectedThisMonth), sub: "Current month moderation decisions" },
-          { label: "Low-rated rejected", value: String(rejectedItems.filter((item) => item.rating <= 3).length), sub: "Rating 3 or below" },
-          { label: "High-rated rejected", value: String(rejectedItems.filter((item) => item.rating >= 4).length), sub: "Potential content quality issue" },
-          { label: "Average rejected rating", value: getAverageRating(rejectedItems), sub: "Across rejected testimonials" },
-          { label: "Rejected with company", value: String(rejectedItems.filter((item) => Boolean(item.company)).length), sub: "Company attribution present" },
-        ],
-      },
-    };
-  }, [allItems, stats]);
-
-  const activeDrillDown = activeCard ? drillDownData[activeCard] : null;
 
   // ---- View / status-only update ----
 
@@ -704,9 +680,11 @@ export default function TestimonialsAdmin() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 space-y-6">
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {statCards.map((s) => (
-            <StatCard key={s.id} {...s} onClick={setActiveCard} />
-          ))}
+          {statsLoading ? (
+            <TestimonialStatsSkeleton />
+          ) : (
+            <TestimonialStatistics stats={stats} allItems={allItems} />
+          )}
         </div>
 
         {/* Filters */}
@@ -974,38 +952,6 @@ export default function TestimonialsAdmin() {
           </div>
         )}
       </section>
-
-      {activeDrillDown && (
-        <ModalBackdrop onClose={() => setActiveCard(null)}>
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {activeDrillDown.title}
-              </h2>
-              <button
-                onClick={() => setActiveCard(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-6 py-5">
-              {activeDrillDown.items.map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-xl bg-slate-50 p-4"
-                >
-                  <p className="text-xs text-slate-500">{item.label}</p>
-                  <p className="mt-1 text-xl font-bold text-slate-900">
-                    {item.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </ModalBackdrop>
-      )}
 
       {/* View Dialog — read-only details, status is the only editable field */}
       {viewOpen && viewTarget && (

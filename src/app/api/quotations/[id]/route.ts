@@ -3,7 +3,7 @@ const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL 
 const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
 
 export async function GET(
-    _request: NextRequest,
+    request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params;
@@ -13,6 +13,7 @@ export async function GET(
             headers: { 
                 Accept: "application/json",
                 "Content-Type": "application/json",
+                Authorization: request.headers.get("authorization") ?? "",
             },
             cache: "no-store",
         });
@@ -49,6 +50,7 @@ export async function PUT(
             headers: {
                 "Content-Type": "application/json",
                 Accept: "application/json",
+                Authorization: request.headers.get("authorization") ?? "",
             },
             body: JSON.stringify(body),
         });
@@ -93,7 +95,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-    _request: NextRequest,
+    request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params;
@@ -103,6 +105,7 @@ export async function DELETE(
             headers: { 
                 Accept: "application/json",
                 "Content-Type": "application/json",
+                Authorization: request.headers.get("authorization") ?? "",
             },
         });
 

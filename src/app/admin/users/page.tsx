@@ -25,7 +25,7 @@ import {
 
 type StatKey = "total" | "verified" | "unverified" | "admins";
 
-type Role = "admin" | "user";
+type Role = "admin" | "manager";
 
 interface UserRecord {
     id: string | number;
@@ -37,6 +37,15 @@ interface UserRecord {
     created_at?: string;
 }
 
+function normalizeUserRole(role: string | null | undefined): Role {
+    const normalized = String(role ?? "").trim().toLowerCase();
+    if (normalized === "admin") return "admin";
+    if (["manager", "sales", "marketing", "branch_manager", "branch-manager", "branch manager", "user"].includes(normalized)) {
+        return "manager";
+    }
+    return "manager";
+}
+
 function pct(part: number, total: number) {
     if (total <= 0) return "0% of total";
     return `${Math.round((part / total) * 100)}% of total`;
@@ -44,7 +53,7 @@ function pct(part: number, total: number) {
 
 function buildDrillDownData(users: UserRecord[], stats: { total: number; verified: number; unverified: number; admins: number }) {
     const admins = users.filter((u) => u.role === "admin");
-    const regulars = users.filter((u) => (u.role ?? "user") === "user");
+    const regulars = users.filter((u) => normalizeUserRole(u.role) === "manager");
     const verifiedAdmins = admins.filter((u) => u.email_verified).length;
     const unverifiedAdmins = admins.length - verifiedAdmins;
     const verifiedRegulars = regulars.filter((u) => u.email_verified).length;
@@ -152,14 +161,14 @@ const statusStyles: Record<string, string> = {
 
 const roleStyles: Record<string, string> = {
     admin: "bg-blue-50 text-blue-700",
-    user: "bg-gray-100 text-gray-600",
+    manager: "bg-gray-100 text-gray-600",
 };
 
 const EMPTY_FORM = {
     name: "",
     email: "",
     phone: "",
-    role: "user" as Role,
+    role: "manager" as Role,
 };
 
 type ConfirmState = {
@@ -317,7 +326,7 @@ export default function UsersPage() {
             (u.name?.toLowerCase() || "").includes(q) ||
             (u.email?.toLowerCase() || "").includes(q) ||
             (u.phone?.toLowerCase() || "").includes(q);
-        const matchesRole = roleFilter === "all" || (u.role ?? "user") === roleFilter;
+        const matchesRole = roleFilter === "all" || normalizeUserRole(u.role) === roleFilter;
         return matchesSearch && matchesRole;
     });
 
@@ -342,7 +351,7 @@ export default function UsersPage() {
             name: u.name ?? "",
             email: u.email ?? "",
             phone: u.phone ?? "",
-            role: u.role ?? "user",
+            role: normalizeUserRole(u.role),
         });
         setFormErrors({});
         setFormOpen(true);
@@ -481,7 +490,7 @@ export default function UsersPage() {
                         >
                             <option value="all">All roles</option>
                             <option value="admin">Admins</option>
-                            <option value="user">Users</option>
+                            <option value="manager">Managers</option>
                         </select>
                     </div>
 
@@ -538,8 +547,8 @@ export default function UsersPage() {
                                                 </span>
                                             </td>
                                             <td className="px-5 py-3.5">
-                                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${roleStyles[user.role ?? "user"] || roleStyles.user}`}>
-                                                    {user.role === "admin" ? "Admin" : "User"}
+                                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${roleStyles[normalizeUserRole(user.role)] || roleStyles.manager}`}>
+                                                    {normalizeUserRole(user.role) === "admin" ? "Admin" : "Manager"}
                                                 </span>
                                             </td>
                                             <td className="px-5 py-3.5">
@@ -645,9 +654,9 @@ export default function UsersPage() {
                         <div className="space-y-5 px-6 py-5">
                             <div className="rounded-lg bg-slate-50 p-4">
                                 <div className="mb-2 flex items-center justify-between">
-                                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${roleStyles[viewTarget.role ?? "user"]}`}>
+                                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${roleStyles[normalizeUserRole(viewTarget.role)]}`}>
                                         <Tag className="h-3 w-3" />
-                                        {viewTarget.role === "admin" ? "Admin" : "User"}
+                                        {normalizeUserRole(viewTarget.role) === "admin" ? "Admin" : "Manager"}
                                     </span>
                                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusStyles[viewTarget.email_verified ? "Verified" : "Unverified"]}`}>
                                         {viewTarget.email_verified ? "Verified" : "Unverified"}
@@ -790,7 +799,7 @@ export default function UsersPage() {
                                     Role
                                 </label>
                                 <div className="flex gap-2">
-                                    {(["user", "admin"] as Role[]).map((opt) => (
+                                    {(["manager", "admin"] as Role[]).map((opt) => (
                                         <button
                                             key={opt}
                                             type="button"

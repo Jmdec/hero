@@ -4,7 +4,8 @@ export async function POST(request: NextRequest) {
   try {
     const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
     const fullUrl = `${API_URL}/api/auth/logout`
-    const authHeader = request.headers.get('authorization') ?? ''
+    const cookieToken = request.cookies.get('session')?.value ?? ''
+    const authHeader = request.headers.get('authorization') ?? (cookieToken ? `Bearer ${cookieToken}` : '')
 
     // Send to Laravel backend
     const response = await fetch(fullUrl, {
@@ -26,10 +27,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (response.ok) {
-      return NextResponse.json({
+      const nextResponse = NextResponse.json({
         success: true,
         message: data.message || 'Logout successful',
       }, { status: 200 })
+
+      nextResponse.cookies.set('session', '', {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: 0,
+      })
+
+      return nextResponse
     }
 
     return NextResponse.json(data, {

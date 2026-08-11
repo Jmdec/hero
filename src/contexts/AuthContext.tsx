@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { AppRole, normalizeRole } from '@/lib/rbac';
 
 interface User {
   id: number;
@@ -12,8 +13,11 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  role: AppRole;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isManager: boolean;
+  canAccessAdmin: boolean;
   isAuthReady: boolean;
   login: (user: User, token?: string) => void;
   logout: () => void;
@@ -23,8 +27,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<AppRole>('guest');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isManager, setIsManager] = useState(false);
+  const [canAccessAdmin, setCanAccessAdmin] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
   useEffect(() => {
@@ -34,9 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedUser && storedToken) {
       try {
         const parsedUser = JSON.parse(storedUser);
+        const normalizedRole = normalizeRole(parsedUser?.role);
         setUser(parsedUser);
         setIsAuthenticated(true);
-        setIsAdmin(parsedUser?.role === 'admin');
+        setRole(normalizedRole);
+        setIsAdmin(normalizedRole === 'admin');
+        setIsManager(normalizedRole === 'manager');
+        setCanAccessAdmin(normalizedRole === 'admin' || normalizedRole === 'manager');
       } catch (error) {
         console.error('Failed to parse stored user:', error);
         localStorage.removeItem('user');
@@ -50,9 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = (userData: User, token?: string) => {
+    const normalizedRole = normalizeRole(userData.role);
     setUser(userData);
     setIsAuthenticated(true);
-    setIsAdmin(userData.role === 'admin');
+    setRole(normalizedRole);
+    setIsAdmin(normalizedRole === 'admin');
+    setIsManager(normalizedRole === 'manager');
+    setCanAccessAdmin(normalizedRole === 'admin' || normalizedRole === 'manager');
     localStorage.setItem('user', JSON.stringify(userData));
     if (token) {
       localStorage.setItem('token', token);
@@ -61,15 +76,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
+    setRole('guest');
     setIsAuthenticated(false);
     setIsAdmin(false);
+    setIsManager(false);
+    setCanAccessAdmin(false);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated, isAdmin, isAuthReady, login, logout }}
+      value={{ user, role, isAuthenticated, isAdmin, isManager, canAccessAdmin, isAuthReady, login, logout }}
     >
       {children}
     </AuthContext.Provider>

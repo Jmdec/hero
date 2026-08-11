@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
             headers: {
                 Accept: "application/json",
                 "Content-Type": "application/json",
+                Authorization: request.headers.get("authorization") ?? "",
             },
             cache: "no-store",
         });
