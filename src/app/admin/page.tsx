@@ -601,7 +601,7 @@ function DrillDownModal({ id, data, onClose }: { id: StatKey; data: Analytics; o
             <div className="border-b border-slate-100 px-6 py-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-base font-bold text-slate-900">{title[id]}</h3>
-                    <div>
+                    <div className="flex gap-2">
                         <select
                             value={range}
                             onChange={(e) => setRange(e.target.value)}

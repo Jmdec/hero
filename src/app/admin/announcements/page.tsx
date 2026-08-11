@@ -97,8 +97,6 @@ const EMPTY_FORM = {
   publish_to_social: true,
 };
 
-// Builds the { platform, link }[] shape the UI relies on everywhere from
-// the API's parallel `social_platforms` / `social_links` arrays.
 function normalizeSocialMedia(
   platforms?: string[] | null,
   links?: Array<string | null> | null,
@@ -199,19 +197,19 @@ function getAnnouncementImageUrls(
   const values = Array.isArray(image) ? image : [image];
   const paths = values.flatMap((value) => toArray(value));
 
+  const configured =
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.LARAVEL_API_URL ||
+    "http://localhost:8000";
+  const normalized = configured.replace(/\/+$/g, "");
+  const base = normalized.endsWith("/api")
+    ? normalized.replace(/\/api$/, "")
+    : normalized;
+
   return paths.map((path) => {
     if (!path) return null;
     if (/^https?:\/\//i.test(path)) return path;
     if (path.startsWith("/storage/")) return `${base}${path}`;
-
-    const configured =
-      process.env.NEXT_PUBLIC_API_URL ||
-      process.env.LARAVEL_API_URL ||
-      "http://localhost:8000";
-    const normalized = configured.replace(/\/+$/g, "");
-    const base = normalized.endsWith("/api")
-      ? normalized.replace(/\/api$/, "")
-      : normalized;
 
     return `${base}/storage/${path.replace(/^\/+/, "")}`;
   }).filter(Boolean) as string[];

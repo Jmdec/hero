@@ -456,7 +456,7 @@ function InquiryTypeStatCard({
         <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
       </div>
       <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
-      <p className="text-2xl font-bold text-gray-900 mb-2">{value}</p>
+      <p className="text-lg font-bold text-gray-900 mb-2">{value}</p>
       <p className={`text-xs font-semibold ${trendTone}`}>{trend ?? "No change"}</p>
       <p className="mt-1 text-xs text-[#0D47A1] font-semibold">{supporting ?? "View breakdown"}</p>
     </button>
