@@ -1236,73 +1236,135 @@ export default function AdminQuotationsPage() {
                             </p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
-                                    <tr>
-                                        <th className="px-5 py-3 text-left">Customer</th>
-                                        <th className="px-5 py-3 text-left">Service</th>
-                                        <th className="px-5 py-3 text-left">Date</th>
-                                        <th className="px-5 py-3 text-left">Total</th>
-                                        <th className="px-5 py-3 text-left">Status</th>
-                                        <th className="px-5 py-3 text-left">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[#F0F4FB]">
-                                    {filtered.map((quote) => (
-                                        <tr
-                                            key={quote.id}
-                                            onClick={() => setSelected(quote)}
-                                            className="border-b border-[#F0F4FB] last:border-0 hover:bg-[#F8FAFD] cursor-pointer transition"
-                                        >
-                                            <td className="px-5 py-4">
-                                                <p className="font-semibold text-[#0B1F4A]">{quote.detail?.full_name ?? "—"}</p>
-                                                <p className="text-xs text-[#64748B]">{quote.detail?.email ?? "—"}</p>
-                                            </td>
-                                            <td className="px-5 py-4 text-[#0B1F4A]">{quote.service_name}</td>
-                                            <td className="px-5 py-4 text-[#64748B] whitespace-nowrap">{formatDate(quote.created_at)}</td>
-                                            <td className="px-5 py-4 text-[#0B1F4A] whitespace-nowrap">
-                                                {quote.detail && hasPricingData(quote.detail) ? formatCurrency(quote.detail.total) : "—"}
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        openStatusEdit(quote);
-                                                    }}
-                                                    className="group inline-flex items-center gap-1.5 rounded-full transition hover:opacity-80"
-                                                    aria-label={`Edit status for ${quote.detail?.full_name ?? "this request"}`}
-                                                    title="Edit status"
-                                                >
-                                                    <StatusBadge status={quote.status} />
-                                                    <Pencil className="w-3 h-3 text-[#94A3B8] opacity-0 group-hover:opacity-100 transition" />
-                                                </button>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setSelected(quote); }}
-                                                        className="p-2 rounded-lg text-[#64748B] hover:text-[#1B3A8C] hover:bg-[#F0F4FB] transition"
-                                                        aria-label={`View request from ${quote.detail?.full_name ?? "customer"}`}
-                                                        title="View"
-                                                    >
-                                                        <Eye className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(quote); }}
-                                                        className="p-2 rounded-lg text-[#64748B] hover:text-red-600 hover:bg-red-50 transition"
-                                                        aria-label={`Delete request from ${quote.detail?.full_name ?? "customer"}`}
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </td>
+                        <>
+                            <div className="space-y-3 p-4 lg:hidden">
+                                {filtered.map((quote) => (
+                                    <article key={quote.id} className="rounded-xl border border-[#E5EAF2] bg-white p-4 shadow-sm">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-semibold text-[#0B1F4A]">{quote.detail?.full_name ?? "—"}</p>
+                                                <p className="truncate text-xs text-[#64748B]">{quote.detail?.email ?? "—"}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => openStatusEdit(quote)}
+                                                className="inline-flex shrink-0 items-center gap-1.5 rounded-full"
+                                                aria-label={`Edit status for ${quote.detail?.full_name ?? "this request"}`}
+                                                title="Edit status"
+                                            >
+                                                <StatusBadge status={quote.status} />
+                                            </button>
+                                        </div>
+
+                                        <div className="mt-3 grid grid-cols-1 gap-1.5 text-xs text-[#64748B]">
+                                            <p>
+                                                <span className="font-semibold text-[#0B1F4A]">Service:</span> {quote.service_name}
+                                            </p>
+                                            <p>
+                                                <span className="font-semibold text-[#0B1F4A]">Date:</span> {formatDate(quote.created_at)}
+                                            </p>
+                                            <p>
+                                                <span className="font-semibold text-[#0B1F4A]">Total:</span> {quote.detail && hasPricingData(quote.detail) ? formatCurrency(quote.detail.total) : "—"}
+                                            </p>
+                                        </div>
+
+                                        <div className="mt-4 flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => setSelected(quote)}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-[#D9E2F0] px-3 py-2 text-xs font-semibold text-[#1B3A8C] hover:bg-[#EEF2FB] transition"
+                                                aria-label={`View request from ${quote.detail?.full_name ?? "customer"}`}
+                                            >
+                                                <Eye className="w-3.5 h-3.5" />
+                                                View
+                                            </button>
+                                            <button
+                                                onClick={() => openStatusEdit(quote)}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-[#D9E2F0] px-3 py-2 text-xs font-semibold text-[#0B1F4A] hover:bg-[#F8FAFD] transition"
+                                                aria-label={`Edit status for ${quote.detail?.full_name ?? "this request"}`}
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => setDeleteTarget(quote)}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
+                                                aria-label={`Delete request from ${quote.detail?.full_name ?? "customer"}`}
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+
+                            <div className="hidden overflow-x-auto lg:block">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                                        <tr>
+                                            <th className="px-5 py-3 text-left">Customer</th>
+                                            <th className="px-5 py-3 text-left">Service</th>
+                                            <th className="px-5 py-3 text-left">Date</th>
+                                            <th className="px-5 py-3 text-left">Total</th>
+                                            <th className="px-5 py-3 text-left">Status</th>
+                                            <th className="px-5 py-3 text-left">Actions</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody className="divide-y divide-[#F0F4FB]">
+                                        {filtered.map((quote) => (
+                                            <tr
+                                                key={quote.id}
+                                                onClick={() => setSelected(quote)}
+                                                className="border-b border-[#F0F4FB] last:border-0 hover:bg-[#F8FAFD] cursor-pointer transition"
+                                            >
+                                                <td className="px-5 py-4">
+                                                    <p className="font-semibold text-[#0B1F4A]">{quote.detail?.full_name ?? "—"}</p>
+                                                    <p className="text-xs text-[#64748B]">{quote.detail?.email ?? "—"}</p>
+                                                </td>
+                                                <td className="px-5 py-4 text-[#0B1F4A]">{quote.service_name}</td>
+                                                <td className="px-5 py-4 text-[#64748B] whitespace-nowrap">{formatDate(quote.created_at)}</td>
+                                                <td className="px-5 py-4 text-[#0B1F4A] whitespace-nowrap">
+                                                    {quote.detail && hasPricingData(quote.detail) ? formatCurrency(quote.detail.total) : "—"}
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            openStatusEdit(quote);
+                                                        }}
+                                                        className="group inline-flex items-center gap-1.5 rounded-full transition hover:opacity-80"
+                                                        aria-label={`Edit status for ${quote.detail?.full_name ?? "this request"}`}
+                                                        title="Edit status"
+                                                    >
+                                                        <StatusBadge status={quote.status} />
+                                                        <Pencil className="w-3 h-3 text-[#94A3B8] opacity-0 group-hover:opacity-100 transition" />
+                                                    </button>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setSelected(quote); }}
+                                                            className="p-2 rounded-lg text-[#64748B] hover:text-[#1B3A8C] hover:bg-[#F0F4FB] transition"
+                                                            aria-label={`View request from ${quote.detail?.full_name ?? "customer"}`}
+                                                            title="View"
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(quote); }}
+                                                            className="p-2 rounded-lg text-[#64748B] hover:text-red-600 hover:bg-red-50 transition"
+                                                            aria-label={`Delete request from ${quote.detail?.full_name ?? "customer"}`}
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
                     )}
                 </div>
             </section>
