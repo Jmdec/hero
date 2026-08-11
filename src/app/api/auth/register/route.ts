@@ -3,6 +3,15 @@ import { sendVerificationEmail } from "@/lib/nodemailer";
 
 const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
+function isValidVerificationUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.hostname.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -55,6 +64,7 @@ export async function POST(request: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        "X-Frontend-Origin": request.nextUrl.origin,
       },
       body: JSON.stringify({
         name: body.name.trim(),
@@ -113,6 +123,18 @@ export async function POST(request: NextRequest) {
           data: data.data ?? data,
         },
         { status: 200 }
+      );
+    }
+
+    if (!isValidVerificationUrl(verificationUrl)) {
+      console.error("Invalid verification URL returned by Laravel:", verificationUrl);
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Verification link generation failed. Please contact support.",
+        },
+        { status: 500 }
       );
     }
 
@@ -185,6 +207,7 @@ export async function PUT(request: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        "X-Frontend-Origin": request.nextUrl.origin,
       },
       body: JSON.stringify({
         email: body.email.trim().toLowerCase(),
@@ -229,6 +252,18 @@ export async function PUT(request: NextRequest) {
         {
           success: false,
           message: "Laravel did not return a verification URL.",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!isValidVerificationUrl(verificationUrl)) {
+      console.error("Invalid verification URL returned by Laravel:", verificationUrl);
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Verification link generation failed. Please contact support.",
         },
         { status: 500 }
       );
