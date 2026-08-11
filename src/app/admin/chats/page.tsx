@@ -1,57 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     AlertCircle,
     ArrowRightLeft,
     Bot,
     CheckCircle2,
-    Clock3,
     Headset,
     Inbox,
     Mail,
     MailCheck,
+    Menu,
     RefreshCw,
     Search,
     Send,
     User,
-    UserCheck,
     X,
     XCircle,
 } from "lucide-react";
 import { chatApi, type ChatConversation, type ConversationResponse } from "@/lib/chatApi";
 
 type StatusKey = "active" | "waiting_admin" | "agent_requested" | "agent_active" | "agent_closed" | "closed";
-type StatTone = "neutral" | "amber" | "green" | "red";
-
-type StatsPeriod = {
-    total: number;
-    liveRequests: number;
-    convertedLeads: number;
-    responseTotalSeconds: number;
-    responseCount: number;
-};
-
-type ChatStatsSnapshot = {
-    current: StatsPeriod;
-    previous: StatsPeriod;
-};
-
-type ChatStatCardData = {
-    label: string;
-    value: string;
-    trend?: string;
-    note?: string;
-    icon: React.ElementType;
-    tone: StatTone;
-};
-
-const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string }> = {
-    neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]" },
-    amber: { bg: "bg-amber-50", text: "text-amber-700" },
-    green: { bg: "bg-green-50", text: "text-green-700" },
-    red: { bg: "bg-red-50", text: "text-red-600" },
-};
 
 const STATUS: Record<StatusKey, { label: string; rail: string; dot: string; chip: string; live?: boolean; ended?: boolean }> = {
     active: { label: "AI Assistant", rail: "bg-emerald-500", dot: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" },
@@ -63,6 +32,7 @@ const STATUS: Record<StatusKey, { label: string; rail: string; dot: string; chip
 };
 
 const NEEDS_ADMIN: StatusKey[] = ["waiting_admin", "agent_requested"];
+
 const AGENT_OWNED: StatusKey[] = ["waiting_admin", "agent_requested", "agent_active"];
 
 const HISTORY_REQUEST_KEYWORDS = [
@@ -179,64 +149,6 @@ function durationSince(iso: string) {
     return `${hrs}h ${rem}m`;
 }
 
-function startOfMonth(ref: Date) {
-    return new Date(ref.getFullYear(), ref.getMonth(), 1);
-}
-
-function startOfPreviousMonth(ref: Date) {
-    return new Date(ref.getFullYear(), ref.getMonth() - 1, 1);
-}
-
-function statusIsLiveRequest(status: string) {
-    const key = status as StatusKey;
-    return key === "waiting_admin" || key === "agent_requested" || key === "agent_active" || key === "agent_closed";
-}
-
-function statusIsConvertedLead(status: string, addressedAt?: string | null) {
-    const key = status as StatusKey;
-    return key === "agent_active" || key === "agent_closed" || Boolean(addressedAt);
-}
-
-function getFirstResponseSeconds(conversation: ConversationResponse) {
-    const sorted = [...conversation.messages].sort(
-        (a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime(),
-    );
-
-    const firstClient = sorted.find((m) => m.sender === "user");
-    if (!firstClient) return null;
-
-    const firstAgentReply = sorted.find(
-        (m) => (m.sender === "assistant" || m.sender === "admin") && new Date(m.sent_at).getTime() >= new Date(firstClient.sent_at).getTime(),
-    );
-    if (!firstAgentReply) return null;
-
-    const seconds = Math.round((new Date(firstAgentReply.sent_at).getTime() - new Date(firstClient.sent_at).getTime()) / 1000);
-    return seconds >= 0 ? seconds : null;
-}
-
-function formatDurationFromSeconds(seconds: number) {
-    if (!Number.isFinite(seconds) || seconds <= 0) return "0s";
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    if (mins === 0) return `${secs}s`;
-    return `${mins}m ${secs}s`;
-}
-
-function formatPercent(value: number, total: number) {
-    if (!total) return "0.0%";
-    return `${((value / total) * 100).toFixed(1)}%`;
-}
-
-function getPercentTrendText(current: number, previous: number) {
-    if (previous === 0) {
-        if (current === 0) return "No change";
-        return "+100%";
-    }
-    const delta = Math.round(((current - previous) / previous) * 100);
-    if (delta === 0) return "No change";
-    return `${delta > 0 ? "+" : ""}${delta}%`;
-}
-
 function ConversationSkeleton() {
     return (
         <div className="flex h-full flex-col">
@@ -269,45 +181,6 @@ function ConversationListSkeleton() {
     );
 }
 
-type ToastTone = "success" | "error";
-
-interface ToastItem {
-    id: number;
-    message: string;
-    tone: ToastTone;
-}
-
-function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: number) => void }) {
-    if (toasts.length === 0) return null;
-    return (
-        <div className="fixed bottom-5 right-5 z-100 flex flex-col gap-2 w-full max-w-sm pointer-events-none">
-            {toasts.map((t) => (
-                <div
-                    key={t.id}
-                    className={`pointer-events-auto flex items-start gap-3 rounded-xl border px-4 py-3 shadow-lg transition-all animate-in fade-in slide-in-from-bottom-2 ${t.tone === "success"
-                        ? "bg-white border-green-200"
-                        : "bg-white border-red-200"
-                        }`}
-                >
-                    {t.tone === "success" ? (
-                        <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-                    ) : (
-                        <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                    )}
-                    <p className="text-sm text-[#0B1F4A] flex-1 leading-snug">{t.message}</p>
-                    <button
-                        onClick={() => onDismiss(t.id)}
-                        className="text-[#64748B] hover:text-[#0B1F4A] transition shrink-0"
-                        aria-label="Dismiss notification"
-                    >
-                        <X className="w-3.5 h-3.5" />
-                    </button>
-                </div>
-            ))}
-        </div>
-    );
-}
-
 export default function AdminChatsPage() {
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
@@ -320,88 +193,21 @@ export default function AdminChatsPage() {
     const [sending, setSending] = useState(false);
     const [markingAddressed, setMarkingAddressed] = useState(false);
 
-    const [toasts, setToasts] = useState<ToastItem[]>([]);
-    const toastIdRef = useRef(0);
-
-    const pushToast = useCallback((message: string, tone: ToastTone) => {
-        const id = ++toastIdRef.current;
-        setToasts((t) => [...t, { id, message, tone }]);
-        setTimeout(() => {
-            setToasts((t) => t.filter((toast) => toast.id !== id));
-        }, 4000);
-    }, []);
-
-    const dismissToast = (id: number) => {
-        setToasts((t) => t.filter((toast) => toast.id !== id));
-    };
-
     const [sendingHistory, setSendingHistory] = useState(false);
     const [historySentNotice, setHistorySentNotice] = useState<string | null>(null);
     const [error, setError] = useState("");
     const [query, setQuery] = useState("");
     const [addressedFilter, setAddressedFilter] = useState<AddressedFilter>("all");
     const [agentRequestNotice, setAgentRequestNotice] = useState<string | null>(null);
-    const [statsLoading, setStatsLoading] = useState(true);
-    const [statsSnapshot, setStatsSnapshot] = useState<ChatStatsSnapshot>({
-        current: { total: 0, liveRequests: 0, convertedLeads: 0, responseTotalSeconds: 0, responseCount: 0 },
-        previous: { total: 0, liveRequests: 0, convertedLeads: 0, responseTotalSeconds: 0, responseCount: 0 },
-    });
 
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     const notifiedRequestIds = useRef<Set<number>>(new Set());
 
-    const buildStatsSnapshot = async (items: ChatConversation[]) => {
-        const now = new Date();
-        const currentStart = startOfMonth(now);
-        const previousStart = startOfPreviousMonth(now);
-
-        const snapshot: ChatStatsSnapshot = {
-            current: { total: 0, liveRequests: 0, convertedLeads: 0, responseTotalSeconds: 0, responseCount: 0 },
-            previous: { total: 0, liveRequests: 0, convertedLeads: 0, responseTotalSeconds: 0, responseCount: 0 },
-        };
-
-        const details = await Promise.allSettled(
-            items.map(async (item) => {
-                try {
-                    return await chatApi.getConversation(item.id);
-                } catch {
-                    return null;
-                }
-            }),
-        );
-
-        items.forEach((conversation, index) => {
-            const created = new Date(conversation.created_at);
-            if (Number.isNaN(created.getTime())) return;
-
-            const bucket = created >= currentStart
-                ? snapshot.current
-                : created >= previousStart && created < currentStart
-                    ? snapshot.previous
-                    : null;
-
-            if (!bucket) return;
-
-            bucket.total += 1;
-            if (statusIsLiveRequest(conversation.status)) bucket.liveRequests += 1;
-            if (statusIsConvertedLead(conversation.status, conversation.addressed_at)) bucket.convertedLeads += 1;
-
-            const detailResult = details[index];
-            if (detailResult.status !== "fulfilled" || !detailResult.value) return;
-            const responseSeconds = getFirstResponseSeconds(detailResult.value);
-            if (responseSeconds == null) return;
-            bucket.responseTotalSeconds += responseSeconds;
-            bucket.responseCount += 1;
-        });
-
-        return snapshot;
-    };
-
     const loadConversations = async () => {
         setLoading(true);
-        setStatsLoading(true);
         setError("");
 
         try {
@@ -410,9 +216,6 @@ export default function AdminChatsPage() {
             setConversations(items);
             checkForNewAgentRequests(items);
 
-            const snapshot = await buildStatsSnapshot(items);
-            setStatsSnapshot(snapshot);
-
             if (!selectedConversationId && items[0]?.id) {
                 setSelectedConversationId(items[0].id);
             }
@@ -420,7 +223,6 @@ export default function AdminChatsPage() {
             setError(err instanceof Error ? err.message : "Unable to load conversations.");
         } finally {
             setLoading(false);
-            setStatsLoading(false);
         }
     };
 
@@ -461,10 +263,7 @@ export default function AdminChatsPage() {
                 const conversation = await chatApi.getConversation(selectedConversationId);
                 if (!cancelled) setSelectedConversation(conversation);
             } catch (err) {
-                if (!cancelled) {
-                    setError(err instanceof Error ? err.message : "Unable to load conversation.");
-                    setSelectedConversation(null);
-                }
+                if (!cancelled) setError(err instanceof Error ? err.message : "Unable to load conversation.");
             } finally {
                 if (!cancelled) setConversationLoading(false);
             }
@@ -544,6 +343,9 @@ export default function AdminChatsPage() {
         setError("");
 
         try {
+            // Let the admin reply the moment a visitor needs a person, without
+            // a separate "take over" click first — the reply itself takes
+            // ownership of the conversation.
             if (selectedConversation && NEEDS_ADMIN.includes(selectedConversation.status as StatusKey)) {
                 await chatApi.switchMode(selectedConversationId, "admin");
             }
@@ -551,11 +353,8 @@ export default function AdminChatsPage() {
             await chatApi.sendMessage(selectedConversationId, "admin", reply.trim());
             setReply("");
             await refresh();
-            pushToast("Reply sent.", "success");
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Unable to send reply.";
-            setError(message);
-            pushToast(message, "error");
+            setError(err instanceof Error ? err.message : "Unable to send reply.");
         } finally {
             setSending(false);
         }
@@ -602,11 +401,8 @@ export default function AdminChatsPage() {
         try {
             await chatApi.markAddressed(selectedConversationId, nextAddressed);
             await refresh();
-            pushToast(nextAddressed ? "Marked as addressed." : "Marked as needing response.", "success");
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Unable to update addressed status.";
-            setError(message);
-            pushToast(message, "error");
+            setError(err instanceof Error ? err.message : "Unable to update addressed status.");
         } finally {
             setMarkingAddressed(false);
         }
@@ -620,13 +416,11 @@ export default function AdminChatsPage() {
 
         try {
             const result = await chatApi.emailChatHistory(selectedConversationId);
-            const to = result?.to ?? selectedConversation.inquiry?.email_address ?? "the visitor";
-            setHistorySentNotice(`Chat history sent to ${to}.`);
-            pushToast(`Chat history sent to ${to}.`, "success");
+            setHistorySentNotice(
+                `Chat history sent to ${result?.to ?? selectedConversation.inquiry?.email_address ?? "the visitor"}.`,
+            );
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Unable to send chat history.";
-            setError(message);
-            pushToast(message, "error");
+            setError(err instanceof Error ? err.message : "Unable to send chat history.");
         } finally {
             setSendingHistory(false);
         }
@@ -634,6 +428,7 @@ export default function AdminChatsPage() {
 
     const handleSelectConversation = (id: number) => {
         setSelectedConversationId(id);
+        setSidebarOpen(false);
     };
 
     useEffect(() => {
@@ -675,57 +470,16 @@ export default function AdminChatsPage() {
         );
     }, [conversations, query, addressedFilter]);
 
-    const statCards = useMemo<ChatStatCardData[]>(() => {
-        const currentResponseAvgSeconds = statsSnapshot.current.responseCount > 0
-            ? Math.round(statsSnapshot.current.responseTotalSeconds / statsSnapshot.current.responseCount)
-            : 0;
-
-        const previousResponseAvgSeconds = statsSnapshot.previous.responseCount > 0
-            ? Math.round(statsSnapshot.previous.responseTotalSeconds / statsSnapshot.previous.responseCount)
-            : 0;
-
-        const currentLeadRate = statsSnapshot.current.total > 0
-            ? (statsSnapshot.current.convertedLeads / statsSnapshot.current.total) * 100
-            : 0;
-        const previousLeadRate = statsSnapshot.previous.total > 0
-            ? (statsSnapshot.previous.convertedLeads / statsSnapshot.previous.total) * 100
-            : 0;
-
-        return [
-            {
-                label: "Total Conversations",
-                value: String(conversations.length),
-                trend: getPercentTrendText(statsSnapshot.current.total, statsSnapshot.previous.total),
-                note: `This month: ${statsSnapshot.current.total}`,
-                icon: Inbox,
-                tone: "neutral",
-            },
-            {
-                label: "Live Agent Requests",
-                value: String(conversations.filter((c) => statusIsLiveRequest(c.status)).length),
-                trend: getPercentTrendText(statsSnapshot.current.liveRequests, statsSnapshot.previous.liveRequests),
-                note: `${formatPercent(statsSnapshot.current.liveRequests, Math.max(statsSnapshot.current.total, 1))} of current period`,
-                icon: Headset,
-                tone: "amber",
-            },
-            {
-                label: "Average Response Time",
-                value: formatDurationFromSeconds(currentResponseAvgSeconds),
-                trend: getPercentTrendText(previousResponseAvgSeconds, currentResponseAvgSeconds),
-                note: `From ${statsSnapshot.current.responseCount} measured replies`,
-                icon: Clock3,
-                tone: "green",
-            },
-            {
-                label: "Lead Conversion",
-                value: `${currentLeadRate.toFixed(1)}%`,
-                trend: getPercentTrendText(Math.round(currentLeadRate), Math.round(previousLeadRate)),
-                note: `Prev period: ${previousLeadRate.toFixed(1)}%`,
-                icon: UserCheck,
-                tone: "red",
-            },
-        ];
-    }, [conversations, statsSnapshot]);
+    // Conversation overview — quick counts across the whole queue.
+    const overview = useMemo(() => {
+        const total = conversations.length;
+        const needsYou = conversations.filter((c) => NEEDS_ADMIN.includes(c.status as StatusKey)).length;
+        const live = conversations.filter((c) => (c.status as StatusKey) === "agent_active").length;
+        const ended = conversations.filter((c) => statusOf(c.status).ended).length;
+        const addressed = conversations.filter(isAddressed).length;
+        const needsResponse = total - addressed;
+        return { total, needsYou, live, ended, addressed, needsResponse };
+    }, [conversations]);
 
     const selectedIsEnded = selectedConversation ? statusOf(selectedConversation.status).ended : false;
     const selectedIsAddressed = selectedConversation ? isAddressed(selectedConversation) : false;
@@ -787,7 +541,7 @@ export default function AdminChatsPage() {
                                     <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
                                     <span className="shrink-0 font-mono text-[10px] text-slate-400">{timeAgo(conversation.updated_at)}</span>
                                 </div>
-
+                    
                                 <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5">
                                     <p className="truncate text-xs text-slate-500">{conversation.inquiry?.email_address ?? "No email"}</p>
                                     <span className="font-mono text-[10px] text-slate-400">{conversation.message_count} msgs</span>
@@ -801,11 +555,17 @@ export default function AdminChatsPage() {
     );
 
     return (
-        <main className="flex h-dvh flex-col overflow-hidden">
-            <section className="mx-auto flex w-full min-h-0 max-w-7xl flex-1 flex-col overflow-hidden">
+        <div className="flex h-dvh flex-col overflow-hidden">
+            <main className="mx-auto flex w-full min-h-0 max-w-7xl flex-1 flex-col overflow-hidden">
                 {/* Mobile/tablet top bar */}
                 <div className="flex shrink-0 items-center justify-between gap-2 px-1 pb-2 lg:hidden">
-                    <p className="text-sm font-semibold text-slate-800">Conversations</p>
+                    <button
+                        onClick={() => setSidebarOpen(true)}
+                        aria-label="Open conversations menu"
+                        className="flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1]"
+                    >
+                        <Menu className="h-4 w-4" />
+                    </button>
                     <button
                         onClick={() => void handleManualRefresh()}
                         disabled={refreshing || loading}
@@ -844,57 +604,40 @@ export default function AdminChatsPage() {
                 ) : null}
 
                 {/* Queue summary + Refresh */}
-                <div className="mb-2 flex shrink-0 items-stretch gap-2">
-                    <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        {statsLoading ? (
-                            <ChatStatsSkeleton />
-                        ) : (
-                            statCards.map((s) => <ChatStatCard key={s.label} {...s} />)
-                        )}
+                <div className="hidden shrink-0 items-stretch gap-2 mb-2 lg:flex">
+                    <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-5">
+                        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                            <p className="text-[11px] text-slate-400">Total</p>
+                            <p className="text-lg font-semibold text-slate-800">{overview.total}</p>
+                        </div>
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                            <p className="text-[11px] text-amber-600">Needs you</p>
+                            <p className="text-lg font-semibold text-amber-700">{overview.needsYou}</p>
+                        </div>
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2">
+                            <p className="text-[11px] text-[#0D47A1]/70">Live now</p>
+                            <p className="text-lg font-semibold text-[#0D47A1]">{overview.live}</p>
+                        </div>
+                        <div className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2">
+                            <p className="text-[11px] text-teal-600">Addressed</p>
+                            <p className="text-lg font-semibold text-teal-700">{overview.addressed}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                            <p className="text-[11px] text-slate-400">Unaddressed</p>
+                            <p className="text-lg font-semibold text-slate-800">{overview.needsResponse}</p>
+                        </div>
                     </div>
-                </div>
 
-                {/* Mobile/tablet conversation list cards */}
-                <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm lg:hidden">
-                    {sidebarSearchHeader}
-                    <div className="max-h-72 space-y-1.5 overflow-y-auto p-1.5">
-                        {loading || refreshing ? (
-                            <ConversationListSkeleton />
-                        ) : filteredConversations.length === 0 ? (
-                            <div className="flex flex-col items-center gap-2 rounded-xl bg-slate-50 p-6 text-center">
-                                <Inbox className="h-5 w-5 text-slate-300" />
-                                <p className="text-sm text-slate-500">
-                                    {conversations.length === 0 ? "No conversations yet." : "Nothing matches that filter."}
-                                </p>
-                            </div>
-                        ) : (
-                            filteredConversations.map((conversation) => {
-                                const isActive = conversation.id === selectedConversationId;
-                                const s = statusOf(conversation.status);
-                                const name = conversation.inquiry?.full_name ?? "Guest visitor";
-                                return (
-                                    <button
-                                        key={`mobile-${conversation.id}`}
-                                        onClick={() => handleSelectConversation(conversation.id)}
-                                        className={`group relative flex w-full items-start gap-3 overflow-hidden rounded-xl border p-2.5 pl-3.5 text-left transition ${isActive ? "border-[#0D47A1]/30 bg-[#0D47A1]/4" : "border-transparent hover:bg-slate-50"
-                                            }`}
-                                    >
-                                        <span className={`absolute inset-y-2 left-0 w-0.75 rounded-full ${s.rail}`} />
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
-                                                <span className="shrink-0 font-mono text-[10px] text-slate-400">{timeAgo(conversation.updated_at)}</span>
-                                            </div>
-                                            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5">
-                                                <p className="truncate text-xs text-slate-500">{conversation.inquiry?.email_address ?? "No email"}</p>
-                                                <span className="font-mono text-[10px] text-slate-400">{conversation.message_count} msgs</span>
-                                            </div>
-                                        </div>
-                                    </button>
-                                );
-                            })
-                        )}
-                    </div>
+                    <button
+                        onClick={() => void handleManualRefresh()}
+                        disabled={refreshing || loading}
+                        title="Refresh conversations"
+                        aria-label="Refresh conversations"
+                        className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                        <span className="hidden sm:inline">Refresh</span>
+                    </button>
                 </div>
 
                 <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -903,6 +646,30 @@ export default function AdminChatsPage() {
                         {sidebarSearchHeader}
                         {sidebarListBody}
                     </div>
+
+                    {/* Mobile/tablet off-canvas drawer with the same content */}
+                    {sidebarOpen ? (
+                        <div className="fixed inset-0 z-50 lg:hidden">
+                            <div
+                                className="absolute inset-0 bg-slate-900/40"
+                                onClick={() => setSidebarOpen(false)}
+                            />
+                            <div className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm flex-col overflow-hidden bg-white shadow-xl">
+                                <div className="flex shrink-0 items-center justify-between border-b border-slate-100 p-3">
+                                    <p className="text-sm font-semibold text-slate-800">Conversations</p>
+                                    <button
+                                        onClick={() => setSidebarOpen(false)}
+                                        aria-label="Close conversations menu"
+                                        className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100"
+                                    >
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
+                                {sidebarSearchHeader}
+                                {sidebarListBody}
+                            </div>
+                        </div>
+                    ) : null}
 
                     <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                         {selectedConversationId === null ? (
@@ -1112,66 +879,7 @@ export default function AdminChatsPage() {
                         )}
                     </div>
                 </div>
-            </section>
-            <ToastStack toasts={toasts} onDismiss={dismissToast} />
-        </main>
-    );
-}
-
-type StatCardProps = {
-    icon: React.ElementType;
-    label: string;
-    value: string;
-    trend?: string;
-    note?: string;
-    tone?: StatTone;
-};
-
-function ChatStatCard({ icon: Icon, label, value, trend, note, tone = "neutral" }: StatCardProps) {
-    const t = STAT_TONE_STYLES[tone];
-    const trendTone = trend?.startsWith("+")
-        ? "text-green-600"
-        : trend?.startsWith("-")
-            ? "text-red-600"
-            : "text-slate-500";
-
-    return (
-        <article className="relative overflow-hidden rounded-2xl border border-transparent bg-white p-6 text-left shadow">
-            <div className={`absolute top-0 left-0 h-full w-1 ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
-            <div className="mb-4 flex items-start justify-between">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${t.bg}`}>
-                    <Icon className={`h-5 w-5 ${t.text}`} />
-                </div>
-                <p className={`text-xs font-semibold ${trendTone}`}>{trend ?? "No change"}</p>
-            </div>
-            <p className="mb-1 text-sm font-medium text-gray-500">{label}</p>
-            <p className="mb-2 text-3xl font-bold text-gray-900">{value}</p>
-            <p className="text-xs text-slate-400">{note ?? " "}</p>
-        </article>
-    );
-}
-
-function ChatStatCardSkeleton() {
-    return (
-        <div className="relative overflow-hidden rounded-2xl border border-transparent bg-white p-6 text-left shadow animate-pulse">
-            <div className="absolute top-0 left-0 h-full w-1 bg-slate-200" />
-            <div className="mb-4 flex items-start justify-between">
-                <div className="h-10 w-10 rounded-xl bg-slate-200" />
-                <div className="h-3 w-14 rounded bg-slate-200" />
-            </div>
-            <div className="mb-3 h-4 w-32 rounded bg-slate-200" />
-            <div className="mb-3 h-9 w-20 rounded bg-slate-200" />
-            <div className="h-3 w-32 rounded bg-slate-200" />
+            </main>
         </div>
-    );
-}
-
-function ChatStatsSkeleton() {
-    return (
-        <>
-            {Array.from({ length: 4 }).map((_, i) => (
-                <ChatStatCardSkeleton key={i} />
-            ))}
-        </>
     );
 }
