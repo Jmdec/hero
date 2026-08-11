@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 // Metadata
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://heroph.net"),
+  metadataBase: new URL(""),
 
   title: {
     default:
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     "SEC registered address Philippines",
   ],
 
-  authors: [{ name: "HERO Serviced Office, Inc.", url: "https://heroph.net" }],
+  authors: [{ name: "HERO Serviced Office, Inc.", url: "" }],
   creator: "HERO Serviced Office, Inc.",
   publisher: "HERO Serviced Office, Inc.",
   applicationName: "HERO Serviced Office",
@@ -69,7 +69,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_PH",
     alternateLocale: ["en_US", "ja_JP"],
-    url: "https://heroph.net",
+    url: "",
     siteName: "HERO Serviced Office",
     title:
       "HERO Serviced Office | Premium Flexible Workspace in Makati, Philippines",
@@ -120,11 +120,11 @@ export const metadata: Metadata = {
 
   // Alternates / hreflang
   alternates: {
-    canonical: "https://heroph.net",
+    canonical: "",
     languages: {
-      "en-PH": "https://heroph.net/en",
-      "ja-JP": "https://heroph.net/ja",
-      "x-default": "https://heroph.net",
+      "en-PH": "/en",
+      "ja-JP": "/ja",
+      "x-default": "",
     },
   },
 
@@ -199,7 +199,7 @@ export const viewport = {
 const localBusinessSchema = {
   "@context": "https://schema.org",
   "@type": ["LocalBusiness", "RealEstateAgent"],
-  "@id": "https://heroph.net/#business",
+  "@id": "/#business",
   name: "HERO Serviced Office, Inc.",
   alternateName: ["HERO Office", "ヒーローサービスオフィス"],
   image: [

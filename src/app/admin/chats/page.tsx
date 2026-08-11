@@ -59,6 +59,43 @@ type AddressedFilter = "all" | "needs_response" | "addressed";
 
 type SenderKey = "admin" | "assistant" | "client";
 
+type ChatStatTone = "neutral" | "amber" | "blue" | "green";
+
+type ChatAnalytics = {
+    chat_leads: {
+        conversations: number;
+        agent_requested: number;
+        average_response_time_seconds: number;
+        lead_conversion_rate: number;
+        conversation_volume: {
+            this_month: number;
+            last_month: number;
+        };
+        agent_requests: {
+            this_month: number;
+            last_month: number;
+            three_month_average: number;
+        };
+        response_time: {
+            this_month_seconds: number;
+            last_month_seconds: number;
+            three_month_average_seconds: number;
+        };
+        lead_conversion: {
+            this_month: number;
+            last_month: number;
+            three_month_average: number;
+        };
+    };
+};
+
+const CHAT_STAT_TONE_STYLES: Record<ChatStatTone, { bg: string; text: string; rail: string }> = {
+    neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]", rail: "bg-[#0D47A1]" },
+    amber: { bg: "bg-amber-50", text: "text-amber-700", rail: "bg-amber-500" },
+    blue: { bg: "bg-blue-50", text: "text-[#0D47A1]", rail: "bg-[#1565C0]" },
+    green: { bg: "bg-emerald-50", text: "text-emerald-700", rail: "bg-emerald-500" },
+};
+
 const SENDER_STYLE: Record<SenderKey, { bubble: string; label: string; icon: typeof User }> = {
     admin: {
         bubble: "rounded-br-sm bg-[#0D47A1] text-white",
@@ -182,6 +219,145 @@ function ConversationListSkeleton() {
     );
 }
 
+function authHeaders() {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    return {
+        Authorization: `Bearer ${token ?? ""}`,
+    };
+}
+
+function formatDuration(seconds: number) {
+    if (!Number.isFinite(seconds) || seconds <= 0) return "0s";
+
+    const wholeSeconds = Math.round(seconds);
+    const minutes = Math.floor(wholeSeconds / 60);
+    const remainingSeconds = wholeSeconds % 60;
+
+    if (minutes === 0) return `${remainingSeconds}s`;
+    if (remainingSeconds === 0) return `${minutes}m`;
+    return `${minutes}m ${remainingSeconds}s`;
+}
+
+function formatCountTrend(current: number, previous: number) {
+    const delta = current - previous;
+    if (delta === 0) return "No change vs last month";
+    return `${delta > 0 ? "+" : ""}${delta} vs last month`;
+}
+
+function formatRateTrend(current: number, previous: number) {
+    const delta = current - previous;
+    if (Math.abs(delta) < 0.05) return "No change vs last month";
+    return `${delta > 0 ? "+" : ""}${delta.toFixed(1)} pts vs last month`;
+}
+
+function formatResponseTrend(currentSeconds: number, previousSeconds: number) {
+    const delta = currentSeconds - previousSeconds;
+    if (delta === 0) return "No change vs last month";
+    return `${formatDuration(Math.abs(delta))} ${delta < 0 ? "faster" : "slower"} vs last month`;
+}
+
+type ChatStatCardProps = {
+    icon: typeof Bot;
+    label: string;
+    value: string;
+    tone: ChatStatTone;
+    trend: string;
+    supporting: string;
+};
+
+function ChatStatCard({ icon: Icon, label, value, tone, trend, supporting }: ChatStatCardProps) {
+    const style = CHAT_STAT_TONE_STYLES[tone];
+
+    return (
+        <article className="relative overflow-hidden rounded-2xl border border-transparent bg-white p-5 shadow-sm">
+            <div className={`absolute left-0 top-0 h-full w-1 ${style.rail}`} />
+            <div className="mb-4 flex items-start justify-between">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${style.bg}`}>
+                    <Icon className={`h-5 w-5 ${style.text}`} />
+                </div>
+            </div>
+            <p className="mb-1 text-sm font-medium text-slate-500">{label}</p>
+            <p className="mb-2 text-3xl font-bold text-slate-900">{value}</p>
+            <p className="text-xs font-medium text-slate-500">{trend}</p>
+            <p className="mt-1 text-xs text-slate-400">{supporting}</p>
+        </article>
+    );
+}
+
+function StatCardSkeleton() {
+    return (
+        <div className="relative overflow-hidden rounded-2xl border border-transparent bg-white p-5 shadow-sm animate-pulse">
+            <div className="absolute left-0 top-0 h-full w-1 bg-slate-200" />
+            <div className="mb-4 h-10 w-10 rounded-xl bg-slate-200" />
+            <div className="mb-2 h-4 w-32 rounded bg-slate-200" />
+            <div className="mb-3 h-9 w-28 rounded bg-slate-200" />
+            <div className="mb-2 h-3 w-36 rounded bg-slate-200" />
+            <div className="h-3 w-28 rounded bg-slate-100" />
+        </div>
+    );
+}
+
+function ChatStatsSkeleton() {
+    return (
+        <>
+            {Array.from({ length: 4 }).map((_, index) => (
+                <StatCardSkeleton key={index} />
+            ))}
+        </>
+    );
+}
+
+function ChatStatistics({ analytics }: { analytics: ChatAnalytics["chat_leads"] }) {
+    const cards: ChatStatCardProps[] = [
+        {
+            icon: Bot,
+            label: "Total Conversations",
+            value: analytics.conversations.toLocaleString(),
+            tone: "neutral",
+            trend: formatCountTrend(
+                analytics.conversation_volume.this_month,
+                analytics.conversation_volume.last_month,
+            ),
+            supporting: `This month: ${analytics.conversation_volume.this_month}`,
+        },
+        {
+            icon: Headset,
+            label: "Live Agent Requests",
+            value: analytics.agent_requested.toLocaleString(),
+            tone: "amber",
+            trend: formatCountTrend(analytics.agent_requests.this_month, analytics.agent_requests.last_month),
+            supporting: `3-month avg: ${analytics.agent_requests.three_month_average}`,
+        },
+        {
+            icon: ArrowRightLeft,
+            label: "Average Response Time",
+            value: formatDuration(analytics.average_response_time_seconds),
+            tone: "blue",
+            trend: formatResponseTrend(
+                analytics.response_time.this_month_seconds,
+                analytics.response_time.last_month_seconds,
+            ),
+            supporting: `3-month avg: ${formatDuration(analytics.response_time.three_month_average_seconds)}`,
+        },
+        {
+            icon: MailCheck,
+            label: "Lead Conversion",
+            value: `${analytics.lead_conversion_rate.toFixed(1)}%`,
+            tone: "green",
+            trend: formatRateTrend(analytics.lead_conversion.this_month, analytics.lead_conversion.last_month),
+            supporting: `3-month avg: ${analytics.lead_conversion.three_month_average.toFixed(1)}%`,
+        },
+    ];
+
+    return (
+        <>
+            {cards.map((card) => (
+                <ChatStatCard key={card.label} {...card} />
+            ))}
+        </>
+    );
+}
+
 export default function AdminChatsPage() {
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
@@ -197,9 +373,12 @@ export default function AdminChatsPage() {
     const [sendingHistory, setSendingHistory] = useState(false);
     const [historySentNotice, setHistorySentNotice] = useState<string | null>(null);
     const [error, setError] = useState("");
+    const [statsError, setStatsError] = useState("");
     const [query, setQuery] = useState("");
     const [addressedFilter, setAddressedFilter] = useState<AddressedFilter>("all");
     const [agentRequestNotice, setAgentRequestNotice] = useState<string | null>(null);
+    const [chatStats, setChatStats] = useState<ChatAnalytics["chat_leads"] | null>(null);
+    const [statsLoading, setStatsLoading] = useState(true);
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
@@ -208,6 +387,31 @@ export default function AdminChatsPage() {
     const actionsMenuRef = useRef<HTMLDivElement>(null);
 
     const notifiedRequestIds = useRef<Set<number>>(new Set());
+
+    const loadChatStats = async (silent = false) => {
+        if (!silent || !chatStats) {
+            setStatsLoading(true);
+        }
+        setStatsError("");
+
+        try {
+            const res = await fetch("/api/analytics", {
+                headers: authHeaders(),
+            });
+
+            if (!res.ok) {
+                throw new Error(`Request failed (${res.status})`);
+            }
+
+            const data: ChatAnalytics = await res.json();
+            setChatStats(data.chat_leads);
+        } catch (err) {
+            setStatsError(err instanceof Error ? err.message : "Unable to load chat statistics.");
+            setChatStats(null);
+        } finally {
+            setStatsLoading(false);
+        }
+    };
 
     const loadConversations = async () => {
         setLoading(true);
@@ -241,6 +445,7 @@ export default function AdminChatsPage() {
 
     useEffect(() => {
         void loadConversations();
+        void loadChatStats();
     }, []);
 
     useEffect(() => {
@@ -343,7 +548,7 @@ export default function AdminChatsPage() {
     }, [selectedConversationId]);
 
     const refresh = async () => {
-        await loadConversations();
+        await Promise.all([loadConversations(), loadChatStats(true)]);
         if (selectedConversationId) {
             try {
                 const conversation = await chatApi.getConversation(selectedConversationId);
@@ -634,41 +839,45 @@ export default function AdminChatsPage() {
                     </div>
                 ) : null}
 
-                {/* Queue summary + Refresh */}
-                <div className="hidden shrink-0 items-stretch gap-2 mb-2 lg:flex">
-                    <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-5">
-                        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                            <p className="text-[11px] text-slate-400">Total</p>
-                            <p className="text-lg font-semibold text-slate-800">{overview.total}</p>
-                        </div>
-                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                            <p className="text-[11px] text-amber-600">Needs you</p>
-                            <p className="text-lg font-semibold text-amber-700">{overview.needsYou}</p>
-                        </div>
-                        <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2">
-                            <p className="text-[11px] text-[#0D47A1]/70">Live now</p>
-                            <p className="text-lg font-semibold text-[#0D47A1]">{overview.live}</p>
-                        </div>
-                        <div className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2">
-                            <p className="text-[11px] text-teal-600">Addressed</p>
-                            <p className="text-lg font-semibold text-teal-700">{overview.addressed}</p>
-                        </div>
-                        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                            <p className="text-[11px] text-slate-400">Unaddressed</p>
-                            <p className="text-lg font-semibold text-slate-800">{overview.needsResponse}</p>
-                        </div>
+                {/* Chat statistics */}
+                <div className="mb-2 space-y-3">
+                    <div className="hidden justify-end lg:flex">
+                        <button
+                            onClick={() => void handleManualRefresh()}
+                            disabled={refreshing || loading}
+                            title="Refresh conversations"
+                            aria-label="Refresh conversations"
+                            className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                            <span className="hidden sm:inline">Refresh</span>
+                        </button>
                     </div>
 
-                    <button
-                        onClick={() => void handleManualRefresh()}
-                        disabled={refreshing || loading}
-                        title="Refresh conversations"
-                        aria-label="Refresh conversations"
-                        className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-                        <span className="hidden sm:inline">Refresh</span>
-                    </button>
+                    {statsError ? (
+                        <p className="text-xs text-rose-600">{statsError}</p>
+                    ) : null}
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        {statsLoading ? (
+                            <ChatStatsSkeleton />
+                        ) : chatStats ? (
+                            <ChatStatistics analytics={chatStats} />
+                        ) : (
+                            <ChatStatistics
+                                analytics={{
+                                    conversations: 0,
+                                    agent_requested: 0,
+                                    average_response_time_seconds: 0,
+                                    lead_conversion_rate: 0,
+                                    conversation_volume: { this_month: 0, last_month: 0 },
+                                    agent_requests: { this_month: 0, last_month: 0, three_month_average: 0 },
+                                    response_time: { this_month_seconds: 0, last_month_seconds: 0, three_month_average_seconds: 0 },
+                                    lead_conversion: { this_month: 0, last_month: 0, three_month_average: 0 },
+                                }}
+                            />
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
