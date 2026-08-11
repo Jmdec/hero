@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
     AlertCircle,
     ArrowRightLeft,
+    BadgePercent,
     Bot,
     CheckCircle2,
+    Clock3,
     EllipsisVertical,
     Headset,
     Inbox,
@@ -58,43 +60,6 @@ function messagesRequestedHistory(messages: { sender: string; message: string }[
 type AddressedFilter = "all" | "needs_response" | "addressed";
 
 type SenderKey = "admin" | "assistant" | "client";
-
-type ChatStatTone = "neutral" | "amber" | "blue" | "green";
-
-type ChatAnalytics = {
-    chat_leads: {
-        conversations: number;
-        agent_requested: number;
-        average_response_time_seconds: number;
-        lead_conversion_rate: number;
-        conversation_volume: {
-            this_month: number;
-            last_month: number;
-        };
-        agent_requests: {
-            this_month: number;
-            last_month: number;
-            three_month_average: number;
-        };
-        response_time: {
-            this_month_seconds: number;
-            last_month_seconds: number;
-            three_month_average_seconds: number;
-        };
-        lead_conversion: {
-            this_month: number;
-            last_month: number;
-            three_month_average: number;
-        };
-    };
-};
-
-const CHAT_STAT_TONE_STYLES: Record<ChatStatTone, { bg: string; text: string; rail: string }> = {
-    neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]", rail: "bg-[#0D47A1]" },
-    amber: { bg: "bg-amber-50", text: "text-amber-700", rail: "bg-amber-500" },
-    blue: { bg: "bg-blue-50", text: "text-[#0D47A1]", rail: "bg-[#1565C0]" },
-    green: { bg: "bg-emerald-50", text: "text-emerald-700", rail: "bg-emerald-500" },
-};
 
 const SENDER_STYLE: Record<SenderKey, { bubble: string; label: string; icon: typeof User }> = {
     admin: {
@@ -219,58 +184,82 @@ function ConversationListSkeleton() {
     );
 }
 
+type ChatStatTone = "neutral" | "amber" | "green" | "red";
+
+type ChatAnalytics = {
+    chat_leads: {
+        conversations: number;
+        live_agent_requests: number;
+        average_response_time_seconds: number | null;
+        responded_conversations: number;
+        lead_conversion_rate: number;
+        trends: {
+            conversations: { current: number; previous: number };
+            live_agent_requests: { current: number; previous: number };
+            average_response_time_seconds: { current: number | null; previous: number | null };
+            lead_conversion_rate: { current: number; previous: number };
+        };
+    };
+};
+
+const CHAT_STAT_TONE_STYLES: Record<ChatStatTone, { bg: string; text: string; accent: string }> = {
+    neutral: { bg: "bg-[#F0F4FB]", text: "text-[#1B3A8C]", accent: "bg-[#0D47A1]" },
+    amber: { bg: "bg-amber-50", text: "text-amber-700", accent: "bg-amber-500" },
+    green: { bg: "bg-green-50", text: "text-green-700", accent: "bg-green-500" },
+    red: { bg: "bg-red-50", text: "text-red-600", accent: "bg-red-500" },
+};
+
 function authHeaders() {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     return {
         Authorization: `Bearer ${token ?? ""}`,
+        "Content-Type": "application/json",
     };
 }
 
-function formatDuration(seconds: number) {
-    if (!Number.isFinite(seconds) || seconds <= 0) return "0s";
+function formatDurationCompact(seconds: number | null | undefined) {
+    if (seconds === null || seconds === undefined || Number.isNaN(seconds)) return "--";
 
-    const wholeSeconds = Math.round(seconds);
-    const minutes = Math.floor(wholeSeconds / 60);
-    const remainingSeconds = wholeSeconds % 60;
+    const rounded = Math.max(0, Math.round(seconds));
+    const mins = Math.floor(rounded / 60);
+    const secs = rounded % 60;
 
-    if (minutes === 0) return `${remainingSeconds}s`;
-    if (remainingSeconds === 0) return `${minutes}m`;
-    return `${minutes}m ${remainingSeconds}s`;
+    if (mins === 0) return `${secs}s`;
+    if (secs === 0) return `${mins}m`;
+
+    return `${mins}m ${secs}s`;
 }
 
 function formatCountTrend(current: number, previous: number) {
     const delta = current - previous;
-    if (delta === 0) return "No change vs last month";
-    return `${delta > 0 ? "+" : ""}${delta} vs last month`;
+    if (delta === 0) return "No change vs previous period";
+    if (previous === 0) return `${delta > 0 ? "+" : ""}${delta} vs previous period`;
+
+    const percent = Math.round((delta / previous) * 100);
+    return `${percent > 0 ? "+" : ""}${percent}% vs previous period`;
 }
 
 function formatRateTrend(current: number, previous: number) {
     const delta = current - previous;
-    if (Math.abs(delta) < 0.05) return "No change vs last month";
-    return `${delta > 0 ? "+" : ""}${delta.toFixed(1)} pts vs last month`;
-}
+    if (Math.abs(delta) < 0.05) return "No change vs previous period";
 
-function formatResponseTrend(currentSeconds: number, previousSeconds: number) {
-    const delta = currentSeconds - previousSeconds;
-    if (delta === 0) return "No change vs last month";
-    return `${formatDuration(Math.abs(delta))} ${delta < 0 ? "faster" : "slower"} vs last month`;
+    return `${delta > 0 ? "+" : ""}${delta.toFixed(1)} pts vs previous period`;
 }
 
 type ChatStatCardProps = {
     icon: typeof Bot;
     label: string;
     value: string;
-    tone: ChatStatTone;
-    trend: string;
     supporting: string;
+    tone: ChatStatTone;
 };
 
-function ChatStatCard({ icon: Icon, label, value, tone, trend, supporting }: ChatStatCardProps) {
+function ChatStatCard({ icon: Icon, label, value, supporting, tone }: ChatStatCardProps) {
     const style = CHAT_STAT_TONE_STYLES[tone];
 
     return (
-        <article className="relative overflow-hidden rounded-2xl border border-transparent bg-white p-5 shadow-sm">
-            <div className={`absolute left-0 top-0 h-full w-1 ${style.rail}`} />
+        <article className="relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-6 text-left shadow-sm">
+            <div className={`absolute left-0 top-0 h-full w-1 ${style.accent}`} />
             <div className="mb-4 flex items-start justify-between">
                 <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${style.bg}`}>
                     <Icon className={`h-5 w-5 ${style.text}`} />
@@ -278,83 +267,113 @@ function ChatStatCard({ icon: Icon, label, value, tone, trend, supporting }: Cha
             </div>
             <p className="mb-1 text-sm font-medium text-slate-500">{label}</p>
             <p className="mb-2 text-3xl font-bold text-slate-900">{value}</p>
-            <p className="text-xs font-medium text-slate-500">{trend}</p>
-            <p className="mt-1 text-xs text-slate-400">{supporting}</p>
+            <p className="text-xs text-slate-400">{supporting}</p>
         </article>
     );
 }
 
-function StatCardSkeleton() {
+function ChatStatCardSkeleton() {
     return (
-        <div className="relative overflow-hidden rounded-2xl border border-transparent bg-white p-5 shadow-sm animate-pulse">
+        <div className="relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-6 shadow-sm animate-pulse">
             <div className="absolute left-0 top-0 h-full w-1 bg-slate-200" />
             <div className="mb-4 h-10 w-10 rounded-xl bg-slate-200" />
-            <div className="mb-2 h-4 w-32 rounded bg-slate-200" />
+            <div className="mb-3 h-4 w-32 rounded bg-slate-200" />
             <div className="mb-3 h-9 w-28 rounded bg-slate-200" />
-            <div className="mb-2 h-3 w-36 rounded bg-slate-200" />
-            <div className="h-3 w-28 rounded bg-slate-100" />
+            <div className="h-3 w-36 rounded bg-slate-200" />
         </div>
     );
 }
 
 function ChatStatsSkeleton() {
     return (
-        <>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
-                <StatCardSkeleton key={index} />
+                <ChatStatCardSkeleton key={index} />
             ))}
-        </>
+        </div>
     );
 }
 
-function ChatStatistics({ analytics }: { analytics: ChatAnalytics["chat_leads"] }) {
-    const cards: ChatStatCardProps[] = [
-        {
-            icon: Bot,
-            label: "Total Conversations",
-            value: analytics.conversations.toLocaleString(),
-            tone: "neutral",
-            trend: formatCountTrend(
-                analytics.conversation_volume.this_month,
-                analytics.conversation_volume.last_month,
-            ),
-            supporting: `This month: ${analytics.conversation_volume.this_month}`,
-        },
-        {
-            icon: Headset,
-            label: "Live Agent Requests",
-            value: analytics.agent_requested.toLocaleString(),
-            tone: "amber",
-            trend: formatCountTrend(analytics.agent_requests.this_month, analytics.agent_requests.last_month),
-            supporting: `3-month avg: ${analytics.agent_requests.three_month_average}`,
-        },
-        {
-            icon: ArrowRightLeft,
-            label: "Average Response Time",
-            value: formatDuration(analytics.average_response_time_seconds),
-            tone: "blue",
-            trend: formatResponseTrend(
-                analytics.response_time.this_month_seconds,
-                analytics.response_time.last_month_seconds,
-            ),
-            supporting: `3-month avg: ${formatDuration(analytics.response_time.three_month_average_seconds)}`,
-        },
-        {
-            icon: MailCheck,
-            label: "Lead Conversion",
-            value: `${analytics.lead_conversion_rate.toFixed(1)}%`,
-            tone: "green",
-            trend: formatRateTrend(analytics.lead_conversion.this_month, analytics.lead_conversion.last_month),
-            supporting: `3-month avg: ${analytics.lead_conversion.three_month_average.toFixed(1)}%`,
-        },
-    ];
+function ChatStatistics({ analytics }: { analytics: ChatAnalytics | null }) {
+    const cards = analytics
+        ? [
+            {
+                icon: Bot,
+                label: "Total Conversations",
+                value: analytics.chat_leads.conversations.toLocaleString(),
+                supporting: formatCountTrend(
+                    analytics.chat_leads.trends.conversations.current,
+                    analytics.chat_leads.trends.conversations.previous,
+                ),
+                tone: "neutral" as const,
+            },
+            {
+                icon: Headset,
+                label: "Live Agent Requests",
+                value: analytics.chat_leads.live_agent_requests.toLocaleString(),
+                supporting: formatCountTrend(
+                    analytics.chat_leads.trends.live_agent_requests.current,
+                    analytics.chat_leads.trends.live_agent_requests.previous,
+                ),
+                tone: "amber" as const,
+            },
+            {
+                icon: Clock3,
+                label: "Average Response Time",
+                value: formatDurationCompact(analytics.chat_leads.average_response_time_seconds),
+                supporting: analytics.chat_leads.responded_conversations > 0
+                    ? `Across ${analytics.chat_leads.responded_conversations.toLocaleString()} responded conversations`
+                    : "No replied conversations yet",
+                tone: "green" as const,
+            },
+            {
+                icon: BadgePercent,
+                label: "Lead Conversion",
+                value: `${analytics.chat_leads.lead_conversion_rate.toFixed(1)}%`,
+                supporting: formatRateTrend(
+                    analytics.chat_leads.trends.lead_conversion_rate.current,
+                    analytics.chat_leads.trends.lead_conversion_rate.previous,
+                ),
+                tone: "red" as const,
+            },
+        ]
+        : [
+            {
+                icon: Bot,
+                label: "Total Conversations",
+                value: "--",
+                supporting: "Analytics unavailable",
+                tone: "neutral" as const,
+            },
+            {
+                icon: Headset,
+                label: "Live Agent Requests",
+                value: "--",
+                supporting: "Analytics unavailable",
+                tone: "amber" as const,
+            },
+            {
+                icon: Clock3,
+                label: "Average Response Time",
+                value: "--",
+                supporting: "Analytics unavailable",
+                tone: "green" as const,
+            },
+            {
+                icon: BadgePercent,
+                label: "Lead Conversion",
+                value: "--",
+                supporting: "Analytics unavailable",
+                tone: "red" as const,
+            },
+        ];
 
     return (
-        <>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {cards.map((card) => (
                 <ChatStatCard key={card.label} {...card} />
             ))}
-        </>
+        </div>
     );
 }
 
@@ -362,8 +381,10 @@ export default function AdminChatsPage() {
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
     const [selectedConversation, setSelectedConversation] = useState<ConversationResponse | null>(null);
+    const [chatAnalytics, setChatAnalytics] = useState<ChatAnalytics | null>(null);
     const [loading, setLoading] = useState(true);
     const [conversationLoading, setConversationLoading] = useState(false);
+    const [statsLoading, setStatsLoading] = useState(true);
 
     const [refreshing, setRefreshing] = useState(false);
     const [reply, setReply] = useState("");
@@ -373,12 +394,9 @@ export default function AdminChatsPage() {
     const [sendingHistory, setSendingHistory] = useState(false);
     const [historySentNotice, setHistorySentNotice] = useState<string | null>(null);
     const [error, setError] = useState("");
-    const [statsError, setStatsError] = useState("");
     const [query, setQuery] = useState("");
     const [addressedFilter, setAddressedFilter] = useState<AddressedFilter>("all");
     const [agentRequestNotice, setAgentRequestNotice] = useState<string | null>(null);
-    const [chatStats, setChatStats] = useState<ChatAnalytics["chat_leads"] | null>(null);
-    const [statsLoading, setStatsLoading] = useState(true);
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
@@ -387,31 +405,6 @@ export default function AdminChatsPage() {
     const actionsMenuRef = useRef<HTMLDivElement>(null);
 
     const notifiedRequestIds = useRef<Set<number>>(new Set());
-
-    const loadChatStats = async (silent = false) => {
-        if (!silent || !chatStats) {
-            setStatsLoading(true);
-        }
-        setStatsError("");
-
-        try {
-            const res = await fetch("/api/analytics", {
-                headers: authHeaders(),
-            });
-
-            if (!res.ok) {
-                throw new Error(`Request failed (${res.status})`);
-            }
-
-            const data: ChatAnalytics = await res.json();
-            setChatStats(data.chat_leads);
-        } catch (err) {
-            setStatsError(err instanceof Error ? err.message : "Unable to load chat statistics.");
-            setChatStats(null);
-        } finally {
-            setStatsLoading(false);
-        }
-    };
 
     const loadConversations = async () => {
         setLoading(true);
@@ -445,7 +438,6 @@ export default function AdminChatsPage() {
 
     useEffect(() => {
         void loadConversations();
-        void loadChatStats();
     }, []);
 
     useEffect(() => {
@@ -547,8 +539,32 @@ export default function AdminChatsPage() {
         setActionsMenuOpen(false);
     }, [selectedConversationId]);
 
+    const loadChatAnalytics = async (silent = false) => {
+        if (!silent) {
+            setStatsLoading(true);
+        }
+
+        try {
+            const response = await fetch("/api/analytics", {
+                headers: authHeaders(),
+                cache: "no-store",
+            });
+
+            if (!response.ok) {
+                throw new Error(`Analytics request failed (${response.status})`);
+            }
+
+            const data = (await response.json()) as ChatAnalytics;
+            setChatAnalytics(data);
+        } catch {
+            setChatAnalytics(null);
+        } finally {
+            setStatsLoading(false);
+        }
+    };
+
     const refresh = async () => {
-        await Promise.all([loadConversations(), loadChatStats(true)]);
+        await Promise.all([loadConversations(), loadChatAnalytics(true)]);
         if (selectedConversationId) {
             try {
                 const conversation = await chatApi.getConversation(selectedConversationId);
@@ -673,6 +689,10 @@ export default function AdminChatsPage() {
         });
     }, [selectedConversation?.messages]);
 
+    useEffect(() => {
+        void loadChatAnalytics();
+    }, []);
+
     const REPLY_MIN_HEIGHT = 72; // px, ~3 rows
     const REPLY_MAX_HEIGHT = 200; // px, ~8-9 rows before it scrolls
 
@@ -705,17 +725,6 @@ export default function AdminChatsPage() {
             (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
         );
     }, [conversations, query, addressedFilter]);
-
-    // Conversation overview — quick counts across the whole queue.
-    const overview = useMemo(() => {
-        const total = conversations.length;
-        const needsYou = conversations.filter((c) => NEEDS_ADMIN.includes(c.status as StatusKey)).length;
-        const live = conversations.filter((c) => (c.status as StatusKey) === "agent_active").length;
-        const ended = conversations.filter((c) => statusOf(c.status).ended).length;
-        const addressed = conversations.filter(isAddressed).length;
-        const needsResponse = total - addressed;
-        return { total, needsYou, live, ended, addressed, needsResponse };
-    }, [conversations]);
 
     const selectedIsEnded = selectedConversation ? statusOf(selectedConversation.status).ended : false;
     const selectedIsAddressed = selectedConversation ? isAddressed(selectedConversation) : false;
@@ -840,44 +849,21 @@ export default function AdminChatsPage() {
                 ) : null}
 
                 {/* Chat statistics */}
-                <div className="mb-2 space-y-3">
-                    <div className="hidden justify-end lg:flex">
-                        <button
-                            onClick={() => void handleManualRefresh()}
-                            disabled={refreshing || loading}
-                            title="Refresh conversations"
-                            aria-label="Refresh conversations"
-                            className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-                            <span className="hidden sm:inline">Refresh</span>
-                        </button>
+                <div className="mb-3 flex flex-col gap-3 xl:flex-row xl:items-start">
+                    <div className="min-w-0 flex-1">
+                        {statsLoading ? <ChatStatsSkeleton /> : <ChatStatistics analytics={chatAnalytics} />}
                     </div>
 
-                    {statsError ? (
-                        <p className="text-xs text-rose-600">{statsError}</p>
-                    ) : null}
-
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                        {statsLoading ? (
-                            <ChatStatsSkeleton />
-                        ) : chatStats ? (
-                            <ChatStatistics analytics={chatStats} />
-                        ) : (
-                            <ChatStatistics
-                                analytics={{
-                                    conversations: 0,
-                                    agent_requested: 0,
-                                    average_response_time_seconds: 0,
-                                    lead_conversion_rate: 0,
-                                    conversation_volume: { this_month: 0, last_month: 0 },
-                                    agent_requests: { this_month: 0, last_month: 0, three_month_average: 0 },
-                                    response_time: { this_month_seconds: 0, last_month_seconds: 0, three_month_average_seconds: 0 },
-                                    lead_conversion: { this_month: 0, last_month: 0, three_month_average: 0 },
-                                }}
-                            />
-                        )}
-                    </div>
+                    <button
+                        onClick={() => void handleManualRefresh()}
+                        disabled={refreshing || loading}
+                        title="Refresh conversations"
+                        aria-label="Refresh conversations"
+                        className="hidden shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50 lg:inline-flex"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                        <span>Refresh</span>
+                    </button>
                 </div>
 
                 <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
