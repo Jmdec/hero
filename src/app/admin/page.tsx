@@ -166,7 +166,6 @@ const STAT_TONE_STYLES: Record<StatTone, { bg: string; text: string; accent: str
 
 type StatCardProps = {
     id: StatKey;
-    icon: React.ElementType;
     label: string;
     value: string;
     trend: string;
@@ -174,7 +173,7 @@ type StatCardProps = {
     onClick: (id: StatKey) => void;
 };
 
-function StatCard({ id, icon: Icon, label, value, trend, tone, onClick }: StatCardProps) {
+function StatCard({ id, label, value, trend, tone, onClick }: StatCardProps) {
     const style = STAT_TONE_STYLES[tone];
     const trendTone = trend.startsWith("+") ? "text-green-600" : trend.startsWith("-") ? "text-red-600" : "text-slate-500";
 
@@ -185,13 +184,10 @@ function StatCard({ id, icon: Icon, label, value, trend, tone, onClick }: StatCa
         >
             <div className={`absolute left-0 top-0 h-full w-1 ${style.accent}`} />
             <div className="mb-4 flex items-start justify-between">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${style.bg}`}>
-                    <Icon className={`h-5 w-5 ${style.text}`} />
-                </div>
+                <p className="mb-1 text-md font-semibold text-gray-500">{label}</p>
                 <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-[#0D47A1]" />
             </div>
-            <p className="mb-1 text-sm font-medium text-gray-500">{label}</p>
-            <p className="mb-2 text-3xl font-bold text-gray-900">{value}</p>
+            <p className="mb-2 text-2xl font-bold text-gray-900">{value}</p>
             <div className={`flex items-center gap-1 text-xs font-semibold ${trendTone}`}>
                 {trend.startsWith("+") && <TrendingUp className="h-3.5 w-3.5" />}
                 {trend.startsWith("-") && <TrendingDown className="h-3.5 w-3.5" />}
@@ -245,10 +241,6 @@ function StatCardSkeleton() {
     return (
         <div className="relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-6 shadow">
             <div className="absolute left-0 top-0 h-full w-1 bg-slate-200" />
-            <div className="mb-4 flex items-start justify-between">
-                <SkeletonBlock className="h-10 w-10 rounded-xl" />
-                <SkeletonBlock className="h-4 w-4" />
-            </div>
             <SkeletonBlock className="mb-3 h-4 w-28" />
             <SkeletonBlock className="mb-3 h-9 w-24" />
             <div className="mb-2 flex items-center gap-2">
