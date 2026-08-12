@@ -37,20 +37,18 @@ interface ModalProps {
     onClose: () => void;
     title: string;
     children: React.ReactNode;
+    className?: string;
 }
 
-function Modal({ open, onClose, title, children }: ModalProps) {
+function Modal({ open, onClose, title, children, className }: ModalProps) {
     useEffect(() => {
         if (!open) return;
-
         const handleKey = (e: KeyboardEvent) => {
             if (e.key === "Escape") onClose();
         };
-
         document.addEventListener("keydown", handleKey);
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = "hidden";
-
         return () => {
             document.removeEventListener("keydown", handleKey);
             document.body.style.overflow = previousOverflow;
@@ -60,12 +58,10 @@ function Modal({ open, onClose, title, children }: ModalProps) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 backdrop-blur-xs">
-            <div
-                className="absolute inset-0 bg-black/40"
-                onClick={onClose}
-                aria-hidden="true"
-            />
+        <div
+            className={`fixed inset-0 z-1100 flex items-center justify-center p-4 backdrop-blur-xs ${className ?? ""}`}
+        >
+            <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
             <div
                 role="dialog"
                 aria-modal="true"
@@ -391,10 +387,16 @@ const OUT_OF_HOURS_MESSAGE =
 const PREFERRED_CONTACT_RECEIVED_MESSAGE =
     "Got it, thank you! We've saved your preferred contact details and someone from the team will reach out. Feel free to keep chatting with me in the meantime. 😊";
 
+const AUTO_ENDED_MESSAGE =
+    "This conversation has been automatically ended due to inactivity. If you need further assistance, you can start a new conversation or contact our team through our inquiry form.";
+
+const LIVE_AGENT_FOLLOW_UP_MESSAGE =
+    "In the meantime, you can also reach us directly: info@heroph.net\n\nMon-Fri, 8AM-8PM (Tower 6789) or 24/7 (Insular Life)\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
+
 const CTA_LINKS = {
     quote: { label: "Request a Quotation", href: "/quotation" },
     privateOffice: { label: "View Private Offices", href: "/services?modal=private" },
-    virtualOffice: { label: "View Virtual Office Plans", href: "/services?modal=virtual" },
+    virtualOffice: { label: "View Virtual Office", href: "/services?modal=virtual" },
     coworking: { label: "View Co-working Space", href: "/services?modal=coworking" },
     meetingRooms: { label: "View Meeting Room", href: "/services?modal=conference" },
     services: { label: "See All Services", href: "/services" },
@@ -411,19 +413,43 @@ const PREDEFINED_REPLIES: Record<string, { text: string; cta?: CTA }> = {
         cta: CTA_LINKS.contact,
     },
     "Private Office": {
-        text: "Our private offices are fully furnished and ready to move in — whether you need a space for 1 person or a whole team. Flexible terms, all-inclusive pricing, no fit-out hassle.",
+        text: `
+Thank you for your interest in our Private Offices!
+
+HERO Serviced Office offers fully furnished and professional office spaces designed for startups, SMEs, and growing businesses. Our private offices include high-speed internet, reception services, meeting room access, business support, and a prestigious Makati business address.
+
+To receive a customized quotation or schedule an office tour, please submit your inquiry here:
+`,
         cta: CTA_LINKS.privateOffice,
     },
     "Virtual Office": {
-        text: "Our virtual office plans give your business a prestigious Makati address, mail handling, and call answering — without the cost of a physical lease. Great for remote or early-stage teams.",
+        text:
+`Thank you for your interest in our Virtual Office services!
+
+Establish a credible business presence in Makati without leasing a physical office. Our Virtual Office plans include a premium business address, mail handling, business registration support, and professional reception services.
+
+For pricing and plan recommendations, please submit your inquiry here:
+`,
         cta: CTA_LINKS.virtualOffice,
     },
     "Co-working Space": {
-        text: "Our co-working spaces are shared, flexible desks with high-speed Wi-Fi, communal areas, and networking opportunities — perfect for freelancers, startups, and small teams.",
+        text: 
+`Thank you for your interest in our Co-working Space!
+
+Enjoy a comfortable and productive workspace with high-speed internet, complimentary coffee, professional amenities, and a collaborative business environment. Flexible daily, weekly, and monthly plans are available.
+
+Reserve your seat or send us your inquiry here:
+`,
         cta: CTA_LINKS.coworking,
     },
     "Meeting Rooms": {
-        text: "Our meeting rooms are equipped with high-speed Wi-Fi, presentation displays, and video conferencing tools — perfect for client meetings, interviews, and team sessions. Available by the hour or day.",
+        text: 
+`Thank you for your interest in our Meeting Rooms!
+
+Our fully equipped meeting rooms are ideal for client presentations, interviews, team meetings, seminars, and business discussions. Flexible hourly and whole-day rental options are available.
+
+Check availability or submit your reservation request here:
+`,
         cta: CTA_LINKS.meetingRooms,
     },
     "Get a Quote": {
@@ -619,7 +645,7 @@ const humanDelay = (replyLength = 0) => {
 };
 
 const quickReplyDelay = () =>
-  new Promise((res) => setTimeout(res, 1000 + Math.random() * 1500));
+    new Promise((res) => setTimeout(res, 1000 + Math.random() * 1500));
 
 const nextPaint = () =>
     new Promise<void>((resolve) => {
@@ -651,12 +677,35 @@ function getPersistedMessageCta(text: string): CTA | undefined {
     if (
         text === OUT_OF_HOURS_MESSAGE ||
         text === PREFERRED_CONTACT_RECEIVED_MESSAGE ||
-        text.includes("reach us directly")
+        text === AUTO_ENDED_MESSAGE ||
+        text === LIVE_AGENT_FOLLOW_UP_MESSAGE
     ) {
         return CTA_LINKS.contact;
     }
 
     return getContextualCta(text);
+}
+
+function renderBotMessageText(text: string): React.ReactNode {
+    if (text !== LIVE_AGENT_FOLLOW_UP_MESSAGE) {
+        return text;
+    }
+
+    return (
+        <>
+            <p>In the meantime, you can also reach us directly:</p>
+            <p>
+                <a
+                    href="mailto:info@heroph.net"
+                    className="text-[#1565C0] underline break-all"
+                >
+                    info@heroph.net
+                </a>
+            </p>
+            <p>Mon-Fri, 8AM-8PM (Tower 6789) or 24/7 (Insular Life)</p>
+            <p>We&apos;ll keep this chat open so an agent can pick up right where we left off.</p>
+        </>
+    );
 }
 
 const Chatbot = () => {
@@ -699,6 +748,7 @@ const Chatbot = () => {
     const [agentRequestInFlight, setAgentRequestInFlight] = useState(false);
     const [restoringConversation, setRestoringConversation] = useState(true);
     const [endConversationOpen, setEndConversationOpen] = useState(false);
+    const [endingConversation, setEndingConversation] = useState(false);
     const closeEmailSentRef = useRef(false);
     const conversationRef = useRef<ConversationState | null>(null);
     const leadSubmittedRef = useRef(false);
@@ -888,7 +938,7 @@ const Chatbot = () => {
                         "messages",
                         (latestConversation.messages || []).length,
                     );
-                } catch {}
+                } catch { }
 
                 syncConversationSnapshot(latestConversation);
                 setSendError("");
@@ -1065,7 +1115,7 @@ const Chatbot = () => {
         conversationClosedRef.current = conversationClosed;
         try {
             console.debug("CHAT: conversation changed", conversation, { leadSubmitted, conversationClosed });
-        } catch {}
+        } catch { }
     }, [conversation, leadSubmitted, conversationClosed, conversationStatus]);
 
     useEffect(() => {
@@ -1133,8 +1183,8 @@ const Chatbot = () => {
                 activeConversation?.remoteConversationId ?? activeConversation?.id;
 
             try {
-                console.debug("CHAT: persistMessage -> serverId", serverId, "sender", sender, "text", text?.slice?.(0,120));
-            } catch {}
+                console.debug("CHAT: persistMessage -> serverId", serverId, "sender", sender, "text", text?.slice?.(0, 120));
+            } catch { }
 
             if (!serverId) return;
 
@@ -1144,9 +1194,9 @@ const Chatbot = () => {
 
             try {
                 await chatApi.sendMessage(serverId, sender, text);
-                try { console.debug("CHAT: persistMessage sent", serverId, sender); } catch {}
+                try { console.debug("CHAT: persistMessage sent", serverId, sender); } catch { }
             } catch (err) {
-                try { console.debug("CHAT: persistMessage failed", err); } catch {}
+                try { console.debug("CHAT: persistMessage failed", err); } catch { }
             }
         },
         [],
@@ -1282,7 +1332,7 @@ const Chatbot = () => {
                     conversation?.remoteConversationId ?? conversation?.id ??
                     activeConversation?.remoteConversationId ?? activeConversation?.id;
 
-                try { console.debug("CHAT: requestAgent -> targetId", targetId, "conversationRef", conversationRef.current, "activeConversation", activeConversation); } catch {}
+                try { console.debug("CHAT: requestAgent -> targetId", targetId, "conversationRef", conversationRef.current, "activeConversation", activeConversation); } catch { }
 
                 if (targetId) {
                     const result = await chatApi.requestAgent(targetId, userText);
@@ -1420,17 +1470,25 @@ const Chatbot = () => {
             conversation?.remoteConversationId ?? conversation?.id ??
             conversationRef.current?.remoteConversationId ?? conversationRef.current?.id;
 
-        setEndConversationOpen(false);
-
         if (!targetId) {
+            setEndConversationOpen(false);
             return;
         }
 
+        setEndingConversation(true);
+        setSendError("");
+
         try {
-            const result = await chatApi.endLiveAgent(targetId);
-            syncConversationSnapshot(result.conversation, { preservePending: false });
+            await chatApi.endLiveAgent(targetId);
+            const latestConversation = await chatApi.getConversation(targetId);
+            syncConversationSnapshot(latestConversation, { preservePending: false });
         } catch (err) {
-            setSendError(err instanceof Error ? err.message : "Unable to end the live-agent conversation.");
+            setSendError(
+                err instanceof Error ? err.message : "Unable to end the live-agent conversation.",
+            );
+        } finally {
+            setEndingConversation(false);
+            setEndConversationOpen(false);
         }
     };
 
@@ -1491,7 +1549,7 @@ const Chatbot = () => {
             setConversation(newConversation);
             // Ensure our ref is in sync immediately so subsequent calls use server id.
             conversationRef.current = newConversation;
-            try { console.debug("CHAT: started conversation", startResponse, newConversation); } catch {}
+            try { console.debug("CHAT: started conversation", startResponse, newConversation); } catch { }
 
             if (typeof window !== "undefined") {
                 window.localStorage.setItem(
@@ -1830,9 +1888,15 @@ const Chatbot = () => {
                                                             : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
                                                             }`}
                                                     >
-                                                        <p className="text-sm whitespace-pre-line leading-relaxed">
-                                                            {msg.text}
-                                                        </p>
+                                                        {msg.text === LIVE_AGENT_FOLLOW_UP_MESSAGE ? (
+                                                            <div className="text-sm leading-relaxed space-y-2">
+                                                                {renderBotMessageText(msg.text)}
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-sm whitespace-pre-line leading-relaxed">
+                                                                {renderBotMessageText(msg.text)}
+                                                            </p>
+                                                        )}
                                                         {msg.cta && (
                                                             <a
                                                                 href={msg.cta.href}
@@ -1916,14 +1980,11 @@ const Chatbot = () => {
                                                     className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 ml-9"
                                                 >
                                                     Type your preferred day/time and contact method (email or
-                                                    phone) below, then hit send.
+                                                    phone) below
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>
 
-                                        {/* Quick replies — animated in/out as a group so they don't
-                                            hard-cut the layout the instant a new bot message (with its
-                                            own CTA button) lands and shifts scroll position. */}
                                         <AnimatePresence>
                                             {!conversationClosed &&
                                                 !isTyping &&
@@ -1982,7 +2043,7 @@ const Chatbot = () => {
                                 )}
                                 {isLiveAgentActiveStatus(conversationStatus) && (
                                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-[#1B3A8C]">
-                                        <span>You&apos;re connected to a live agent. AI replies are paused.</span>
+                                        <span>You&apos;re connected to a live agent.</span>
                                         <button
                                             type="button"
                                             onClick={() => setEndConversationOpen(true)}
@@ -2060,27 +2121,31 @@ const Chatbot = () => {
 
             <Modal
                 open={endConversationOpen}
-                onClose={() => setEndConversationOpen(false)}
+                onClose={() => !endingConversation && setEndConversationOpen(false)}
                 title="End this conversation?"
+                className="z-1100"
             >
                 <div className="space-y-4">
                     <p>
-                        Are you sure you want to end the live-agent conversation? You can start a new conversation anytime, or continue with the AI assistant.
+                        Are you sure you want to end the live-agent conversation?
                     </p>
                     <div className="flex justify-end gap-2">
                         <button
                             type="button"
                             onClick={() => setEndConversationOpen(false)}
-                            className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+                            disabled={endingConversation}
+                            className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancel
                         </button>
                         <button
                             type="button"
                             onClick={() => void handleEndLiveAgentConversation()}
-                            className="rounded-full bg-[#1B3A8C] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#16318a]"
+                            disabled={endingConversation}
+                            className="inline-flex items-center gap-2 rounded-full bg-[#1B3A8C] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#16318a] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                            End Conversation
+                            {endingConversation && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {endingConversation ? "Ending…" : "End Conversation"}
                         </button>
                     </div>
                 </div>

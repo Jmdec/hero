@@ -102,7 +102,6 @@ function ModalBackdrop({
 }
 
 type TestimonialStatCardProps = {
-  icon: React.ElementType;
   label: string;
   value: string;
   supporting?: string;
@@ -113,7 +112,6 @@ type TestimonialStatCardProps = {
 };
 
 function TestimonialStatCard({
-  icon: Icon,
   label,
   value,
   supporting,
@@ -128,11 +126,8 @@ function TestimonialStatCard({
     <article className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent">
       <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
       <div className="flex items-start justify-between mb-4">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
-          <Icon className={`w-5 h-5 ${t.text}`} />
-        </div>
+        <p className="text-md text-gray-500 font-semibold mb-1">{label}</p>
       </div>
-      <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
       <div className="mb-2 flex items-center gap-2">
         {valuePrefix}
         <p className="text-3xl font-bold text-gray-900">{value}</p>
@@ -146,7 +141,6 @@ function StatCardSkeleton() {
   return (
     <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent animate-pulse">
       <div className="absolute top-0 left-0 w-1 h-full bg-slate-200" />
-      <div className="mb-4 h-10 w-10 rounded-xl bg-slate-200" />
       <div className="mb-3 h-4 w-30 rounded bg-slate-200" />
       <div className="mb-3 h-9 w-28 rounded bg-slate-200" />
       <div className="mb-2 flex gap-1">
@@ -219,7 +213,6 @@ function TestimonialStatistics({
 
   const cards: TestimonialStatCardProps[] = [
     {
-      icon: Quote,
       label: "Total Testimonials",
       value: String(stats.total),
       tone: "neutral",
@@ -227,7 +220,6 @@ function TestimonialStatistics({
       supporting: "All submissions",
     },
     {
-      icon: Inbox,
       label: "Pending Review",
       value: String(stats.pending),
       tone: "amber",
@@ -235,7 +227,6 @@ function TestimonialStatistics({
       supporting: "Awaiting admin action",
     },
     {
-      icon: Star,
       label: "Approved",
       value: String(stats.approved),
       tone: "green",
@@ -243,7 +234,6 @@ function TestimonialStatistics({
       supporting: "Eligible for public display",
     },
     {
-      icon: Star,
       label: "Average Rating",
       value: `${stats.averageApprovedRating.toFixed(1)} / 5`,
       tone: "neutral",
@@ -396,7 +386,7 @@ export default function TestimonialsAdmin() {
       const approvedItems = list.filter((item) => item.status === "approved");
       const approvedAverage = approvedItems.length
         ? approvedItems.reduce((sum, item) => sum + item.rating, 0) /
-          approvedItems.length
+        approvedItems.length
         : 0;
 
       setAllItems(list);
@@ -840,11 +830,10 @@ export default function TestimonialsAdmin() {
                           {Array.from({ length: 5 }).map((_, i) => (
                             <Star
                               key={i}
-                              className={`h-3.5 w-3.5 ${
-                                i < t.rating
+                              className={`h-3.5 w-3.5 ${i < t.rating
                                   ? "fill-[#1B3A8C] text-[#1B3A8C]"
                                   : "fill-slate-100 text-slate-200"
-                              }`}
+                                }`}
                             />
                           ))}
                         </div>
@@ -917,11 +906,10 @@ export default function TestimonialsAdmin() {
                               {Array.from({ length: 5 }).map((_, i) => (
                                 <Star
                                   key={i}
-                                  className={`h-3.5 w-3.5 ${
-                                    i < t.rating
+                                  className={`h-3.5 w-3.5 ${i < t.rating
                                       ? "fill-[#1B3A8C] text-[#1B3A8C]"
                                       : "fill-slate-100 text-slate-200"
-                                  }`}
+                                    }`}
                                 />
                               ))}
                             </div>
@@ -929,10 +917,9 @@ export default function TestimonialsAdmin() {
 
                           <td className="px-5 py-4 align-top">
                             <span
-                              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize ${
-                                STATUS_STYLES[t.status] ??
+                              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize ${STATUS_STYLES[t.status] ??
                                 "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
-                              }`}
+                                }`}
                             >
                               {t.status}
                             </span>

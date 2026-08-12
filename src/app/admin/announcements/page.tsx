@@ -274,13 +274,11 @@ function StatCard({
   label,
   value,
   supporting,
-  icon: Icon,
   tone = "neutral",
 }: {
   label: string;
   value: string;
   supporting?: string;
-  icon: React.ComponentType<{ className?: string }>;
   tone?: StatTone;
 }) {
   const t = STAT_TONE_STYLES[tone];
@@ -289,11 +287,8 @@ function StatCard({
     <article className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent">
       <div className={`absolute top-0 left-0 w-1 h-full ${tone === "amber" ? "bg-amber-500" : tone === "green" ? "bg-green-500" : tone === "red" ? "bg-red-500" : "bg-[#0D47A1]"}`} />
       <div className="flex items-start justify-between mb-4">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
-          <Icon className={`w-5 h-5 ${t.text}`} />
-        </div>
+        <p className="text-md text-gray-500 font-semibold mb-1">{label}</p>
       </div>
-      <p className="text-sm text-gray-500 font-medium mb-1">{label}</p>
       <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
       <p className="text-xs text-slate-400">{supporting ?? " "}</p>
     </article>
@@ -304,7 +299,6 @@ function StatCardSkeleton() {
   return (
     <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow text-left w-full border border-transparent animate-pulse">
       <div className="absolute top-0 left-0 w-1 h-full bg-slate-200" />
-      <div className="mb-4 h-10 w-10 rounded-xl bg-slate-200" />
       <div className="h-4 w-30 rounded bg-slate-200 mb-3" />
       <div className="h-9 w-20 rounded bg-slate-200 mb-3" />
       <div className="h-3 w-28 rounded bg-slate-200" />
@@ -847,10 +841,10 @@ export default function AnnouncementsAdmin() {
             <AnnouncementStatsSkeleton />
           ) : (
             <>
-              <StatCard label="Total announcements" value={String(stats.total)} icon={Megaphone} tone="neutral" supporting="All records" />
-              <StatCard label="Published" value={String(stats.published)} icon={FileText} tone="green" supporting="Live on public site" />
-              <StatCard label="Scheduled" value={String(stats.scheduled)} icon={Calendar} tone="amber" supporting="Queued for release" />
-              <StatCard label="Draft" value={String(stats.draft)} icon={Clock} tone="red" supporting="Not yet published" />
+              <StatCard label="Total announcements" value={String(stats.total)} tone="neutral" supporting="All records" />
+              <StatCard label="Published" value={String(stats.published)} tone="green" supporting="Live on public site" />
+              <StatCard label="Scheduled" value={String(stats.scheduled)} tone="amber" supporting="Queued for release" />
+              <StatCard label="Draft" value={String(stats.draft)} tone="red" supporting="Not yet published" />
             </>
           )}
         </div>

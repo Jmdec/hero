@@ -247,25 +247,21 @@ function formatRateTrend(current: number, previous: number) {
 }
 
 type ChatStatCardProps = {
-    icon: typeof Bot;
     label: string;
     value: string;
     supporting: string;
     tone: ChatStatTone;
 };
 
-function ChatStatCard({ icon: Icon, label, value, supporting, tone }: ChatStatCardProps) {
+function ChatStatCard({ label, value, supporting, tone }: ChatStatCardProps) {
     const style = CHAT_STAT_TONE_STYLES[tone];
 
     return (
         <article className="relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-6 text-left shadow-sm">
             <div className={`absolute left-0 top-0 h-full w-1 ${style.accent}`} />
             <div className="mb-4 flex items-start justify-between">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${style.bg}`}>
-                    <Icon className={`h-5 w-5 ${style.text}`} />
-                </div>
+                <p className="mb-1 text-md font-semibold text-slate-500">{label}</p>
             </div>
-            <p className="mb-1 text-sm font-medium text-slate-500">{label}</p>
             <p className="mb-2 text-3xl font-bold text-slate-900">{value}</p>
             <p className="text-xs text-slate-400">{supporting}</p>
         </article>
@@ -738,6 +734,8 @@ export default function AdminChatsPage() {
         ? messagesRequestedHistory(selectedConversation.messages)
         : false;
     const selectedHasEmail = Boolean(selectedConversation?.inquiry?.email_address);
+    const selectedAutoEnded = selectedConversation?.status === "agent_closed";
+    const selectedEndedAt = selectedConversation?.ended_at ?? selectedConversation?.agent_ended_at ?? null;
 
     const isSwitchingConversation =
         selectedConversationId !== null &&
@@ -786,7 +784,7 @@ export default function AdminChatsPage() {
                                     <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
                                     <span className="shrink-0 font-mono text-[10px] text-slate-400">{timeAgo(conversation.updated_at)}</span>
                                 </div>
-                    
+
                                 <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5">
                                     <p className="truncate text-xs text-slate-500">{conversation.inquiry?.email_address ?? "No email"}</p>
                                     <span className="font-mono text-[10px] text-slate-400">{conversation.message_count} msgs</span>
@@ -1070,9 +1068,27 @@ export default function AdminChatsPage() {
                                     </div>
 
                                     {selectedIsEnded ? (
-                                        <div className="mt-3 flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
-                                            <CheckCircle2 className="h-4 w-4 text-slate-400" />
-                                            This conversation has ended.
+                                        <div className="mt-3 space-y-2">
+                                            {selectedAutoEnded ? (
+                                                <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                                    <div className="flex items-center gap-2">
+                                                        <CheckCircle2 className="h-4 w-4 text-slate-400" />
+                                                        <span>Ended automatically due to 10 minutes of inactivity</span>
+                                                    </div>
+                                                    {selectedEndedAt ? (
+                                                        <span className="text-xs text-slate-400">
+                                                            {new Date(selectedEndedAt).toLocaleString([], {
+                                                                dateStyle: "medium",
+                                                                timeStyle: "short",
+                                                            })}
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                            ) : null}
+                                            <div className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                                                <CheckCircle2 className="h-4 w-4 text-slate-400" />
+                                                This conversation has ended.
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="mt-3 shrink-0 rounded-xl border border-slate-200 p-3">
