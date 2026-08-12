@@ -385,7 +385,7 @@ interface ToastItem {
 function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: number) => void }) {
     if (toasts.length === 0) return null
     return (
-        <div className="fixed bottom-5 right-5 z-1200 flex flex-col gap-2 w-full max-w-sm pointer-events-none">
+        <div className="fixed bottom-5 right-5 z-[1200] flex flex-col gap-2 w-full max-w-sm pointer-events-none">
             {toasts.map((t) => (
                 <div
                     key={t.id}
@@ -446,7 +446,7 @@ export default function AdminChatsPage() {
     // this page (reply sent, addressed toggled, history emailed, closed, etc.)
     const [toasts, setToasts] = useState<ToastItem[]>([]);
     const toastIdRef = useRef(0);
-    const toastTimeoutsRef = useRef<Map<number, number>>(new Map());
+    const toastTimeoutsRef = useRef<Map<number, ReturnType<typeof window.setTimeout>>>(new Map());
 
     const dismissToast = (id: number) => {
         setToasts((prev) => prev.filter((t) => t.id !== id));

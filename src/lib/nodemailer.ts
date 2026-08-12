@@ -1,15 +1,29 @@
 import nodemailer from "nodemailer";
 import { PDFDocument, StandardFonts, rgb, PDFFont } from "pdf-lib";
 
-export const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-});
+function resolveSmtpTransportConfig() {
+    const host = process.env.SMTP_HOST || process.env.MAIL_HOST;
+    const port = Number.parseInt(process.env.SMTP_PORT || process.env.MAIL_PORT || "587", 10);
+    const secure = (process.env.SMTP_SECURE || process.env.MAIL_SECURE) === "true" || port === 465;
+
+    if (!host) {
+        throw new Error("SMTP_HOST (or MAIL_HOST) is not configured.");
+    }
+
+    return {
+        host,
+        port,
+        secure,
+        auth: process.env.SMTP_USER && process.env.SMTP_PASS
+            ? {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            }
+            : undefined,
+    };
+}
+
+export const transporter = nodemailer.createTransport(resolveSmtpTransportConfig());
 
 // REGISTRATION EMAILS
 
@@ -826,9 +840,9 @@ export async function sendQuotationUserEmail(
         ${docCopyLine}
         <table style="width:100%;border-collapse:collapse;margin-top:16px;">
             ${buildQuotationDetailRows(quotation, {
-                hideSeatsForVirtualOffice: true,
-                formattedDate: true,
-            })}
+        hideSeatsForVirtualOffice: true,
+        formattedDate: true,
+    })}
         </table>
         <p style="font-size:13px;color:#64748b;line-height:1.7;margin-top:24px;">
             If any of the details above look off, just reply to this email and we'll sort it out for you.
@@ -893,9 +907,9 @@ export async function sendQuotationContractEmail(
         </p>
         <table style="width:100%;border-collapse:collapse;margin-top:16px;">
             ${buildQuotationDetailRows(quotation, {
-                hideSeatsForVirtualOffice: true,
-                formattedDate: true,
-            })}
+        hideSeatsForVirtualOffice: true,
+        formattedDate: true,
+    })}
         </table>`;
 
     const mailOptions = {
@@ -1084,8 +1098,8 @@ export async function sendQuotationAdminEmail(
             ${quotationRow("Phone", d.phone)}
             ${quotationRow("Branch", quotation.branch)}
             ${buildQuotationDetailRows(quotation, {
-                formattedDate: true,
-            })}
+        formattedDate: true,
+    })}
             ${quotationRow("Reference No", d.transaction_id)}
             ${quotationRow("Receipt File", d.receipt)}
             ${quotationRow("Government ID File", d.government_id_file)}
@@ -1106,8 +1120,8 @@ export async function sendQuotationAdminEmail(
             ${quotationRow("電話", d.phone)}
             ${quotationRow("支店", quotation.branch)}
             ${buildQuotationDetailRows(quotation, {
-                formattedDate: true,
-            })}
+        formattedDate: true,
+    })}
         </table>`;
 
     const tasks: Promise<unknown>[] = [];
