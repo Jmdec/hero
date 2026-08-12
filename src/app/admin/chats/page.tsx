@@ -446,12 +446,12 @@ export default function AdminChatsPage() {
     // this page (reply sent, addressed toggled, history emailed, closed, etc.)
     const [toasts, setToasts] = useState<ToastItem[]>([]);
     const toastIdRef = useRef(0);
-    const toastTimeoutsRef = useRef<Map<number, ReturnType<typeof window.setTimeout>>>(new Map());
+    const toastTimeoutsRef = useRef<Map<number, number>>(new Map());
 
     const dismissToast = (id: number) => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
         const timeoutId = toastTimeoutsRef.current.get(id);
-        if (timeoutId) {
+        if (timeoutId !== undefined) {
             window.clearTimeout(timeoutId);
             toastTimeoutsRef.current.delete(id);
         }
