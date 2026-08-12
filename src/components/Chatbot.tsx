@@ -27,6 +27,7 @@ interface Message {
     time: string;
     source?: string;
     cta?: CTA;
+    clientMessageId?: string;
 }
 
 const SESSION_STORAGE_KEY = "hero_chat_session_id";
@@ -405,7 +406,7 @@ const CTA_LINKS = {
 
 const PREDEFINED_REPLIES: Record<string, { text: string; cta?: CTA }> = {
     "Our Services": {
-        text: "We offer a range of workspace solutions:\n\n• Private Offices\n• Virtual Offices\n• Co-working Spaces\n• Meeting & Conference Rooms\n• Business Support Services\n\nAll designed to help your business operate professionally and efficiently!",
+        text: "We offer a range of workspace solutions:\n\n• Private Offices\n• Virtual Offices\n• Co-working Spaces\n• Meeting & Conference Rooms\n\nAll designed to help your business operate professionally and efficiently!",
         cta: CTA_LINKS.services,
     },
     "Contact Info": {
@@ -767,6 +768,7 @@ const Chatbot = () => {
     const isProcessingLocalMessageRef = useRef(false);
 
     const pendingLocalUserTextsRef = useRef<Set<string>>(new Set());
+    const pendingLocalMessageIdsRef = useRef<Set<string>>(new Set());
 
     const scrollRafRef = useRef<number | null>(null);
 
@@ -851,6 +853,7 @@ const Chatbot = () => {
                                 : remote.sender === "system"
                                     ? "System"
                                     : undefined,
+                    clientMessageId: remote.client_message_id ?? undefined,
                     cta:
                         remote.sender === "assistant" || remote.sender === "system"
                             ? prevCtaByText.get(remote.message) ?? getPersistedMessageCta(remote.message)
@@ -863,15 +866,24 @@ const Chatbot = () => {
                         : prev;
 
                 const pendingLocalMessages = preservePending
-                    ? current.filter(
-                        (message) =>
-                            message.type === "user" &&
-                            !message.id.startsWith("remote-") &&
+                    ? current.filter((message) => {
+                        if (message.type !== "user" || message.id.startsWith("remote-")) {
+                            return false;
+                        }
+
+                        if (message.clientMessageId) {
+                            return !remoteMessages.some(
+                                (remote) => remote.clientMessageId && remote.clientMessageId === message.clientMessageId,
+                            );
+                        }
+
+                        return (
                             pendingLocalUserTextsRef.current.has(message.text) &&
                             !remoteMessages.some(
                                 (remote) => remote.type === "user" && remote.text === message.text,
-                            ),
-                    )
+                            )
+                        );
+                    })
                     : [];
 
                 const nextMessages = pendingLocalMessages.length > 0
@@ -1176,24 +1188,29 @@ const Chatbot = () => {
             activeConversation: { id: number; session_id: string; remoteConversationId?: number } | null,
             sender: "user" | "assistant" | "system",
             text: string,
+            clientMessageId?: string,
         ) => {
             // Prefer the latest server-backed conversation id if available.
             const serverId =
                 conversationRef.current?.remoteConversationId ?? conversationRef.current?.id ??
                 activeConversation?.remoteConversationId ?? activeConversation?.id;
 
-            try {
-                console.debug("CHAT: persistMessage -> serverId", serverId, "sender", sender, "text", text?.slice?.(0, 120));
-            } catch { }
-
-            if (!serverId) return;
+            const id = clientMessageId ?? makeId();
 
             if (sender === "user") {
                 pendingLocalUserTextsRef.current.add(text);
             }
 
+            pendingLocalMessageIdsRef.current.add(id);
+
             try {
-                await chatApi.sendMessage(serverId, sender, text);
+                console.debug("CHAT: persistMessage -> serverId", serverId, "sender", sender, "text", text?.slice?.(0, 120), "clientMessageId", id);
+            } catch { }
+
+            if (!serverId) return;
+
+            try {
+                await chatApi.sendMessage(serverId, sender, text, id);
                 try { console.debug("CHAT: persistMessage sent", serverId, sender); } catch { }
             } catch (err) {
                 try { console.debug("CHAT: persistMessage failed", err); } catch { }
@@ -1226,10 +1243,11 @@ const Chatbot = () => {
 
         try {
             const time = formatTime();
+            const clientMessageId = makeId();
 
             setMessages((prev) => [
                 ...prev,
-                { id: makeId(), type: "user", text: reply, time },
+                { id: makeId(), type: "user", text: reply, time, clientMessageId },
             ]);
             setIsTyping(true);
             await nextPaint();
@@ -1238,7 +1256,7 @@ const Chatbot = () => {
             const activeConversation = await ensureConversation();
 
             // Persist the user's quick reply selection so it survives polling.
-            void persistMessage(activeConversation, "user", reply);
+            void persistMessage(activeConversation, "user", reply, clientMessageId);
 
             await quickReplyDelay();
             setIsTyping(false);
@@ -1311,6 +1329,7 @@ const Chatbot = () => {
             await nextPaint();
 
             if (!isAgentAvailableNow()) {
+                const assistantClientMessageId = makeId();
                 setMessages((prev) => [
                     ...prev,
                     {
@@ -1320,9 +1339,10 @@ const Chatbot = () => {
                         time: formatTime(),
                         source: "AI Assistant",
                         cta: CTA_LINKS.contact,
+                        clientMessageId: assistantClientMessageId,
                     },
                 ]);
-                void persistMessage(activeConversation, "assistant", OUT_OF_HOURS_MESSAGE);
+                void persistMessage(activeConversation, "assistant", OUT_OF_HOURS_MESSAGE, assistantClientMessageId);
                 setAwaitingPreferredContact(true);
                 return;
             }
@@ -1372,11 +1392,13 @@ const Chatbot = () => {
 
         try {
             const time = formatTime();
+            const clientMessageId = makeId();
             const userMessage: Message = {
                 id: makeId(),
                 type: "user",
                 text: message,
                 time,
+                clientMessageId,
             };
 
             setMessages((prev) => [...prev, userMessage]);
@@ -1384,7 +1406,7 @@ const Chatbot = () => {
             setSendError("");
 
             const activeConversation = await ensureConversation();
-            await persistMessage(activeConversation, "user", userMessage.text);
+            await persistMessage(activeConversation, "user", userMessage.text, clientMessageId);
 
             if (awaitingPreferredContact) {
                 setIsTyping(true);
@@ -1408,6 +1430,7 @@ const Chatbot = () => {
                 } catch {
                 }
 
+                const assistantClientMessageId = makeId();
                 setMessages((prev) => [
                     ...prev,
                     {
@@ -1417,12 +1440,14 @@ const Chatbot = () => {
                         time: formatTime(),
                         source: "AI Assistant",
                         cta: CTA_LINKS.contact,
+                        clientMessageId: assistantClientMessageId,
                     },
                 ]);
                 void persistMessage(
                     activeConversation,
                     "assistant",
                     PREFERRED_CONTACT_RECEIVED_MESSAGE,
+                    assistantClientMessageId,
                 );
                 return;
             }
@@ -1441,6 +1466,7 @@ const Chatbot = () => {
             setIsTyping(false);
             await nextPaint();
 
+            const assistantClientMessageId = makeId();
             setMessages((prev) => [
                 ...prev,
                 {
@@ -1450,9 +1476,10 @@ const Chatbot = () => {
                     time: formatTime(),
                     source: "AI Assistant",
                     cta,
+                    clientMessageId: assistantClientMessageId,
                 },
             ]);
-            void persistMessage(activeConversation, "assistant", replyText);
+            void persistMessage(activeConversation, "assistant", replyText, assistantClientMessageId);
 
             if (wantsChatHistory(userMessage.text)) {
                 const targetId =

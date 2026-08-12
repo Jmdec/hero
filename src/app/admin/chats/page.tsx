@@ -272,7 +272,6 @@ function ChatStatCardSkeleton() {
     return (
         <div className="relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-6 shadow-sm animate-pulse">
             <div className="absolute left-0 top-0 h-full w-1 bg-slate-200" />
-            <div className="mb-4 h-10 w-10 rounded-xl bg-slate-200" />
             <div className="mb-3 h-4 w-32 rounded bg-slate-200" />
             <div className="mb-3 h-9 w-28 rounded bg-slate-200" />
             <div className="h-3 w-36 rounded bg-slate-200" />

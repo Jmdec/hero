@@ -50,6 +50,7 @@ export interface ChatMessage {
     sent_at: string;
     created_at: string;
     updated_at: string;
+    client_message_id?: string | null;
 }
 
 export interface ConversationResponse extends ChatConversation {
@@ -133,7 +134,8 @@ export const chatApi = {
     sendMessage(
         conversationId: number,
         sender: "user" | "assistant" | "admin" | "system",
-        message: string
+        message: string,
+        clientMessageId?: string,
     ) {
         return request<ChatMessage>(
             `/chat/${conversationId}/message`,
@@ -142,6 +144,7 @@ export const chatApi = {
                 body: JSON.stringify({
                     sender,
                     message,
+                    client_message_id: clientMessageId,
                 }),
             }
         );
