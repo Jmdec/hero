@@ -260,7 +260,7 @@ function ChatStatCard({ label, value, supporting, tone }: ChatStatCardProps) {
         <article className="relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-6 text-left shadow-sm">
             <div className={`absolute left-0 top-0 h-full w-1 ${style.accent}`} />
             <div className="mb-4 flex items-start justify-between">
-                <p className="mb-1 text-md font-semibold text-slate-500">{label}</p>
+                <p className="mb-1 text-sm font-medium text-slate-500">{label}</p>
             </div>
             <p className="mb-2 text-3xl font-bold text-slate-900">{value}</p>
             <p className="text-xs text-slate-400">{supporting}</p>
@@ -272,6 +272,7 @@ function ChatStatCardSkeleton() {
     return (
         <div className="relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-6 shadow-sm animate-pulse">
             <div className="absolute left-0 top-0 h-full w-1 bg-slate-200" />
+            <div className="mb-4 h-10 w-10 rounded-xl bg-slate-200" />
             <div className="mb-3 h-4 w-32 rounded bg-slate-200" />
             <div className="mb-3 h-9 w-28 rounded bg-slate-200" />
             <div className="h-3 w-36 rounded bg-slate-200" />
@@ -372,46 +373,6 @@ function ChatStatistics({ analytics }: { analytics: ChatAnalytics | null }) {
     );
 }
 
-
-type ToastTone = "success" | "error"
-
-interface ToastItem {
-    id: number
-    message: string
-    tone: ToastTone
-}
-
-function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: number) => void }) {
-    if (toasts.length === 0) return null
-    return (
-        <div className="fixed bottom-5 right-5 z-[1200] flex flex-col gap-2 w-full max-w-sm pointer-events-none">
-            {toasts.map((t) => (
-                <div
-                    key={t.id}
-                    className={`pointer-events-auto flex items-start gap-3 rounded-xl border px-4 py-3 shadow-lg transition-all animate-in fade-in slide-in-from-bottom-2 ${t.tone === "success"
-                        ? "bg-white border-green-200"
-                        : "bg-white border-red-200"
-                        }`}
-                >
-                    {t.tone === "success" ? (
-                        <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-                    ) : (
-                        <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                    )}
-                    <p className="text-sm text-slate-800 flex-1 leading-snug">{t.message}</p>
-                    <button
-                        onClick={() => onDismiss(t.id)}
-                        className="text-slate-400 hover:text-slate-600 transition shrink-0"
-                        aria-label="Dismiss notification"
-                    >
-                        <X className="w-3.5 h-3.5" />
-                    </button>
-                </div>
-            ))}
-        </div>
-    )
-}
-
 export default function AdminChatsPage() {
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
@@ -440,39 +401,6 @@ export default function AdminChatsPage() {
     const actionsMenuRef = useRef<HTMLDivElement>(null);
 
     const notifiedRequestIds = useRef<Set<number>>(new Set());
-
-    // Toast stack — surfaces success/error feedback for actions taken from
-    // this page (reply sent, addressed toggled, history emailed, closed, etc.)
-    const [toasts, setToasts] = useState<ToastItem[]>([]);
-    const toastIdRef = useRef(0);
-    const toastTimeoutsRef = useRef<Map<number, number>>(new Map());
-
-    const dismissToast = (id: number) => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-        const timeoutId = toastTimeoutsRef.current.get(id);
-        if (timeoutId !== undefined) {
-            window.clearTimeout(timeoutId);
-            toastTimeoutsRef.current.delete(id);
-        }
-    };
-
-    const pushToast = (message: string, tone: ToastTone = "success") => {
-        const id = ++toastIdRef.current;
-        setToasts((prev) => [...prev, { id, message, tone }]);
-        const timeoutId = window.setTimeout(() => {
-            dismissToast(id);
-        }, 5000);
-        toastTimeoutsRef.current.set(id, timeoutId);
-    };
-
-    useEffect(() => {
-        return () => {
-            for (const timeoutId of toastTimeoutsRef.current.values()) {
-                window.clearTimeout(timeoutId);
-            }
-            toastTimeoutsRef.current.clear();
-        };
-    }, []);
 
     const loadConversations = async () => {
         setLoading(true);
@@ -674,9 +602,7 @@ export default function AdminChatsPage() {
             setReply("");
             await refresh();
         } catch (err) {
-            const msg = err instanceof Error ? err.message : "Unable to send reply.";
-            setError(msg);
-            pushToast(msg, "error");
+            setError(err instanceof Error ? err.message : "Unable to send reply.");
         } finally {
             setSending(false);
         }
@@ -687,11 +613,8 @@ export default function AdminChatsPage() {
         try {
             await chatApi.switchMode(selectedConversationId, "admin");
             await refresh();
-            pushToast("You've taken over this conversation.", "success");
         } catch (err) {
-            const msg = err instanceof Error ? err.message : "Unable to update chat mode.";
-            setError(msg);
-            pushToast(msg, "error");
+            setError(err instanceof Error ? err.message : "Unable to update chat mode.");
         }
     };
 
@@ -700,11 +623,8 @@ export default function AdminChatsPage() {
         try {
             await chatApi.switchMode(selectedConversationId, "assistant");
             await refresh();
-            pushToast("Conversation returned to the AI assistant.", "success");
         } catch (err) {
-            const msg = err instanceof Error ? err.message : "Unable to return chat to AI.";
-            setError(msg);
-            pushToast(msg, "error");
+            setError(err instanceof Error ? err.message : "Unable to return chat to AI.");
         }
     };
 
@@ -714,11 +634,8 @@ export default function AdminChatsPage() {
         try {
             await chatApi.closeConversation(selectedConversationId, false);
             await refresh();
-            pushToast("Conversation closed.", "success");
         } catch (err) {
-            const msg = err instanceof Error ? err.message : "Unable to close conversation.";
-            setError(msg);
-            pushToast(msg, "error");
+            setError(err instanceof Error ? err.message : "Unable to close conversation.");
         }
     };
 
@@ -732,11 +649,8 @@ export default function AdminChatsPage() {
         try {
             await chatApi.markAddressed(selectedConversationId, nextAddressed);
             await refresh();
-            pushToast(nextAddressed ? "Marked as addressed." : "Marked as needing a response.", "success");
         } catch (err) {
-            const msg = err instanceof Error ? err.message : "Unable to update addressed status.";
-            setError(msg);
-            pushToast(msg, "error");
+            setError(err instanceof Error ? err.message : "Unable to update addressed status.");
         } finally {
             setMarkingAddressed(false);
         }
@@ -750,13 +664,11 @@ export default function AdminChatsPage() {
 
         try {
             const result = await chatApi.emailChatHistory(selectedConversationId);
-            const to = result?.to ?? selectedConversation.inquiry?.email_address ?? "the visitor";
-            setHistorySentNotice(`Chat history sent to ${to}.`);
-            pushToast(`Chat history sent to ${to}.`, "success");
+            setHistorySentNotice(
+                `Chat history sent to ${result?.to ?? selectedConversation.inquiry?.email_address ?? "the visitor"}.`,
+            );
         } catch (err) {
-            const msg = err instanceof Error ? err.message : "Unable to send chat history.";
-            setError(msg);
-            pushToast(msg, "error");
+            setError(err instanceof Error ? err.message : "Unable to send chat history.");
         } finally {
             setSendingHistory(false);
         }
@@ -822,8 +734,6 @@ export default function AdminChatsPage() {
         ? messagesRequestedHistory(selectedConversation.messages)
         : false;
     const selectedHasEmail = Boolean(selectedConversation?.inquiry?.email_address);
-    const selectedAutoEnded = selectedConversation?.status === "agent_closed";
-    const selectedEndedAt = selectedConversation?.ended_at ?? selectedConversation?.agent_ended_at ?? null;
 
     const isSwitchingConversation =
         selectedConversationId !== null &&
@@ -886,8 +796,8 @@ export default function AdminChatsPage() {
     );
 
     return (
-        <main className="flex h-dvh flex-col overflow-hidden">
-            <div className="mx-auto flex w-full min-h-0 max-w-7xl flex-1 flex-col overflow-hidden">
+        <div className="flex h-dvh flex-col overflow-hidden">
+            <main className="mx-auto flex w-full min-h-0 max-w-7xl flex-1 flex-col overflow-hidden">
                 {/* Mobile/tablet top bar */}
                 <div className="flex shrink-0 items-center justify-between gap-2 px-1 pb-2 lg:hidden">
                     <button
@@ -1156,27 +1066,9 @@ export default function AdminChatsPage() {
                                     </div>
 
                                     {selectedIsEnded ? (
-                                        <div className="mt-3 space-y-2">
-                                            {selectedAutoEnded ? (
-                                                <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                                                    <div className="flex items-center gap-2">
-                                                        <CheckCircle2 className="h-4 w-4 text-slate-400" />
-                                                        <span>Ended automatically due to 10 minutes of inactivity</span>
-                                                    </div>
-                                                    {selectedEndedAt ? (
-                                                        <span className="text-xs text-slate-400">
-                                                            {new Date(selectedEndedAt).toLocaleString([], {
-                                                                dateStyle: "medium",
-                                                                timeStyle: "short",
-                                                            })}
-                                                        </span>
-                                                    ) : null}
-                                                </div>
-                                            ) : null}
-                                            <div className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
-                                                <CheckCircle2 className="h-4 w-4 text-slate-400" />
-                                                This conversation has ended.
-                                            </div>
+                                        <div className="mt-3 flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                                            <CheckCircle2 className="h-4 w-4 text-slate-400" />
+                                            This conversation has ended.
                                         </div>
                                     ) : (
                                         <div className="mt-3 shrink-0 rounded-xl border border-slate-200 p-3">
@@ -1244,8 +1136,7 @@ export default function AdminChatsPage() {
                         )}
                     </div>
                 </div>
-            </div>
-            <ToastStack toasts={toasts} onDismiss={dismissToast} />
-        </main>
+            </main>
+        </div>
     );
 }
