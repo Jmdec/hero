@@ -187,7 +187,7 @@ function StatCard({ id, label, value, trend, tone, onClick }: StatCardProps) {
                 <p className="mb-1 text-md font-semibold text-gray-500">{label}</p>
                 <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-[#0D47A1]" />
             </div>
-            <p className="mb-2 text-2xl font-bold text-gray-900">{value}</p>
+            <p className="mb-2 text-3xl font-bold text-gray-900">{value}</p>
             <div className={`flex items-center gap-1 text-xs font-semibold ${trendTone}`}>
                 {trend.startsWith("+") && <TrendingUp className="h-3.5 w-3.5" />}
                 {trend.startsWith("-") && <TrendingDown className="h-3.5 w-3.5" />}
