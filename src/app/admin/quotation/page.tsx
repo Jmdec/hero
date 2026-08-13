@@ -511,6 +511,22 @@ function PriceBreakdownSection({ detail }: { detail: QuotationDetail }) {
     );
 }
 
+function resolveDocumentUrl(value: string | null | undefined): string | null {
+    if (!value) return null;
+    if (/^https?:\/\//i.test(value)) return value;
+
+    const base = (process.env.NEXT_PUBLIC_API_URL || process.env.LARAVEL_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+    const normalized = value.trim().replace(/^\/+/, "");
+
+    if (!normalized) return null;
+    if (normalized.startsWith("storage/")) return `${base}/${normalized}`;
+    if (normalized.startsWith("public/")) return `${base}/${normalized.replace(/^public\//, "")}`;
+    if (normalized.startsWith("quotations/") || normalized.startsWith("uploads/") || normalized.startsWith("files/")) return `${base}/${normalized}`;
+    if (normalized.startsWith("api/")) return `${base}/${normalized}`;
+
+    return `${base}/storage/${normalized}`;
+}
+
 function isLinkableValue(value: string | null | undefined): value is string {
     if (!value) return false;
     return /^https?:\/\//i.test(value) || value.startsWith("/");
@@ -545,8 +561,8 @@ function SignatoryDetailsSection({
         : detail.signatory_id_url ?? detail.signatory_id_path ?? detail.signatory_id_file ?? null;
     const rawGovernmentDoc = detail.government_id_url ?? detail.government_id_path ?? detail.government_id_file ?? null;
 
-    const signatoryDocUrl = isLinkableValue(rawSignatoryDoc) ? rawSignatoryDoc : null;
-    const governmentDocUrl = isLinkableValue(rawGovernmentDoc) ? rawGovernmentDoc : null;
+    const signatoryDocUrl = resolveDocumentUrl(rawSignatoryDoc) ?? (isLinkableValue(rawSignatoryDoc) ? rawSignatoryDoc : null);
+    const governmentDocUrl = resolveDocumentUrl(rawGovernmentDoc) ?? (isLinkableValue(rawGovernmentDoc) ? rawGovernmentDoc : null);
 
     const hasContent = [sameAsHolder, idType, idName, idNumber, idAddress, detail.signatory_role, rawSignatoryDoc, signatoryDetailsText].some(Boolean);
     if (!hasContent) return null;
@@ -676,7 +692,7 @@ function PaymentDetailsSection({ quote, onView }: { quote: Quotation; onView?: (
     const detail = quote.detail;
     if (!detail) return null;
 
-    const receiptUrl = detail.receipt_url ?? detail.receipt_path ?? detail.receipt ?? null;
+    const receiptUrl = resolveDocumentUrl(detail.receipt_url ?? detail.receipt_path ?? detail.receipt ?? null);
     const methodLabel = detail.payment_method
         ? PAYMENT_METHOD_LABELS[detail.payment_method] ?? detail.payment_method
         : null;
@@ -1444,7 +1460,6 @@ export default function AdminQuotationsPage() {
                                     <ReceiptDivider />
                                     <PriceBreakdownSection detail={selected.detail} />
                                     <ReceiptDivider />
-                                    <PaymentDetailsSection quote={selected} onView={setIdDoc} />
 
                                     <button
                                         onClick={() => handleSendPaymentLink(selected)}
@@ -1481,6 +1496,8 @@ export default function AdminQuotationsPage() {
 
                             {selected.detail && (((isVirtualOffice(selected) && (selected.status === "paid" || selected.status === "contract_sent" || selected.status === "completed")) || (!isVirtualOffice(selected) && (selected.status === "paid" || selected.status === "contract_sent" || selected.status === "completed")))) && (
                                 <div className="space-y-2.5">
+                                    <PaymentDetailsSection quote={selected} onView={setIdDoc} />
+
                                     <p className="text-xs font-semibold text-[#64748B]">Contract</p>
                                     <button
                                         onClick={() => openContractViewer(selected)}

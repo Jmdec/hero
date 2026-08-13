@@ -185,6 +185,7 @@ type ChatAnalytics = {
         average_response_time_seconds: number | null;
         responded_conversations: number;
         lead_conversion_rate: number;
+        preferred_contact_reminders: number;
         trends: {
             conversations: { current: number; previous: number };
             live_agent_requests: { current: number; previous: number };
@@ -315,14 +316,11 @@ function ChatStatistics({ analytics }: { analytics: ChatAnalytics | null }) {
                 tone: "green" as const,
             },
             {
-                icon: BadgePercent,
-                label: "Lead Conversion",
-                value: `${analytics.chat_leads.lead_conversion_rate.toFixed(1)}%`,
-                supporting: formatRateTrend(
-                    analytics.chat_leads.trends.lead_conversion_rate.current,
-                    analytics.chat_leads.trends.lead_conversion_rate.previous,
-                ),
-                tone: "red" as const,
+                icon: Clock3,
+                label: "Preferred Contact Reminders",
+                value: analytics.chat_leads.preferred_contact_reminders.toLocaleString(),
+                supporting: "Clients with a preferred time/date and contact method • Notify live agents by 8am",
+                tone: "amber" as const,
             },
         ]
         : [
@@ -348,11 +346,11 @@ function ChatStatistics({ analytics }: { analytics: ChatAnalytics | null }) {
                 tone: "green" as const,
             },
             {
-                icon: BadgePercent,
-                label: "Lead Conversion",
+                icon: Clock3,
+                label: "Preferred Contact Reminders",
                 value: "--",
-                supporting: "Analytics unavailable",
-                tone: "red" as const,
+                supporting: "Clients with a preferred time/date and contact method • Notify live agents by 8am",
+                tone: "amber" as const,
             },
         ];
 

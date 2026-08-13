@@ -713,7 +713,6 @@ function buildOtherServiceContractTemplate(): string {
         "Package/Plan: {{package}}\n",
         "Duration: {{duration}}\n",
         "Start Date: {{start_date}}\n",
-        "Payment Method: {{payment_method}}\n",
         "",
         "3. Client Information\n",
         "Client Name: {{client_name}}\n",
