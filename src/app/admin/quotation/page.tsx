@@ -431,7 +431,7 @@ function ServiceDetailsSection({ quote }: { quote: Quotation }) {
         detail?.duration != null && detail?.duration_type
             ? `${detail.duration} ${detail.duration_type}`
             : detail?.duration_type ??
-            (detail?.duration != null ? `${detail.duration} ${detail.duration === 1 ? "month" : "months"}` : null);
+            (detail?.duration != null ? `${detail.duration === 0 ? "month" : "months"}` : "—");
 
     return (
         <ReceiptSection>

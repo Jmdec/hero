@@ -127,8 +127,9 @@ const VO_STEPS = BASE_STEPS;
 const PRIVATE_TERMS = ["3 Months", "6 Months", "9 Months", "12 Months"];
 const COWORKING_TERMS = ["Daily", "Weekly", "Monthly", "Yearly"];
 const TIME_SLOTS = [
-  ["09:00", "9:00 AM"], ["10:00", "10:00 AM"], ["11:00", "11:00 AM"],
+  ["0:00", "8:00 AM"], ["9:00", "9:00 AM"], ["10:00", "10:00 AM"], ["11:00", "11:00 AM"],
   ["13:00", "1:00 PM"], ["14:00", "2:00 PM"], ["15:00", "3:00 PM"], ["16:00", "4:00 PM"],
+  ["17:00", "5:00 PM"], ["18:00", "6:00 PM"], ["19:00", "7:00 PM"], ["20:00", "8:00 PM"],
 ];
 
 function normalizeQuotationService(value: string | null): ServiceId | null {
@@ -1547,9 +1548,6 @@ function Step4({
 }
 
 // Payment Link Gate
-// Handles the ?quotation=<id>&token=<token> flow. Validates the token against
-// the backend BEFORE ever showing the payment form, so a guessed/expired
-// token never grants access. See API contract notes below the component.
 
 type GateStatus = "checking" | "valid" | "invalid";
 

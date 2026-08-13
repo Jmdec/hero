@@ -861,7 +861,7 @@ export default function UsersPage() {
                 </ModalBackdrop>
             )}
 
-            {/* ── Edit Dialog ── */}
+            {/* Edit Dialog */}
             {formOpen && (
                 <ModalBackdrop onClose={() => setFormOpen(false)}>
                     <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
@@ -973,7 +973,7 @@ export default function UsersPage() {
                 </ModalBackdrop>
             )}
 
-            {/* ── Confirmation Modal (delete + edit save) ── */}
+            {/* Confirmation Modal (delete + edit save) */}
             {confirmState && (
                 <ModalBackdrop onClose={() => setConfirmState(null)}>
                     <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
