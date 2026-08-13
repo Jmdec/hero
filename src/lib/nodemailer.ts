@@ -117,8 +117,6 @@ export async function sendVerificationEmail(
     }
 }
 
-// QUOTATION EMAILS
-
 export interface QuotationDetail {
     full_name: string;
     id_type?: string | null;
@@ -562,12 +560,6 @@ function getServiceSpecificTerms(serviceName: string | null | undefined): string
     }
 }
 
-/**
- * Shape shared by the website Contract Preview and the email PDF generator.
- * If exposing contract data to the frontend (e.g. via an API route backing
- * the admin "Contract Preview" modal), return this exact shape so both
- * surfaces render identical content.
- */
 export interface ContractData {
     service: string;
     contractTitle: string;
@@ -585,13 +577,6 @@ export interface ContractData {
     dateIssued: string;
 }
 
-/**
- * The ONE function that turns a raw quotation into contract data.
- * Website preview, PDF generator, and email body should all derive their
- * displayed values from this — never re-derive the title or service value
- * independently, and never let one surface fall back to another service's
- * data (e.g. Meeting Room falling back to Virtual Office package info).
- */
 export function normalizeContractData(quotation: QuotationPayload): ContractData {
     const d = quotation.detail;
     const service = (quotation.service_name || "Service").trim();
@@ -745,11 +730,6 @@ function buildOtherServiceContractTemplate(): string {
     ].join("\n");
 }
 
-/**
- * Body text uses "This <Service> Service Agreement" — the same
- * contract_title text used for the header, just without the branding line,
- * so the title and body can never diverge again.
- */
 function withContractTitleBodyVariable(
     template: string,
     variables: Record<string, string>
@@ -825,8 +805,19 @@ async function renderContractPdfFromContent(args: {
 
     const drawFieldRow = (label: string, value: string) => {
         ensureSpace(30);
-        drawLine(label, { size: 9, bold: true, color: COLOR_MUTED, gap: 12 });
-        drawLine(value || "—", { size: 11, color: COLOR_TEXT, gap: 20 });
+
+        drawLine(label, {
+            size: 9,
+            bold: true,
+            color: COLOR_MUTED,
+            gap: Math.max(20, 150 - label.length * 5),
+        });
+
+        drawLine(value || "—", {
+            size: 11,
+            color: COLOR_TEXT,
+            gap: 20,
+        });
     };
 
     const drawLine = (
@@ -863,9 +854,6 @@ async function renderContractPdfFromContent(args: {
     drawLine(title, { size: 11, color: COLOR_MUTED, align: "center", gap: 28 });
     drawLine(`Date Issued: ${today}`, { size: 10, gap: 24 });
 
-    // Parse the resolved template content into sections/fields so the PDF
-    // renders with the same label/value hierarchy as the website preview,
-    // instead of one long wrapped paragraph per block.
     const blocks = content.split(/\r?\n\r?\n/).map((block) => block.trim()).filter(Boolean);
 
     for (const block of blocks) {
@@ -904,6 +892,7 @@ async function renderContractPdfFromContent(args: {
     drawLine("_______________________________", { gap: 14 });
     drawLine("Signature / Date", { size: 9, color: COLOR_MUTED });
 
+    cursorY -= 30;
     ensureSpace(30);
     drawLine(
         "23F TOWER6789, Ayala Avenue 6789, Makati City 1209, Philippines · salesofficer@heroph.net",
