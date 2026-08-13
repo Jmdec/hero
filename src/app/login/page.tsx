@@ -112,6 +112,8 @@ export default function LoginPage() {
       const role = data.user.role;
       if (role === "admin") {
         router.push("/admin");
+      } if (role === "operation") {
+        router.push("/admin");
       } else {
         router.push("/");
       }

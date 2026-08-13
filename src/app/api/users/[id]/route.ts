@@ -6,8 +6,11 @@ function resolveLaravelApiBase() {
     return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
 }
 
-async function forward(request: NextRequest, method: string, id: string) {
+async function forward(request: NextRequest, method: string, id: string | undefined) {
     try {
+        if (!id) {
+            return NextResponse.json({ message: "Missing user id in request." }, { status: 400 });
+        }
         const laravelUrl = `${resolveLaravelApiBase()}/admin/users/${encodeURIComponent(id)}`;
 
         const headers: Record<string, string> = {
@@ -50,18 +53,22 @@ async function forward(request: NextRequest, method: string, id: string) {
     }
 }
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-    return forward(request, "GET", params.id);
+export async function GET(request: NextRequest, context: any) {
+    const id = context?.params?.id;
+    return forward(request, "GET", id);
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
-    return forward(request, "PATCH", params.id);
+export async function PATCH(request: NextRequest, context: any) {
+    const id = context?.params?.id;
+    return forward(request, "PATCH", id);
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-    return forward(request, "PUT", params.id);
+export async function PUT(request: NextRequest, context: any) {
+    const id = context?.params?.id;
+    return forward(request, "PUT", id);
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-    return forward(request, "DELETE", params.id);
+export async function DELETE(request: NextRequest, context: any) {
+    const id = context?.params?.id;
+    return forward(request, "DELETE", id);
 }
