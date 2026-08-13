@@ -290,14 +290,15 @@ export default function Footer() {
     { href: '/virtual-tour', label: 'Virtual Tour' },
     { href: '/quotation', label: 'Get a Quote' },
     { href: '/contact', label: 'Contact Us' },
+    { href: '/login', label: 'Log In' },
   ];
 
   const services = [
-    { href: '/quotation', label: 'Private Offices' },
-    { href: '/quotation', label: 'Virtual Offices' },
-    { href: '/quotation', label: 'Co-working Space' },
-    { href: '/quotation', label: 'Meeting Rooms' },
-    { href: '/quotation', label: 'Event Space' },
+    { href: '/services?modal=private', label: 'Private Offices' },
+    { href: '/services?modal=virtual', label: 'Virtual Offices' },
+    { href: '/services?modal=coworking', label: 'Co-working Space' },
+    { href: '/services?modal=conference', label: 'Meeting Rooms' },
+    { href: '/services?modal=event', label: 'Event Space' },
   ];
 
   return (

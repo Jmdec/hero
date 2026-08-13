@@ -35,7 +35,6 @@ const menuItems = [
   {
     section: "Menu",
     items: [
-      // Dashboard is available to every authenticated admin-area user.
       {
         title: "Dashboard",
         href: "/admin",

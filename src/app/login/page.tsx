@@ -109,10 +109,8 @@ export default function LoginPage() {
       login(data.user, token)
       showToast("Login successful!", "success");
 
-      const role = data.user.role;
-      if (role === "admin") {
-        router.push("/admin");
-      } if (role === "operation") {
+      const role = (data.user.role || "").toString().toLowerCase();
+      if (role === "admin" || role === "operation") {
         router.push("/admin");
       } else {
         router.push("/");
