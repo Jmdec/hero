@@ -186,6 +186,7 @@ type ChatAnalytics = {
         responded_conversations: number;
         lead_conversion_rate: number;
         preferred_contact_reminders: number;
+        preferred_contact_reminders_overview?: ReminderOverviewRow[];
         trends: {
             conversations: { current: number; previous: number };
             live_agent_requests: { current: number; previous: number };
@@ -239,18 +240,37 @@ function formatRateTrend(current: number, previous: number) {
     return `${delta > 0 ? "+" : ""}${delta.toFixed(1)} pts vs previous period`;
 }
 
+type ReminderOverviewRow = {
+    name: string;
+    email: string;
+    preferred_date_time: string;
+    contact_method: "email" | "phone" | "either";
+};
+
 type ChatStatCardProps = {
     label: string;
     value: string;
     supporting: string;
     tone: ChatStatTone;
+    onClick?: () => void;
 };
 
-function ChatStatCard({ label, value, supporting, tone }: ChatStatCardProps) {
+function ChatStatCard({ label, value, supporting, tone, onClick }: ChatStatCardProps) {
     const style = CHAT_STAT_TONE_STYLES[tone];
 
     return (
-        <article className="relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-6 text-left shadow-sm">
+        <article
+            role={onClick ? "button" : undefined}
+            tabIndex={onClick ? 0 : undefined}
+            onClick={onClick}
+            onKeyDown={(event) => {
+                if (onClick && (event.key === "Enter" || event.key === " ")) {
+                    event.preventDefault();
+                    onClick();
+                }
+            }}
+            className={`relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-6 text-left shadow-sm ${onClick ? "cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/20" : ""}`}
+        >
             <div className={`absolute left-0 top-0 h-full w-1 ${style.accent}`} />
             <div className="mb-4 flex items-start justify-between">
                 <p className="mb-1 text-sm font-medium text-slate-500">{label}</p>
@@ -283,7 +303,13 @@ function ChatStatsSkeleton() {
     );
 }
 
-function ChatStatistics({ analytics }: { analytics: ChatAnalytics | null }) {
+function ChatStatistics({
+    analytics,
+    onOpenReminderOverview,
+}: {
+    analytics: ChatAnalytics | null;
+    onOpenReminderOverview: () => void;
+}) {
     const cards = analytics
         ? [
             {
@@ -319,8 +345,9 @@ function ChatStatistics({ analytics }: { analytics: ChatAnalytics | null }) {
                 icon: Clock3,
                 label: "Preferred Contact Reminders",
                 value: analytics.chat_leads.preferred_contact_reminders.toLocaleString(),
-                supporting: "Clients with a preferred time/date and contact method • Notify live agents by 8am",
+                supporting: "Notify live agents by 8am",
                 tone: "amber" as const,
+                onClick: onOpenReminderOverview,
             },
         ]
         : [
@@ -349,8 +376,9 @@ function ChatStatistics({ analytics }: { analytics: ChatAnalytics | null }) {
                 icon: Clock3,
                 label: "Preferred Contact Reminders",
                 value: "--",
-                supporting: "Clients with a preferred time/date and contact method • Notify live agents by 8am",
+                supporting: "Notify live agents by 8am",
                 tone: "amber" as const,
+                onClick: onOpenReminderOverview,
             },
         ];
 
@@ -402,11 +430,91 @@ function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id
     )
 }
 
+function ReminderOverviewModal({
+    open,
+    items,
+    loading,
+    onClose,
+}: {
+    open: boolean;
+    items: ReminderOverviewRow[];
+    loading: boolean;
+    onClose: () => void;
+}) {
+    if (!open) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
+            <div className="absolute inset-0" onClick={onClose} />
+            <div className="relative z-10 w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#0D47A1]">Overview</p>
+                        <h3 className="mt-1 text-lg font-semibold text-slate-900">Preferred contact reminders</h3>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                        aria-label="Close reminder overview"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+
+                <div className="max-h-[70vh] overflow-auto p-4">
+                    {loading ? (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+                            Loading reminder list...
+                        </div>
+                    ) : items.length === 0 ? (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+                            No visitors currently have a preferred contact time and method on file.
+                        </div>
+                    ) : (
+                        <div className="overflow-hidden rounded-xl border border-slate-200">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-slate-50 text-xs uppercase tracking-[0.12em] text-slate-500">
+                                    <tr>
+                                        <th className="px-4 py-3 font-semibold">Name</th>
+                                        <th className="px-4 py-3 font-semibold">Email</th>
+                                        <th className="px-4 py-3 font-semibold">Preferred date & time</th>
+                                        <th className="px-4 py-3 font-semibold">Contact method</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {items.map((item, index) => (
+                                        <tr key={`${item.email}-${item.preferred_date_time}-${index}`} className="border-t border-slate-200">
+                                            <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
+                                            <td className="px-4 py-3 text-slate-600">{item.email}</td>
+                                            <td className="px-4 py-3 text-slate-700">{item.preferred_date_time || "—"}</td>
+                                            <td className="px-4 py-3 text-slate-700">
+                                                {item.contact_method === "email"
+                                                    ? "Email"
+                                                    : item.contact_method === "phone"
+                                                        ? "Phone"
+                                                        : "Email or phone"}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function AdminChatsPage() {
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
     const [selectedConversation, setSelectedConversation] = useState<ConversationResponse | null>(null);
     const [chatAnalytics, setChatAnalytics] = useState<ChatAnalytics | null>(null);
+    const [reminderOverview, setReminderOverview] = useState<ReminderOverviewRow[]>([]);
+    const [reminderOverviewOpen, setReminderOverviewOpen] = useState(false);
+    const [reminderOverviewLoading, setReminderOverviewLoading] = useState(false);
     const [loading, setLoading] = useState(true);
     const [conversationLoading, setConversationLoading] = useState(false);
     const [statsLoading, setStatsLoading] = useState(true);
@@ -627,6 +735,37 @@ export default function AdminChatsPage() {
             if (isMountedRef.current) setStatsLoading(false);
         }
     };
+
+    const loadReminderOverview = useCallback(async () => {
+        setReminderOverviewLoading(true);
+
+        try {
+            const response = await fetch("/api/analytics/reminders", {
+                headers: authHeaders(),
+                cache: "no-store",
+            });
+
+            if (!response.ok) {
+                throw new Error(`Reminder request failed (${response.status})`);
+            }
+
+            const payload = await response.json() as { data?: ReminderOverviewRow[]; count?: number };
+            const items = Array.isArray(payload?.data) ? payload.data : [];
+            if (isMountedRef.current) setReminderOverview(items);
+        } catch (err) {
+            if (isMountedRef.current) {
+                setReminderOverview([]);
+                pushToast(err instanceof Error ? err.message : "Unable to load reminder overview.", "error");
+            }
+        } finally {
+            if (isMountedRef.current) setReminderOverviewLoading(false);
+        }
+    }, [pushToast]);
+
+    const openReminderOverview = useCallback(async () => {
+        setReminderOverviewOpen(true);
+        await loadReminderOverview();
+    }, [loadReminderOverview]);
 
     const refresh = async () => {
         await Promise.all([loadConversations(), loadChatAnalytics(true)]);
@@ -887,8 +1026,15 @@ export default function AdminChatsPage() {
     );
 
     return (
-        <div className="flex h-dvh flex-col overflow-hidden">
-            <main className="mx-auto flex w-full min-h-0 max-w-7xl flex-1 flex-col overflow-hidden">
+        <>
+            <ReminderOverviewModal
+                open={reminderOverviewOpen}
+                items={reminderOverview}
+                loading={reminderOverviewLoading}
+                onClose={() => setReminderOverviewOpen(false)}
+            />
+            <div className="flex h-dvh flex-col overflow-hidden">
+                <main className="mx-auto flex w-full min-h-0 max-w-7xl flex-1 flex-col overflow-hidden">
                 {/* Mobile/tablet top bar */}
                 <div className="flex shrink-0 items-center justify-between gap-2 px-1 pb-2 lg:hidden">
                     <button
@@ -918,7 +1064,7 @@ export default function AdminChatsPage() {
                 {/* Chat statistics */}
                 <div className="mb-3 flex flex-col gap-3 xl:flex-row xl:items-start">
                     <div className="min-w-0 flex-1">
-                        {statsLoading ? <ChatStatsSkeleton /> : <ChatStatistics analytics={chatAnalytics} />}
+                        {statsLoading ? <ChatStatsSkeleton /> : <ChatStatistics analytics={chatAnalytics} onOpenReminderOverview={openReminderOverview} />}
                     </div>
 
                     <button
@@ -1242,9 +1388,10 @@ export default function AdminChatsPage() {
                         )}
                     </div>
                 </div>
-            </main>
+                </main>
 
-            <ToastStack toasts={toasts} onDismiss={dismissToast} />
-        </div>
+                <ToastStack toasts={toasts} onDismiss={dismissToast} />
+            </div>
+        </>
     );
 }

@@ -1,0 +1,44 @@
+import { NextRequest, NextResponse } from "next/server";
+
+const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$|\/+$/g, "");
+
+const LARAVEL_API_BASE = API_URL.endsWith("/api")
+    ? API_URL
+    : `${API_URL}/api`;
+
+export async function GET(request: NextRequest) {
+    try {
+        const url = new URL(request.url);
+        const laravelUrl = `${LARAVEL_API_BASE}/admin/analytics/reminders${url.search}`;
+
+        const authHeader = request.headers.get("authorization") ?? "";
+
+        const res = await fetch(laravelUrl, {
+            method: "GET",
+            headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+                ...(authHeader ? { Authorization: authHeader } : {}),
+            },
+            cache: "no-store",
+        });
+
+        if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            console.error(`Laravel API error (${res.status}):`, text);
+            return NextResponse.json(
+                { message: `Reminder service error: ${res.status}`, error: text },
+                { status: res.status }
+            );
+        }
+
+        const data = await res.json().catch(() => null);
+        return NextResponse.json(data, { status: 200 });
+    } catch (error) {
+        console.error("Reminder analytics API error:", error);
+        return NextResponse.json(
+            { message: "Unable to reach the reminder service. Please try again.", error: String(error) },
+            { status: 502 }
+        );
+    }
+}

@@ -515,14 +515,15 @@ function resolveDocumentUrl(value: string | null | undefined): string | null {
     if (!value) return null;
     if (/^https?:\/\//i.test(value)) return value;
 
-    const base = (process.env.NEXT_PUBLIC_API_URL || process.env.LARAVEL_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+    const configuredBase = (process.env.NEXT_PUBLIC_API_URL || process.env.LARAVEL_API_URL || "http://localhost:8000").trim();
+    const base = configuredBase.replace(/\/+$|\/+$/g, "").replace(/\/api$/i, "");
     const normalized = value.trim().replace(/^\/+/, "");
 
     if (!normalized) return null;
     if (normalized.startsWith("storage/")) return `${base}/${normalized}`;
     if (normalized.startsWith("public/")) return `${base}/${normalized.replace(/^public\//, "")}`;
     if (normalized.startsWith("quotations/") || normalized.startsWith("uploads/") || normalized.startsWith("files/")) return `${base}/${normalized}`;
-    if (normalized.startsWith("api/")) return `${base}/${normalized}`;
+    if (normalized.startsWith("api/")) return `${base}/${normalized.replace(/^api\//, "")}`;
 
     return `${base}/storage/${normalized}`;
 }
@@ -576,7 +577,6 @@ function SignatoryDetailsSection({
             <ReceiptRow label="Same as ID holder" value={sameAsHolder ? "Yes" : "No"} />
             {idNumber && <ReceiptRow label="ID Number" value={idNumber} />}
             {idAddress && <ReceiptRow label="Address" value={idAddress} />}
-            {signatoryDetailsText && <ReceiptRow label="Signatory Notes" value={signatoryDetailsText} />}
 
             {(signatoryDocUrl || governmentDocUrl) && (
                 <div className="flex flex-wrap gap-2 mt-3">

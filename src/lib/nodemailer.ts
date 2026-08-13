@@ -876,7 +876,7 @@ async function renderContractPdfFromContent(args: {
     drawLine("_______________________________", { gap: 14 });
     drawLine("Signature / Date", { size: 9, color: COLOR_MUTED });
 
-    cursorY -= 30;
+    cursorY -= 25;
     ensureSpace(30);
     drawLine(
         "23F TOWER6789, Ayala Avenue 6789, Makati City 1209, Philippines · salesofficer@heroph.net",
