@@ -629,19 +629,19 @@ function buildOtherServiceContractTemplate(): string {
         "1. Parties\n",
         "This {{service_name}} Service Agreement (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\").",
         "",
-        "2. Service Details\n",
-        "Service: {{service_name}}\n",
-        "Branch: {{branch}}\n",
-        "Duration: {{duration}}\n",
-        "Start Date: {{start_date}}\n",
+        "2. Service Details",
+        "Service: {{service_name}}",
+        "Branch: {{branch}}",
+        "Duration: {{duration}}",
+        "Start Date: {{start_date}}",
         "",
-        "3. Client Information\n",
-        "Client Name: {{client_name}}\n",
-        "Company: {{company_name}}\n",
-        "Signatory: {{signatory_name}}\n",
-        "Signatory Details: {{signatory_details}}\n",
-        "Email: {{email}}\n",
-        "Phone: {{phone}}\n ",
+        "3. Client Information",
+        "Client Name: {{client_name}}",
+        "Company: {{company_name}}",
+        "Signatory: {{signatory_name}}",
+        "Signatory Details: {{signatory_details}}",
+        "Email: {{email}}",
+        "Phone: {{phone}}",
         "",
         "4. Terms & Conditions\n",
         "The Client agrees to the Provider's standard terms of service, including service availability, billing, renewal, and cancellation policies applicable to the selected service. This Agreement takes effect upon confirmed payment and remains in force until terminated according to the service terms.",
@@ -1250,8 +1250,6 @@ export async function sendQuotationNotifications(
     quotation: QuotationPayload,
     options: QuotationNotificationOptions = {}
 ) {
-    // Allow callers to explicitly disable backend delegation (for frontend proxy routes)
-    // to avoid frontend<->backend recursion when backend routes call back into Next.js.
     const shouldUseBackendByEnv =
         process.env.NEXT_PUBLIC_USE_BACKEND_EMAIL === "true" || process.env.USE_BACKEND_EMAIL === "true";
     const useBackend = options.useBackendDelivery ?? shouldUseBackendByEnv;
@@ -1262,8 +1260,6 @@ export async function sendQuotationNotifications(
             console.warn('BACKEND URL not configured; falling back to local nodemailer.');
         } else {
             try {
-                // If the quotation payload includes an `id`, tell the backend to send emails for that quotation
-                // otherwise attempt to POST the payload to /api/quotations and ask the backend to send notifications.
                 const id = (quotation as QuotationPayload & { id?: number | string }).id;
                 if (id) {
                     const res = await fetch(`${backendBase}/api/quotations/${encodeURIComponent(String(id))}/send-email`, {
