@@ -525,13 +525,106 @@ function formatPhp(value: number | null | undefined): string {
     return `PHP ${numeric.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+/** Canonical service -> title-agreement suffix mapping. */
+const SERVICE_AGREEMENT_LABELS: Record<string, string> = {
+    "virtual office": "Virtual Office Service Agreement",
+    "meeting room": "Meeting Room Service Agreement",
+    "private office": "Private Office Service Agreement",
+    "coworking space": "Coworking Space Service Agreement",
+};
+
+export function getContractTitle(serviceName: string | null | undefined): string {
+    const normalized = (serviceName || "").trim().toLowerCase();
+
+    if (SERVICE_AGREEMENT_LABELS[normalized]) {
+        return SERVICE_AGREEMENT_LABELS[normalized];
+    }
+
+    const cleanName = (serviceName || "Service").trim();
+    return `${cleanName} Service Agreement`;
+}
+
+/** Service-specific terms & conditions copy, keyed the same way as the title map. */
+function getServiceSpecificTerms(serviceName: string | null | undefined): string {
+    const normalized = (serviceName || "").trim().toLowerCase();
+
+    switch (normalized) {
+        case "virtual office":
+            return "The Client agrees to the Provider's standard terms of service, including registered address usage, mail handling, monthly billing, renewal, and cancellation policies. This Agreement takes effect upon confirmed payment and remains in force on a month-to-month basis unless terminated by either party with thirty (30) days' written notice.";
+        case "meeting room":
+            return "The Client agrees to the Provider's standard terms of service for meeting room bookings, including the confirmed booking duration, room usage guidelines, and cancellation policy. This Agreement takes effect upon confirmed payment and applies solely to the booked date, time, and duration stated above.";
+        case "private office":
+            return "The Client agrees to the Provider's standard terms of service, including lease occupancy, billing, renewal, and cancellation policies applicable to private office leases. This Agreement takes effect upon confirmed payment and remains in force for the agreed lease term unless terminated according to the applicable terms.";
+        case "coworking space":
+            return "The Client agrees to the Provider's standard terms of service, including workspace access, seat usage, billing, renewal, and cancellation policies applicable to coworking space membership. This Agreement takes effect upon confirmed payment and remains in force until terminated according to the applicable service terms.";
+        default:
+            return "The Client agrees to the Provider's standard terms of service, including service availability, billing, renewal, and cancellation policies applicable to the selected service. This Agreement takes effect upon confirmed payment and remains in force until terminated according to the applicable service terms.";
+    }
+}
+
+/**
+ * Shape shared by the website Contract Preview and the email PDF generator.
+ * If exposing contract data to the frontend (e.g. via an API route backing
+ * the admin "Contract Preview" modal), return this exact shape so both
+ * surfaces render identical content.
+ */
+export interface ContractData {
+    service: string;
+    contractTitle: string;
+    clientName: string;
+    companyName: string;
+    signatoryName: string;
+    email: string;
+    phone: string;
+    branch: string;
+    packagePlan?: string;
+    duration?: string;
+    startDate?: string;
+    paymentMethod?: string;
+    terms: string;
+    dateIssued: string;
+}
+
+/**
+ * The ONE function that turns a raw quotation into contract data.
+ * Website preview, PDF generator, and email body should all derive their
+ * displayed values from this — never re-derive the title or service value
+ * independently, and never let one surface fall back to another service's
+ * data (e.g. Meeting Room falling back to Virtual Office package info).
+ */
+export function normalizeContractData(quotation: QuotationPayload): ContractData {
+    const d = quotation.detail;
+    const service = (quotation.service_name || "Service").trim();
+    const companyName = d.company_name || "";
+    const signatoryName = d.signatory_details || d.id_name || d.full_name;
+    const durationLabel = d.duration_type || d.duration || quotation.duration;
+
+    return {
+        service,
+        contractTitle: getContractTitle(service),
+        clientName: d.full_name || "Client",
+        companyName,
+        signatoryName,
+        email: d.email || "—",
+        phone: d.phone || "—",
+        branch: quotation.branch || "—",
+        packagePlan: quotation.package || d.package_name || undefined,
+        duration: durationLabel != null ? String(durationLabel) : undefined,
+        startDate: d.date ? formatDisplayDate(d.date) : undefined,
+        paymentMethod: d.payment_method ? formatPaymentMethodLabel(d.payment_method) : undefined,
+        terms: getServiceSpecificTerms(service),
+        dateIssued: new Date().toLocaleDateString("en-PH", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        }),
+    };
+}
+
 function buildContractTemplateVariables(quotation: QuotationPayload): Record<string, string> {
     const d = quotation.detail;
-    const today = new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
-    const fullName = d.full_name || "Client";
-    const companyName = d.company_name || "";
-    const idName = d.id_name || d.signatory_details || fullName;
-    const durationLabel = d.duration_type || d.duration || quotation.duration || "To be finalized";
+    const contract = normalizeContractData(quotation);
+    const idName = d.id_name || d.signatory_details || contract.clientName;
 
     const monthlyFee = VO_PACKAGE_PRICES[quotation.package || ""] ?? "—";
     const monthlyFeeAmount = parseNumberish(d.package_price) ?? parseNumberish(monthlyFee);
@@ -549,25 +642,27 @@ function buildContractTemplateVariables(quotation: QuotationPayload): Record<str
     );
 
     return {
-        date_issued: today,
-        client_name: fullName,
-        company_name: companyName,
-        company_name_segment: companyName ? ` of ${companyName}` : "",
-        service_name: quotation.service_name || "Service",
-        branch: quotation.branch || "—",
-        package: quotation.package || d.package_name || "—",
-        duration: String(durationLabel),
-        start_date: formatDisplayDate(d.date),
-        payment_method: formatPaymentMethodLabel(d.payment_method),
+        date_issued: contract.dateIssued,
+        client_name: contract.clientName,
+        company_name: contract.companyName,
+        company_name_segment: contract.companyName ? ` of ${contract.companyName}` : "",
+        service_name: contract.service,
+        contract_title: contract.contractTitle,
+        branch: contract.branch,
+        package: contract.packagePlan || "—",
+        duration: contract.duration || "To be finalized",
+        start_date: contract.startDate || "—",
+        payment_method: contract.paymentMethod || "N/A",
         transaction_id: d.transaction_id || "—",
         id_type: d.id_type || "—",
         id_number: d.id_number || "—",
         id_name: idName,
         id_address: d.id_address || "—",
         signatory_details: d.signatory_details || "—",
-        signatory_name: d.signatory_details || idName,
-        email: d.email ?? "—",
-        phone: d.phone ?? "—",
+        signatory_name: contract.signatoryName,
+        email: contract.email,
+        phone: contract.phone,
+        terms: contract.terms,
         package_fee: monthlyFeeAmount != null ? formatPhp(monthlyFeeAmount) : "—",
         months: String(monthsCount),
         subtotal: subtotalAmount != null ? formatPhp(subtotalAmount) : "—",
@@ -587,7 +682,7 @@ function buildVirtualOfficeContractTemplate(): string {
     return [
         "",
         "1. Parties\n",
-        "This Virtual Office Service Agreement (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\"), effective as of the date of confirmed payment below.",
+        "This {{contract_title_body}} (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\"), effective as of the date of confirmed payment below.",
         "",
         "2. Service Details\n",
         "Service: {{service_name}}\n",
@@ -618,7 +713,7 @@ function buildVirtualOfficeContractTemplate(): string {
         "Total: {{total}}\n",
         "",
         "5. Terms & Conditions\n",
-        "The Client agrees to the Provider's standard terms of service, including monthly billing, renewal, and cancellation policies as outlined in the Provider's Terms of Use. This Agreement takes effect upon confirmed payment and remains in force on a month-to-month basis unless terminated by either party with thirty (30) days' written notice.",
+        "{{terms}}",
         "",
     ].join("\n");
 }
@@ -627,34 +722,58 @@ function buildOtherServiceContractTemplate(): string {
     return [
         "",
         "1. Parties\n",
-        "This {{service_name}} Service Agreement (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\").",
+        "This {{contract_title_body}} (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\").",
         "",
         "2. Service Details",
         "Service: {{service_name}}",
         "Branch: {{branch}}",
+        "Package/Plan: {{package}}",
         "Duration: {{duration}}",
         "Start Date: {{start_date}}",
+        "Payment Method: {{payment_method}}",
         "",
         "3. Client Information",
         "Client Name: {{client_name}}",
         "Company: {{company_name}}",
         "Signatory: {{signatory_name}}",
-        "Signatory Details: {{signatory_details}}",
         "Email: {{email}}",
         "Phone: {{phone}}",
         "",
         "4. Terms & Conditions\n",
-        "The Client agrees to the Provider's standard terms of service, including service availability, billing, renewal, and cancellation policies applicable to the selected service. This Agreement takes effect upon confirmed payment and remains in force until terminated according to the service terms.",
+        "{{terms}}",
         "",
     ].join("\n");
 }
 
+/**
+ * Body text uses "This <Service> Service Agreement" — the same
+ * contract_title text used for the header, just without the branding line,
+ * so the title and body can never diverge again.
+ */
+function withContractTitleBodyVariable(
+    template: string,
+    variables: Record<string, string>
+): Record<string, string> {
+    return {
+        ...variables,
+        contract_title_body: variables.contract_title || variables.service_name,
+    };
+}
+
 function buildVirtualOfficeContractContent(quotation: QuotationPayload): string {
-    return resolveContractTemplate(buildVirtualOfficeContractTemplate(), buildContractTemplateVariables(quotation));
+    const variables = withContractTitleBodyVariable(
+        buildVirtualOfficeContractTemplate(),
+        buildContractTemplateVariables(quotation)
+    );
+    return resolveContractTemplate(buildVirtualOfficeContractTemplate(), variables);
 }
 
 function buildOtherServiceContractContent(quotation: QuotationPayload): string {
-    return resolveContractTemplate(buildOtherServiceContractTemplate(), buildContractTemplateVariables(quotation));
+    const variables = withContractTitleBodyVariable(
+        buildOtherServiceContractTemplate(),
+        buildContractTemplateVariables(quotation)
+    );
+    return resolveContractTemplate(buildOtherServiceContractTemplate(), variables);
 }
 
 function buildServiceContractContentFromAdminTemplate(quotation: QuotationPayload): string {
@@ -669,7 +788,8 @@ function resolveEditableContractContent(
 ): string {
     const raw = (quotation.detail.contract_content || "").trim();
     if (!raw) return fallbackTemplateBuilder(quotation);
-    return resolveContractTemplate(raw, buildContractTemplateVariables(quotation));
+    const variables = withContractTitleBodyVariable(raw, buildContractTemplateVariables(quotation));
+    return resolveContractTemplate(raw, variables);
 }
 
 export function buildResolvedQuotationContractContent(quotation: QuotationPayload): string {
@@ -695,6 +815,18 @@ async function renderContractPdfFromContent(args: {
             page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
             cursorY = PAGE_HEIGHT - MARGIN;
         }
+    };
+
+    const drawSectionHeading = (text: string) => {
+        ensureSpace(28);
+        cursorY -= 10; // spacing before section
+        drawLine(text.toUpperCase(), { size: 11, bold: true, color: COLOR_PRIMARY, gap: 18 });
+    };
+
+    const drawFieldRow = (label: string, value: string) => {
+        ensureSpace(30);
+        drawLine(label, { size: 9, bold: true, color: COLOR_MUTED, gap: 12 });
+        drawLine(value || "—", { size: 11, color: COLOR_TEXT, gap: 20 });
     };
 
     const drawLine = (
@@ -729,21 +861,48 @@ async function renderContractPdfFromContent(args: {
     const today = new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
     drawLine("Hero Serviced Office", { size: 20, bold: true, color: COLOR_PRIMARY, align: "center", gap: 26 });
     drawLine(title, { size: 11, color: COLOR_MUTED, align: "center", gap: 28 });
-    drawLine(`Date Issued: ${today}`, { size: 10, gap: 20 });
+    drawLine(`Date Issued: ${today}`, { size: 10, gap: 24 });
 
+    // Parse the resolved template content into sections/fields so the PDF
+    // renders with the same label/value hierarchy as the website preview,
+    // instead of one long wrapped paragraph per block.
     const blocks = content.split(/\r?\n\r?\n/).map((block) => block.trim()).filter(Boolean);
+
     for (const block of blocks) {
-        drawParagraph(block);
+        const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+        if (lines.length === 0) continue;
+
+        const headingMatch = lines[0].match(/^(\d+\.\s*[A-Za-z &]+)$/);
+        if (headingMatch) {
+            drawSectionHeading(headingMatch[1]);
+            for (const fieldLine of lines.slice(1)) {
+                const fieldMatch = fieldLine.match(/^([A-Za-z /&]+):\s*(.*)$/);
+                if (fieldMatch) {
+                    drawFieldRow(fieldMatch[1].trim(), fieldMatch[2].trim());
+                } else {
+                    drawParagraph(fieldLine);
+                    cursorY -= 4;
+                }
+            }
+            continue;
+        }
+
+        drawParagraph(lines.join(" "));
         cursorY -= 6;
     }
 
-    cursorY -= 30;
+    cursorY -= 20;
+    ensureSpace(140);
+    drawLine("AGREED AND ACCEPTED", { size: 11, bold: true, color: COLOR_PRIMARY, gap: 24 });
+    drawLine("PROVIDER", { size: 9, bold: true, color: COLOR_MUTED, gap: 16 });
     drawLine("Hero PH Inc.", { bold: true, gap: 40 });
     drawLine("_______________________________", { gap: 14 });
-    drawLine("Authorized Representative", { gap: 40 });
+    drawLine("Authorized Representative / Date", { size: 9, color: COLOR_MUTED, gap: 30 });
+
+    drawLine("CLIENT", { size: 9, bold: true, color: COLOR_MUTED, gap: 16 });
     drawLine(`${signatoryLabel}`, { bold: true, gap: 40 });
     drawLine("_______________________________", { gap: 14 });
-    drawLine("Client Signature");
+    drawLine("Signature / Date", { size: 9, color: COLOR_MUTED });
 
     ensureSpace(30);
     drawLine(
@@ -757,23 +916,23 @@ async function renderContractPdfFromContent(args: {
 
 async function generateNonVirtualOfficeContractPdf(quotation: QuotationPayload): Promise<Buffer> {
     const content = resolveEditableContractContent(quotation, buildOtherServiceContractContent);
-    const signatoryLabel = quotation.detail.signatory_details || quotation.detail.id_name || quotation.detail.full_name;
+    const contract = normalizeContractData(quotation);
 
     return renderContractPdfFromContent({
-        title: `${quotation.service_name || "Service"} Service Agreement`,
+        title: contract.contractTitle,
         content,
-        signatoryLabel,
+        signatoryLabel: contract.signatoryName,
     });
 }
 
 async function generateVirtualOfficeContractPdf(quotation: QuotationPayload): Promise<Buffer> {
     const content = resolveEditableContractContent(quotation, buildVirtualOfficeContractContent);
-    const signatoryLabel = quotation.detail.signatory_details || quotation.detail.id_name || quotation.detail.full_name;
+    const contract = normalizeContractData(quotation);
 
     return renderContractPdfFromContent({
-        title: "Virtual Office Service Agreement",
+        title: contract.contractTitle,
         content,
-        signatoryLabel,
+        signatoryLabel: contract.signatoryName,
     });
 }
 
@@ -865,13 +1024,12 @@ export async function sendQuotationContractEmail(
 
     const d = quotation.detail;
     const firstName = d.full_name.split(" ")[0] || d.full_name;
+    const contract = normalizeContractData(quotation);
     const attachments = [...getDocumentCopyAttachments(options)];
     const contractBuffer = await generateContractPdfByService(quotation);
-    const serviceSlug = (quotation.service_name || "Service")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-    const contractFilename = `Hero-${serviceSlug || "service"}-Contract.pdf`;
+
+    // Dynamic filename: "[Client Name] - [Service] Service Agreement.pdf"
+    const contractFilename = `${contract.clientName} - ${contract.contractTitle}.pdf`;
 
     attachments.push({
         filename: contractFilename,
