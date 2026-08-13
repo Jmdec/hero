@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/Toast";
 import {
     Users,
@@ -174,6 +176,8 @@ function ModalBackdrop({
 
 export default function UsersPage() {
     const { showToast } = useToast();
+    const router = useRouter();
+    const { user, isAuthenticated, isAdmin, isAuthReady } = useAuth();
     const [adminBreakdownOpen, setAdminBreakdownOpen] = useState(false);
     const [adminBreakdownLoading, setAdminBreakdownLoading] = useState(false);
     const [adminBreakdownError, setAdminBreakdownError] = useState<string | null>(null);
@@ -269,6 +273,21 @@ export default function UsersPage() {
     useEffect(() => {
         fetchUsers();
     }, [fetchUsers]);
+
+    useEffect(() => {
+        // Only administrative users may access this page. Operation role is denied.
+        if (!isAuthReady) return;
+
+        if (!isAuthenticated) {
+            router.replace('/login');
+            return;
+        }
+
+        if (!isAdmin) {
+            // Not an administrative user — send back to admin overview.
+            router.replace('/admin');
+        }
+    }, [isAuthReady, isAuthenticated, isAdmin, router]);
 
     const monthlyUserTrend = useMemo(() => {
         const now = new Date();

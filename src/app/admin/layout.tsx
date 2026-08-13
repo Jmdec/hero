@@ -24,11 +24,6 @@ import {
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/contexts/AuthContext";
 
-// ── Roles ──
-// AuthContext exposes `user.role` as a plain string, and `isAdmin` is
-// derived there as `role === 'admin'`. This screen additionally
-// distinguishes an "operation" role with reduced access. If your backend
-// sends a different string for the operation role, update ROLES.OPERATION.
 type AppRole = "admin" | "operation";
 
 const ROLES: Record<string, AppRole> = {
