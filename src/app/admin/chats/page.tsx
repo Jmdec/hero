@@ -470,7 +470,9 @@ export default function AdminChatsPage() {
                 setSelectedConversationId(items[0].id);
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unable to load conversations.");
+            const message = err instanceof Error ? err.message : "Unable to load conversations.";
+            setError(message);
+            pushToast(message, "error");
         } finally {
             setLoading(false);
         }
@@ -481,7 +483,7 @@ export default function AdminChatsPage() {
             const needsAdmin = NEEDS_ADMIN.includes(c.status as StatusKey);
             if (needsAdmin && !notifiedRequestIds.current.has(c.id)) {
                 notifiedRequestIds.current.add(c.id);
-                setAgentRequestNotice(`${c.inquiry?.full_name ?? "A visitor"} asked to talk to an agent.`);
+                pushToast(`${c.inquiry?.full_name ?? "A visitor"} asked to talk to an agent.`, "success");
             }
         }
     };
@@ -525,6 +527,22 @@ export default function AdminChatsPage() {
     }, [selectedConversationId]);
 
     useEffect(() => {
+        const interval = setInterval(async () => {
+            try {
+                const response = await chatApi.listConversations() as { data?: ChatConversation[] };
+                if (response.data) {
+                    setConversations(response.data);
+                    checkForNewAgentRequests(response.data);
+                }
+            } catch {
+                // Ignore polling errors
+            }
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
         if (!selectedConversationId) return;
 
         const interval = setInterval(async () => {
@@ -533,30 +551,14 @@ export default function AdminChatsPage() {
 
                 setSelectedConversation(prev => {
                     if (!prev) return conversation;
-
-                    if (prev.messages.length !== conversation.messages.length) {
-                        return conversation;
-                    }
-
-                    if (prev.status !== conversation.status) {
-                        return conversation;
-                    }
-
+                    if (prev.messages.length !== conversation.messages.length) return conversation;
+                    if (prev.status !== conversation.status) return conversation;
                     return prev;
                 });
-
-                const response = await chatApi.listConversations() as {
-                    data?: ChatConversation[];
-                };
-
-                if (response.data) {
-                    setConversations(response.data);
-                    checkForNewAgentRequests(response.data);
-                }
             } catch {
                 // Ignore polling errors
             }
-        }, 2000); // every 2 seconds
+        }, 2000);
 
         return () => clearInterval(interval);
     }, [selectedConversationId]);
@@ -645,9 +647,6 @@ export default function AdminChatsPage() {
         setError("");
 
         try {
-            // Let the admin reply the moment a visitor needs a person, without
-            // a separate "take over" click first — the reply itself takes
-            // ownership of the conversation.
             if (selectedConversation && NEEDS_ADMIN.includes(selectedConversation.status as StatusKey)) {
                 await chatApi.switchMode(selectedConversationId, "admin");
             }
@@ -656,7 +655,9 @@ export default function AdminChatsPage() {
             setReply("");
             await refresh();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unable to send reply.");
+            const message = err instanceof Error ? err.message : "Unable to send reply.";
+            setError(message);
+            pushToast(message, "error");
         } finally {
             setSending(false);
         }
@@ -667,9 +668,11 @@ export default function AdminChatsPage() {
         try {
             await chatApi.takeChat(selectedConversationId);
             await refresh();
+            pushToast("You've taken over this chat.", "success");
         } catch (err) {
-            if (err instanceof Error) setError(err.message);
-            else setError("Unable to take the chat. It may have been taken by another agent.");
+            const message = err instanceof Error ? err.message : "Unable to take the chat. It may have been taken by another agent.";
+            setError(message);
+            pushToast(message, "error");
         }
     };
 
@@ -678,8 +681,11 @@ export default function AdminChatsPage() {
         try {
             await chatApi.switchMode(selectedConversationId, "assistant");
             await refresh();
+            pushToast("Conversation returned to the AI assistant.", "success");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unable to return chat to AI.");
+            const message = err instanceof Error ? err.message : "Unable to return chat to AI.";
+            setError(message);
+            pushToast(message, "error");
         }
     };
 
@@ -689,8 +695,11 @@ export default function AdminChatsPage() {
         try {
             await chatApi.closeConversation(selectedConversationId, false);
             await refresh();
+            pushToast("Conversation closed.", "success");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unable to close conversation.");
+            const message = err instanceof Error ? err.message : "Unable to close conversation.";
+            setError(message);
+            pushToast(message, "error");
         }
     };
 
@@ -704,8 +713,11 @@ export default function AdminChatsPage() {
         try {
             await chatApi.markAddressed(selectedConversationId, nextAddressed);
             await refresh();
+            pushToast(nextAddressed ? "Marked as addressed." : "Marked as needing response.", "success");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unable to update addressed status.");
+            const message = err instanceof Error ? err.message : "Unable to update addressed status.";
+            setError(message);
+            pushToast(message, "error");
         } finally {
             setMarkingAddressed(false);
         }
@@ -719,11 +731,14 @@ export default function AdminChatsPage() {
 
         try {
             const result = await chatApi.emailChatHistory(selectedConversationId);
-            setHistorySentNotice(
+            pushToast(
                 `Chat history sent to ${result?.to ?? selectedConversation.inquiry?.email_address ?? "the visitor"}.`,
+                "success"
             );
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unable to send chat history.");
+            const message = err instanceof Error ? err.message : "Unable to send chat history.";
+            setError(message);
+            pushToast(message, "error");
         } finally {
             setSendingHistory(false);
         }
