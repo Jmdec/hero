@@ -144,14 +144,6 @@ function timeAgo(iso: string) {
     return new Date(iso).toLocaleDateString();
 }
 
-function durationSince(iso: string) {
-    const mins = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-    if (mins < 60) return `${mins}m`;
-    const hrs = Math.floor(mins / 60);
-    const rem = mins % 60;
-    return `${hrs}h ${rem}m`;
-}
-
 function ConversationSkeleton() {
     return (
         <div className="flex h-full flex-col">
@@ -178,7 +170,7 @@ function ConversationListSkeleton() {
     return (
         <div className="space-y-1.5 p-1">
             {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="h-18 animate-pulse rounded-xl bg-slate-100" />
+                <div key={i} className="h-16 animate-pulse rounded-xl bg-slate-100" />
             ))}
         </div>
     );
@@ -442,11 +434,9 @@ export default function AdminChatsPage() {
     const [markingAddressed, setMarkingAddressed] = useState(false);
 
     const [sendingHistory, setSendingHistory] = useState(false);
-    const [historySentNotice, setHistorySentNotice] = useState<string | null>(null);
     const [error, setError] = useState("");
     const [query, setQuery] = useState("");
     const [addressedFilter, setAddressedFilter] = useState<AddressedFilter>("all");
-    const [agentRequestNotice, setAgentRequestNotice] = useState<string | null>(null);
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
@@ -454,7 +444,10 @@ export default function AdminChatsPage() {
     const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
     const actionsMenuRef = useRef<HTMLDivElement>(null);
 
-    const notifiedRequestIds = useRef<Set<number>>(new Set());
+    const knownAttentionIdsRef = useRef<Set<number>>(new Set());
+    // Tracks whether the component is still mounted so async polling callbacks
+    // don't call setState after unmount.
+    const isMountedRef = useRef(true);
 
     const loadConversations = async () => {
         setLoading(true);
@@ -463,46 +456,105 @@ export default function AdminChatsPage() {
         try {
             const response = await chatApi.listConversations() as { data?: ChatConversation[];[key: string]: unknown };
             const items = Array.isArray(response?.data) ? response.data : [];
+            if (!isMountedRef.current) return;
             setConversations(items);
-            checkForNewAgentRequests(items);
 
             if (!selectedConversationId && items[0]?.id) {
                 setSelectedConversationId(items[0].id);
             }
         } catch (err) {
+            if (!isMountedRef.current) return;
             const message = err instanceof Error ? err.message : "Unable to load conversations.";
             setError(message);
             pushToast(message, "error");
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) setLoading(false);
         }
     };
 
-    const checkForNewAgentRequests = (items: ChatConversation[]) => {
-        for (const c of items) {
-            const needsAdmin = NEEDS_ADMIN.includes(c.status as StatusKey);
-            if (needsAdmin && !notifiedRequestIds.current.has(c.id)) {
-                notifiedRequestIds.current.add(c.id);
-                pushToast(`${c.inquiry?.full_name ?? "A visitor"} asked to talk to an agent.`, "success");
-            }
-        }
-    };
-
+    // Track mount state for the lifetime of the component.
     useEffect(() => {
-        void loadConversations();
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     useEffect(() => {
-        if (!agentRequestNotice) return;
-        const t = setTimeout(() => setAgentRequestNotice(null), 6000);
-        return () => clearTimeout(t);
-    }, [agentRequestNotice]);
+        let cancelled = false;
+
+        const interval = setInterval(async () => {
+            if (cancelled) return;
+            try {
+                const result = await chatApi.needsAttention();
+                if (cancelled) return;
+
+                const currentIds = new Set(result.conversation_ids);
+
+                const newIds = result.conversation_ids.filter(
+                    (id) => !knownAttentionIdsRef.current.has(id),
+                );
+
+                if (newIds.length > 0) {
+                    const response = await chatApi.listConversations() as { data?: ChatConversation[] };
+                    if (cancelled) return;
+                    if (response.data) {
+                        setConversations(response.data);
+                        for (const id of newIds) {
+                            const match = response.data.find((c) => c.id === id);
+                            pushToast(
+                                `${match?.inquiry?.full_name ?? "A visitor"} asked to talk to an agent.`,
+                                "success",
+                            );
+                        }
+                    }
+                }
+
+                knownAttentionIdsRef.current = currentIds;
+            } catch {
+                // Ignore polling errors
+            }
+        }, 2000);
+
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+        };
+    }, [pushToast]);
+
+    // Poll the currently open conversation's messages/status separately.
+    useEffect(() => {
+        if (!selectedConversationId) return;
+
+        let cancelled = false;
+
+        const interval = setInterval(async () => {
+            if (cancelled) return;
+            try {
+                const conversation = await chatApi.getConversation(selectedConversationId);
+                if (cancelled) return;
+
+                setSelectedConversation(prev => {
+                    if (!prev) return conversation;
+                    if (prev.messages.length !== conversation.messages.length) return conversation;
+                    if (prev.status !== conversation.status) return conversation;
+                    return prev;
+                });
+            } catch {
+                // Ignore polling errors
+            }
+        }, 2000);
+
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+        };
+    }, [selectedConversationId]);
 
     useEffect(() => {
-        if (!historySentNotice) return;
-        const t = setTimeout(() => setHistorySentNotice(null), 5000);
-        return () => clearTimeout(t);
-    }, [historySentNotice]);
+        void loadConversations();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         if (!selectedConversationId) return;
@@ -524,43 +576,6 @@ export default function AdminChatsPage() {
         return () => {
             cancelled = true;
         };
-    }, [selectedConversationId]);
-
-    useEffect(() => {
-        const interval = setInterval(async () => {
-            try {
-                const response = await chatApi.listConversations() as { data?: ChatConversation[] };
-                if (response.data) {
-                    setConversations(response.data);
-                    checkForNewAgentRequests(response.data);
-                }
-            } catch {
-                // Ignore polling errors
-            }
-        }, 2000);
-
-        return () => clearInterval(interval);
-    }, []);
-
-    useEffect(() => {
-        if (!selectedConversationId) return;
-
-        const interval = setInterval(async () => {
-            try {
-                const conversation = await chatApi.getConversation(selectedConversationId);
-
-                setSelectedConversation(prev => {
-                    if (!prev) return conversation;
-                    if (prev.messages.length !== conversation.messages.length) return conversation;
-                    if (prev.status !== conversation.status) return conversation;
-                    return prev;
-                });
-            } catch {
-                // Ignore polling errors
-            }
-        }, 2000);
-
-        return () => clearInterval(interval);
     }, [selectedConversationId]);
 
     useEffect(() => {
@@ -607,11 +622,11 @@ export default function AdminChatsPage() {
             }
 
             const data = (await response.json()) as ChatAnalytics;
-            setChatAnalytics(data);
+            if (isMountedRef.current) setChatAnalytics(data);
         } catch {
-            setChatAnalytics(null);
+            if (isMountedRef.current) setChatAnalytics(null);
         } finally {
-            setStatsLoading(false);
+            if (isMountedRef.current) setStatsLoading(false);
         }
     };
 
@@ -620,7 +635,7 @@ export default function AdminChatsPage() {
         if (selectedConversationId) {
             try {
                 const conversation = await chatApi.getConversation(selectedConversationId);
-                setSelectedConversation(conversation);
+                if (isMountedRef.current) setSelectedConversation(conversation);
             } catch {
                 // Ignore refresh errors and keep the existing view intact.
             }
@@ -724,7 +739,14 @@ export default function AdminChatsPage() {
     };
 
     const handleSendHistory = async () => {
+        // Guard against firing when there's no conversation selected or no
+        // email on file — the button is disabled for this case, but this
+        // protects against any programmatic/keyboard invocation too.
         if (!selectedConversationId || !selectedConversation) return;
+        if (!selectedConversation.inquiry?.email_address) {
+            pushToast("This visitor has no email on file.", "error");
+            return;
+        }
 
         setSendingHistory(true);
         setError("");
@@ -757,6 +779,7 @@ export default function AdminChatsPage() {
 
     useEffect(() => {
         void loadChatAnalytics();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const REPLY_MIN_HEIGHT = 72; // px, ~3 rows
@@ -846,7 +869,7 @@ export default function AdminChatsPage() {
                             className={`group relative flex w-full items-start gap-3 overflow-hidden rounded-xl border p-2.5 pl-3.5 text-left transition ${isActive ? "border-[#0D47A1]/30 bg-[#0D47A1]/4" : "border-transparent hover:bg-slate-50"
                                 }`}
                         >
-                            <span className={`absolute inset-y-2 left-0 w-0.75 rounded-full ${s.rail}`} />
+                            <span className={`absolute inset-y-2 left-0 w-1 rounded-full ${s.rail}`} />
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between gap-2">
                                     <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
@@ -886,26 +909,6 @@ export default function AdminChatsPage() {
                         <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
                     </button>
                 </div>
-
-                {/* Agent-request toast */}
-                {agentRequestNotice ? (
-                    <div className="flex shrink-0 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                        <LiveDot />
-                        {agentRequestNotice}
-                        <span className="ml-auto flex items-center gap-1 text-xs text-amber-600">
-                            <Mail className="h-3.5 w-3.5" />
-                            Email sent
-                        </span>
-                    </div>
-                ) : null}
-
-                {/* History-sent toast */}
-                {historySentNotice ? (
-                    <div className="flex shrink-0 items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
-                        <MailCheck className="h-4 w-4" />
-                        {historySentNotice}
-                    </div>
-                ) : null}
 
                 {error ? (
                     <div className="flex shrink-0 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -1135,7 +1138,33 @@ export default function AdminChatsPage() {
                                                                 <span>·</span>
                                                                 <span>{new Date(message.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                                                             </div>
-                                                            <p className="text-sm leading-relaxed">{message.message}</p>
+                                                            {/* Render a contact button when the system message contains a contact URL */}
+                                                            {isSystem && /contact/i.test(message.message) ? (
+                                                                (() => {
+                                                                    const match = message.message.match(/(https?:\/\/[^\s]+\/contact|\/contact\b)/i);
+                                                                    const rawUrl = match ? match[0] : null;
+                                                                    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                                                                    const url = rawUrl ? (rawUrl.startsWith('/') ? `${origin}${rawUrl}` : rawUrl) : `${origin}/contact`;
+                                                                    const text = message.message.replace(rawUrl ?? '', '').trim();
+
+                                                                    return (
+                                                                        <div className="flex flex-col gap-2">
+                                                                            {text ? <p className="text-sm leading-relaxed">{text}</p> : null}
+                                                                            <a
+                                                                                href={url}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="inline-flex items-center gap-2 rounded-md bg-[#0D47A1] px-3 py-2 text-sm font-medium text-white hover:bg-[#0D47A1]/90"
+                                                                            >
+                                                                                Contact Us
+                                                                                <ArrowRightLeft className="h-4 w-4" />
+                                                                            </a>
+                                                                        </div>
+                                                                    );
+                                                                })()
+                                                            ) : (
+                                                                <p className="text-sm leading-relaxed">{message.message}</p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 );

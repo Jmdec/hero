@@ -357,8 +357,8 @@ export default function AboutPage() {
                 unoptimized
               />
 
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-black/60 px-4 py-2 text-white">
-                Our Team
+              <div className="absolute top-3 right-3 z-20 px-3 py-1.5 rounded-full bg-[#0A1E3F] backdrop-blur-sm border border-white/60 shadow-sm">
+                <span className="text-sm font-bold text-white">Our Team</span>
               </div>
             </div>
           </div>

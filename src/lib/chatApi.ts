@@ -264,6 +264,12 @@ export const chatApi = {
         return request("/chat");
     },
 
+    needsAttention() {
+        return request<{ count: number; conversation_ids: number[]; oldest_requested_at?: string | null }>(
+            "/chat/needs-attention"
+        );
+    },
+
     // Heartbeat/ping to keep server-side session alive and update last-activity.
     pingConversation(conversationId: number) {
         return request(`/chat/${conversationId}/heartbeat`, {

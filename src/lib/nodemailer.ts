@@ -364,10 +364,8 @@ function getPublicAppBaseUrl(): string {
     const candidates = [
         process.env.NEXT_PUBLIC_APP_URL,
         process.env.APP_URL,
-        process.env.NEXT_PUBLIC_SITE_URL,
-        process.env.SITE_URL,
-        process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
-        "http://localhost:3000",
+        process.env.LARAVEL_API_URL,
+        "http://localhost:8000",
     ].filter((value): value is string => Boolean(value));
 
     const isProd = process.env.NODE_ENV === "production";
@@ -390,7 +388,7 @@ function getPublicAppBaseUrl(): string {
         return normalized;
     }
 
-    return "http://localhost:3000";
+    return "http://localhost:8000";
 }
 
 function toUniqueEmails(values: Array<string | null | undefined>): string[] {
@@ -707,22 +705,22 @@ function buildOtherServiceContractTemplate(): string {
     return [
         "",
         "1. Parties\n",
-        "This {{contract_title_body}} (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\").",
+        "This {{contract_title_body}} (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\"), effective as of the date of confirmed payment below.",
         "",
-        "2. Service Details",
-        "Service: {{service_name}}",
-        "Branch: {{branch}}",
-        "Package/Plan: {{package}}",
-        "Duration: {{duration}}",
-        "Start Date: {{start_date}}",
-        "Payment Method: {{payment_method}}",
+        "2. Service Details\n",
+        "Service: {{service_name}}\n",
+        "Branch: {{branch}}\n",
+        "Package/Plan: {{package}}\n",
+        "Duration: {{duration}}\n",
+        "Start Date: {{start_date}}\n",
+        "Payment Method: {{payment_method}}\n",
         "",
-        "3. Client Information",
-        "Client Name: {{client_name}}",
-        "Company: {{company_name}}",
-        "Signatory: {{signatory_name}}",
-        "Email: {{email}}",
-        "Phone: {{phone}}",
+        "3. Client Information\n",
+        "Client Name: {{client_name}}\n",
+        "Company: {{company_name}}\n",
+        "Signatory: {{signatory_name}}\n",
+        "Email: {{email}}\n",
+        "Phone: {{phone}}\n",
         "",
         "4. Terms & Conditions\n",
         "{{terms}}",
