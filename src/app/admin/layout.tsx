@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Settings,
   LogOut,
+  Loader2,
 } from "lucide-react";
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/contexts/AuthContext";
@@ -88,7 +89,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const { user, isAuthenticated, isAdmin, isAuthReady, logout } = useAuth();
-
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const role = user?.role as AppRole | undefined;
   const isAdministrative = isAdmin; // isAdmin from context already means role === 'admin'
   const isOperation = role === ROLES.OPERATION;
@@ -102,29 +103,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }));
 
   const handleLogout = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
 
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-    } catch {
-      // proceed with client cleanup regardless
+      await logout(); // your existing logout function
+    } catch (error) {
+      console.error("Logout failed:", error);
+      setIsLoggingOut(false);
     }
-    logout();
-    router.replace("/");
   };
 
   useEffect(() => {
-    // NOTE: middleware.ts is the actual security boundary — it runs server-side
-    // before this component ever mounts. This client-side check exists only
-    // to populate `user` for the UI and avoid a flash of admin content while
-    // auth is hydrated.
     if (!isAuthReady) return;
 
     if (!isAuthenticated || !user) {
-      router.replace("/login");
+      router.replace("/");
       return;
     }
 
@@ -148,7 +143,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen bg-[#F0EDE7]">
-      {/* ── Mobile overlay ── */}
+      {/* Mobile overlay */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
@@ -197,11 +192,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       key={href}
                       href={href}
                       onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center gap-2.5 px-3 py-2.5 my-2 rounded-md text-md border-l-2 transition-all ${
-                        active
-                          ? "bg-[#0A1E3F]/10 text-[#0A1E3F] border-[#4F8EF7] font-bold"
-                          : "text-[#0D47A1] border-transparent hover:bg-[#0A1E3F]/5 hover:text-[#1565C0]"
-                      }`}
+                      className={`flex items-center gap-2.5 px-3 py-2.5 my-2 rounded-md text-md border-l-2 transition-all ${active
+                        ? "bg-[#0A1E3F]/10 text-[#0A1E3F] border-[#4F8EF7] font-bold"
+                        : "text-[#0D47A1] border-transparent hover:bg-[#0A1E3F]/5 hover:text-[#1565C0]"
+                        }`}
                     >
                       <Icon className={`w-4 h-4 shrink-0 ${active ? "text-[#4F8EF7]" : ""}`} />
                       {title}
@@ -286,12 +280,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <span>Profile Settings</span>
                           </Link>
                         )}
+                        
                         <button
                           onClick={handleLogout}
-                          className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                          disabled={isLoggingOut}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                          <LogOut className="w-4 h-4" />
-                          <span>Logout</span>
+                          {isLoggingOut ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <LogOut className="w-4 h-4" />
+                          )}
+
+                          <span>
+                            {isLoggingOut ? "Logging out..." : "Logout"}
+                          </span>
                         </button>
                       </div>
                     </motion.div>

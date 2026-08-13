@@ -394,8 +394,6 @@ function ReceiptRow({
             {href ? (
                 <a
                     href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className={`text-right shrink-0 max-w-[65%] wrap-break-word hover:underline ${valueClasses}`}
                 >
                     {value}
@@ -590,7 +588,7 @@ function SignatoryDetailsSection({
     );
 }
 
-function IdViewerModal({
+function ImagePreviewModal({
     doc,
     onClose,
 }: {
@@ -598,6 +596,15 @@ function IdViewerModal({
     onClose: () => void;
 }) {
     const [zoom, setZoom] = useState(1);
+
+    useEffect(() => {
+        function onKey(e: KeyboardEvent) {
+            if (e.key === "Escape") onClose();
+        }
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
+    }, [onClose]);
+
     if (!doc) return null;
     const isPdf = /\.pdf($|\?)/i.test(doc.url);
 
@@ -632,8 +639,6 @@ function IdViewerModal({
                         <a
                             href={doc.url}
                             download
-                            target="_blank"
-                            rel="noopener noreferrer"
                             className="p-2 rounded-lg text-[#64748B] hover:bg-[#F0F4FB] transition"
                             aria-label="Download document"
                         >
@@ -642,7 +647,7 @@ function IdViewerModal({
                         <button
                             onClick={onClose}
                             className="p-2 rounded-lg text-[#64748B] hover:bg-[#F0F4FB] transition"
-                            aria-label="Close ID viewer"
+                            aria-label="Close preview"
                         >
                             <X className="w-4 h-4" />
                         </button>
@@ -657,7 +662,7 @@ function IdViewerModal({
                             src={doc.url}
                             alt={doc.title}
                             style={{ transform: `scale(${zoom})`, transition: "transform 0.15s ease" }}
-                            className="max-w-full rounded-lg shadow-sm select-none"
+                            className="max-w-full max-h-[80vh] rounded-lg shadow-sm select-none"
                             draggable={false}
                         />
                     )}
@@ -667,7 +672,7 @@ function IdViewerModal({
     );
 }
 
-function PaymentDetailsSection({ quote }: { quote: Quotation }) {
+function PaymentDetailsSection({ quote, onView }: { quote: Quotation; onView?: (doc: { title: string; url: string }) => void }) {
     const detail = quote.detail;
     if (!detail) return null;
 
@@ -692,7 +697,17 @@ function PaymentDetailsSection({ quote }: { quote: Quotation }) {
             {methodLabel && <ReceiptRow label="Payment Method" value={methodLabel} />}
             {detail.transaction_id && <ReceiptRow label="Transaction ID" value={detail.transaction_id} />}
             {quote.paid_at && <ReceiptRow label="Paid On" value={formatDate(quote.paid_at)} />}
-            {receiptUrl && <ReceiptRow label="Receipt" value="View uploaded receipt" href={receiptUrl} />}
+            {receiptUrl && (
+                <div className="flex items-baseline justify-between gap-4 py-1.5">
+                    <span className="text-sm text-[#64748B]">Receipt</span>
+                    <button
+                        onClick={() => onView?.({ title: "Receipt", url: receiptUrl })}
+                        className="text-right shrink-0 max-w-[65%] wrap-break-word text-sm font-semibold text-[#0B1F4A] hover:underline"
+                    >
+                        View uploaded receipt
+                    </button>
+                </div>
+            )}
         </ReceiptSection>
     );
 }
@@ -1422,14 +1437,14 @@ export default function AdminQuotationsPage() {
                                 </div>
                             )}
 
-                            <IdViewerModal doc={idDoc} onClose={() => setIdDoc(null)} />
+                            <ImagePreviewModal doc={idDoc} onClose={() => setIdDoc(null)} />
 
                             {selected.detail && isVirtualOffice(selected) && (
                                 <div className="space-y-3">
                                     <ReceiptDivider />
                                     <PriceBreakdownSection detail={selected.detail} />
                                     <ReceiptDivider />
-                                    <PaymentDetailsSection quote={selected} />
+                                    <PaymentDetailsSection quote={selected} onView={setIdDoc} />
 
                                     <button
                                         onClick={() => handleSendPaymentLink(selected)}
@@ -1464,7 +1479,7 @@ export default function AdminQuotationsPage() {
                                 </div>
                             )}
 
-                            {selected.detail && (((isVirtualOffice(selected) && (selected.status === "payment_verification" || selected.status === "contract_sent" || selected.status === "completed")) || (!isVirtualOffice(selected) && (selected.status === "paid" || selected.status === "contract_sent" || selected.status === "completed")))) && (
+                            {selected.detail && (((isVirtualOffice(selected) && (selected.status === "paid" || selected.status === "contract_sent" || selected.status === "completed")) || (!isVirtualOffice(selected) && (selected.status === "paid" || selected.status === "contract_sent" || selected.status === "completed")))) && (
                                 <div className="space-y-2.5">
                                     <p className="text-xs font-semibold text-[#64748B]">Contract</p>
                                     <button

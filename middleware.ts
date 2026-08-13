@@ -74,8 +74,7 @@ export async function middleware(req: NextRequest) {
   const isOperationRestricted =
     !isAdmin &&
     (pathname.startsWith("/admin/users") ||
-      pathname.startsWith("/api/admin/users") ||
-      pathname === "/api/analytics");
+      pathname.startsWith("/api/admin/users"));
 
   if (isOperationRestricted) {
     if (pathname.startsWith("/api/")) {

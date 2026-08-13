@@ -643,7 +643,7 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
               type="text"
               value={paymentReference}
               onChange={(e) => setPaymentReference(e.target.value)}
-              className={!paymentReference.trim() ? inputErrCls : inputCls}
+              className={!paymentReference.trim() ? inputCls : inputErrCls }
               placeholder="Transaction Reference Number"
             />
           </div>
