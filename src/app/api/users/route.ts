@@ -9,14 +9,29 @@ function resolveLaravelApiBase() {
 export async function GET(request: NextRequest) {
     try {
         const url = new URL(request.url);
-        const laravelUrl = `${resolveLaravelApiBase()}/users${url.search}`;
+        // Users management moved to the admin area on the backend
+        const laravelUrl = `${resolveLaravelApiBase()}/admin/users${url.search}`;
+
+        const headers: Record<string, string> = {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+        };
+
+        // Forward Authorization header from client if present
+        const incomingAuth = request.headers.get('authorization') || '';
+        if (incomingAuth) {
+            headers.Authorization = incomingAuth;
+        } else {
+            // Or forward session cookie (if backend uses a cookie named 'session')
+            const sessionCookie = request.cookies.get('session')?.value;
+            if (sessionCookie) {
+                headers.Authorization = `Bearer ${sessionCookie}`;
+            }
+        }
 
         const res = await fetch(laravelUrl, {
             method: "GET",
-            headers: {
-                Accept: "application/json",
-                "Content-Type": "application/json",
-            },
+            headers,
             cache: "no-store",
         });
 
