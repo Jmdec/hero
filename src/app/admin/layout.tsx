@@ -24,17 +24,65 @@ import {
 import { Loading } from "@/components/Loading";
 import { useAuth } from "@/contexts/AuthContext";
 
+// ── Roles ──
+// AuthContext exposes `user.role` as a plain string, and `isAdmin` is
+// derived there as `role === 'admin'`. This screen additionally
+// distinguishes an "operation" role with reduced access. If your backend
+// sends a different string for the operation role, update ROLES.OPERATION.
+type AppRole = "admin" | "operation";
+
+const ROLES: Record<string, AppRole> = {
+  ADMINISTRATIVE: "admin",
+  OPERATION: "operation",
+};
+
 const menuItems = [
   {
     section: "Menu",
     items: [
-      { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
-      { title: "Quotation", href: "/admin/quotation", icon: FileSpreadsheet },
-      { title: "Chat", href: "/admin/chats", icon: MessagesSquare },
-      { title: "Inquiry", href: "/admin/inquiries", icon: MailQuestion },
-      { title: "Announcement", href: "/admin/announcements", icon: Megaphone },
-      { title: "Testimonial", href: "/admin/testimonials", icon: MessageCircleHeart },
-      { title: "User", href: "/admin/users", icon: Users },
+      // Dashboard is available to every authenticated admin-area user.
+      {
+        title: "Dashboard",
+        href: "/admin",
+        icon: LayoutDashboard,
+        roles: [ROLES.ADMINISTRATIVE, ROLES.OPERATION],
+      },
+      {
+        title: "Quotation",
+        href: "/admin/quotation",
+        icon: FileSpreadsheet,
+        roles: [ROLES.ADMINISTRATIVE, ROLES.OPERATION],
+      },
+      {
+        title: "Chat",
+        href: "/admin/chats",
+        icon: MessagesSquare,
+        roles: [ROLES.ADMINISTRATIVE, ROLES.OPERATION],
+      },
+      {
+        title: "Inquiry",
+        href: "/admin/inquiries",
+        icon: MailQuestion,
+        roles: [ROLES.ADMINISTRATIVE, ROLES.OPERATION],
+      },
+      {
+        title: "Announcement",
+        href: "/admin/announcements",
+        icon: Megaphone,
+        roles: [ROLES.ADMINISTRATIVE, ROLES.OPERATION],
+      },
+      {
+        title: "Testimonial",
+        href: "/admin/testimonials",
+        icon: MessageCircleHeart,
+        roles: [ROLES.ADMINISTRATIVE, ROLES.OPERATION],
+      },
+      {
+        title: "User",
+        href: "/admin/users",
+        icon: Users,
+        roles: [ROLES.ADMINISTRATIVE],
+      },
     ],
   },
 ];
@@ -46,6 +94,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const { user, isAuthenticated, isAdmin, isAuthReady, logout } = useAuth();
+
+  const role = user?.role as AppRole | undefined;
+  const isAdministrative = isAdmin; // isAdmin from context already means role === 'admin'
+  const isOperation = role === ROLES.OPERATION;
+  const canAccessAdminArea = isAdministrative || isOperation;
+
+  const visibleMenuItems = menuItems.map((section) => ({
+    ...section,
+    items: section.items.filter(
+      (item) => !!role && item.roles.includes(role)
+    ),
+  }));
 
   const handleLogout = async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -74,13 +134,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       return;
     }
 
-    if (!isAdmin) {
+    if (!canAccessAdminArea) {
       router.replace("/");
       return;
     }
 
     setLoading(false);
-  }, [isAuthReady, isAuthenticated, isAdmin, router, user]);
+  }, [isAuthReady, isAuthenticated, canAccessAdminArea, router, user]);
 
   if (loading) {
     return (
@@ -132,7 +192,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-3">
-          {menuItems.map(({ section, items }) => (
+          {visibleMenuItems.map(({ section, items }) => (
             <div key={section}>
               {items
                 .filter((item) => item?.href?.trim())
@@ -221,14 +281,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <p className="text-xs text-gray-500">{user?.email}</p>
                       </div>
                       <div className="py-2">
-                        <Link
-                          href="/admin/settings"
-                          onClick={() => setIsOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Settings className="w-4 h-4" />
-                          <span>Profile Settings</span>
-                        </Link>
+                        {/* Profile Settings is an Administrative-only privilege */}
+                        {isAdministrative && (
+                          <Link
+                            href="/admin/settings"
+                            onClick={() => setIsOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <Settings className="w-4 h-4" />
+                            <span>Profile Settings</span>
+                          </Link>
+                        )}
                         <button
                           onClick={handleLogout}
                           className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"

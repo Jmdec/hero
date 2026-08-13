@@ -34,6 +34,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedUser && storedToken) {
       try {
         const parsedUser = JSON.parse(storedUser);
+        // Normalize role casing to lowercase to match backend expectations
+        if (parsedUser && typeof parsedUser.role === 'string') {
+          parsedUser.role = parsedUser.role.toLowerCase();
+        }
         setUser(parsedUser);
         setIsAuthenticated(true);
         setIsAdmin(parsedUser?.role === 'admin');
@@ -50,10 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = (userData: User, token?: string) => {
-    setUser(userData);
+    // Normalize role to lowercase for consistency
+    const normalized = { ...userData, role: typeof userData.role === 'string' ? userData.role.toLowerCase() : userData.role };
+    setUser(normalized);
     setIsAuthenticated(true);
-    setIsAdmin(userData.role === 'admin');
-    localStorage.setItem('user', JSON.stringify(userData));
+    setIsAdmin(normalized.role === 'admin');
+    localStorage.setItem('user', JSON.stringify(normalized));
     if (token) {
       localStorage.setItem('token', token);
     }
