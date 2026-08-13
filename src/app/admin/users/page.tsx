@@ -27,7 +27,7 @@ import {
 
 type StatKey = "total" | "verified" | "unverified" | "admins";
 
-type Role = "admin" | "user";
+type Role = "admin" | "operation" | "user";
 
 interface UserRecord {
     id: string | number;
@@ -93,12 +93,9 @@ function AdministratorBreakdownCard({
         >
             <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
             <div className="flex items-start justify-between mb-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.bg}`}>
-                    <ShieldCheck className={`w-5 h-5 ${t.text}`} />
-                </div>
+                <p className="text-md text-gray-500 font-semibold mb-1">Administrators</p>
                 <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#0D47A1] transition-colors" />
             </div>
-            <p className="text-sm text-gray-500 font-medium mb-1">Administrators</p>
             <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
             <p className="text-xs font-semibold text-[#0D47A1]">View Administrators →</p>
         </button>
@@ -135,6 +132,7 @@ const statusStyles: Record<string, string> = {
 
 const roleStyles: Record<string, string> = {
     admin: "bg-blue-50 text-blue-700",
+    operation: "bg-amber-50 text-amber-700",
     user: "bg-gray-100 text-gray-600",
 };
 
@@ -401,12 +399,6 @@ export default function UsersPage() {
         setForm((prev) => ({ ...prev, [key]: value }));
     }
 
-    // FIX: partial edits (name/email/phone/role only — no password, no
-    // verification state) now go through PATCH instead of PUT. The users
-    // API's PUT route expects the full resource; sending this trimmed
-    // payload via PUT was overwriting fields like email_verified and
-    // created_at with defaults/null every time an admin edited a user.
-    // PATCH updates only the fields included in the body.
     async function submitEdit() {
         if (!editing) return;
 
@@ -461,7 +453,6 @@ export default function UsersPage() {
         });
     }
 
-    /* ── Delete ── */
     function openDeleteDialog(u: UserRecord) {
         setDeleteTarget(u);
         requestConfirmation({
@@ -537,6 +528,7 @@ export default function UsersPage() {
                         >
                             <option value="all">All roles</option>
                             <option value="admin">Admins</option>
+                            <option value="operation">Operations</option>
                             <option value="user">Users</option>
                         </select>
                     </div>
@@ -581,7 +573,7 @@ export default function UsersPage() {
 
                                         <div className="mt-3 grid grid-cols-1 gap-1.5 text-xs text-gray-500">
                                             <p>
-                                                <span className="font-semibold text-gray-700">Role:</span> {user.role === "admin" ? "Admin" : "User"}
+                                                <span className="font-semibold text-gray-700">Role:</span> {user.role === "admin" ? "Admin" : user.role === "operation" ? "Operation" : "User"}
                                             </p>
                                             <p>
                                                 <span className="font-semibold text-gray-700">Phone:</span> {user.phone || "—"}
@@ -654,7 +646,8 @@ export default function UsersPage() {
                                                 </td>
                                                 <td className="px-5 py-3.5">
                                                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${roleStyles[user.role ?? "user"] || roleStyles.user}`}>
-                                                        {user.role === "admin" ? "Admin" : "User"}
+                                                        {user.role === "admin" ? "Admin" :
+                                                            user.role === "operation" ? "Operation" : "User"}
                                                     </span>
                                                 </td>
                                                 <td className="px-5 py-3.5">
@@ -797,7 +790,7 @@ export default function UsersPage() {
                                 <div className="mb-2 flex items-center justify-between">
                                     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${roleStyles[viewTarget.role ?? "user"]}`}>
                                         <Tag className="h-3 w-3" />
-                                        {viewTarget.role === "admin" ? "Admin" : "User"}
+                                        {viewTarget.role === "admin" ? "Admin" : viewTarget.role === "operation" ? "Operation" : "User"}
                                     </span>
                                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusStyles[viewTarget.email_verified ? "Verified" : "Unverified"]}`}>
                                         {viewTarget.email_verified ? "Verified" : "Unverified"}
@@ -940,7 +933,7 @@ export default function UsersPage() {
                                     Role
                                 </label>
                                 <div className="flex gap-2">
-                                    {(["user", "admin"] as Role[]).map((opt) => (
+                                    {(["user", "operation", "admin"] as Role[]).map((opt) => (
                                         <button
                                             key={opt}
                                             type="button"
