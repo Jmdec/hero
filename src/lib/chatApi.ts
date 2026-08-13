@@ -40,6 +40,11 @@ export interface ChatConversation {
         phone_number: string;
         company_name?: string | null;
     };
+    agent?: {
+        id?: number | null;
+        name?: string | null;
+        email?: string | null;
+    } | null;
 }
 
 export interface ChatMessage {
@@ -83,16 +88,24 @@ async function request<T>(
 ): Promise<T> {
     const url = baseUrl ? `${baseUrl}/api${endpoint}` : `/api${endpoint}`;
 
+    // Ensure Authorization header is included when running in the browser
+    const headers = {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...(options.headers ?? {}),
+    } as Record<string, string>;
+
+    if (typeof window !== "undefined" && !headers.Authorization) {
+        const token = localStorage.getItem("token");
+        if (token) headers.Authorization = `Bearer ${token}`;
+    }
+
     let response: Response;
 
     try {
         response = await fetch(url, {
             ...options,
-            headers: {
-                Accept: "application/json",
-                "Content-Type": "application/json",
-                ...(options.headers ?? {}),
-            },
+            headers,
         });
     } catch (err) {
         console.error("Network Error:", err);
@@ -187,6 +200,13 @@ export const chatApi = {
             body: JSON.stringify({
                 chat_mode: mode,
             }),
+        });
+    },
+
+    takeChat(conversationId: number) {
+        return request<ConversationActionResponse>(`/admin/chats/${conversationId}/take`, {
+            method: "POST",
+            body: JSON.stringify({}),
         });
     },
 

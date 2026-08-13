@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
     AlertCircle,
     ArrowRightLeft,
@@ -373,6 +373,45 @@ function ChatStatistics({ analytics }: { analytics: ChatAnalytics | null }) {
     );
 }
 
+type ToastTone = "success" | "error"
+
+interface ToastItem {
+    id: number
+    message: string
+    tone: ToastTone
+}
+
+function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: number) => void }) {
+    if (toasts.length === 0) return null
+    return (
+        <div className="fixed bottom-5 right-5 z-100 flex flex-col gap-2 w-full max-w-sm pointer-events-none">
+            {toasts.map((t) => (
+                <div
+                    key={t.id}
+                    className={`pointer-events-auto flex items-start gap-3 rounded-xl border px-4 py-3 shadow-lg transition-all animate-in fade-in slide-in-from-bottom-2 ${t.tone === "success"
+                        ? "bg-white border-green-200"
+                        : "bg-white border-red-200"
+                        }`}
+                >
+                    {t.tone === "success" ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                    ) : (
+                        <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                    )}
+                    <p className="text-sm text-slate-800 flex-1 leading-snug">{t.message}</p>
+                    <button
+                        onClick={() => onDismiss(t.id)}
+                        className="text-slate-400 hover:text-slate-600 transition shrink-0"
+                        aria-label="Dismiss notification"
+                    >
+                        <X className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+            ))}
+        </div>
+    )
+}
+
 export default function AdminChatsPage() {
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
@@ -381,6 +420,21 @@ export default function AdminChatsPage() {
     const [loading, setLoading] = useState(true);
     const [conversationLoading, setConversationLoading] = useState(false);
     const [statsLoading, setStatsLoading] = useState(true);
+
+    const [toasts, setToasts] = useState<ToastItem[]>([])
+    const toastIdRef = useRef(0)
+
+    const pushToast = useCallback((message: string, tone: ToastTone) => {
+        const id = ++toastIdRef.current
+        setToasts((t) => [...t, { id, message, tone }])
+        setTimeout(() => {
+            setToasts((t) => t.filter((toast) => toast.id !== id))
+        }, 4000)
+    }, [])
+
+    const dismissToast = (id: number) => {
+        setToasts((t) => t.filter((toast) => toast.id !== id))
+    }
 
     const [refreshing, setRefreshing] = useState(false);
     const [reply, setReply] = useState("");
@@ -611,10 +665,11 @@ export default function AdminChatsPage() {
     const handleTakeOver = async () => {
         if (!selectedConversationId) return;
         try {
-            await chatApi.switchMode(selectedConversationId, "admin");
+            await chatApi.takeChat(selectedConversationId);
             await refresh();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Unable to update chat mode.");
+            if (err instanceof Error) setError(err.message);
+            else setError("Unable to take the chat. It may have been taken by another agent.");
         }
     };
 
@@ -932,6 +987,15 @@ export default function AdminChatsPage() {
                                                     <span className="text-slate-300">·</span>
                                                     {selectedConversation.messages.length} messages
                                                 </p>
+                                                {selectedConversation.agent ? (
+                                                    <div className="mt-2 text-sm text-slate-600">
+                                                        <p className="font-medium text-sm">Taken by:</p>
+                                                        <p className="text-xs text-slate-500">{selectedConversation.agent.name ?? 'Agent'}{selectedConversation.agent.email ? ` · ${selectedConversation.agent.email}` : ''}</p>
+                                                        {selectedConversation.agent_started_at ? (
+                                                            <p className="mt-1 text-xs text-slate-400">Taken at: {new Date(selectedConversation.agent_started_at).toLocaleString()}</p>
+                                                        ) : null}
+                                                    </div>
+                                                ) : null}
                                             </div>
                                         </div>
                                         <div ref={actionsMenuRef} className="relative ml-auto shrink-0 self-start">
@@ -989,11 +1053,11 @@ export default function AdminChatsPage() {
                                                             setActionsMenuOpen(false);
                                                             void handleTakeOver();
                                                         }}
-                                                        disabled={selectedIsEnded}
+                                                        disabled={selectedIsEnded || Boolean(selectedConversation?.agent)}
                                                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-40"
                                                     >
                                                         <Headset className="h-4 w-4" />
-                                                        Take over
+                                                        Take Chat
                                                     </button>
                                                     <button
                                                         type="button"
@@ -1137,6 +1201,8 @@ export default function AdminChatsPage() {
                     </div>
                 </div>
             </main>
+
+            <ToastStack toasts={toasts} onDismiss={dismissToast} />
         </div>
     );
 }

@@ -934,7 +934,6 @@ export default function ContactsAdmin() {
         icon: TrendingUp,
         tone: "amber",
         trend: typeBreakdown[0] ? `${typeBreakdown[0].pct}%` : "No change",
-        supporting: "View breakdown",
       },
       {
         label: "Average Response Time",

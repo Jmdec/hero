@@ -1,8 +1,8 @@
 export type ContactBranchInterest = "tower-6789" | "insular-life" | "both";
 
 const RECIPIENTS = {
-    chairman: process.env.QUOTATION_CHAIRMAN_EMAIL || process.env.CONTACT_INQUIRY_CHAIRMAN_EMAIL || process.env.CHAIRMAN_EMAIL || "infinitech.eirene@gmail.com",
-    president: process.env.QUOTATION_PRESIDENT_EMAIL || process.env.CONTACT_INQUIRY_PRESIDENT_EMAIL || process.env.PRESIDENT_EMAIL || "",
+    chairman: process.env.CHAIRMAN_EMAIL || "infinitech.eirene@gmail.com",
+    president: process.env.PRESIDENT_EMAIL || "",
     generalManager: process.env.GENERAL_MANAGER_EMAIL || "",
     salesOfficer: process.env.SALES_OFFICER_EMAIL || "",
     digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "eirenegrc.armilla@gmail.com",

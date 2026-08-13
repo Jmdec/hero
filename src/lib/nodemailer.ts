@@ -348,8 +348,8 @@ function isVirtualOfficePaymongo(
 }
 
 const RECIPIENTS = {
-    chairman: process.env.QUOTATION_CHAIRMAN_EMAIL || process.env.CONTACT_INQUIRY_CHAIRMAN_EMAIL || process.env.CHAIRMAN_EMAIL || "infinitech.eirene@gmail.com",
-    president: process.env.QUOTATION_PRESIDENT_EMAIL || process.env.CONTACT_INQUIRY_PRESIDENT_EMAIL || process.env.PRESIDENT_EMAIL || "",
+    chairman: process.env.CHAIRMAN_EMAIL || "infinitech.eirene@gmail.com",
+    president: process.env.PRESIDENT_EMAIL || "",
     generalManager: process.env.GENERAL_MANAGER_EMAIL || "",
     salesOfficer: process.env.SALES_OFFICER_EMAIL || "",
     digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "eirenegrc.armilla@gmail.com",
@@ -805,19 +805,8 @@ async function renderContractPdfFromContent(args: {
 
     const drawFieldRow = (label: string, value: string) => {
         ensureSpace(30);
-
-        drawLine(label, {
-            size: 9,
-            bold: true,
-            color: COLOR_MUTED,
-            gap: Math.max(20, 150 - label.length * 5),
-        });
-
-        drawLine(value || "—", {
-            size: 11,
-            color: COLOR_TEXT,
-            gap: 20,
-        });
+        drawLine(label, { size: 9, bold: true, color: COLOR_MUTED, gap: 0, });
+        drawLine(value || "—", { size: 11, color: COLOR_TEXT, gap: 20, });
     };
 
     const drawLine = (
@@ -882,12 +871,10 @@ async function renderContractPdfFromContent(args: {
     cursorY -= 20;
     ensureSpace(140);
     drawLine("AGREED AND ACCEPTED", { size: 11, bold: true, color: COLOR_PRIMARY, gap: 24 });
-    drawLine("PROVIDER", { size: 9, bold: true, color: COLOR_MUTED, gap: 16 });
     drawLine("Hero PH Inc.", { bold: true, gap: 40 });
     drawLine("_______________________________", { gap: 14 });
     drawLine("Authorized Representative / Date", { size: 9, color: COLOR_MUTED, gap: 30 });
 
-    drawLine("CLIENT", { size: 9, bold: true, color: COLOR_MUTED, gap: 16 });
     drawLine(`${signatoryLabel}`, { bold: true, gap: 40 });
     drawLine("_______________________________", { gap: 14 });
     drawLine("Signature / Date", { size: 9, color: COLOR_MUTED });
