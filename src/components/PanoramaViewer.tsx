@@ -909,17 +909,14 @@ export function Immersive360Tour({
                 )}
 
                 {selectedRoom.features && selectedRoom.features.length > 0 && (
-                  <div className="border-t border-white/10 p-4 sm:p-6 bg-[#0A1B33]/50">
-                    <h3 className="text-white font-semibold mb-3 text-sm">Features</h3>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {selectedRoom.features.map((feature) => (
-                        <li key={feature} className="flex items-center gap-2 text-sm text-white/70">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#C9A15D] shrink-0" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <ul className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    {selectedRoom.features.map((feature) => (
+                      <li key={feature} className="flex items-center gap-2 text-sm text-white/70">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#C9A15D] shrink-0" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
               <button
@@ -931,66 +928,27 @@ export function Immersive360Tour({
             </div>
 
             <div
-              className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 gap-4 overflow-hidden min-h-0"
+              className="flex-1 overflow-y-auto p-4 sm:p-8"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Main image */}
-              <div className="relative w-full flex-1 min-h-0 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10">
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-[background-image] duration-200"
-                  style={{ backgroundImage: `url(${galleryImages[activeGalleryIndex]})` }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A1420]/40 via-transparent to-transparent" />
-
-                {galleryImages.length > 1 && (
-                  <>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setActiveGalleryIndex((i) => (i - 1 + galleryImages.length) % galleryImages.length)
-                      }}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-[#0A1420]/70 hover:bg-[#0A1420] text-white border border-white/10 backdrop-blur-sm transition-colors"
-                      aria-label="Previous image"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setActiveGalleryIndex((i) => (i + 1) % galleryImages.length)
-                      }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-[#0A1420]/70 hover:bg-[#0A1420] text-white border border-white/10 backdrop-blur-sm transition-colors"
-                      aria-label="Next image"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                    <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-[#0A1420]/70 border border-white/10 text-white/80 text-xs tabular-nums backdrop-blur-sm">
-                      {activeGalleryIndex + 1}/{galleryImages.length}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Thumbnail strip — only when there's more than one image */}
-              {galleryImages.length > 1 && (
-                <div className="flex items-center gap-2 max-w-full overflow-x-auto pb-1 shrink-0">
-                  {galleryImages.map((url, idx) => (
-                    <button
-                      key={`${url}-${idx}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setActiveGalleryIndex(idx)
-                      }}
-                      className={`relative shrink-0 w-16 h-11 sm:w-20 sm:h-14 rounded-lg overflow-hidden bg-cover bg-center transition-all ${idx === activeGalleryIndex
-                          ? "ring-2 ring-[#C9A15D] opacity-100"
-                          : "opacity-50 hover:opacity-80 ring-1 ring-white/10"
-                        }`}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                {galleryImages.map((url, idx) => (
+                  <button
+                    key={`${url}-${idx}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setActiveGalleryIndex(idx)
+                    }}
+                    className="relative group aspect-video rounded-xl overflow-hidden shadow-lg ring-1 ring-white/10 hover:ring-[#C9A15D]/50 transition-all"
+                  >
+                    <div
+                      className="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
                       style={{ backgroundImage: `url(${url})` }}
-                      title={`Image ${idx + 1}`}
                     />
-                  ))}
-                </div>
-              )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0A1420]/60 via-transparent to-transparent" />
+                  </button>
+                ))}
+              </div>
             </div>
           </motion.div>
         )}
