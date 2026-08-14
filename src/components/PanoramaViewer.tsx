@@ -22,7 +22,7 @@ interface RoomScene {
   description?: string
   features?: string[]
   panoramaUrl: string
-  thumbnailUrl?: string
+  thumbnailUrl?: string[]
   connectsTo?: string[]
   hotspots?: Array<{
     targetId: string
@@ -451,6 +451,17 @@ export function Immersive360Tour({
     }
   }, [])
 
+  const [activeGalleryIndex, setActiveGalleryIndex] = useState(0)
+
+  const galleryImages = useMemo(() => {
+    const urls = (selectedRoom.thumbnailUrl ?? []).filter((u): u is string => Boolean(u && u.trim()))
+    return urls.length > 0 ? urls : [selectedRoom.panoramaUrl]
+  }, [selectedRoom])
+
+  useEffect(() => {
+    setActiveGalleryIndex(0)
+  }, [selectedRoom.id])
+
   const toggleGallery = () => {
     setShowGallery((prev) => !prev)
   }
@@ -473,16 +484,6 @@ export function Immersive360Tour({
     const baseIndex = selectedRoomIndex === -1 ? -1 : selectedRoomIndex
     const nextIndex = (baseIndex + 1 + rooms.length) % rooms.length
     navigateToRoom(rooms[nextIndex].id)
-  }
-
-  const toggleInfoPanel = () => {
-    setShowInfo((prev) => {
-      const next = !prev
-      if (next && isMobileViewport) {
-        setIsSwitcherOpen(false)
-      }
-      return next
-    })
   }
 
   const mobileInfoBottom = Math.max(
@@ -747,12 +748,8 @@ export function Immersive360Tour({
           </button>
         )}
 
-        <button className={dockButtonClass(showInfo)} onClick={toggleInfoPanel} title="Room info">
-          <Eye className="w-4 h-4" />
-        </button>
-
         <button className={dockButtonClass()} onClick={toggleGallery} title="Gallery">
-          <Image className="w-4 h-4" />
+          <Eye className="w-4 h-4" />
         </button>
 
         <div className="relative">
@@ -791,7 +788,7 @@ export function Immersive360Tour({
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 16, opacity: 0 }}
               transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
-              className="absolute bottom-0 sm:bottom-0 left-1/2 -translate-x-1/2 z-30 pointer-events-auto touch-manipulation w-[min(95vw,21rem)] sm:pb-[max(0.25rem,env(safe-area-inset-bottom))] rounded-2xl sm:rounded-t-2xl sm:rounded-b-none border sm:border-b-0 border-white/10 bg-[#0A1420]/90 backdrop-blur-3xl shadow-2xl"
+              className="absolute bottom-0 sm:bottom-0 left-1/2 -translate-x-1/2 z-30 pointer-events-auto touch-manipulation max-w-2xl sm:pb-[max(0.25rem,env(safe-area-inset-bottom))] rounded-2xl sm:rounded-t-2xl sm:rounded-b-none border sm:border-b-0 border-white/10 bg-[#0A1420]/90 backdrop-blur-3xl shadow-2xl"
               style={
                 isMobileViewport
                   ? { bottom: `calc(${mobileSwitcherBottom}px + env(safe-area-inset-bottom))` }
@@ -910,6 +907,20 @@ export function Immersive360Tour({
                 {selectedRoom.description && (
                   <p className="text-white/60 text-sm mt-1">{selectedRoom.description}</p>
                 )}
+
+                {selectedRoom.features && selectedRoom.features.length > 0 && (
+                  <div className="border-t border-white/10 p-4 sm:p-6 bg-[#0A1B33]/50">
+                    <h3 className="text-white font-semibold mb-3 text-sm">Features</h3>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {selectedRoom.features.map((feature) => (
+                        <li key={feature} className="flex items-center gap-2 text-sm text-white/70">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#C9A15D] shrink-0" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => setShowGallery(false)}
@@ -918,31 +929,69 @@ export function Immersive360Tour({
                 <X className="w-6 h-6" />
               </button>
             </div>
+
             <div
-              className="flex-1 flex items-center justify-center p-4 sm:p-8 overflow-hidden"
+              className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 gap-4 overflow-hidden min-h-0"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10">
+              {/* Main image */}
+              <div className="relative w-full flex-1 min-h-0 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10">
                 <div
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={{ backgroundImage: `url(${selectedRoom.thumbnailUrl || selectedRoom.panoramaUrl})` }}
+                  className="absolute inset-0 bg-cover bg-center transition-[background-image] duration-200"
+                  style={{ backgroundImage: `url(${galleryImages[activeGalleryIndex]})` }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0A1420]/40 via-transparent to-transparent" />
+
+                {galleryImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setActiveGalleryIndex((i) => (i - 1 + galleryImages.length) % galleryImages.length)
+                      }}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-[#0A1420]/70 hover:bg-[#0A1420] text-white border border-white/10 backdrop-blur-sm transition-colors"
+                      aria-label="Previous image"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setActiveGalleryIndex((i) => (i + 1) % galleryImages.length)
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-[#0A1420]/70 hover:bg-[#0A1420] text-white border border-white/10 backdrop-blur-sm transition-colors"
+                      aria-label="Next image"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                    <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-[#0A1420]/70 border border-white/10 text-white/80 text-xs tabular-nums backdrop-blur-sm">
+                      {activeGalleryIndex + 1}/{galleryImages.length}
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
-            {selectedRoom.features && selectedRoom.features.length > 0 && (
-              <div className="border-t border-white/10 p-4 sm:p-6 bg-[#0A1B33]/50">
-                <h3 className="text-white font-semibold mb-3 text-sm">Features</h3>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {selectedRoom.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-sm text-white/70">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#C9A15D] shrink-0" />
-                      {feature}
-                    </li>
+
+              {/* Thumbnail strip — only when there's more than one image */}
+              {galleryImages.length > 1 && (
+                <div className="flex items-center gap-2 max-w-full overflow-x-auto pb-1 shrink-0">
+                  {galleryImages.map((url, idx) => (
+                    <button
+                      key={`${url}-${idx}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setActiveGalleryIndex(idx)
+                      }}
+                      className={`relative shrink-0 w-16 h-11 sm:w-20 sm:h-14 rounded-lg overflow-hidden bg-cover bg-center transition-all ${idx === activeGalleryIndex
+                          ? "ring-2 ring-[#C9A15D] opacity-100"
+                          : "opacity-50 hover:opacity-80 ring-1 ring-white/10"
+                        }`}
+                      style={{ backgroundImage: `url(${url})` }}
+                      title={`Image ${idx + 1}`}
+                    />
                   ))}
-                </ul>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
