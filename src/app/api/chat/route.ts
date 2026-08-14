@@ -26,6 +26,49 @@ function validateMessage(
   return { ok: true, value };
 }
 
+const LARAVEL_API_URL =
+  process.env.LARAVEL_API_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "https://infinitech-api23.site";
+
+async function proxyToLaravel(req: Request) {
+  const url = `${LARAVEL_API_URL.replace(/\/+$/g, "")}/api/chat${new URL(req.url).search}`;
+
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
+
+  const authHeader = req.headers.get("authorization");
+  if (authHeader) headers.Authorization = authHeader;
+
+  try {
+    const upstream = await fetch(url, {
+      method: req.method,
+      headers,
+      cache: "no-store",
+    });
+
+    const responseBody = await upstream.text();
+    return new NextResponse(responseBody, {
+      status: upstream.status,
+      headers: {
+        "content-type": upstream.headers.get("content-type") ?? "application/json",
+      },
+    });
+  } catch (error) {
+    console.error("Proxy to Laravel failed:", error);
+    return NextResponse.json(
+      { message: "Cannot reach Laravel API from the server.", error: String(error) },
+      { status: 502 },
+    );
+  }
+}
+
+export async function GET(req: Request) {
+  return proxyToLaravel(req);
+}
+
 export async function POST(req: Request) {
   try {
     let body: unknown;
