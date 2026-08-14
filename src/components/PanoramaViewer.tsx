@@ -788,7 +788,7 @@ export function Immersive360Tour({
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 16, opacity: 0 }}
               transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
-              className="absolute bottom-0 sm:bottom-0 left-1/2 -translate-x-1/2 z-30 pointer-events-auto touch-manipulation max-w-2xl sm:pb-[max(0.25rem,env(safe-area-inset-bottom))] rounded-2xl sm:rounded-t-2xl sm:rounded-b-none border sm:border-b-0 border-white/10 bg-[#0A1420]/90 backdrop-blur-3xl shadow-2xl"
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 z-30 pointer-events-auto touch-manipulation w-[94vw] sm:w-[32rem] md:w-[38rem] lg:w-[44rem] sm:pb-[max(0.25rem,env(safe-area-inset-bottom))] rounded-2xl sm:rounded-t-2xl sm:rounded-b-none border sm:border-b-0 border-white/10 bg-[#0A1420]/90 backdrop-blur-3xl shadow-2xl"
               style={
                 isMobileViewport
                   ? { bottom: `calc(${mobileSwitcherBottom}px + env(safe-area-inset-bottom))` }
@@ -804,44 +804,47 @@ export function Immersive360Tour({
                 <span className="h-1 w-9 rounded-full bg-white/20 transition-colors group-hover:bg-[#C9A15D]/70" />
               </button>
 
-              <div className="flex items-center gap-2 px-3 pb-3">
+              <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 pb-3">
                 <button
                   onClick={goToPrevRoom}
-                  className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 active:bg-white/15 transition-colors shrink-0 touch-manipulation"
+                  className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 active:bg-white/15 transition-colors shrink-0 touch-manipulation"
                   title="Previous room"
                   aria-label="Previous room"
                 >
-                  <ChevronLeft className="w-5 h-5 sm:w-5 sm:h-5" />
+                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
 
-                {/* Room/Space Thumbnail */}
-                <div className="flex-1 flex items-center gap-2 max-w-2xl overflow-hidden">
+                {/* Room/Space Thumbnails */}
+                <div className="flex-1 flex items-center gap-1.5 sm:gap-2 min-w-0">
                   {(() => {
                     const total = rooms.length
                     const baseIndex = selectedRoomIndex === -1 ? 0 : selectedRoomIndex
-                    const visibleCount = isMobileViewport ? 2 : 3
-                    const offsets =
-                      visibleCount === 2 ? [0, 1] : [-1, 0, 1]
+                    const offsets = total >= 3 ? [-1, 0, 1] : total === 2 ? [0, 1] : [0]
+
                     const visibleRooms = offsets
                       .map((offset) => rooms[(baseIndex + offset + total) % total])
-                      .filter((r, i, arr) => total >= visibleCount ? true : arr.findIndex(x => x.id === r.id) === i)
+                      .filter((r, i, arr) => arr.findIndex((x) => x.id === r.id) === i)
 
-                    return visibleRooms.map((r) => {
+                    return visibleRooms.map((r, idx) => {
                       const isSelected = r.id === selectedRoom.id
+                      // idx 0 = previous, idx 1 (or 0 if only 2/1 shown) = current, last = next.
+                      const isSide = offsets.length === 3 && idx !== 1
+
                       return (
                         <button
                           key={r.id}
                           onClick={() => navigateToRoom(r.id)}
-                          className={`relative h-14 sm:h-30 flex-1 min-w-0 rounded-xl overflow-hidden bg-cover bg-center transition-all ${isSelected
-                            ? "ring-2 ring-[#C9A15D] opacity-100"
-                            : "opacity-60 hover:opacity-90"
+                          className={`relative flex-1 min-w-0 rounded-lg sm:rounded-xl overflow-hidden bg-cover bg-center transition-all h-12 sm:h-20 md:h-24 lg:h-28 ${isSide ? "hidden sm:block" : ""
+                            } ${isSelected
+                              ? "ring-2 ring-[#C9A15D] opacity-100"
+                              : "opacity-60 hover:opacity-90"
                             }`}
-                          style={{ backgroundImage: `url(${r.thumbnailUrl || r.panoramaUrl})` }}
+                          style={{ backgroundImage: `url(${r.thumbnailUrl?.[0] || r.panoramaUrl})` }}
                           title={r.name}
                         >
                           <div className="absolute inset-0 bg-linear-to-t from-[#0A1420]/95 via-[#0A1420]/15 to-transparent" />
-                          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-1 px-2 py-1.5">
-                            <span className="text-xs sm:text-sm font-semibold text-white truncate">
+                          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-1 px-1.5 sm:px-2 py-1 sm:py-1.5">
+                            <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-white truncate">
                               {r.name}
                             </span>
                           </div>
@@ -853,11 +856,11 @@ export function Immersive360Tour({
 
                 <button
                   onClick={goToNextRoom}
-                  className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 active:bg-white/15 transition-colors shrink-0 touch-manipulation"
+                  className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 active:bg-white/15 transition-colors shrink-0 touch-manipulation"
                   title="Next room"
                   aria-label="Next room"
                 >
-                  <ChevronRight className="w-5 h-5 sm:w-5 sm:h-5" />
+                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </motion.div>
@@ -869,7 +872,7 @@ export function Immersive360Tour({
               exit={{ y: 16, opacity: 0 }}
               transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
               onClick={() => setIsSwitcherOpen(true)}
-              className="absolute bottom-0 sm:bottom-0 left-1/2 -translate-x-1/2 z-30 pointer-events-auto touch-manipulation flex flex-col items-center gap-1.5 rounded-2xl sm:rounded-t-2xl sm:rounded-b-none border sm:border-b-0 border-white/10 bg-[#0A1420]/90 backdrop-blur-3xl px-4 sm:px-5 pt-2 pb-3 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg text-white/70 hover:text-white transition-colors"
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 z-30 pointer-events-auto touch-manipulation flex flex-col items-center gap-1.5 rounded-2xl sm:rounded-t-2xl sm:rounded-b-none border sm:border-b-0 border-white/10 bg-[#0A1420]/90 backdrop-blur-3xl px-4 sm:px-5 pt-2 pb-3 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg text-white/70 hover:text-white transition-colors"
               style={
                 isMobileViewport
                   ? { bottom: `calc(${mobileSwitcherBottom}px + env(safe-area-inset-bottom))` }
@@ -898,57 +901,110 @@ export function Immersive360Tour({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 z-40 bg-[#0A1420]/98 backdrop-blur-md flex flex-col"
+            className="absolute inset-0 z-40 flex flex-col overflow-hidden bg-[#0A1420]/98 backdrop-blur-md"
             onClick={() => setShowGallery(false)}
           >
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
-              <div>
-                <h2 className="text-white text-lg sm:text-2xl font-semibold">{selectedRoom.name}</h2>
-                {selectedRoom.description && (
-                  <p className="text-white/60 text-sm mt-1">{selectedRoom.description}</p>
-                )}
-
-                {selectedRoom.features && selectedRoom.features.length > 0 && (
-                  <ul className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    {selectedRoom.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2 text-sm text-white/70">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#C9A15D] shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <button
-                onClick={() => setShowGallery(false)}
-                className="text-white/40 hover:text-white transition-colors shrink-0 ml-4"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
+            {/* Header */}
             <div
-              className="flex-1 overflow-y-auto p-4 sm:p-8"
+              className="shrink-0 border-b border-white/10 bg-[#0A1420]/90"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                {galleryImages.map((url, idx) => (
-                  <button
-                    key={`${url}-${idx}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setActiveGalleryIndex(idx)
-                    }}
-                    className="relative group aspect-video rounded-xl overflow-hidden shadow-lg ring-1 ring-white/10 hover:ring-[#C9A15D]/50 transition-all"
-                  >
-                    <div
-                      className="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
-                      style={{ backgroundImage: `url(${url})` }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0A1420]/60 via-transparent to-transparent" />
-                  </button>
-                ))}
+              <div className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5">
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-lg font-semibold text-white sm:text-2xl">
+                    {selectedRoom.name}
+                  </h2>
+
+                  {selectedRoom.description && (
+                    <p className="mt-1 max-w-3xl text-sm leading-relaxed text-white/60">
+                      {selectedRoom.description}
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setShowGallery(false)}
+                  aria-label="Close gallery"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/60 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
+
+              {/* Features */}
+              {selectedRoom.features && selectedRoom.features.length > 0 && (
+                <div className="border-t border-white/5 px-4 py-3 sm:px-6">
+                  <div className="flex flex-wrap gap-x-5 gap-y-2">
+                    {selectedRoom.features.map((feature) => (
+                      <div
+                        key={feature}
+                        className="flex items-center gap-2 text-xs text-white/65 sm:text-sm"
+                      >
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C9A15D]" />
+                        <span>{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Gallery Content */}
+            <div
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-7 lg:px-8"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {galleryImages.length > 0 ? (
+                <div className="mx-auto grid max-w-7xl grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+                  {galleryImages.map((url, idx) => (
+                    <button
+                      key={`${url}-${idx}`}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setActiveGalleryIndex(idx)
+                      }}
+                      className="group relative aspect-video overflow-hidden rounded-xl bg-white/5 shadow-lg ring-1 ring-white/10 transition-all duration-300 hover:-translate-y-0.5 hover:ring-[#C9A15D]/60 focus:outline-none focus:ring-2 focus:ring-[#C9A15D]"
+                    >
+                      <div
+                        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+                        style={{ backgroundImage: `url(${url})` }}
+                      />
+
+                      {/* Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0A1420]/70 via-transparent to-transparent opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
+
+                      {/* Image number */}
+                      <span className="absolute bottom-2 left-2 rounded-md bg-[#0A1420]/70 px-2 py-1 text-[11px] font-medium text-white/80 backdrop-blur-sm">
+                        {idx + 1}
+                      </span>
+
+                      {/* Hover indicator */}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                        <span className="rounded-full border border-white/20 bg-[#0A1420]/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
+                          View image
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex min-h-[300px] items-center justify-center">
+                  <p className="text-sm text-white/40">
+                    No gallery images available.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div
+              className="shrink-0 border-t border-white/10 bg-[#0A1420]/90 px-4 py-3 text-center sm:px-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-xs text-white/40">
+                {galleryImages.length} {galleryImages.length === 1 ? "image" : "images"} · Click an image to view
+              </p>
             </div>
           </motion.div>
         )}
