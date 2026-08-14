@@ -52,22 +52,25 @@ async function proxy(req: NextRequest, path: string[]) {
     });
 }
 
-// NOTE: On Next.js 15, route params are async — if you're on 15+, change the
-// signature to `{ params }: { params: Promise<{ path: string[] }> }` and do
-// `const { path } = await params;` in each handler below.
+// Next.js 15: dynamic route params are async.
+type RouteContext = { params: Promise<{ path: string[] }> };
 
-export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {
-    return proxy(req, params.path);
+export async function GET(req: NextRequest, { params }: RouteContext) {
+    const { path } = await params;
+    return proxy(req, path);
 }
 
-export async function POST(req: NextRequest, { params }: { params: { path: string[] } }) {
-    return proxy(req, params.path);
+export async function POST(req: NextRequest, { params }: RouteContext) {
+    const { path } = await params;
+    return proxy(req, path);
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { path: string[] } }) {
-    return proxy(req, params.path);
+export async function PATCH(req: NextRequest, { params }: RouteContext) {
+    const { path } = await params;
+    return proxy(req, path);
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { path: string[] } }) {
-    return proxy(req, params.path);
+export async function DELETE(req: NextRequest, { params }: RouteContext) {
+    const { path } = await params;
+    return proxy(req, path);
 }
