@@ -1,125 +1,136 @@
-import { NextResponse } from "next/server";
-import OpenAI from "openai";
+const API_URL =
+    process.env.NEXT_PUBLIC_API_URL || process.env.LARAVEL_API_URL || "http://127.0.0.1:8000";
 
-// Random delay between 1s – 2s so responses feel human, not instant
-const humanDelay = () =>
-  new Promise((res) => setTimeout(res, 1000 + Math.random() * 1000));
-
-// ── Server-side validation 
-function sanitize(input: unknown): string {
-  if (typeof input !== "string") return "";
-  return input
-    .trim()
-    .slice(0, 1000) // hard cap — no prompt-stuffing
-    .replace(/<[^>]*>/g, "") // strip HTML tags
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ""); // strip control chars
+export interface ChatInquiryPayload {
+    full_name: string;
+    email_address: string;
+    phone_number: string;
+    company_name?: string;
+    privacy_policy_accepted: boolean;
 }
 
-function validateMessage(
-  raw: unknown,
-): { ok: true; value: string } | { ok: false; error: string } {
-  const value = sanitize(raw);
-  if (!value) return { ok: false, error: "Message is required." };
-  if (value.length < 1) return { ok: false, error: "Message cannot be empty." };
-  if (value.length > 1000)
-    return { ok: false, error: "Message is too long (max 1000 characters)." };
-  return { ok: true, value };
+export interface StartChatResponse {
+    conversation_id: number;
+    session_id: string;
 }
 
-export async function POST(req: Request) {
-  try {
-    let body: unknown;
+export interface ChatConversation {
+    id: number;
+    chat_inquiry_id: number | null;
+    session_id: string;
+    chat_mode: "assistant" | "admin";
+    status: "active" | "waiting_admin" | "agent_requested" | "agent_active" | "agent_closed" | "closed";
+    message_count: number;
+    started_at: string;
+    ended_at: string | null;
+    created_at: string;
+    updated_at: string;
+    addressed_at?: string | null;
+    agent_requested_at?: string | null;
+    agent_started_at?: string | null;
+    agent_ended_at?: string | null;
+    last_message_at?: string | null;
+    agent_id?: number | null;
+    preferred_contact_details?: string | null;
+    preferred_contact_method?: "email" | "phone" | "either" | null;
+    inquiry?: {
+        id: number;
+        full_name: string;
+        email_address: string;
+        phone_number: string;
+        company_name?: string | null;
+    };
+    agent?: {
+        id?: number | null;
+        name?: string | null;
+        email?: string | null;
+    } | null;
+}
+
+export interface ChatMessage {
+    id: number;
+    chat_conversation_id: number;
+    sender: "user" | "assistant" | "admin" | "system";
+    message: string;
+    sent_at: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface ConversationResponse extends ChatConversation {
+    messages: ChatMessage[];
+}
+
+export interface ConversationActionResponse {
+    message: string;
+    conversation: ConversationResponse;
+}
+
+export interface PreferredContactPayload {
+    preferred_time: string;
+    preferred_method?: "email" | "phone" | "either";
+}
+
+export class ChatApiError extends Error {
+    constructor(
+        message: string,
+        public status: number,
+        public errors?: Record<string, string[]>
+    ) {
+        super(message);
+    }
+}
+
+async function request<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    baseUrl: string | null = API_URL
+): Promise<T> {
+    const url = baseUrl ? `${baseUrl}/api${endpoint}` : `/api${endpoint}`;
+
+    // Ensure Authorization header is included when running in the browser
+    const headers = {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...(options.headers ?? {}),
+    } as Record<string, string>;
+
+    if (typeof window !== "undefined" && !headers.Authorization) {
+        const token = localStorage.getItem("token");
+        if (token) headers.Authorization = `Bearer ${token}`;
+    }
+
+    let response: Response;
+
     try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid JSON body." },
-        { status: 400 },
-      );
+        response = await fetch(url, {
+            ...options,
+            headers,
+        });
+    } catch (err) {
+        console.error("Network Error:", err);
+
+        throw new ChatApiError(
+            `Cannot connect to Laravel API (${url})`,
+            0
+        );
     }
 
-    const raw = (body as Record<string, unknown>)?.message;
-    const validation = validateMessage(raw);
+    let body: unknown = null;
 
-    if (!validation.ok) {
-      return NextResponse.json({ error: validation.error }, { status: 400 });
+    try {
+        body = await response.json();
+    } catch { }
+
+    if (!response.ok) {
+        const errorBody = body as { message?: string; errors?: Record<string, string[]> } | null;
+
+        throw new ChatApiError(
+            errorBody?.message ?? "Request failed.",
+            response.status,
+            errorBody?.errors
+        );
     }
 
-    const { value: message } = validation;
-
-    if (!process.env.OPENAI_API_KEY) {
-      console.error("OPENAI_API_KEY is not set.");
-      return NextResponse.json(
-        { error: "Assistant is temporarily unavailable." },
-        { status: 503 },
-      );
-    }
-
-    // Client is created only after we've confirmed the key exists,
-    // and only when an actual request comes in — never at build time.
-    const client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
-    const [completion] = await Promise.all([
-      client.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `
-                        You are the official AI assistant of HERO Serviced Office.
-
-                        Company Information:
-                        - Company Name: HERO Serviced Office
-                        - Business Type: Serviced Offices & Flexible Workspaces
-                        - Experience: 2+ years
-                        - Projects Completed: 20+
-                        - Locations:
-                          • 23F Tower6789, 6789 Ayala Avenue, Makati City 1209, Metro Manila, Philippines
-                          • 11F Insular Life Building, 6781 Ayala Avenue, Corner Paseo de Roxas, Makati City, Metro Manila, Philippines
-                        - Services:
-                          • Flexible Office Spaces
-                          • Meeting & Conference Rooms
-                          • Virtual Offices
-                          • Coworking Spaces
-                          • Business Support Services
-                        - Email: info@heroph.net
-
-                        Behavior Rules:
-                        - Always represent HERO Serviced Office. You are HERO's assistant, not a generic AI.
-                        - If asked "Who are you?", say you are the official assistant of HERO Serviced Office.
-                        - Never mention OpenAI, Groq, LLaMA, Meta, or that you are a generic language model.
-                        - Answer questions about services, pricing inquiries, or company info using the details above.
-                        - Keep responses concise, professional, and friendly — 2–4 short paragraphs or bullet points maximum.
-                        - Encourage users to email info@heroph.net for detailed quotations or site visits.
-                        - If a question is outside the company scope, answer helpfully while staying in the HERO identity.
-                        - Use bullet points when listing multiple items.
-                        - Never fabricate pricing, floor plans, or information not provided above.
-
-                        Tone: Professional, warm, clear, and confident.
-                        `,
-          },
-          {
-            role: "user",
-            content: message, // already sanitized above
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 512,
-      }),
-      humanDelay(),
-    ]);
-
-    return NextResponse.json({
-      reply:
-        completion.choices?.[0]?.message?.content || "No response received.",
-    });
-  } catch (error) {
-    console.error("OpenAI API Error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch AI response" },
-      { status: 500 },
-    );
-  }
+    return body as T;
 }
