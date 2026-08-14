@@ -75,7 +75,7 @@ function getCompanyLogo(name: string) {
   return companyLogoMap[name] ?? null;
 }
 
-// HERO Group of Companies — sourced from ヒーローグループ企業一覧
+// HERO Group of Companies
 const groupCompanies = [
   {
     area: "Kanto Area",
@@ -168,11 +168,101 @@ const groupCompanies = [
   },
 ];
 
+const messageen = {
+  president: {
+    message:
+`Thank you very much for your continued support of HERO Serviced Office. We are deeply
+grateful for the trust and encouragement you have extended to us.
+
+Our office provides a flexible working environment tailored to the growth of your business
+and the scale of your projects. Beyond our prime location, we offer comfortable workspaces
+and a comprehensive support system to strongly assist your business expansion in the
+Philippines.
+
+As a growth hub capable of meeting diverse needs—from startups to expanding
+enterprises—we look forward to working alongside you toward long-term development and
+success.
+
+If you are considering establishing a new office, expanding your current operations, or
+looking for a cost-effective workspace, please feel free to contact us or schedule a visit.
+We truly appreciate your continued support.
+    `,
+  },
+  chairman: {
+    message: 
+`At HERO Serviced Office, we believe that strong relationships are built on trust, sincerity,
+and continuous improvement. We are grateful for the confidence our clients and partners
+have placed in us, and we remain committed to providing an environment where
+businesses can grow with stability and confidence. We sincerely appreciate the continued
+trust and support, and we look forward to building a brighter future together`,
+  },
+};
+
+const messagejp = {
+  president: {
+    message: 
+`HERO Serviced Officeをご愛顧いただき、誠にありがとうございます。皆様
+からいただいている深いご信頼と温かいご支援に、スタッフ一同心より感謝申し
+上げます。
+
+当オフィスでは、ビジネスの成長やプロジェクトの規模に合わせて柔軟にご活用
+いただけるオフィス環境を整えております。抜群のロケーションはもちろん、快
+適なワークスペースと充実したサポート体制を備え、皆様のフィリピンでのビジ
+ネス展開を強力にバックアップいたします。
+
+スタートアップから事業拡大まで、多様なニーズに応える「成長の拠点」として
+、これからも共に努力を重ね、末永い発展と成功を目指してまいりましょう。
+
+新規オフィス開設や拠点拡張をご検討中の方、コストパフォーマンスに優れたワ
+ークスペースをお探しの方も、ぜひお気軽にお問い合わせ・ご内覧ください。
+
+今後とも変わらぬご支援を賜りますよう、よろしくお願い申し上げます。`,
+  },
+  chairman: {
+    message: 
+`HERO Serviced Officeでは、強固な信頼関係は、信頼、誠実さ、そして絶え間ない改善
+への取り組みによって築かれるものと信じております。お客様ならびにパートナーの皆
+様より賜りましたご信頼に、心より感謝申し上げます。
+
+私たちは今後も、企業の皆様が安心して事業を成長・発展できる環境をご提供できるよ
+う、努めてまいります。引き続き変わらぬご支援とご愛顧を賜りますようお願い申し上
+げますとともに、皆様とともにより明るい未来を築いていけることを心より願っており
+ます。`,
+  },
+};
+
 const allCompanies = groupCompanies.flatMap((region) => region.companies);
 
 export default function AboutPage() {
-  const [spaceSlide, setSpaceSlide] = useState(0);
+  const [language, setLanguage] = useState('en');
 
+  useEffect(() => {
+    // Check initial language from cookie
+    const getCookie = (name: string) => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(';').shift();
+      return null;
+    };
+
+    const updateLanguage = () => {
+      const googtrans = getCookie('googtrans');
+      if (googtrans?.includes('/ja')) {
+        setLanguage('ja');
+      } else {
+        setLanguage('en');
+      }
+    };
+
+    updateLanguage();
+
+    // Watch for cookie changes
+    const cookieListener = setInterval(updateLanguage, 500);
+
+    return () => clearInterval(cookieListener);
+  }, []);
+
+  const messages = language === 'ja' ? messagejp : messageen;
   const values = [
     {
       icon: Briefcase,
@@ -240,7 +330,7 @@ export default function AboutPage() {
             unoptimized
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
+          <div className="absolute inset-0 bg-linear-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
         </div>
         <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
@@ -340,7 +430,7 @@ export default function AboutPage() {
                 <p className="text-gray-600 leading-relaxed text-justify">
                   To provide accessible, flexible, and fully serviced workspace solutions that empower
                   businesses to operate efficiently, grow confidently, and establish a strong professional presence
-                  in the heart of Makati Citys
+                  in the heart of Makati City
                 </p>
               </motion.div>
             </div>
@@ -353,11 +443,11 @@ export default function AboutPage() {
                 alt="Our Team"
                 width={800}
                 height={500}
-                className="rounded-2xl object-cover max-h-135 w-auto"
+                className="rounded-2xl object-cover md:max-h-135 w-auto"
                 unoptimized
               />
 
-              <div className="absolute top-3 right-3 z-20 px-3 py-1.5 rounded-full bg-[#0A1E3F] backdrop-blur-sm border border-white/60 shadow-sm">
+              <div className="absolute bottom-3 right-3 z-20 px-3 py-1.5 rounded-full bg-[#0A1E3F] backdrop-blur-sm border border-white/60 shadow-sm">
                 <span className="text-sm font-bold text-white">Our Team</span>
               </div>
             </div>
@@ -428,8 +518,8 @@ export default function AboutPage() {
                   RC
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">Ramon Castillo</p>
-                  <p className="text-sm text-[#1B3A8C]">President</p>
+                  <p className="font-semibold text-gray-900">Mr. Minoru Kobayashi</p>
+                  <p className="text-sm text-[#1B3A8C]">HERO President</p>
                   <p className="text-xs uppercase tracking-wide text-gray-400 py-1">
                     HERO Serviced Office
                   </p>
@@ -437,12 +527,8 @@ export default function AboutPage() {
               </div>
               <div className="relative">
                 <Quote className="absolute -top-1 -left-1 h-8 w-8 text-[#B8935A]/35" />
-                <p className="pl-9 font-serif text-lg italic leading-relaxed text-gray-700 text-justify">
-                  Every business that walks through our doors is at a different stage of its journey—some
-                  are opening their first office in the Philippines, others are scaling a team that has
-                  outgrown its space. Our job is to remove the friction from that moment, so our clients can
-                  focus on their work instead of their walls. That commitment, more than any amenity, is what
-                  I hope people feel the second they step into a HERO office.
+                <p className="pl-9 font-serif text-lg italic leading-relaxed text-gray-700 text-justify whitespace-pre-wrap">
+                  {messages.president.message}
                 </p>
               </div>
             </motion.div>
@@ -457,12 +543,8 @@ export default function AboutPage() {
             >
               <div className="relative md:order-1">
                 <Quote className="absolute -top-1 -right-1 h-8 w-8 text-[#B8935A]/35" />
-                <p className="pr-9 font-serif text-lg italic leading-relaxed text-gray-700 text-justify">
-                  When we brought the serviced office concept from Japan to Makati, we made a deliberate
-                  choice to carry over one principle above all others: hospitality that anticipates a need
-                  before it is spoken. It is a small thing on any single day, and it compounds into something
-                  our clients notice over years. We are still guided by that same principle as the group
-                  continues to grow across new markets.
+                <p className="pr-9 font-serif text-lg italic leading-relaxed text-gray-700 text-justify whitespace-pre-wrap">
+                  {messages.chairman.message}
                 </p>
               </div>
               <div className="flex flex-row items-center gap-4 md:order-2 md:flex-col md:items-start md:gap-3">
@@ -470,8 +552,8 @@ export default function AboutPage() {
                   KY
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">Kenji Yamashita</p>
-                  <p className="text-sm text-[#1B3A8C]">Chairman</p>
+                  <p className="font-semibold text-gray-900">Mr. Makoto Kinoshita</p>
+                  <p className="text-sm text-[#1B3A8C]">HERO Chairman</p>
                   <p className="text-xs uppercase tracking-wide text-gray-400 py-1">
                     HERO Group of Companies
                   </p>

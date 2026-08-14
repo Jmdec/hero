@@ -28,48 +28,6 @@ import {
   LandPlot,
 } from "lucide-react";
 
-const officeTypes = [
-  {
-    id: "shared-office",
-    name: "Shared Office",
-    icon: Users,
-    description: "Flexible booth-type desks for individuals",
-    details: [
-      "Booth-type desks available",
-      "Single person workstations",
-      "Desks, chairs, and Wi-Fi included",
-      "Perfect for freelancers and remote workers",
-    ],
-    note: "Please contact us for pricing details.",
-  },
-  {
-    id: "coworking",
-    name: "Co-Working Space",
-    icon: Coffee,
-    description: "Collaborative space in cafe and lounge areas",
-    details: [
-      "Work in cafe area and lounge",
-      "Enhanced coworking environment",
-      "Share space with other tenants",
-      "Desks, chairs, and Wi-Fi provided",
-    ],
-    note: "Enhanced coworking space opened April 2019. Please contact us for pricing details.",
-  },
-  {
-    id: "virtual-office",
-    name: "Virtual Office",
-    icon: Briefcase,
-    description: "Prime Makati address for corporate registration",
-    details: [
-      "Makati City address for registration",
-      "Prime location in business district",
-      "Mail forwarding service included",
-      "Professional business address",
-    ],
-    note: "Initial costs include contract fee, security deposit, first month usage fee, common service fee, security card fee, and tax.",
-  },
-];
-
 const facilities = [
   {
     icon: DoorOpen,
@@ -236,8 +194,8 @@ export default function InsularLifePage() {
             >
               <div className="relative aspect-4/3 overflow-hidden rounded-2xl">
                 <Image
-                  src="/Insular-Life.jpg"
-                  alt="Tower 6789"
+                  src="/insular_life.webp"
+                  alt="Insular Life Building"
                   fill
                   priority
                   className="object-cover object-top"
@@ -306,54 +264,6 @@ export default function InsularLifePage() {
                 </div>
               </div>
             </motion.div>
-
-            {/* Office Cards */}
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: .6 }}
-              className="space-y-5"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {officeTypes.map((type, index) => (
-                  <motion.div key={type.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition-shadow relative" >
-                    <div className="absolute top-6 right-6">
-                      <div className="relative group">
-                        <InfoIcon className="w-5 h-5 text-gray-400 hover:text-gray-600 cursor-help" />
-                        <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg 
-                      whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                          Please contact us for details.
-                          <div className="absolute top-full right-0 border-4 border-transparent border-t-gray-900" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 mb-6">
-                      <div className="hidden lg:flex w-14 h-14 bg-[#8FA8D6]/30 rounded-xl items-center justify-center p-3">
-                        <type.icon className="w-7 h-7 text-[#3B5EA6]" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-900">{type.name}</h3>
-                        <p className="text-gray-600 text-sm md:text-md">{type.description}</p>
-                      </div>
-                    </div>
-                    <ul className="space-y-3">
-                      {type.details.map((detail, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                          <span className="text-gray-700">{detail}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-
           </div>
         </div>
       </section>

@@ -56,33 +56,64 @@ interface PaymentLinkContext {
 }
 
 const API_BASE_URL = "/api";
-const VO_PACKAGE_PRICES: Record<string, number> = { Basic: 2000, Standard: 3000, Premium: 5000 };
-const VO_VAT_RATE = 0.12;
-const VO_CONTRACT_ADMIN_FEE = 500;
+const VO_PACKAGE_PRICES: Record<string, number> = {
+  Basic: 2000,
+  Standard: 3000,
+  Premium: 5000,
+};
 
-const inputCls =
-  "w-full px-4 py-3 bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl text-[#0B1F4A] text-sm placeholder:text-[#64748B]/60 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C] focus:bg-white transition-all duration-200";
+const VO_VAT_RATE = 0.12; // 12% VAT
 
-const inputErrCls =
-  "w-full px-4 py-3 bg-[#FFF5F5] border border-red-300 rounded-xl text-[#0B1F4A] text-sm placeholder:text-[#64748B]/60 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 focus:bg-white transition-all duration-200";
+const VO_CONTRACT_ADMIN_FEE: Record<string, number> = {
+  Basic: 500,
+  Standard: 500,
+  Premium: 1000,
+};
 
-function computeVirtualOfficeTotal(pkg: string, months: string): PricingBreakdown {
+function computeVirtualOfficeTotal(
+  pkg: string,
+  months: string
+): PricingBreakdown {
+  // Package price per month
   const base = VO_PACKAGE_PRICES[pkg] ?? 0;
+
+  // VAT per month
   const vat = base * VO_VAT_RATE;
+
+  // Monthly package price including VAT
   const monthlySubtotal = base + vat;
-  const numMonths = Math.max(1, Number(months) || 1);
+
+  // Contract duration
+  const numMonths = Math.max(
+    1,
+    parseInt(months, 10) || 1
+  );
+
+  // Package + VAT × duration
   const recurring = monthlySubtotal * numMonths;
-  const total = recurring + VO_CONTRACT_ADMIN_FEE;
+
+  // Get contract/admin fee for the selected package
+  const contractAdminFee = VO_CONTRACT_ADMIN_FEE[pkg] ?? 0;
+
+  // Final total
+  const total = recurring + contractAdminFee;
+
   return {
     packagePrice: base,
     vatPercentage: VO_VAT_RATE * 100,
     vatAmount: vat,
     duration: numMonths,
     subtotal: recurring,
-    contractAdminFee: VO_CONTRACT_ADMIN_FEE,
+    contractAdminFee,
     total,
   };
 }
+
+const inputCls =
+  "w-full px-4 py-3 bg-[#F8FAFD] border border-[#D9E2F0] rounded-xl text-[#0B1F4A] text-sm placeholder:text-[#64748B]/60 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/10 focus:border-[#1B3A8C] focus:bg-white transition-all duration-200";
+
+const inputErrCls =
+  "w-full px-4 py-3 bg-[#FFF5F5] border border-red-300 rounded-xl text-[#0B1F4A] text-sm placeholder:text-[#64748B]/60 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 focus:bg-white transition-all duration-200";
 
 const peso = (n: number) => `P${n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -176,24 +207,6 @@ function usePaymentLinkGate() {
   }, [quotationId, token]);
 
   return { status, context, errorMessage };
-}
-
-function VOPricingBreakdown({ pricing, pkg, months }: { pricing?: PricingBreakdown | null; pkg: string; months: string }) {
-  const breakdown = pricing ?? computeVirtualOfficeTotal(pkg, months);
-
-  return (
-    <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
-      <p className="text-sm font-bold tracking-[0.2em] uppercase text-[#0A1E3F] mb-3">Pricing Breakdown</p>
-      <div className="space-y-1.5 text-sm">
-        <div className="flex justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Package ({pkg || "Virtual Office"})</span><span className="text-[#0B1F4A] font-medium">{peso(breakdown.packagePrice)} / month</span></div>
-        <div className="flex justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">VAT ({breakdown.vatPercentage}%)</span><span className="text-[#0B1F4A] font-medium">{peso(breakdown.vatAmount)} / month</span></div>
-        <div className="flex justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Duration</span><span className="text-[#0B1F4A] font-medium">x {breakdown.duration} {breakdown.duration === 1 ? "month" : "months"}</span></div>
-        <div className="flex justify-between border-t border-[#D9E2F0] pt-1.5 mt-1.5"><span className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Subtotal</span><span className="text-[#0B1F4A] font-medium">{peso(breakdown.subtotal)}</span></div>
-        <div className="flex justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">Contract & Admin Fee</span><span className="text-[#0B1F4A] font-medium">{peso(breakdown.contractAdminFee)}</span></div>
-        <div className="flex justify-between border-t border-[#D9E2F0] pt-2 mt-2"><span className="font-bold text-[#0B1F4A]">Total</span><span className="font-bold text-[#1B3A8C]">{peso(breakdown.total)}</span></div>
-      </div>
-    </div>
-  );
 }
 
 function FloatingReceipt({
@@ -643,7 +656,7 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
               type="text"
               value={paymentReference}
               onChange={(e) => setPaymentReference(e.target.value)}
-              className={!paymentReference.trim() ? inputErrCls : inputCls }
+              className={!paymentReference.trim() ? inputErrCls : inputCls}
               placeholder="Transaction Reference Number"
             />
           </div>

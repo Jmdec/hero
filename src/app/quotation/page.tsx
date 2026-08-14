@@ -151,34 +151,47 @@ const GOVERNMENT_ID_TYPES = [
 ];
 
 // Virtual Office package base monthly fees (before VAT / fees / duration multiplier)
-const VO_PACKAGE_PRICES: Record<string, number> = { Basic: 2000, Standard: 3000, Premium: 5000 };
-const VO_VAT_RATE = 0.12; // 12% VAT
-const VO_CONTRACT_ADMIN_FEE = 500; // flat Contract & Admin Fee
-const VO_MONTHS_OPTIONS = ["1", "3", "6", "12"];
+const VO_PACKAGE_PRICES: Record<string, number> = {
+  Basic: 2000,
+  Standard: 3000,
+  Premium: 5000,
+};
 
-// ─── Validation Helpers ───────────────────────────────────────────────────────
+const VO_VAT_RATE = 0.12; // 12% VAT
+
+// Contract & admin fee — charged once, not multiplied by duration
+const VO_CONTRACT_ADMIN_FEE: Record<string, number> = {
+  Basic: 500,
+  Standard: 500,
+  Premium: 1000,
+};
+
+const VO_MONTHS_OPTIONS = ["1", "3", "6", "12"];
 
 const isValidEmail = (email: string) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
 const isValidPhone = (phone: string) =>
-  /^(\+?63|0)[\s-]?9\d{2}[\s-]?\d{3}[\s-]?\d{4}$/.test(phone.replace(/\s/g, ""));
+  /^(\+?63|0)[\s-]?9\d{2}[\s-]?\d{3}[\s-]?\d{4}$/.test(
+    phone.replace(/\s/g, "")
+  );
 
-/** Computes VO pricing breakdown: Package + VAT + Contract & Admin Fee, multiplied by Duration (months). */
 function computeVirtualOfficeTotal(pkg: string, months: string) {
   const base = VO_PACKAGE_PRICES[pkg] ?? 0;
   const vat = base * VO_VAT_RATE;
-  const monthlySubtotal = base + vat; // per-month cost before admin fee
-  const numMonths = Math.max(1, Number(months) || 1);
-  const recurring = monthlySubtotal * numMonths;
-  const total = recurring + VO_CONTRACT_ADMIN_FEE; // admin fee charged once
+  
+  const monthlySubtotal = base + vat; // Monthly package price including VAT
+  const numMonths = Math.max(1, Number(months) || 1); 
+  const recurring = monthlySubtotal * numMonths; // Monthly cost × number of months
+  const contractAdminFee = VO_CONTRACT_ADMIN_FEE[pkg] ?? 0; // One-time contract/admin fee
+  const total = recurring + contractAdminFee; // Final total
   return {
     base,
     vat,
     monthlySubtotal,
     numMonths,
     recurring,
-    contractAdminFee: VO_CONTRACT_ADMIN_FEE,
+    contractAdminFee,
     total,
   };
 }
@@ -668,7 +681,6 @@ function Step2VirtualOffice({
                 "Business Address",
                 "Business Registration Documents Assistance",
                 "Mail Handling",
-                "Basic Call Handling",
                 "1 Day Co-working Space Access",
                 "1 Hour Conference Room Access",
               ],
@@ -680,7 +692,6 @@ function Step2VirtualOffice({
                 "Business Address",
                 "Business Registration Documents Assistance",
                 "Mail Handling",
-                "Basic Call Handling",
                 "2 Days Co-working Space Access",
                 "2 Hours Conference Room Access",
               ],
@@ -692,7 +703,6 @@ function Step2VirtualOffice({
                 "Business Address",
                 "Business Registration Documents Assistance",
                 "Mail Handling",
-                "Basic Call Handling",
                 "5 Days Co-working Space Access",
                 "3 Hours Conference Room Access",
               ],

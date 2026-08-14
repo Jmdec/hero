@@ -22,8 +22,8 @@ interface RoomScene {
   description?: string
   features?: string[]
   panoramaUrl: string
-  connectsTo?: string[]
   thumbnailUrl?: string
+  connectsTo?: string[]
   hotspots?: Array<{
     targetId: string
     targetName: string
@@ -90,8 +90,6 @@ function loadTextureCached(
   return texture
 }
 
-/** Fire-and-forget prefetch for rooms reachable from the current one, so a
- * hotspot click (or switcher tap) usually resolves from cache instantly. */
 function prefetchNeighbors(room: RoomScene, allRooms: RoomScene[]) {
   const targets = (room.connectsTo || [])
     .map((id) => allRooms.find((r) => r.id === id))
@@ -130,45 +128,29 @@ export function Immersive360Tour({
 
   const isDragging = useRef<boolean>(false)
   const didDrag = useRef<boolean>(false)
-  // Pending timeout used to clear `didDrag` shortly after a drag ends, so it
-  // only suppresses the click that immediately follows a drag-release
-  // instead of permanently blocking hotspot clicks afterward.
   const didDragResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const previousMousePosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const lon = useRef<number>(0)
   const lat = useRef<number>(0)
 
-  // Read/written from the render loop without needing to be a React
-  // dependency — avoids tearing the WebGL scene down every time the user
-  // starts/stops dragging (which used to happen because `isAutoRotating`
-  // was a `useState` value in the scene-setup effect's dependency array).
   const isAutoRotatingRef = useRef(true)
 
-  // Full room graph used for resolving hotspot targets (may include rooms,
-  // like hallways, that aren't part of the featured switcher list).
   const roomGraph = useMemo(() => (allRooms && allRooms.length > 0 ? allRooms : rooms), [allRooms, rooms])
 
   const [selectedRoomId, setSelectedRoomId] = useState<string>(
     initialRoomId && roomGraph.find((r) => r.id === initialRoomId) ? initialRoomId : rooms[0]?.id
   )
 
-  // The room currently being viewed — resolved against the full graph so a
-  // hotspot can take the visitor into a room outside the featured list.
   const selectedRoom = useMemo(
     () => roomGraph.find((r) => r.id === selectedRoomId) || rooms[0] || roomGraph[0],
     [roomGraph, rooms, selectedRoomId]
   )
 
-  // Index within the *switcher* list. If the current room isn't part of the
-  // switcher (e.g. a hallway reached via hotspot), this is -1 and prev/next
-  // navigation wraps to the start of the featured list instead.
   const selectedRoomIndex = useMemo(
     () => rooms.findIndex((r) => r.id === selectedRoom.id),
     [rooms, selectedRoom]
   )
 
-  // Keep the internally-selected room in sync if the parent hands us a new
-  // initialRoomId (e.g. the user picked a different room from outside).
   useEffect(() => {
     if (initialRoomId && roomGraph.find((r) => r.id === initialRoomId)) {
       setSelectedRoomId(initialRoomId)
@@ -186,6 +168,7 @@ export function Immersive360Tour({
 
   const [showInfo, setShowInfo] = useState(false)
   const [showShareMenu, setShowShareMenu] = useState(false)
+  const [showGallery, setShowGallery] = useState(false)
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(true)
   const wasMobileViewport = useRef(false)
   const [isMobileViewport, setIsMobileViewport] = useState(false)
@@ -468,14 +451,8 @@ export function Immersive360Tour({
     }
   }, [])
 
-  const handleResetView = () => {
-    lon.current = 0
-    lat.current = 0
-    setIsAutoRotating(true)
-    if (cameraRef.current) {
-      cameraRef.current.fov = 75
-      cameraRef.current.updateProjectionMatrix()
-    }
+  const toggleGallery = () => {
+    setShowGallery((prev) => !prev)
   }
 
   const navigateToRoom = (roomId: string) => {
@@ -584,7 +561,7 @@ export function Immersive360Tour({
   const dockButtonClass = (active?: boolean) =>
     `w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center transition-colors ${active ? "bg-[#C9A15D]/15 text-[#C9A15D]" : "text-white/70 hover:text-white hover:bg-white/5"
     }`
-  const updateHotspotPositionsRef = useRef<() => void>(() => {})
+  const updateHotspotPositionsRef = useRef<() => void>(() => { })
 
   useEffect(() => {
     updateHotspotPositionsRef.current = () => {
@@ -754,8 +731,6 @@ export function Immersive360Tour({
         </div>
       )}
 
-      {/* Left-side control dock: Exit fullscreen (when active), Room info, Share, Full screen, Reset view.
-          Sits below the building switcher (when present) so the two overlays never collide. */}
       <div
         className="absolute z-20 flex flex-row sm:flex-col bg-[#0A1420]/80 backdrop-blur-md rounded-xl border border-white/10 shadow-lg divide-x sm:divide-x-0 sm:divide-y divide-white/10 overflow-hidden"
         style={{
@@ -776,6 +751,10 @@ export function Immersive360Tour({
           <Eye className="w-4 h-4" />
         </button>
 
+        <button className={dockButtonClass()} onClick={toggleGallery} title="Gallery">
+          <RotateCcw className="w-4 h-4" />
+        </button>
+
         <div className="relative">
           <button className={dockButtonClass()} onClick={handleShare} title="Share">
             <Share2 className="w-4 h-4" />
@@ -789,10 +768,6 @@ export function Immersive360Tour({
 
         <button className={dockButtonClass()} onClick={toggleFullscreen} title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
           {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-        </button>
-
-        <button className={dockButtonClass()} onClick={handleResetView} title="Reset view">
-          <RotateCcw className="w-4 h-4" />
         </button>
       </div>
 
@@ -844,7 +819,7 @@ export function Immersive360Tour({
 
                 <div
                   className="relative flex-1 h-14 sm:h-30 min-w-0 rounded-xl overflow-hidden bg-cover bg-center"
-                  style={{ backgroundImage: `url(${selectedRoom.thumbnailUrl || selectedRoom.panoramaUrl})` }}
+                  style={{ backgroundImage: `url(${selectedRoom.panoramaUrl})` }}
                 >
                   <div className="absolute inset-0 bg-linear-to-t from-[#0A1420]/95 via-[#0A1420]/15 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 px-2.5 py-1.5">
@@ -868,14 +843,28 @@ export function Immersive360Tour({
               </div>
 
               <div className="flex items-center justify-center gap-1.5 pb-3">
-                {rooms.map((r) => (
+                {rooms.map((room) => (
                   <button
-                    key={r.id}
-                    onClick={() => navigateToRoom(r.id)}
-                    className={`h-1.5 rounded-full transition-all ${r.id === selectedRoom.id ? "w-5 bg-[#C9A15D]" : "w-1.5 bg-white/25 hover:bg-white/40"
+                    key={room.id}
+                    onClick={() => {
+                      navigateToRoom(room.id)
+                      setShowGallery(false)
+                    }}
+                    className={`relative group overflow-hidden rounded-lg border transition-all ${room.id === selectedRoom.id
+                      ? "border-[#C9A15D] ring-2 ring-[#C9A15D]/50"
+                      : "border-white/10 hover:border-[#C9A15D]/50"
                       }`}
-                    title={r.name}
-                  />
+                  >
+                    <div
+                      className="aspect-video bg-cover bg-center"
+                      style={{ backgroundImage: `url(${room.thumbnailUrl || room.panoramaUrl})` }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0A1420]/95 via-transparent to-transparent flex flex-col justify-end p-2 sm:p-3 group-hover:from-[#0A1420]/80 transition-colors">
+                      <p className="text-white text-xs sm:text-sm font-semibold line-clamp-2">
+                        {room.name}
+                      </p>
+                    </div>
+                  </button>
                 ))}
               </div>
             </motion.div>
@@ -907,6 +896,78 @@ export function Immersive360Tour({
           )}
         </AnimatePresence>
       )}
+
+      {/* Room Gallery */}
+      <AnimatePresence>
+        {showGallery && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 z-40 bg-[#0A1420]/95 backdrop-blur-md flex flex-col"
+            onClick={() => setShowGallery(false)}
+          >
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
+              <h2 className="text-white text-lg sm:text-xl font-semibold">Room Gallery</h2>
+              <button
+                onClick={() => setShowGallery(false)}
+                className="text-white/40 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div
+              className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {rooms.map((room) => {
+                // Grab up to 2 connected rooms to show alongside the main shot
+                const relatedRooms = (room.connectsTo ?? [])
+                  .map((id) => roomGraph.find((r) => r.id === id))
+                  .filter((r): r is RoomScene => Boolean(r))
+                  .slice(0, 2)
+
+                const previewImages = [room, ...relatedRooms].slice(0, 3)
+
+                return (
+                  <button
+                    key={room.id}
+                    onClick={() => {
+                      navigateToRoom(room.id)
+                      setShowGallery(false)
+                    }}
+                    className={`relative group overflow-hidden rounded-lg border transition-all ${room.id === selectedRoom.id
+                        ? "border-[#C9A15D] ring-2 ring-[#C9A15D]/50"
+                        : "border-white/10 hover:border-[#C9A15D]/50"
+                      }`}
+                  >
+                    <div className="aspect-video grid grid-cols-2 gap-0.5 bg-[#0A1420]">
+                      {/* Main room image takes the left column (or full width if only 1 image) */}
+                      <div
+                        className={`bg-cover bg-center ${previewImages.length === 1 ? "col-span-2" : "row-span-2"}`}
+                        style={{ backgroundImage: `url(${previewImages[0].thumbnailUrl || previewImages[0].panoramaUrl})` }}
+                      />
+                      {previewImages.slice(1).map((r) => (
+                        <div
+                          key={r.id}
+                          className="bg-cover bg-center"
+                          style={{ backgroundImage: `url(${r.thumbnailUrl || r.panoramaUrl})` }}
+                        />
+                      ))}
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0A1420]/95 via-transparent to-transparent flex flex-col justify-end p-2 sm:p-3 group-hover:from-[#0A1420]/80 transition-colors">
+                      <p className="text-white text-xs sm:text-sm font-semibold line-clamp-2">
+                        {room.name}
+                      </p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
