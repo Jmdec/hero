@@ -636,9 +636,11 @@ export function Immersive360Tour({
                 <ChevronUp className="w-5 h-5 sm:w-6 sm:h-6 text-[#0A1420]" />
               </span>
             </span>
-            <span className="hidden sm:block max-w-[9rem] px-2.5 py-1 rounded-full border border-[#C9A15D]/30 bg-[#0A1420]/95 text-[#F7E5B0] text-[11px] font-semibold whitespace-nowrap shadow-lg backdrop-blur-sm">
-              {hs.label || hs.targetName}
-            </span>
+            <div className="group relative">
+              <span className="hidden sm:block max-w-auto px-2.5 py-1 rounded-full border border-[#C9A15D]/30 bg-[#0A1420]/95 text-[#F7E5B0] text-[11px] font-semibold whitespace-nowrap shadow-lg backdrop-blur-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                {hs.label || hs.targetName}
+              </span>
+            </div>
           </button>
         ))}
       </div>
@@ -996,7 +998,7 @@ export function Immersive360Tour({
               onClick={(e) => e.stopPropagation()}
             >
               <p className="text-xs text-white/40">
-                {galleryImages.length} {galleryImages.length === 1 ? "image" : "images"} 
+                {galleryImages.length} {galleryImages.length === 1 ? "image" : "images"}
               </p>
             </div>
           </motion.div>
