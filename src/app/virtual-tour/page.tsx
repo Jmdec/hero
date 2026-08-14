@@ -72,25 +72,14 @@ export default function VirtualTourPage() {
           "A relaxing shared lounge perfect for casual meetings, networking, or taking a productive break.",
         features: ["Comfortable seating", "High-speed Wi-Fi", "Networking area", "Quiet ambiance"],
         panoramaUrl: "/360-view/IMG_20210422_174807_00_125.webp",
-        thumbnailUrl: ["/360-view/insular-lounge.png"],
+        thumbnailUrl: [
+          "/360-view/insular-lounge.png",
+        ],
         connectsTo: ["reception", "pantry"],
         hotspots: [
           { targetId: "reception", targetName: "Reception", lon: -145, lat: -10, label: "Return to reception" },
           { targetId: "pantry", targetName: "Pantry", lon: 35, lat: -10, label: "Visit the pantry" },
           { targetId: "hallway-1", targetName: "Hallway", lon: 120, lat: 8, label: "Continue down the corridor" },
-        ],
-      },
-      {
-        id: "phonebooth",
-        name: "Phone Booth",
-        description:
-          "A private meeting space designed for focused discussions, virtual meetings, and client consultations.",
-        features: ["Presentation display", "Video conferencing", "High-speed Wi-Fi", "Private setting"],
-        panoramaUrl: "/360-view/IMG_20210318_154223_00_039.webp",
-        thumbnailUrl: [""],
-        connectsTo: ["hallway-1"],
-        hotspots: [
-          { targetId: "hallway-1", targetName: "Hallway", lon: 90, lat: -12, label: "Go to the corridor" },
         ],
       },
       {
@@ -143,7 +132,10 @@ export default function VirtualTourPage() {
           "A shared pantry where members can enjoy complimentary refreshments and unwind throughout the day.",
         features: ["Complimentary coffee & tea", "Casual seating", "Refreshment area", "Relaxing atmosphere"],
         panoramaUrl: "/360-view/IMG_20210318_155931_00_043.webp",
-        thumbnailUrl: [""],
+        thumbnailUrl: [
+          "/360-view/_ARM7477.webp",
+          "/360-view/_ARM7474.webp",
+        ],
         connectsTo: ["hallway-2", "hallway-3", "lounge", "reception"],
         hotspots: [
           { targetId: "lounge", targetName: "Lounge", lon: -100, lat: -9, label: "Head back to the lounge" },
@@ -173,7 +165,10 @@ export default function VirtualTourPage() {
           "Mail & package handling",
         ],
         panoramaUrl: "/360-view/IMG_20210429_161245_00_142.webp",
-        thumbnailUrl: [""],
+        thumbnailUrl: [
+          "/360-view/_ARM7593.webp",
+          "/360-view/_ARM8130.webp"
+        ],
         connectsTo: ["hallway-1", "lounge"],
         hotspots: [
           { targetId: "lounge", targetName: "Lounge", lon: 120, lat: -12, label: "Enter the lounge" },
@@ -187,7 +182,10 @@ export default function VirtualTourPage() {
           "A relaxing shared lounge perfect for casual meetings, networking, or taking a productive break.",
         features: ["Comfortable seating", "High-speed Wi-Fi", "Networking area", "Quiet ambiance"],
         panoramaUrl: "/360-view/IMG_20210429_162117_00_143.webp",
-        thumbnailUrl: [""],
+        thumbnailUrl: [
+          "/360-view/_ARM7597.webp",
+          "/360-view/_ARM7582.webp",
+        ],
         connectsTo: ["reception", "pantry", "hallway-1"],
         hotspots: [
           { targetId: "reception", targetName: "Reception", lon: -145, lat: -10, label: "Return to reception" },
@@ -245,7 +243,9 @@ export default function VirtualTourPage() {
           "A professional meeting space designed for productive discussions, presentations, and business events.",
         features: ["High-speed Wi-Fi", "Presentation display", "Video conferencing", "Flexible seating"],
         panoramaUrl: "/360-view/IMG_20210318_173158_00_049.webp",
-        thumbnailUrl: [""],
+        thumbnailUrl: [
+          "/360-view/_ARM7558.webp",
+        ],
         connectsTo: ["hallway-2"],
         hotspots: [
           { targetId: "hallway-2", targetName: "Hallway", lon: 90, lat: -10, label: "Return to the hall" },
@@ -258,7 +258,9 @@ export default function VirtualTourPage() {
           "A modern conference room built for meetings, workshops, interviews, and collaborative sessions.",
         features: ["High-speed Wi-Fi", "Presentation display", "Video conferencing", "Flexible seating"],
         panoramaUrl: "/360-view/IMG_20210318_171738_00_045.webp",
-        thumbnailUrl: [""],
+        thumbnailUrl: [
+          "/360-view/meeting-room.webp",
+        ],
         connectsTo: ["hallway-2"],
         hotspots: [
           { targetId: "hallway-2", targetName: "Hallway", lon: -90, lat: -10, label: "Go back to the hall" },
@@ -271,7 +273,10 @@ export default function VirtualTourPage() {
           "A shared pantry where members can enjoy complimentary refreshments and unwind throughout the day.",
         features: ["Complimentary coffee & tea", "Casual seating", "Refreshment area", "Relaxing atmosphere"],
         panoramaUrl: "/360-view/IMG_20210318_183019_00_073.webp",
-        thumbnailUrl: [""],
+        thumbnailUrl: [
+          "/360-view/_ARM7611.webp",
+          "/360-view/_ARM7603.webp",
+        ],
         connectsTo: ["lounge", "brochure-lockers"],
         hotspots: [
           { targetId: "lounge", targetName: "Lounge", lon: -120, lat: -9, label: "Head back to the lounge" },

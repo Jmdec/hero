@@ -6,6 +6,14 @@ function resolveLaravelApiBase() {
     return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
 }
 
+async function getRouteParams(context: any) {
+    const params = context?.params;
+    if (params && typeof params.then === "function") {
+        return await params;
+    }
+    return params ?? {};
+}
+
 async function forward(request: NextRequest, method: string, id: string | undefined) {
     try {
         if (!id) {
@@ -54,21 +62,21 @@ async function forward(request: NextRequest, method: string, id: string | undefi
 }
 
 export async function GET(request: NextRequest, context: any) {
-    const id = context?.params?.id;
+    const id = (await getRouteParams(context))?.id;
     return forward(request, "GET", id);
 }
 
 export async function PATCH(request: NextRequest, context: any) {
-    const id = context?.params?.id;
+    const id = (await getRouteParams(context))?.id;
     return forward(request, "PATCH", id);
 }
 
 export async function PUT(request: NextRequest, context: any) {
-    const id = context?.params?.id;
+    const id = (await getRouteParams(context))?.id;
     return forward(request, "PUT", id);
 }
 
 export async function DELETE(request: NextRequest, context: any) {
-    const id = context?.params?.id;
+    const id = (await getRouteParams(context))?.id;
     return forward(request, "DELETE", id);
 }

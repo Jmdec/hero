@@ -790,6 +790,14 @@ export default function AnnouncementsAdmin() {
         headers: authHeaders(),
       });
 
+      if (res.status === 404) {
+        setItems((prev) => prev.filter((a) => a.id !== target.id));
+        setDeleteTarget(null);
+        await loadStats();
+        showToast("Announcement was already removed or no longer exists.", "info");
+        return;
+      }
+
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
 
       setItems((prev) => prev.filter((a) => a.id !== target.id));

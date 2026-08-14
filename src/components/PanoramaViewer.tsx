@@ -978,13 +978,6 @@ export function Immersive360Tour({
                       <span className="absolute bottom-2 left-2 rounded-md bg-[#0A1420]/70 px-2 py-1 text-[11px] font-medium text-white/80 backdrop-blur-sm">
                         {idx + 1}
                       </span>
-
-                      {/* Hover indicator */}
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                        <span className="rounded-full border border-white/20 bg-[#0A1420]/70 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
-                          View image
-                        </span>
-                      </div>
                     </button>
                   ))}
                 </div>
@@ -1003,7 +996,7 @@ export function Immersive360Tour({
               onClick={(e) => e.stopPropagation()}
             >
               <p className="text-xs text-white/40">
-                {galleryImages.length} {galleryImages.length === 1 ? "image" : "images"} · Click an image to view
+                {galleryImages.length} {galleryImages.length === 1 ? "image" : "images"} 
               </p>
             </div>
           </motion.div>
