@@ -1,3 +1,8 @@
+// NOTE: This file now talks to our OWN Next.js API route
+// (app/api/chat/[...path]/route.ts), which proxies to Laravel server-side.
+// The browser therefore only ever calls same-origin URLs — no CORS needed.
+// API_URL is kept only as a fallback if you ever need a direct, non-proxied
+// call from a server context.
 const API_URL =
     process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
@@ -81,14 +86,17 @@ export class ChatApiError extends Error {
     }
 }
 
+// baseUrl is now ALWAYS null by default, meaning every browser call hits our
+// own Next.js origin (/api/chat/...), which app/api/chat/[...path]/route.ts
+// proxies to Laravel server-side. Pass an explicit baseUrl only if you
+// deliberately want to bypass the proxy (e.g. a trusted server context).
 async function request<T>(
     endpoint: string,
     options: RequestInit = {},
-    baseUrl: string | null = API_URL
+    baseUrl: string | null = null
 ): Promise<T> {
     const url = baseUrl ? `${baseUrl}/api${endpoint}` : `/api${endpoint}`;
 
-    // Ensure Authorization header is included when running in the browser
     const headers = {
         Accept: "application/json",
         "Content-Type": "application/json",
@@ -111,7 +119,7 @@ async function request<T>(
         console.error("Network Error:", err);
 
         throw new ChatApiError(
-            `Cannot connect to Laravel API (${url})`,
+            `Cannot reach the API (${url})`,
             0
         );
     }
@@ -225,7 +233,8 @@ export const chatApi = {
     },
 
     closeConversationOnExit(conversationId: number, sendTranscript = true) {
-        const url = `${API_URL}/api/chat/${conversationId}/close`;
+        // Same-origin now — hits our own Next.js proxy route, not Laravel directly.
+        const url = `/api/chat/${conversationId}/close`;
 
         const payload = { send_transcript: Boolean(sendTranscript) };
 
@@ -255,8 +264,7 @@ export const chatApi = {
             {
                 method: "POST",
                 body: JSON.stringify(to ? { to } : {}),
-            },
-            typeof window !== "undefined" ? null : API_URL
+            }
         );
     },
 
