@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
 
 const LARAVEL_API_BASE = API_URL.endsWith("/api")
-    ? API_URL
-    : `${API_URL}/api`;
+  ? API_URL
+  : `${API_URL}/api`;
 
 async function readResponsePayload(res: Response) {
   const text = await res.text();
@@ -27,9 +27,10 @@ export async function PUT(
 
   if (contentType.includes("multipart/form-data")) {
     const formData = await request.formData();
+    formData.append("_method", "PUT"); // Laravel method-spoofing for multipart PUT
 
     const res = await fetch(`${LARAVEL_API_BASE}/admin/announcements/${id}`, {
-      method: "PUT",
+      method: "POST", // must be POST so PHP parses the multipart body at all
       headers: {
         Accept: "application/json",
         Authorization: request.headers.get("authorization") ?? "",

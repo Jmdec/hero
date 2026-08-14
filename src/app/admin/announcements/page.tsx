@@ -154,48 +154,12 @@ function authHeaders(json = false) {
   };
 }
 
-function getAnnouncementImageUrls(
-  image?: string | string[] | null,
-  imageUrls?: string[] | null,
-  imageUrl?: string | null,
-) {
-  const direct = [imageUrl, ...(Array.isArray(imageUrls) ? imageUrls : [])]
-    .map((item) => (typeof item === "string" ? item.trim() : ""))
-    .filter(Boolean);
+function getAnnouncementImageUrl(item: Announcement): string | null {
+  if (item.image_url) return item.image_url;
 
-  if (direct.length > 0) return direct;
-  if (!image) return [];
-
-  const toArray = (value: unknown): string[] => {
-    if (Array.isArray(value)) {
-      return value
-        .map((item) => (typeof item === "string" ? item.trim() : ""))
-        .filter(Boolean);
-    }
-
-    if (typeof value === "string") {
-      const trimmed = value.trim();
-      if (!trimmed) return [];
-
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          return parsed
-            .map((item) => (typeof item === "string" ? item.trim() : ""))
-            .filter(Boolean);
-        }
-      } catch {
-        // ignore and fall back to the plain string value below
-      }
-
-      return [trimmed];
-    }
-
-    return [];
-  };
-
-  const values = Array.isArray(image) ? image : [image];
-  const paths = values.flatMap((value) => toArray(value));
+  if (Array.isArray(item.image_urls) && item.image_urls.length > 0) {
+    return item.image_urls[0];
+  }
 
   const configured =
     process.env.NEXT_PUBLIC_API_URL ||
@@ -206,17 +170,38 @@ function getAnnouncementImageUrls(
     ? normalized.replace(/\/api$/, "")
     : normalized;
 
-  return paths.map((path) => {
-    if (!path) return null;
-    if (/^https?:\/\//i.test(path)) return path;
-    if (path.startsWith("/storage/")) return `${base}${path}`;
+  const normalizeInput = (input: string | string[] | null | undefined): string[] => {
+    if (!input) return [];
 
-    return `${base}/storage/${path.replace(/^\/+/, "")}`;
-  }).filter(Boolean) as string[];
-}
+    if (Array.isArray(input)) {
+      return input
+        .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+        .filter(Boolean);
+    }
 
-function getAnnouncementImageUrl(image?: string | string[] | null) {
-  return getAnnouncementImageUrls(image)[0] ?? null;
+    const trimmed = input.trim();
+    if (!trimmed) return [];
+
+    // image may come back as a JSON-encoded array string, e.g. '["a.jpg","b.jpg"]'
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+          .filter(Boolean);
+      }
+    } catch {
+      // not JSON — treat as a single path
+    }
+
+    return [trimmed];
+  };
+
+  const first = normalizeInput(item.image)[0];
+  if (!first) return null;
+  if (/^https?:\/\//i.test(first)) return first;
+  if (first.startsWith("/storage/")) return `${base}${first}`;
+  return `${base}/storage/${first.replace(/^\/+/, "")}`;
 }
 
 function sortAnnouncements(items: Announcement[]) {
@@ -561,7 +546,8 @@ export default function AnnouncementsAdmin() {
     });
     setFormErrors({});
     setImageFiles([]);
-    setImagePreviews(getAnnouncementImageUrls(a.image, a.image_urls, a.image_url));
+    const imageUrl = getAnnouncementImageUrl(a);
+    setImagePreviews(imageUrl ? [imageUrl] : []);
     setFormOpen(true);
   }
 
@@ -1422,19 +1408,13 @@ export default function AnnouncementsAdmin() {
                   }}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700"
                 />
-                {(imagePreviews.length > 0 || (editing && getAnnouncementImageUrls(editing.image, editing.image_urls, editing.image_url).length > 0)) && (
+                {(imagePreviews.length > 0 || (editing && getAnnouncementImageUrl(editing))) && (
                   <div className="mt-3 grid grid-cols-2 gap-3">
-                    {imagePreviews.length > 0
-                      ? imagePreviews.map((preview, index) => (
-                        <div key={`${preview}-${index}`} className="overflow-hidden rounded-lg border border-slate-200">
-                          <img src={preview} alt={`Announcement preview ${index + 1}`} className="h-32 w-full object-cover" />
-                        </div>
-                      ))
-                      : getAnnouncementImageUrls(editing?.image, editing?.image_urls, editing?.image_url).map((preview, index) => (
-                        <div key={`${preview}-${index}`} className="overflow-hidden rounded-lg border border-slate-200">
-                          <img src={preview} alt={`Announcement image ${index + 1}`} className="h-32 w-full object-cover" />
-                        </div>
-                      ))}
+                    {imagePreviews.map((preview, index) => (
+                      <div key={`${preview}-${index}`} className="overflow-hidden rounded-lg border border-slate-200">
+                        <img src={preview} alt={`Announcement image ${index + 1}`} className="h-32 w-full object-cover" />
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1464,10 +1444,7 @@ export default function AnnouncementsAdmin() {
               <div>
                 <div className="mb-1 flex items-center justify-between gap-2">
                   <label className="block text-xs font-medium text-slate-600">
-                    Social Media{" "}
-                    <span className="font-normal text-slate-400">
-                      (post to multiple platforms, each with its own link)
-                    </span>
+                    Social Media
                   </label>
                 </div>
 

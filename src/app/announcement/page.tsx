@@ -57,7 +57,7 @@ function tagClass(tag: string) {
   return tag ? TAG_STYLE : FALLBACK_TAG_STYLE;
 }
 
-function getAnnouncementImageUrl(item: Announcement) {
+function getAnnouncementImageUrl(item: Announcement): string | null {
   if (item.image_url) return item.image_url;
 
   if (Array.isArray(item.image_urls) && item.image_urls.length > 0) {
@@ -78,13 +78,14 @@ function getAnnouncementImageUrl(item: Announcement) {
 
     if (Array.isArray(input)) {
       return input
-        .map((entry) => entry?.trim())
-        .filter((entry): entry is string => Boolean(entry));
+        .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+        .filter(Boolean);
     }
 
     const trimmed = input.trim();
     if (!trimmed) return [];
 
+    // image may come back as a JSON-encoded array string, e.g. '["a.jpg","b.jpg"]'
     try {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed)) {
@@ -93,7 +94,7 @@ function getAnnouncementImageUrl(item: Announcement) {
           .filter(Boolean);
       }
     } catch {
-      // fall through
+      // not JSON — treat as a single path
     }
 
     return [trimmed];
