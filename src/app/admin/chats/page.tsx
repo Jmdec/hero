@@ -550,7 +550,6 @@ export default function AdminChatsPage() {
     const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
     const actionsMenuRef = useRef<HTMLDivElement>(null);
 
-    const knownAttentionIdsRef = useRef<Set<number>>(new Set());
     // Tracks whether the component is still mounted so async polling callbacks
     // don't call setState after unmount.
     const isMountedRef = useRef(true);
@@ -585,48 +584,6 @@ export default function AdminChatsPage() {
             isMountedRef.current = false;
         };
     }, []);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        const interval = setInterval(async () => {
-            if (cancelled) return;
-            try {
-                const result = await chatApi.needsAttention();
-                if (cancelled) return;
-
-                const currentIds = new Set(result.conversation_ids);
-
-                const newIds = result.conversation_ids.filter(
-                    (id) => !knownAttentionIdsRef.current.has(id),
-                );
-
-                if (newIds.length > 0) {
-                    const response = await chatApi.listConversations() as { data?: ChatConversation[] };
-                    if (cancelled) return;
-                    if (response.data) {
-                        setConversations(response.data);
-                        for (const id of newIds) {
-                            const match = response.data.find((c) => c.id === id);
-                            pushToast(
-                                `${match?.inquiry?.full_name ?? "A visitor"} asked to talk to an agent.`,
-                                "success",
-                            );
-                        }
-                    }
-                }
-
-                knownAttentionIdsRef.current = currentIds;
-            } catch {
-                // Ignore polling errors
-            }
-        }, 2000);
-
-        return () => {
-            cancelled = true;
-            clearInterval(interval);
-        };
-    }, [pushToast]);
 
     // Poll the currently open conversation's messages/status separately.
     useEffect(() => {

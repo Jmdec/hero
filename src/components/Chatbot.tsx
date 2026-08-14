@@ -13,13 +13,7 @@ import {
     UserRound,
     ExternalLink,
 } from "lucide-react";
-import type {
-    ChatInquiryPayload,
-    StartChatResponse,
-    ChatMessage,
-    ConversationResponse,
-    ConversationActionResponse,
-} from "@/app/api/chat/route";
+import { chatApi, type ConversationResponse } from "../lib/chatApi";
 
 interface CTA {
     label: string;
@@ -37,43 +31,6 @@ interface Message {
 
 const SESSION_STORAGE_KEY = "hero_chat_session_id";
 const CHAT_STATE_KEY = "hero_chat_state";
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-
-// Helper function for API requests
-async function apiRequest<T>(
-    endpoint: string,
-    options: RequestInit = {}
-): Promise<T> {
-    const url = `${API_URL}/api${endpoint}`;
-
-    const headers = {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        ...(options.headers ?? {}),
-    } as Record<string, string>;
-
-    if (typeof window !== "undefined" && !headers.Authorization) {
-        const token = localStorage.getItem("token");
-        if (token) headers.Authorization = `Bearer ${token}`;
-    }
-
-    const response = await fetch(url, {
-        ...options,
-        headers,
-    });
-
-    let body: unknown = null;
-    try {
-        body = await response.json();
-    } catch {}
-
-    if (!response.ok) {
-        const errorBody = body as { message?: string } | null;
-        throw new Error(errorBody?.message ?? "Request failed");
-    }
-
-    return body as T;
-}
 
 interface ModalProps {
     open: boolean;
@@ -968,7 +925,7 @@ const Chatbot = () => {
             const pollId = conversation.remoteConversationId ?? conversation.id;
 
             try {
-                const latestConversation = await apiRequest<ConversationResponse>(`/chat/${pollId}`);
+                const latestConversation = await chatApi.getConversation(pollId);
                 try {
                     console.debug(
                         "CHAT: polled conversation",
@@ -999,10 +956,7 @@ const Chatbot = () => {
             if (stopped) return;
             try {
                 const targetId = conversation.remoteConversationId ?? conversation.id;
-                await apiRequest(`/chat/${targetId}/heartbeat`, {
-                    method: "POST",
-                    body: JSON.stringify({}),
-                });
+                await chatApi.pingConversation(targetId);
             } catch {
                 // ignore network errors — heartbeat is best-effort
             }
@@ -1041,11 +995,8 @@ const Chatbot = () => {
 
                 try {
                     // Close the conversation on the server and request transcript once.
-                    await apiRequest(`/chat/${targetId}/close`, {
-                        method: "PATCH",
-                        body: JSON.stringify({ send_transcript: true }),
-                    });
-                    const latestConversation = await apiRequest<ConversationResponse>(`/chat/${targetId}`);
+                    await chatApi.closeConversation(targetId, true);
+                    const latestConversation = await chatApi.getConversation(targetId);
                     syncConversationSnapshot(latestConversation, { preservePending: false });
                 } catch {
                     // ignore errors — best-effort
@@ -1065,10 +1016,7 @@ const Chatbot = () => {
         async (conversationId: number | undefined) => {
             if (!conversationId || closeEmailSentRef.current) return;
             try {
-                await apiRequest(`/chat/${conversationId}/email-history`, {
-                    method: "POST",
-                    body: JSON.stringify({}),
-                });
+                await chatApi.emailChatHistory(conversationId);
                 closeEmailSentRef.current = true;
             } catch {
             }
@@ -1094,8 +1042,8 @@ const Chatbot = () => {
                 if (storedSessionId || storedConversationId) {
                     try {
                         const latestConversation = storedSessionId
-                            ? await apiRequest<ConversationResponse>(`/chat/session/${storedSessionId}`)
-                            : await apiRequest<ConversationResponse>(`/chat/${storedConversationId as number}`);
+                            ? await chatApi.getConversationBySession(storedSessionId)
+                            : await chatApi.getConversation(storedConversationId as number);
 
                         if (!cancelled) {
                             syncConversationSnapshot(latestConversation, {
@@ -1206,7 +1154,7 @@ const Chatbot = () => {
         }
 
         try {
-            const latestConversation = await apiRequest<ConversationResponse>(`/chat/session/${storedSessionId}`);
+            const latestConversation = await chatApi.getConversationBySession(storedSessionId);
             syncConversationSnapshot(latestConversation, { preservePending: false });
             return {
                 id: latestConversation.id,
@@ -1241,10 +1189,7 @@ const Chatbot = () => {
             }
 
             try {
-                await apiRequest<ChatMessage>(`/chat/${serverId}/message`, {
-                    method: "POST",
-                    body: JSON.stringify({ sender, message: text }),
-                });
+                await chatApi.sendMessage(serverId, sender, text);
                 try { console.debug("CHAT: persistMessage sent", serverId, sender); } catch { }
             } catch (err) {
                 try { console.debug("CHAT: persistMessage failed", err); } catch { }
@@ -1386,10 +1331,7 @@ const Chatbot = () => {
                 try { console.debug("CHAT: requestAgent -> targetId", targetId, "conversationRef", conversationRef.current, "activeConversation", activeConversation); } catch { }
 
                 if (targetId) {
-                    const result = await apiRequest<ConversationActionResponse>(`/chat/${targetId}/agent-request`, {
-                        method: "POST",
-                        body: JSON.stringify({ message: userText }),
-                    });
+                    const result = await chatApi.requestAgent(targetId, userText);
                     syncConversationSnapshot(result.conversation, { preservePending: false });
                 }
             } catch {
@@ -1455,11 +1397,8 @@ const Chatbot = () => {
                         conversation?.remoteConversationId ?? conversation?.id ??
                         activeConversation?.remoteConversationId ?? activeConversation?.id;
                     if (targetId) {
-                        await apiRequest<ConversationActionResponse>(`/chat/${targetId}/preferred-contact`, {
-                            method: "POST",
-                            body: JSON.stringify({
-                                preferred_time: userMessage.text,
-                            }),
+                        await chatApi.submitPreferredContact(targetId, {
+                            preferred_time: userMessage.text,
                         });
                     }
                 } catch {
@@ -1536,11 +1475,8 @@ const Chatbot = () => {
         setSendError("");
 
         try {
-            await apiRequest<ConversationActionResponse>(`/chat/${targetId}/end-live-agent`, {
-                method: "PATCH",
-                body: JSON.stringify({}),
-            });
-            const latestConversation = await apiRequest<ConversationResponse>(`/chat/${targetId}`);
+            await chatApi.endLiveAgent(targetId);
+            const latestConversation = await chatApi.getConversation(targetId);
             syncConversationSnapshot(latestConversation, { preservePending: false });
         } catch (err) {
             setSendError(
@@ -1597,10 +1533,7 @@ const Chatbot = () => {
                 privacy_policy_accepted: agreedToPolicy,
             };
 
-            const startResponse = await apiRequest<StartChatResponse>("/chat/start", {
-                method: "POST",
-                body: JSON.stringify(payload),
-            });
+            const startResponse = await chatApi.start(payload);
 
             const newConversation: ConversationState = {
                 id: startResponse.conversation_id,
