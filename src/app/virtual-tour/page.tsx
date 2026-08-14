@@ -198,6 +198,7 @@ export default function VirtualTourPage() {
         description: "A connecting hallway providing access between the building's shared spaces and offices.",
         features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
         panoramaUrl: "/360-view/IMG_20210318_174407_00_055.webp",
+        thumbnailUrl: "",
         connectsTo: ["reception", "lounge", "conference-room-a", "hallway-2"],
         hotspots: [
           { targetId: "reception", targetName: "Reception", lon: -130, lat: -9, label: "Head to reception" },
@@ -212,6 +213,7 @@ export default function VirtualTourPage() {
         description: "A connecting hallway providing access between the building's shared spaces and offices.",
         features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
         panoramaUrl: "/360-view/IMG_20210429_164510_00_150.webp",
+        thumbnailUrl: "",
         connectsTo: ["hallway-1", "conference-room-b", "conference-room-c", "brochure-lockers"],
         hotspots: [
           { targetId: "hallway-1", targetName: "Hallway", lon: -120, lat: -9, label: "Return to the main hall" },
