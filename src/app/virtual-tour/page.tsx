@@ -57,12 +57,11 @@ export default function VirtualTourPage() {
         panoramaUrl: "/360-view/IMG_20210422_174408_00_124.webp",
         thumbnailUrl: [
           "/360-view/insular-reception.png",
-          "/360-view/insular-reception.png",
         ],
-        connectsTo: ["hallway-2", "lounge"],
+        connectsTo: ["lounge", "hallway-1"],
         hotspots: [
           { targetId: "lounge", targetName: "Lounge", lon: 120, lat: -12, label: "Step into the lounge" },
-          { targetId: "hallway-2", targetName: "Hallway", lon: -120, lat: -8, label: "Continue down the corridor" },
+          { targetId: "hallway-1", targetName: "Hallway", lon: -120, lat: -8, label: "Head to meeting rooms" },
         ],
       },
       {
@@ -73,13 +72,13 @@ export default function VirtualTourPage() {
         features: ["Comfortable seating", "High-speed Wi-Fi", "Networking area", "Quiet ambiance"],
         panoramaUrl: "/360-view/IMG_20210422_174807_00_125.webp",
         thumbnailUrl: [
-          "/360-view/insular-lounge.png",
+          "/360-view/IMG_20210422_174807_00_125.webp",
         ],
-        connectsTo: ["reception", "pantry"],
+        connectsTo: ["reception", "pantry", "hallway-1"],
         hotspots: [
           { targetId: "reception", targetName: "Reception", lon: -145, lat: -10, label: "Return to reception" },
           { targetId: "pantry", targetName: "Pantry", lon: 35, lat: -10, label: "Visit the pantry" },
-          { targetId: "hallway-1", targetName: "Hallway", lon: 120, lat: 8, label: "Continue down the corridor" },
+          { targetId: "hallway-1", targetName: "Hallway", lon: 120, lat: 8, label: "Explore meeting rooms" },
         ],
       },
       {
@@ -88,8 +87,12 @@ export default function VirtualTourPage() {
         description: "A connecting hallway providing access between the building's shared spaces and offices.",
         features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
         panoramaUrl: "/360-view/IMG_20210422_182215_00_132.webp",
-        thumbnailUrl: [""],
-        connectsTo: ["reception", "lounge", "conference-room-a", "conference-room-b"],
+        connectsTo: ["lounge", "conference-room-a", "conference-room-b"],
+        hotspots: [
+          { targetId: "lounge", targetName: "Lounge", lon: -100, lat: -10, label: "Return to lounge" },
+          { targetId: "conference-room-a", targetName: "Conference Room A", lon: -45, lat: -8, label: "Enter Conference Room A" },
+          { targetId: "conference-room-b", targetName: "Conference Room B", lon: 45, lat: -8, label: "Enter Conference Room B" },
+        ],
       },
       {
         id: "conference-room-a",
@@ -98,9 +101,12 @@ export default function VirtualTourPage() {
           "A fully equipped meeting room ideal for presentations, client meetings, interviews, and team collaborations.",
         features: ["Presentation display", "Video conferencing", "High-speed Wi-Fi", "Flexible seating"],
         panoramaUrl: "/360-view/IMG_20210422_175054_00_126.webp",
+        thumbnailUrl: [
+          "",
+        ],
         connectsTo: ["hallway-1"],
         hotspots: [
-          { targetId: "hallway-1", targetName: "Hallway", lon: -80, lat: -10, label: "Return to the main corridor" },
+          { targetId: "hallway-1", targetName: "Hallway", lon: -80, lat: -10, label: "Return to the hallway" },
         ],
       },
       {
@@ -110,10 +116,12 @@ export default function VirtualTourPage() {
           "A professional meeting space designed for productive discussions, presentations, and business events.",
         features: ["Presentation display", "Video conferencing", "High-speed Wi-Fi", "Flexible seating"],
         panoramaUrl: "/360-view/IMG_20210422_175212_00_127.webp",
-        thumbnailUrl: [""],
+        thumbnailUrl: [
+          "",
+        ],
         connectsTo: ["hallway-1"],
         hotspots: [
-          { targetId: "hallway-1", targetName: "Hallway", lon: 60, lat: -10, label: "Go back to the hallway" },
+          { targetId: "hallway-1", targetName: "Hallway", lon: 60, lat: -10, label: "Return to the hallway" },
         ],
       },
 
@@ -123,7 +131,11 @@ export default function VirtualTourPage() {
         description: "A connecting hallway providing access between the building's shared spaces and offices.",
         features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
         panoramaUrl: "/360-view/IMG_20210422_182036_00_130.webp",
-        connectsTo: ["hallway-1", "conference-room-a", "conference-room-b", "pantry"],
+        connectsTo: ["reception", "pantry"],
+        hotspots: [
+          { targetId: "reception", targetName: "Reception", lon: -120, lat: -9, label: "Return to reception" },
+          { targetId: "pantry", targetName: "Pantry", lon: 120, lat: -9, label: "Visit the pantry" },
+        ],
       },
       {
         id: "pantry",
@@ -136,10 +148,10 @@ export default function VirtualTourPage() {
           "/360-view/_ARM7477.webp",
           "/360-view/_ARM7474.webp",
         ],
-        connectsTo: ["hallway-2", "hallway-3", "lounge", "reception"],
+        connectsTo: ["lounge", "hallway-2"],
         hotspots: [
           { targetId: "lounge", targetName: "Lounge", lon: -100, lat: -9, label: "Head back to the lounge" },
-          { targetId: "reception", targetName: "Reception", lon: 135, lat: -10, label: "Return to reception" },
+          { targetId: "hallway-2", targetName: "Hallway", lon: 135, lat: -10, label: "Return to hallway" },
         ],
       },
       {
@@ -149,6 +161,10 @@ export default function VirtualTourPage() {
         features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
         panoramaUrl: "/360-view/IMG_20210422_182346_00_133.webp",
         connectsTo: ["reception", "pantry"],
+        hotspots: [
+          { targetId: "reception", targetName: "Reception", lon: -120, lat: -9, label: "Go to reception" },
+          { targetId: "pantry", targetName: "Pantry", lon: 120, lat: -9, label: "Visit pantry" },
+        ],
       },
     ],
 
@@ -169,10 +185,10 @@ export default function VirtualTourPage() {
           "/360-view/_ARM7593.webp",
           "/360-view/_ARM8130.webp"
         ],
-        connectsTo: ["hallway-1", "lounge"],
+        connectsTo: ["lounge", "hallway-1"],
         hotspots: [
           { targetId: "lounge", targetName: "Lounge", lon: 120, lat: -12, label: "Enter the lounge" },
-          { targetId: "hallway-1", targetName: "Hallway", lon: -120, lat: -8, label: "Continue to the corridor" },
+          { targetId: "hallway-1", targetName: "Main Hallway", lon: -120, lat: -8, label: "Head to meeting areas" },
         ],
       },
       {
@@ -190,7 +206,7 @@ export default function VirtualTourPage() {
         hotspots: [
           { targetId: "reception", targetName: "Reception", lon: -145, lat: -10, label: "Return to reception" },
           { targetId: "pantry", targetName: "Pantry", lon: 35, lat: -10, label: "Walk to the pantry" },
-          { targetId: "hallway-1", targetName: "Hallway", lon: 145, lat: -10, label: "Continue down the hall" },
+          { targetId: "hallway-1", targetName: "Hallway", lon: 145, lat: -10, label: "Explore meeting rooms" },
         ],
       },
       {
@@ -199,13 +215,11 @@ export default function VirtualTourPage() {
         description: "A connecting hallway providing access between the building's shared spaces and offices.",
         features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
         panoramaUrl: "/360-view/IMG_20210318_174407_00_055.webp",
-        thumbnailUrl: [""],
-        connectsTo: ["reception", "lounge", "conference-room-a", "hallway-2"],
+        connectsTo: ["lounge", "conference-room-a", "hallway-2"],
         hotspots: [
-          { targetId: "reception", targetName: "Reception", lon: -130, lat: -9, label: "Head to reception" },
-          { targetId: "lounge", targetName: "Lounge", lon: 130, lat: -9, label: "Enter the lounge" },
+          { targetId: "lounge", targetName: "Lounge", lon: -130, lat: -9, label: "Return to lounge" },
           { targetId: "conference-room-a", targetName: "Conference Room A", lon: -60, lat: -10, label: "Visit Conference Room A" },
-          { targetId: "hallway-2", targetName: "Hallway", lon: 60, lat: -9, label: "Continue deeper into the floor" },
+          { targetId: "hallway-2", targetName: "Secondary Hallway", lon: 60, lat: -9, label: "Continue to more meeting rooms" },
         ],
       },
       {
@@ -214,13 +228,12 @@ export default function VirtualTourPage() {
         description: "A connecting hallway providing access between the building's shared spaces and offices.",
         features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
         panoramaUrl: "/360-view/IMG_20210429_164510_00_150.webp",
-        thumbnailUrl: [""],
         connectsTo: ["hallway-1", "conference-room-b", "conference-room-c", "brochure-lockers"],
         hotspots: [
-          { targetId: "hallway-1", targetName: "Hallway", lon: -120, lat: -9, label: "Return to the main hall" },
+          { targetId: "hallway-1", targetName: "Main Hallway", lon: -120, lat: -9, label: "Return to main hallway" },
           { targetId: "conference-room-b", targetName: "Conference Room B", lon: -40, lat: -10, label: "Visit Conference Room B" },
           { targetId: "conference-room-c", targetName: "Conference Room C", lon: 40, lat: -10, label: "Visit Conference Room C" },
-          { targetId: "brochure-lockers", targetName: "Brochure & Locker Area", lon: 135, lat: -11, label: "See the locker area" },
+          { targetId: "brochure-lockers", targetName: "Brochure & Locker Area", lon: 135, lat: -11, label: "Check the locker area" },
         ],
       },
       {
@@ -230,10 +243,12 @@ export default function VirtualTourPage() {
           "A fully equipped meeting room ideal for presentations, client meetings, interviews, and team collaborations.",
         features: ["High-speed Wi-Fi", "Presentation display", "Video conferencing", "Flexible seating"],
         panoramaUrl: "/360-view/IMG_20210318_174813_00_060.webp",
-        thumbnailUrl: [""],
+        thumbnailUrl: [
+          "",
+        ],
         connectsTo: ["hallway-1"],
         hotspots: [
-          { targetId: "hallway-1", targetName: "Hallway", lon: 80, lat: -10, label: "Go back to the hallway" },
+          { targetId: "hallway-1", targetName: "Hallway", lon: 80, lat: -10, label: "Return to the hallway" },
         ],
       },
       {
@@ -248,7 +263,7 @@ export default function VirtualTourPage() {
         ],
         connectsTo: ["hallway-2"],
         hotspots: [
-          { targetId: "hallway-2", targetName: "Hallway", lon: 90, lat: -10, label: "Return to the hall" },
+          { targetId: "hallway-2", targetName: "Hallway", lon: 90, lat: -10, label: "Return to the hallway" },
         ],
       },
       {
@@ -263,7 +278,7 @@ export default function VirtualTourPage() {
         ],
         connectsTo: ["hallway-2"],
         hotspots: [
-          { targetId: "hallway-2", targetName: "Hallway", lon: -90, lat: -10, label: "Go back to the hall" },
+          { targetId: "hallway-2", targetName: "Hallway", lon: -90, lat: -10, label: "Return to the hallway" },
         ],
       },
       {
@@ -283,13 +298,26 @@ export default function VirtualTourPage() {
           { targetId: "brochure-lockers", targetName: "Brochure & Locker Area", lon: 120, lat: -10, label: "Visit the lockers" },
         ],
       },
+      {
+        id: "brochure-lockers",
+        name: "Brochure & Locker Area",
+        description: "A utility area for storing personal items and accessing building information.",
+        features: ["Individual lockers", "Brochure rack", "Information displays", "Secure storage"],
+        panoramaUrl: "/360-view/IMG_20210318_183019_00_073.webp",
+        thumbnailUrl: [],
+        connectsTo: ["hallway-2", "pantry"],
+        hotspots: [
+          { targetId: "hallway-2", targetName: "Hallway", lon: -120, lat: -10, label: "Return to hallway" },
+          { targetId: "pantry", targetName: "Pantry", lon: 120, lat: -10, label: "Visit pantry" },
+        ],
+      },
     ],
   };
 
   // Featured rooms
   const FEATURED_ROOM_IDS: Record<BuildingId, string[]> = {
-    insularLife: ["reception", "lounge", "phonebooth", "conference-room-a", "conference-room-b", "pantry"],
-    tower6789: ["reception", "lounge", "conference-room-a", "conference-room-b", "pantry"],
+    insularLife: ["reception", "lounge", "conference-room-a", "conference-room-b", "pantry"],
+    tower6789: ["reception", "lounge", "conference-room-a", "conference-room-b", "conference-room-c", "pantry", "brochure-lockers"],
   };
 
   const activeRooms = roomsByTab[activeTab];

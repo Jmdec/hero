@@ -839,7 +839,7 @@ export function Immersive360Tour({
                               ? "ring-2 ring-[#C9A15D] opacity-100"
                               : "opacity-60 hover:opacity-90"
                             }`}
-                          style={{ backgroundImage: `url(${r.thumbnailUrl?.[0] || r.panoramaUrl})` }}
+                          style={{ backgroundImage: `url(${r.panoramaUrl})` }}
                           title={r.name}
                         >
                           <div className="absolute inset-0 bg-linear-to-t from-[#0A1420]/95 via-[#0A1420]/15 to-transparent" />
