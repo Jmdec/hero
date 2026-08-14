@@ -842,30 +842,61 @@ export function Immersive360Tour({
                 </button>
               </div>
 
-              <div className="flex items-center justify-center gap-1.5 pb-3">
-                {rooms.map((room) => (
-                  <button
-                    key={room.id}
-                    onClick={() => {
-                      navigateToRoom(room.id)
-                      setShowGallery(false)
-                    }}
-                    className={`relative group overflow-hidden rounded-lg border transition-all ${room.id === selectedRoom.id
-                      ? "border-[#C9A15D] ring-2 ring-[#C9A15D]/50"
-                      : "border-white/10 hover:border-[#C9A15D]/50"
-                      }`}
-                  >
-                    <div
-                      className="aspect-video bg-cover bg-center"
-                      style={{ backgroundImage: `url(${room.thumbnailUrl || room.panoramaUrl})` }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0A1420]/95 via-transparent to-transparent flex flex-col justify-end p-2 sm:p-3 group-hover:from-[#0A1420]/80 transition-colors">
-                      <p className="text-white text-xs sm:text-sm font-semibold line-clamp-2">
-                        {room.name}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 px-3 pb-3">
+                <button
+                  onClick={goToPrevRoom}
+                  className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 active:bg-white/15 transition-colors shrink-0 touch-manipulation"
+                  title="Previous room"
+                  aria-label="Previous room"
+                >
+                  <ChevronLeft className="w-5 h-5 sm:w-5 sm:h-5" />
+                </button>
+
+                {/* Room/Space Thumbnail */}
+                <div className="flex-1 flex items-center gap-2 min-w-0">
+                  {(() => {
+                    const total = rooms.length
+                    const baseIndex = selectedRoomIndex === -1 ? 0 : selectedRoomIndex
+                    const visibleCount = isMobileViewport ? 2 : 3
+                    const offsets =
+                      visibleCount === 2 ? [0, 1] : [-1, 0, 1]
+                    const visibleRooms = offsets
+                      .map((offset) => rooms[(baseIndex + offset + total) % total])
+                      .filter((r, i, arr) => total >= visibleCount ? true : arr.findIndex(x => x.id === r.id) === i)
+
+                    return visibleRooms.map((r) => {
+                      const isSelected = r.id === selectedRoom.id
+                      return (
+                        <button
+                          key={r.id}
+                          onClick={() => navigateToRoom(r.id)}
+                          className={`relative h-14 sm:h-30 flex-1 min-w-0 rounded-xl overflow-hidden bg-cover bg-center transition-all ${isSelected
+                              ? "ring-2 ring-[#C9A15D] opacity-100"
+                              : "opacity-60 hover:opacity-90"
+                            }`}
+                          style={{ backgroundImage: `url(${r.thumbnailUrl || r.panoramaUrl})` }}
+                          title={r.name}
+                        >
+                          <div className="absolute inset-0 bg-linear-to-t from-[#0A1420]/95 via-[#0A1420]/15 to-transparent" />
+                          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-1 px-2 py-1.5">
+                            <span className="text-xs sm:text-sm font-semibold text-white truncate">
+                              {r.name}
+                            </span>
+                          </div>
+                        </button>
+                      )
+                    })
+                  })()}
+                </div>
+
+                <button
+                  onClick={goToNextRoom}
+                  className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 active:bg-white/15 transition-colors shrink-0 touch-manipulation"
+                  title="Next room"
+                  aria-label="Next room"
+                >
+                  <ChevronRight className="w-5 h-5 sm:w-5 sm:h-5" />
+                </button>
               </div>
             </motion.div>
           ) : (
@@ -921,49 +952,29 @@ export function Immersive360Tour({
               className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"
               onClick={(e) => e.stopPropagation()}
             >
-              {rooms.map((room) => {
-                // Grab up to 2 connected rooms to show alongside the main shot
-                const relatedRooms = (room.connectsTo ?? [])
-                  .map((id) => roomGraph.find((r) => r.id === id))
-                  .filter((r): r is RoomScene => Boolean(r))
-                  .slice(0, 2)
-
-                const previewImages = [room, ...relatedRooms].slice(0, 3)
-
-                return (
-                  <button
-                    key={room.id}
-                    onClick={() => {
-                      navigateToRoom(room.id)
-                      setShowGallery(false)
-                    }}
-                    className={`relative group overflow-hidden rounded-lg border transition-all ${room.id === selectedRoom.id
-                        ? "border-[#C9A15D] ring-2 ring-[#C9A15D]/50"
-                        : "border-white/10 hover:border-[#C9A15D]/50"
-                      }`}
-                  >
-                    <div className="aspect-video grid grid-cols-2 gap-0.5 bg-[#0A1420]">
-                      {/* Main room image takes the left column (or full width if only 1 image) */}
-                      <div
-                        className={`bg-cover bg-center ${previewImages.length === 1 ? "col-span-2" : "row-span-2"}`}
-                        style={{ backgroundImage: `url(${previewImages[0].thumbnailUrl || previewImages[0].panoramaUrl})` }}
-                      />
-                      {previewImages.slice(1).map((r) => (
-                        <div
-                          key={r.id}
-                          className="bg-cover bg-center"
-                          style={{ backgroundImage: `url(${r.thumbnailUrl || r.panoramaUrl})` }}
-                        />
-                      ))}
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0A1420]/95 via-transparent to-transparent flex flex-col justify-end p-2 sm:p-3 group-hover:from-[#0A1420]/80 transition-colors">
-                      <p className="text-white text-xs sm:text-sm font-semibold line-clamp-2">
-                        {room.name}
-                      </p>
-                    </div>
-                  </button>
-                )
-              })}
+              {rooms.map((room) => (
+                <button
+                  key={room.id}
+                  onClick={() => {
+                    navigateToRoom(room.id)
+                    setShowGallery(false)
+                  }}
+                  className={`relative group overflow-hidden rounded-lg border transition-all ${room.id === selectedRoom.id
+                    ? "border-[#C9A15D] ring-2 ring-[#C9A15D]/50"
+                    : "border-white/10 hover:border-[#C9A15D]/50"
+                    }`}
+                >
+                  <div
+                    className="relative flex-1 h-14 sm:h-30 min-w-0 rounded-xl overflow-hidden bg-cover bg-center"
+                    style={{ backgroundImage: `url(${selectedRoom.thumbnailUrl})` }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A1420]/95 via-transparent to-transparent flex flex-col justify-end p-2 sm:p-3 group-hover:from-[#0A1420]/80 transition-colors">
+                    <p className="text-white text-xs sm:text-sm font-semibold line-clamp-2">
+                      {room.name}
+                    </p>
+                  </div>
+                </button>
+              ))}
             </div>
           </motion.div>
         )}
