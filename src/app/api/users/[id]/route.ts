@@ -1,82 +1,99 @@
 import { NextRequest, NextResponse } from "next/server";
 
 function resolveLaravelApiBase() {
-    const configured = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
+    const configured = (
+        process.env.LARAVEL_API_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        "http://localhost:8000"
+    ).trim();
+
     const normalized = configured.replace(/\/+$/g, "");
-    return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
+
+    return normalized.endsWith("/api")
+        ? normalized
+        : `${normalized}/api`;
 }
 
-async function getRouteParams(context: any) {
-    const params = context?.params;
-    if (params && typeof params.then === "function") {
-        return await params;
-    }
-    return params ?? {};
-}
+type RouteContext = {
+    params: Promise<{
+        id: string;
+    }>;
+};
 
-async function forward(request: NextRequest, method: string, id: string | undefined) {
+export async function PATCH(
+    request: NextRequest,
+    context: RouteContext
+) {
     try {
+        const { id } = await context.params;
+
+        console.log("USER ID:", id);
+
         if (!id) {
-            return NextResponse.json({ message: "Missing user id in request." }, { status: 400 });
+            return NextResponse.json(
+                {
+                    message: "Missing user id in request."
+                },
+                { status: 400 }
+            );
         }
-        const laravelUrl = `${resolveLaravelApiBase()}/admin/users/${encodeURIComponent(id)}`;
+
+        const laravelUrl =
+            `${resolveLaravelApiBase()}/admin/users/${encodeURIComponent(id)}`;
+
+        const body = await request.text();
+
+        console.log("Laravel URL:", laravelUrl);
+        console.log("PATCH body:", body);
 
         const headers: Record<string, string> = {
             Accept: "application/json",
+            "Content-Type": "application/json",
         };
 
-        const incomingAuth = request.headers.get("authorization") || "";
-        if (incomingAuth) {
-            headers.Authorization = incomingAuth;
-        } else {
-            const sessionCookie = request.cookies.get("session")?.value;
-            if (sessionCookie) headers.Authorization = `Bearer ${sessionCookie}`;
+        const authorization = request.headers.get("authorization");
+
+        if (authorization) {
+            headers.Authorization = authorization;
         }
 
-        const contentType = request.headers.get("content-type");
-        if (contentType) headers["Content-Type"] = contentType;
-
-        const body = method === "GET" || method === "HEAD" ? undefined : await request.text();
-
-        const res = await fetch(laravelUrl, {
-            method,
+        const response = await fetch(laravelUrl, {
+            method: "PATCH",
             headers,
             body,
             cache: "no-store",
         });
 
-        const text = await res.text().catch(() => "");
-        const status = res.status;
+        const responseText = await response.text();
 
-        // Try to parse JSON, otherwise return text
+        console.log("Laravel status:", response.status);
+        console.log("Laravel response:", responseText);
+
+        let data;
+
         try {
-            const data = text ? JSON.parse(text) : null;
-            return NextResponse.json(data, { status });
+            data = responseText
+                ? JSON.parse(responseText)
+                : null;
         } catch {
-            return new NextResponse(text, { status, headers: { "Content-Type": "text/plain" } });
+            data = {
+                message: responseText
+            };
         }
+
+        return NextResponse.json(data, {
+            status: response.status,
+        });
+
     } catch (error) {
-        console.error("Users proxy error:", error);
-        return NextResponse.json({ message: "Unable to reach user service.", error: String(error) }, { status: 502 });
+        console.error("User PATCH proxy error:", error);
+
+        return NextResponse.json(
+            {
+                message: "Unable to update user.",
+                error: String(error),
+            },
+            { status: 502 }
+        );
     }
-}
-
-export async function GET(request: NextRequest, context: any) {
-    const id = (await getRouteParams(context))?.id;
-    return forward(request, "GET", id);
-}
-
-export async function PATCH(request: NextRequest, context: any) {
-    const id = (await getRouteParams(context))?.id;
-    return forward(request, "PATCH", id);
-}
-
-export async function PUT(request: NextRequest, context: any) {
-    const id = (await getRouteParams(context))?.id;
-    return forward(request, "PUT", id);
-}
-
-export async function DELETE(request: NextRequest, context: any) {
-    const id = (await getRouteParams(context))?.id;
-    return forward(request, "DELETE", id);
 }
