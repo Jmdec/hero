@@ -85,7 +85,6 @@ function getAnnouncementImageUrl(item: Announcement): string | null {
     const trimmed = input.trim();
     if (!trimmed) return [];
 
-    // image may come back as a JSON-encoded array string, e.g. '["a.jpg","b.jpg"]'
     try {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed)) {
@@ -103,8 +102,16 @@ function getAnnouncementImageUrl(item: Announcement): string | null {
   const first = normalizeInput(item.image)[0];
   if (!first) return null;
   if (/^https?:\/\//i.test(first)) return first;
-  if (first.startsWith("/storage/")) return `${base}${first}`;
-  return `${base}/storage/${first.replace(/^\/+/, "")}`;
+
+  const storagePath = first.replace(/^\/+/, "");
+  const withoutStoragePrefix = storagePath.replace(/^storage\//i, "");
+  const cleanPath = withoutStoragePrefix.replace(/^\/+/, "");
+
+  if (cleanPath.startsWith("storage/")) {
+    return `${base}/${cleanPath}`;
+  }
+
+  return `${base}/storage/${cleanPath}`;
 }
 
 function formatDate(value: string) {
