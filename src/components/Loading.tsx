@@ -16,14 +16,6 @@ interface LoadingProps {
     showProgress?: boolean;
 }
 
-/**
- * Concept: the workspace is being drafted, not just "loaded."
- * A dashed guide building outline sits underneath; solid ink strokes trace
- * over it as `progress` advances — outline, floors of windows, entry door,
- * then side wings + rooftop flourish. `panel` renders as a cyanotype
- * (blue paper / white ink, the real material architectural blueprints
- * were printed on); `screen`/`section` render as warm drafting paper.
- */
 export function Loading({
     variant = "screen",
     title = "Preparing your workspace",
@@ -67,25 +59,25 @@ export function Loading({
 
     const tokens = isBlueprint
         ? {
-              bg: "bg-[#0f2c58]",
-              cardBg: "bg-white/[0.04]",
-              cardBorder: "border-white/15",
-              ink: "#f4f3ec",
-              accent: "#f5c26b",
-              guide: "rgba(244,243,236,0.32)",
-              dot: "rgba(244,243,236,0.09)",
-              subtle: "rgba(244,243,236,0.6)",
-          }
+            bg: "bg-[#0f2c58]",
+            cardBg: "bg-white/[0.04]",
+            cardBorder: "border-white/15",
+            ink: "#f4f3ec",
+            accent: "#f5c26b",
+            guide: "rgba(244,243,236,0.32)",
+            dot: "rgba(244,243,236,0.09)",
+            subtle: "rgba(244,243,236,0.6)",
+        }
         : {
-              bg: "bg-[#efe8d7]",
-              cardBg: "bg-[#faf6ea]/95",
-              cardBorder: "border-[#d8c9a0]",
-              ink: "#16233f",
-              accent: "#a97d3c",
-              guide: "rgba(22,35,63,0.3)",
-              dot: "rgba(22,35,63,0.08)",
-              subtle: "rgba(22,35,63,0.6)",
-          };
+            bg: "bg-[#eef8ff]",
+            cardBg: "bg-white/95",
+            cardBorder: "border-[#00C8FE]/30",
+            ink: "#070084",
+            accent: "#00C8FE",
+            guide: "rgba(7,0,132,0.25)",
+            dot: "rgba(0,200,254,0.12)",
+            subtle: "rgba(7,0,132,0.6)",
+        };
 
     const containerClass =
         variant === "screen"

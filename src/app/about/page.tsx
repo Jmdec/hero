@@ -69,6 +69,7 @@ const companyLogoMap: Record<string, string> = {
   "Marushin Gravure Co., Ltd.（丸新グラビア株式会社）": "/company-logo/marushin-logo.png",
   "有限会社ホビーロード": "/company-logo/hobby-road-logo.png",
   "品川窯材 株式会社": "/company-logo/shinagawa-logo.png",
+  "HERO PH Serviced Offices": "/company-logo/hero-logo.jpg"
 };
 
 function getCompanyLogo(name: string) {
@@ -163,7 +164,7 @@ const groupCompanies = [
     area: "Overseas",
     icon: Building2,
     companies: [
-      { name: "Hero PH Serviced Offices", website: "https://heroph.net/jp/" },
+      { name: "HERO PH Serviced Offices", website: "https://heroph.net/jp/" },
     ],
   },
 ];
@@ -489,7 +490,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Leadership Messages — mock/sample copy */}
+      {/* Leadership Messages */}
       <section className="py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -514,15 +515,9 @@ export default function AboutPage() {
               className="grid gap-8 rounded-3xl border border-[#1B3A8C]/10 bg-white p-8 shadow-sm md:grid-cols-[160px_1fr] md:p-10"
             >
               <div className="flex flex-row items-center gap-4 md:flex-col md:items-start md:gap-3">
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[#1B3A8C] text-xl font-bold tracking-wide text-white">
-                  RC
-                </div>
                 <div>
-                  <p className="font-semibold text-gray-900">Mr. Minoru Kobayashi</p>
-                  <p className="text-sm text-[#1B3A8C]">HERO President</p>
-                  <p className="text-xs uppercase tracking-wide text-gray-400 py-1">
-                    HERO Serviced Office
-                  </p>
+                  <p className="font-bold text-gray-900">Mr. Minoru Kobayashi</p>
+                  <p className="text-md text-[#1B3A8C]">HERO President</p>
                 </div>
               </div>
               <div className="relative">
@@ -548,15 +543,9 @@ export default function AboutPage() {
                 </p>
               </div>
               <div className="flex flex-row items-center gap-4 md:order-2 md:flex-col md:items-start md:gap-3">
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[#0F2557] text-xl font-bold tracking-wide text-white">
-                  KY
-                </div>
                 <div>
-                  <p className="font-semibold text-gray-900">Mr. Makoto Kinoshita</p>
-                  <p className="text-sm text-[#1B3A8C]">HERO Chairman</p>
-                  <p className="text-xs uppercase tracking-wide text-gray-400 py-1">
-                    HERO Group of Companies
-                  </p>
+                  <p className="font-bold text-gray-900">Mr. Makoto Kinoshita</p>
+                  <p className="text-md text-[#1B3A8C]">HERO Chairman</p>
                 </div>
               </div>
             </motion.div>
@@ -677,7 +666,7 @@ export default function AboutPage() {
                 className="rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-sm"
               >
                 <div className="flex items-center gap-5">
-                  <div className="text-[28px] font-black leading-none tracking-[-0.04em] text-blue-200/55">
+                  <div className="text-[28px] font-black leading-none tracking-[-0.04em] text-blue-400/80 text-shadow-xs">
                     {num}
                   </div>
                   <h3 className="text-lg font-bold text-white">{title}</h3>

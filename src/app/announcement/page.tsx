@@ -273,7 +273,7 @@ function AnnouncementCard({
           <span />
         )}
 
-        <div className="inline-flex items-center gap-1.5 text-sm font-medium text-[#FFC107] transition-colors">
+        <div className="inline-flex items-center gap-1.5 text-sm text-md font-bold text-[#1B3A8C] hover:text-[#FFC107] hover:underline transition-all duration-200 hover:scale-105 active:scale-95 group">
           Read more
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
         </div>
@@ -878,7 +878,7 @@ export default function AnnouncementPage() {
                 <button
                   type="submit"
                   disabled={newsletterSubmitting || newsletterEmail.trim() === ""}
-                  className="w-full rounded-xl bg-white py-4 font-semibold text-[#0D47A1] hover:bg-gray-100 transition flex items-center justify-center gap-2 disabled:opacity-60"
+                  className="w-full rounded-xl bg-white py-4 font-semibold text-[#0D47A1] hover:bg-gray-100 flex items-center justify-center gap-2 disabled:opacity-60 transition-all duration-200 hover:scale-105 active:scale-95 group"
                 >
                   {newsletterSubmitting ? "Subscribing..." : "Subscribe"}
                   <ArrowRight className="w-4 h-4" />

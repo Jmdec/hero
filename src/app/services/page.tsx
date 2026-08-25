@@ -42,7 +42,6 @@ type SpaceType = {
   faqs: { q: string; a: string }[];
 };
 
-/* Data */
 const spaceTypes: SpaceType[] = [
   {
     id: "private",
@@ -480,39 +479,38 @@ function ServicesPageContent() {
   const moveInSteps = [
     { step: 1, title: "Inquiry", description: "Contact us to learn more about our office spaces and availability." },
     { step: 2, title: "Introduction", description: "We will provide you with detailed information about our office spaces." },
-    { step: 3, title: "Application", description: "Submit your application and provide the necessary documentation." },
-    { step: 4, title: "Examination", description: "We will review your application and conduct a site visit." },
+    { step: 3, title: "Quotation", description: "Receive a tailored quotation based on your preferred workspace, team size, and requirements." },
+    { step: 4, title: "Requirements", description: "Submit the necessary documents and requirements to proceed with your workspace application." },
     { step: 5, title: "Contract", description: "Sign the lease agreement and finalize the move-in process." },
     { step: 6, title: "Start Using", description: "Begin using your new office space and receive ongoing support." },
   ];
 
   const tower6789Features = [
-    "49 private rooms (up to 17 people)",
+    "50 private rooms (1 to 22 people)",
     "PEZA certified building",
-    "24-hour air conditioning",
+    "24/7 Office Access (8AM to 8PM Air-Conditioning)",
     "Meeting rooms up to 10 people",
-    "Use of multifunction copier, printer and scanner.",
+    "Free Access to Amenities",
   ];
 
   const insularLifeFeatures = [
-    "49 private rooms (up to 35 people)",
+    "45 Private Office (1 to 25 Seats)",
     "PEZA certified building",
-    "24-hour air conditioning",
+    "24/7 Office Access (24/7 Air-Conditioning)",
     "Meeting rooms up to 20 people",
-    "Mailbox & locker room included",
+    "Free Access Amenities",
   ];
 
   const landmarkCategories = [
     {
       icon: Building,
-      label: "Major Corporate & Office Buildings",
+      label: "Restaurants & Coffee Shops",
       walk: "0–5 mins walk",
       items: [
-        { name: "PBCom Tower", time: "2–3 mins", desc: "One of the tallest towers in the Philippines and a key financial hub landmark along Ayala Avenue." },
-        { name: "Rufino Pacific Tower", time: "2–4 mins", desc: "Grade A office building housing multinational companies and BPO firms." },
-        { name: "Bank of the Philippine Islands (BPI) Head Office", time: "1–3 mins", desc: "Major banking headquarters, directly within the Ayala Avenue business corridor." },
-        { name: "GT Tower International", time: "4–6 mins", desc: "Prestigious office tower with banking and corporate tenants." },
-        { name: "Ayala Tower One & Exchange Plaza", time: "5–7 mins", desc: "Premium corporate address and one of the most recognized office complexes in Makati CBD." },
+        { name: "Starbucks (Tower 6789)", time: "0–1 min", desc: "Coffee shop located on the ground floor of Tower 6789, perfect for quick meetings or coffee breaks." },
+        { name: "Kawa Ramen", time: "3–5 mins", desc: "Popular ramen spot along Ayala Avenue known for its Japanese-style noodle bowls." },
+        { name: "Jollibee", time: "3–5 mins", desc: "Well-loved Filipino fast-food chain, convenient for quick lunches near the office." },
+        { name: "McDonald's", time: "3–5 mins", desc: "Familiar international fast-food option within walking distance of both HERO locations." },
       ],
     },
     {
@@ -522,7 +520,8 @@ function ServicesPageContent() {
       items: [
         { name: "RCBC Plaza", time: "6–8 mins", desc: "Major financial complex hosting multinational corporations and embassies." },
         { name: "Makati Central Post Office", time: "5–7 mins", desc: "Key postal and government service hub." },
-        { name: "Philippine Stock Exchange Center (PSE Tower)", time: "6–8 mins", desc: "Main stock trading center of the Philippines." },
+        { name: "EastWest Bank", time: "3–6 mins", desc: "Convenient banking branch for day-to-day business transactions." },
+        { name: "UnionBank", time: "3–6 mins", desc: "Accessible banking facility serving the Ayala Avenue business corridor." },
       ],
     },
     {
@@ -569,7 +568,6 @@ function ServicesPageContent() {
 
   return (
     <div className="min-h-screen">
-
       {/* Hero */}
       <section className="relative text-white py-20 lg:py-32 overflow-hidden">
         <div className="absolute inset-0">
@@ -648,7 +646,7 @@ function ServicesPageContent() {
                 </ul>
                 <Link
                   href="/services/tower-6789"
-                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#FFC107] hover:bg-[#FFC107]/80 text-[#1B3A8C] rounded-xl font-bold transition-colors"
+                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#FFC107] hover:bg-[#FFC107]/80 text-[#1B3A8C] rounded-xl font-bold transition-all duration-200 hover:scale-105 active:scale-95 group"
                 >
                   View Tower 6789 Makati
                   <ChevronRight className="w-5 h-5" />
@@ -693,7 +691,7 @@ function ServicesPageContent() {
                 </ul>
                 <Link
                   href="/services/insular-life"
-                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#FFC107] hover:bg-[#FFC107]/80 text-[#1B3A8C] rounded-xl font-bold transition-colors"
+                  className="inline-flex items-center gap-2 w-full justify-center px-6 py-3 bg-[#FFC107] hover:bg-[#FFC107]/80 text-[#1B3A8C] rounded-xl font-bold transition-all duration-200 hover:scale-105 active:scale-95 group"
                 >
                   View Insular Life Building
                   <ChevronRight className="w-5 h-5" />
@@ -743,7 +741,7 @@ function ServicesPageContent() {
                     </span>
                   </div>
 
-                  <div className="mt-auto flex items-center gap-2 pt-8 font-bold text-[#0D47A1] group-hover:gap-3 hover:text-[#FFC107] hover:underline transition-colors">
+                  <div className="mt-auto flex items-center gap-2 pt-8 font-bold text-[#0D47A1] group-hover:gap-3 hover:text-[#FFC107] hover:underline transition-all duration-200 hover:scale-105 active:scale-95 group">
                     <span>Explore Space</span>
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </div>
@@ -867,13 +865,13 @@ function ServicesPageContent() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/quotation"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-semibold hover:bg-gray-100 transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-semibold hover:bg-gray-100 transition-all duration-200 hover:scale-105 active:scale-95 group"
             >
               Get a Quote →
             </Link>
             <Link
               href="/contact"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-semibold hover:bg-white/10 transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-semibold hover:bg-white/10 transition-all duration-200 hover:scale-105 active:scale-95 group"
             >
               Contact Us
             </Link>

@@ -44,6 +44,7 @@ interface QuotationPriceBreakdown {
 }
 
 interface QuotationDetail {
+    quotation_document_id?: number | null;
     full_name: string;
     company_name: string | null;
     email: string;
@@ -538,7 +539,7 @@ function SignatoryDetailsSection({
     onViewId,
 }: {
     detail: QuotationDetail;
-    onViewId: (doc: { title: string; url: string }) => void;
+    onViewId: (doc: { title: string; type: string }) => void;
 }) {
     const sameAsHolder = Boolean(detail.signatory_same_as_id_holder);
 
@@ -582,7 +583,7 @@ function SignatoryDetailsSection({
                 <div className="flex flex-wrap gap-2 mt-3">
                     {signatoryDocUrl && (
                         <button
-                            onClick={() => onViewId({ title: "Signatory ID", url: signatoryDocUrl })}
+                            onClick={() => onViewId({ title: "Signatory ID", type: sameAsHolder ? "government_id" : "signatory_government_id" })}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#C5D2EC] bg-[#EEF2FB] text-[#1B3A8C] text-xs font-semibold hover:opacity-80 transition"
                         >
                             <IdCard className="w-3.5 h-3.5" />
@@ -591,7 +592,7 @@ function SignatoryDetailsSection({
                     )}
                     {governmentDocUrl && (
                         <button
-                            onClick={() => onViewId({ title: "Government ID", url: governmentDocUrl })}
+                            onClick={() => onViewId({ title: "Government ID", type: "government_id" })}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#C5D2EC] bg-[#EEF2FB] text-[#1B3A8C] text-xs font-semibold hover:opacity-80 transition"
                         >
                             <ShieldCheck className="w-3.5 h-3.5" />
@@ -688,7 +689,7 @@ function ImagePreviewModal({
     );
 }
 
-function PaymentDetailsSection({ quote, onView }: { quote: Quotation; onView?: (doc: { title: string; url: string }) => void }) {
+function PaymentDetailsSection({ quote, onView }: { quote: Quotation; onView?: (doc: { title: string; type: string }) => void }) {
     const detail = quote.detail;
     if (!detail) return null;
 
@@ -717,7 +718,7 @@ function PaymentDetailsSection({ quote, onView }: { quote: Quotation; onView?: (
                 <div className="flex items-baseline justify-between gap-4 py-1.5">
                     <span className="text-sm text-[#64748B]">Receipt</span>
                     <button
-                        onClick={() => onView?.({ title: "Receipt", url: receiptUrl })}
+                        onClick={() => onView?.({ title: "Receipt", type: "payment_proof" })}
                         className="text-right shrink-0 max-w-[65%] wrap-break-word text-sm font-semibold text-[#0B1F4A] hover:underline"
                     >
                         View uploaded receipt
@@ -748,6 +749,20 @@ export default function AdminQuotationsPage() {
     const [sendingContractId, setSendingContractId] = useState<number | null>(null);
     const [contractModalQuote, setContractModalQuote] = useState<Quotation | null>(null);
     const [contractEditMode, setContractEditMode] = useState(false);
+
+    async function viewQuotationDocument(document: { title: string; type: string }) {
+        if (!selected?.detail?.quotation_document_id) return;
+
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const response = await fetch(`/api/quotations/${selected.id}/documents/${selected.detail.quotation_document_id}/${document.type}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            cache: "no-store",
+        });
+        if (!response.ok) return;
+
+        const blobUrl = URL.createObjectURL(await response.blob());
+        setIdDoc({ title: document.title, url: blobUrl });
+    }
     const [contractDraft, setContractDraft] = useState("");
     const [contractSavedSnapshot, setContractSavedSnapshot] = useState("");
     const [savingContract, setSavingContract] = useState(false);
@@ -1447,7 +1462,7 @@ export default function AdminQuotationsPage() {
                                 <div>
                                     <ClientInfoSection detail={selected.detail} />
                                     <ReceiptDivider />
-                                    <SignatoryDetailsSection detail={selected.detail} onViewId={setIdDoc} />
+                                    <SignatoryDetailsSection detail={selected.detail} onViewId={viewQuotationDocument} />
                                     <ReceiptDivider />
                                     <ServiceDetailsSection quote={selected} />
                                 </div>
@@ -1496,7 +1511,7 @@ export default function AdminQuotationsPage() {
 
                             {selected.detail && (((isVirtualOffice(selected) && (selected.status === "paid" || selected.status === "contract_sent" || selected.status === "completed")) || (!isVirtualOffice(selected) && (selected.status === "paid" || selected.status === "contract_sent" || selected.status === "completed")))) && (
                                 <div className="space-y-2.5">
-                                    <PaymentDetailsSection quote={selected} onView={setIdDoc} />
+                                    <PaymentDetailsSection quote={selected} onView={viewQuotationDocument} />
 
                                     <p className="text-xs font-semibold text-[#64748B]">Contract</p>
                                     <button

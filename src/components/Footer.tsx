@@ -243,7 +243,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function ColumnHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="relative inline-block text-[15px] tracking-wide uppercase text-white/90 mb-5 pb-3">
+    <h3 className="relative font-bold inline-block text-[15px] tracking-wide uppercase text-white/90 mb-5 pb-3">
       {children}
       <span className="absolute left-0 bottom-0 h-0.5 w-8 bg-[#FFC107]" />
     </h3>
@@ -267,7 +267,7 @@ function DirectoryEntry({
       rel="noopener noreferrer"
       className="group flex items-start gap-4 py-4 first:pt-0 border-b border-white/10 last:border-b-0"
     >
-      <span className="shrink-0 text-xl leading-none text-[#FFC107] tabular-nums pt-0.5">
+      <span className="shrink-0 text-xl leading-none text-[#FFC107] tabular-nums pt-0.5 font-bold">
         {floor}
       </span>
       <span className="text-sm leading-6 text-gray-300 group-hover:text-white transition-colors">
@@ -303,7 +303,7 @@ export default function Footer() {
 
   return (
     <>
-      <footer className="bg-[#0A1B33] text-gray-300 border-t-2 border-[#FFC107]">
+      <footer className="bg-[#070084] text-gray-300 border-t-2 border-[#FFC107]">
         <div className="max-w-7xl mx-auto px-4 py-10">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
             {/* Company Info */}
@@ -328,7 +328,7 @@ export default function Footer() {
               <p className="text-md text-gray-400 leading-relaxed italic">
                 Your Workspace for Success.
               </p>
-              <p className="text-sm text-gray-500 leading-6 max-w-xs text-justify">
+              <p className="text-sm text-gray-400 max-w-xs text-justify">
                 Private offices, meeting rooms, and event space across two Makati
                 addresses — ready when you are.
               </p>
@@ -400,11 +400,18 @@ export default function Footer() {
                   +63-(0)2-8801-3417
                 </a>
                 <a
-                  href="mailto:sales@heroph.net"
+                  href="tel:+639173224211"
+                  className="flex items-center gap-3 text-sm text-gray-300 hover:text-[#FFC107] transition-colors"
+                >
+                  <Phone className="w-4 h-4 text-[#FFC107] shrink-0" />
+                  +63 917 322 4211
+                </a>
+                <a
+                  href="mailto:salesofficer@heroph.net"
                   className="flex items-center gap-3 text-sm text-gray-300 hover:text-[#FFC107] transition-colors"
                 >
                   <Mail className="w-4 h-4 text-[#FFC107] shrink-0" />
-                  sales@heroph.net
+                  salesofficer@heroph.net
                 </a>
               </div>
             </div>
@@ -414,10 +421,10 @@ export default function Footer() {
           <div className="mt-10 pt-6 border-t border-white/10">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex flex-col items-center md:items-start gap-1">
-                <p className="text-xs tracking-wide text-gray-500">
+                <p className="text-xs tracking-wide text-gray-400">
                   &copy; {new Date().getFullYear()} HERO Serviced Office. All rights reserved.
                 </p>
-                <span className="text-xs tracking-wide text-gray-600">
+                <span className="text-xs tracking-wide text-gray-400">
                   Powered by{' '}
                   <a
                     href="https://www.infinitechphil.com/"
@@ -428,7 +435,7 @@ export default function Footer() {
                 </span>
               </div>
 
-              <div className="flex items-center gap-6 text-xs tracking-wide text-gray-500">
+              <div className="flex items-center gap-6 text-xs tracking-wide text-gray-400">
                 <button
                   onClick={() => setModal('privacy')}
                   className="hover:text-[#FFC107] transition-colors cursor-pointer uppercase"

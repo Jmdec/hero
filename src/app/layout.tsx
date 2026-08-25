@@ -558,8 +558,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en-PH"
+    <html lang="en" data-scroll-behavior="smooth"
       className={`${montserrat.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>

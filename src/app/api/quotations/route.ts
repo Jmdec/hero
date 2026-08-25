@@ -7,55 +7,6 @@ import {
 
 const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "https://localhost:8000").replace(/\/+$/g, "");
 const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
-const LARAVEL_BASE_URL = process.env.LARAVEL_APP_URL ?? LARAVEL_API_BASE.replace(/\/api\/?$/, "");
-
-
-function resolveLaravelFileUrl(url: string | null | undefined): string | null {
-    if (!url) return null;
-
-    if (/^https?:\/\//i.test(url)) {
-        return url;
-    }
-
-    if (url.startsWith("/")) {
-        return `${LARAVEL_BASE_URL}${url}`;
-    }
-
-    return `${LARAVEL_BASE_URL}/${url}`;
-}
-
-async function fetchDocumentCopyFromUrl(
-    url: string | null | undefined,
-    filename: string | null | undefined,
-    fallbackContentType: string
-): Promise<QuotationDocumentCopy | null> {
-    const absoluteUrl = resolveLaravelFileUrl(url);
-    if (!absoluteUrl) return null;
-
-    try {
-        const res = await fetch(absoluteUrl, {
-            headers: { Accept: "*/*" },
-            cache: "no-store",
-        });
-
-        if (!res.ok) {
-            console.warn(`Unable to fetch file for email attachment (${res.status}): ${absoluteUrl}`);
-            return null;
-        }
-
-        const bytes = await res.arrayBuffer();
-        const safeName = filename?.trim() || absoluteUrl.split("/").pop() || "document";
-
-        return {
-            filename: safeName,
-            content: Buffer.from(bytes),
-            contentType: res.headers.get("content-type") || fallbackContentType,
-        };
-    } catch (error) {
-        console.warn(`Error fetching file for email attachment: ${absoluteUrl}`, error);
-        return null;
-    }
-}
 
 async function fileToDocumentCopy(file: File | null): Promise<QuotationDocumentCopy | null> {
     if (!file) return null;
@@ -116,6 +67,9 @@ export async function POST(request: NextRequest) {
 
             for (const [key, value] of formData.entries()) {
                 if (value instanceof File) {
+                    if (key === "payment_proof") paymentProofCopy = await fileToDocumentCopy(value);
+                    if (key === "government_id") governmentIdCopy = await fileToDocumentCopy(value);
+                    if (key === "signatory_government_id") signatoryGovernmentIdCopy = await fileToDocumentCopy(value);
                     backendFormData.append(key, value, value.name);
                 } else {
                     backendFormData.append(key, value);
@@ -155,32 +109,6 @@ export async function POST(request: NextRequest) {
         const savedQuotation = ((data && typeof data === "object" && "data" in data)
             ? (data as any).data
             : data) as (QuotationPayload & { id?: number | string }) | null;
-
-        // Fallback: when in-memory multipart File copies are missing, pull the persisted
-        // files from Laravel storage URLs so client/admin emails still include attachments.
-        if (!paymentProofCopy) {
-            paymentProofCopy = await fetchDocumentCopyFromUrl(
-                savedQuotation?.detail?.receipt_url,
-                savedQuotation?.detail?.receipt,
-                "application/octet-stream"
-            );
-        }
-
-        if (!governmentIdCopy) {
-            governmentIdCopy = await fetchDocumentCopyFromUrl(
-                savedQuotation?.detail?.government_id_url,
-                savedQuotation?.detail?.government_id_file,
-                "application/octet-stream"
-            );
-        }
-
-        if (!signatoryGovernmentIdCopy) {
-            signatoryGovernmentIdCopy = await fetchDocumentCopyFromUrl(
-                savedQuotation?.detail?.signatory_id_url,
-                savedQuotation?.detail?.signatory_id_file,
-                "application/octet-stream"
-            );
-        }
 
         let notificationResult: { userSent: boolean; adminSent: boolean } | null = null;
 

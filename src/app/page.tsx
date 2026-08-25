@@ -112,15 +112,15 @@ export default function Home() {
     },
     {
       icon: Building2,
-      title: "Comfortable Office Space",
+      title: "Professional Workspace",
       description:
         "Spacious and well-equipped office spaces designed to enhance your productivity.",
     },
     {
       icon: Headset,
-      title: "Professional Support",
+      title: "Community Engagement",
       description:
-        "Professional assistance available to support your business needs.",
+        "Monthly networking events, seminars, freebies, and community activities designed to help you connect, learn, and grow.",
     },
   ];
 
@@ -128,31 +128,31 @@ export default function Home() {
     {
       title: "Private Offices",
       description:
-        "Private offices designed for individual professionals and small teams.",
+        "Your own professional office, ready for teams of any size.",
       image: "/spaces/private-office.webp",
     },
     {
       title: "Virtual Offices",
       description:
-        "Remote office solutions for businesses that need flexibility and scalability.",
+        "A prestigious Makati business address without the cost of a full office.",
       image: "/spaces/virtual-office.webp",
     },
     {
       title: "Co-working Spaces",
       description:
-        "Flexible workspaces designed for freelancers and entrepreneurs.",
+        "A flexible, professional workspace built for productivity and connection.",
       image: "/spaces/co-working-space.webp",
     },
     {
       title: "Meeting Rooms",
       description:
-        "Professional meeting spaces equipped with the latest technology.",
+        "Professional spaces for meetings, discussions, presentations, and more.",
       image: "/spaces/meeting-room.webp",
     },
     {
       title: "Event Space",
       description:
-        "Versatile event spaces ideal for seminars, workshops, networking events, and corporate gatherings.",
+        "A versatile venue for seminars, networking, workshops, and corporate events.",
       image: "/spaces/event-space.webp",
     },
   ];
@@ -348,33 +348,34 @@ export default function Home() {
                 transition={{ duration: 0.5 }}
                 className="max-w-3xl pb-10"
               >
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
-                  Your Gateway to Business Success in the <br />
+                <h1 className="text-5xl lg:text-6xl font-bold leading-tight mb-6">
+                  Establish a Strategic Business Presence in the&nbsp;
                   <span className="text-[#8FA8D6]">Philippines</span>
                 </h1>
-                <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl">
-                  Premium serviced offices in the heart of Makati City. <br />
-                  Perfect for Japanese companies expanding into the Philippines
-                  market.
+                <p className="text-md lg:text-xl text-gray-300 mb-8 max-w-2xl text-justify md:text-left">
+                  Located in Makati City, the Philippines&apos; Business and Financial Capital,
+                  HERO offers professional and flexible workspace solutions designed for startups,
+                  SMEs, expanding companies, and businesses ready to establish, operate, and
+                  grow in the Philippines.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
                     href="/virtual-tour"
-                    className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-bold hover:bg-gray-200 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-bold hover:bg-gray-200 transition-all duration-200 hover:scale-105 active:scale-95 group"
                   >
                     <Play className="w-5 h-5" />
                     Virtual Tour
                   </Link>
                   <Link
                     href="/contact"
-                    className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#FFC107] text-[#1B3A8C] rounded-full font-bold hover:bg-[#FFC107]/80 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#FFC107] text-[#1B3A8C] rounded-full font-bold hover:bg-[#FFC107]/80 transition-all duration-200 hover:scale-105 active:scale-95 group"
                   >
                     Contact Us
                   </Link>
                 </div>
                 <div className="flex items-center gap-8 mt-10 pt-10 border-t border-white/10">
                   <div>
-                    <div className="text-3xl font-bold">15+</div>
+                    <div className="text-3xl font-bold">10+</div>
                     <div className="text-sm text-gray-400">Years Experience</div>
                   </div>
                   <div>
@@ -410,7 +411,7 @@ export default function Home() {
 
       {/* Features Section */}
       <section className="py-4 bg-[#F5F5F3]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="px-2 md:px-16">
           {pageLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {Array.from({ length: 4 }).map((_, index) => (
@@ -426,7 +427,7 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {features.map((feature, index) => (
                 <motion.div
                   key={feature.title}
@@ -436,12 +437,14 @@ export default function Home() {
                   viewport={{ once: true }}
                   className="group p-6 bg-[#F5F5F3] rounded-2xl"
                 >
-                  <div className="w-14 h-14 bg-[#1B3A8C] rounded-xl flex items-center justify-center mb-4">
-                    <feature.icon className="w-7 h-7 text-white" />
+                  <div className="flex gap-2 items-center">
+                    <div className="w-14 h-14 bg-[#1B3A8C] rounded-xl flex items-center justify-center mb-4">
+                      <feature.icon className="w-7 h-7 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      {feature.title}
+                    </h3>
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    {feature.title}
-                  </h3>
                   <p className="text-gray-600">{feature.description}</p>
                 </motion.div>
               ))}
@@ -465,7 +468,7 @@ export default function Home() {
             </div>
             <Link
               href="/services"
-              className="inline-flex items-center gap-2 mt-4 md:mt-0 text-[#1B3A8C] font-semibold hover:text-[#FFC107]"
+              className="inline-flex items-center gap-2 text-[#1B3A8C] font-semibold hover:text-[#FFC107] transition-all duration-200 hover:scale-105 active:scale-95 group"
             >
               View All Services
               <ArrowRight className="w-5 h-5" />
@@ -520,7 +523,7 @@ export default function Home() {
                     <div className="flex items-center justify-between">
                       <Link
                         href="/quotation"
-                        className="text-md font-bold text-[#1B3A8C] hover:text-[#FFC107] hover:underline transition-colors"
+                        className="text-md font-bold text-[#1B3A8C] hover:text-[#FFC107] hover:underline transition-all duration-200 hover:scale-105 active:scale-95 group"
                       >
                         Get Quotation →
                       </Link>
@@ -580,14 +583,14 @@ export default function Home() {
                 <div className="mt-6 flex flex-wrap gap-4 text-sm">
                   <Link
                     href="/about"
-                    className="rounded-full bg-[#FFC107] px-5 py-4 font-bold text-[#1B3A8C] transition hover:bg-transparent hover:text-[#1B3A8C] hover:border-[#FFC107] hover:border"
+                    className="rounded-full bg-[#FFC107] px-5 py-4 font-bold text-[#1B3A8C] hover:bg-transparent hover:text-[#1B3A8C] hover:border-[#FFC107] hover:border transition-all duration-200 hover:scale-105 active:scale-95 group"
                   >
                     Learn More
                   </Link>
 
                   <Link
                     href="/services"
-                    className="rounded-full border border-[#FFC107] px-5 py-4 font-bold text-[#1B3A8C] transition hover:bg-[#FFC107] hover:text-[#1B3A8C]"
+                    className="rounded-full border border-[#FFC107] px-5 py-4 font-bold text-[#1B3A8C] hover:bg-[#FFC107] hover:text-[#1B3A8C] transition-all duration-200 hover:scale-105 active:scale-95 group"
                   >
                     Explore Services
                   </Link>
@@ -637,7 +640,7 @@ export default function Home() {
                 What Our Clients Say
               </h2>
               <p className="text-lg text-gray-600">
-                Trusted by growing companies in Makati
+                Trusted by Local and International Companies
               </p>
             </div>
           </div>
@@ -798,13 +801,13 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
                   href="/quotation"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-bold hover:bg-gray-100 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-bold hover:bg-gray-100 transition-all duration-200 hover:scale-105 active:scale-95 group"
                 >
                   Get a Quote →
                 </Link>
                 <Link
                   href="/contact"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-bold hover:bg-white/10 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-bold hover:bg-white/10 transition-all duration-200 hover:scale-105 active:scale-95 group"
                 >
                   Contact Us
                 </Link>

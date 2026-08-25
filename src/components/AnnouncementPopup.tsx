@@ -62,6 +62,26 @@ function formatDate(value: string) {
 
 const PROMO_TAG_KEYWORDS = ["promo", "promotion", "promotional", "offer", "deal", "sale", "discount"];
 
+// Used whenever an announcement has no image of its own, or its uploaded
+// image fails to load — so the popup never looks like an empty flat-color box.
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=1000&q=80";
+
+function getAnnouncementImageUrl(image?: string | null) {
+  if (!image) return null;
+
+  const configured =
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.LARAVEL_API_URL ||
+    "http://localhost:8000";
+  const normalized = configured.replace(/\/+$/g, "");
+  const base = normalized.endsWith("/api")
+    ? normalized.replace(/\/api$/, "")
+    : normalized;
+
+  return `${base}/storage/${image.replace(/^\/+/, "")}`;
+}
+
 function isPromotionalAnnouncement(item: Announcement) {
   const tag = (item.tag || "").toLowerCase();
   const title = (item.title || "").toLowerCase();
@@ -74,9 +94,9 @@ function isPromotionalAnnouncement(item: Announcement) {
 export default function AnnouncementPopup() {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [open, setOpen] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
   const shouldReduceMotion = useReducedMotion();
 
-  // --- Data loading (unchanged) ---
   useEffect(() => {
     let cancelled = false;
 
@@ -117,8 +137,7 @@ export default function AnnouncementPopup() {
     setOpen(false);
   }, []);
 
-  // Close on Escape only. No scroll lock — the page stays fully interactive
-  // while the widget floats above it.
+  // Close on Escape, and don't let the page scroll behind the popup.
   useEffect(() => {
     if (!open) return;
 
@@ -126,9 +145,24 @@ export default function AnnouncementPopup() {
       if (e.key === "Escape") handleClose();
     }
 
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [open, handleClose]);
+
+  // Reset image-error tracking whenever a new announcement is loaded
+  useEffect(() => {
+    setImageFailed(false);
+  }, [announcement?.id]);
+
+  const uploadedImageSrc = getAnnouncementImageUrl(announcement?.image);
+  const imageSrc =
+    uploadedImageSrc && !imageFailed ? uploadedImageSrc : FALLBACK_IMAGE;
 
   const socialPlatforms = announcement
     ? normalizeSocialMedia(announcement.social_platforms, announcement.social_links)
@@ -137,83 +171,115 @@ export default function AnnouncementPopup() {
   return (
     <AnimatePresence>
       {open && announcement && (
-        <div
-          className="pointer-events-none fixed inset-x-0 bottom-0 z-1000 flex items-end justify-start px-3 sm:px-6"
-          aria-live="polite"
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: shouldReduceMotion ? 0 : 0.25 }}
+          className="fixed inset-0 z-1000 flex items-center justify-center overflow-y-auto bg-[#0A1E3F]/70 p-4 py-8 backdrop-blur-sm"
+          onClick={handleClose}
         >
-          {/* Mascot — planted in front, leaning toward the note */}
-          <motion.div
-            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 24, rotate: -4 }}
-            animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, rotate: 0 }}
-            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
-            transition={{ duration: shouldReduceMotion ? 0.15 : 0.4, ease: "easeOut" }}
-            className="pointer-events-none relative z-10 hidden shrink-0 sm:block"
-          >
+          {/* Chibi mascot, pinned to the bottom-left of the viewport, behind the dialog */}
+          <div className="pointer-events-none fixed bottom-4 left-4 z-10 hidden sm:block">
             <Image
-              src="/hero-mascot.webp"
+              src="/hero-chibi.webp"
               alt="HERO Serviced Office"
-              width={180}
-              height={180}
+              width={340}
+              height={340}
               unoptimized
-              className="drop-shadow-[0_10px_20px_rgba(13,25,54,0.35)]"
             />
-          </motion.div>
+          </div>
 
-          {/* Note card */}
           <motion.div
             role="dialog"
-            aria-modal="false"
+            aria-modal="true"
             aria-labelledby="announcement-title"
             initial={
               shouldReduceMotion
                 ? { opacity: 0 }
-                : { opacity: 0, scale: 0.9, x: -14, rotate: -2 }
+                : { opacity: 0, scale: 0.95, y: 24 }
             }
             animate={
               shouldReduceMotion
                 ? { opacity: 1 }
-                : { opacity: 1, scale: 1, x: 0, rotate: -1 }
+                : { opacity: 1, scale: 1, y: 0 }
             }
             exit={
               shouldReduceMotion
                 ? { opacity: 0 }
-                : { opacity: 0, scale: 0.94, x: -10 }
+                : { opacity: 0, scale: 0.96, y: 12 }
             }
             transition={
               shouldReduceMotion
                 ? { duration: 0.15 }
-                : { type: "spring", stiffness: 260, damping: 22, delay: 0.08 }
+                : { type: "spring", stiffness: 280, damping: 26 }
             }
-            className="pointer-events-auto relative bottom-10 -ml-3 w-68 max-w-[calc(100vw-2rem)] sm:w-75"
+            onClick={(e) => e.stopPropagation()}
+            className="relative z-20 mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:max-w-3xl md:flex-row"
           >
-            <div className="overflow-hidden rounded-[18px] border border-[#0D2A5C]/10 bg-[#FBFAF6] shadow-[0_18px_40px_-12px_rgba(13,25,54,0.35)]">
+            {/* Close button — consistent placement regardless of column layout */}
+            <button
+              onClick={handleClose}
+              className="absolute right-3 top-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow-md backdrop-blur-sm transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-[#0D47A1]"
+              aria-label="Close announcement"
+            >
+              <X className="h-5 w-5" />
+            </button>
 
-              <div className="max-h-[46vh] overflow-y-auto px-4 pb-4 pt-3.5">
-                  <button
-                    onClick={handleClose}
-                    className="absolute top-3 right-3 h-6 w-6 shrink-0 items-end justify-end rounded-full text-[#0D2A5C] transition-colors hover:text-gray-400 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-[#00D1B2]"
-                    aria-label="Close announcement"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+            {/* Signature: a document-tab / directory-plaque spine, brand gradient.
+            Runs along the top on mobile, the left edge on desktop. */}
+            <motion.div
+              initial={shouldReduceMotion ? { opacity: 0 } : { scaleX: 0 }}
+              animate={shouldReduceMotion ? { opacity: 1 } : { scaleX: 1 }}
+              transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+              style={{ transformOrigin: "left" }}
+              className="absolute inset-x-0 top-0 z-20 h-1.5 bg-linear-to-r from-[#1B3A8C] via-[#0D47A1] to-[#00ACC1] md:hidden"
+            />
+            <motion.div
+              initial={shouldReduceMotion ? { opacity: 0 } : { scaleY: 0 }}
+              animate={shouldReduceMotion ? { opacity: 1 } : { scaleY: 1 }}
+              transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+              style={{ transformOrigin: "top" }}
+              className="absolute inset-y-0 left-0 z-20 hidden w-1.5 bg-linear-to-b from-[#1B3A8C] via-[#0D47A1] to-[#00ACC1] md:block"
+            />
+
+              {/* Image column — fixed banner height on mobile, fills the left half on desktop */}
+              <div className="relative h-44 w-full shrink-0 overflow-hidden sm:h-56 md:h-auto md:w-2/5">
+                <Image
+                  src={imageSrc}
+                  alt={announcement.title}
+                  fill
+                  unoptimized
+                  className="object-cover"
+                  onError={() => setImageFailed(true)}
+                />
+              </div>
+
+              {/* Content column */}
+              <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-5 sm:p-6 md:p-7">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-md font-medium text-blue-700">
+                    {announcement.tag}
+                  </span>
+                  <div className="flex items-center gap-1.5 text-md text-gray-400">
+                    <Calendar className="h-3.5 w-3.5" />
+                    {formatDate(announcement.date)}
+                  </div>
+                </div>
+
                 <h3
                   id="announcement-title"
-                  className="text-[17px] font-bold leading-snug tracking-tight text-[#101828]"
+                  className="text-2xl font-bold leading-tight tracking-tight text-gray-900 sm:text-2xl"
                 >
                   {announcement.title}
                 </h3>
 
-                <div className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-[#8A8577]">
-                  <Calendar className="h-3 w-3" />
-                  {formatDate(announcement.date)}
-                </div>
-
-                <p className="mt-2.5 whitespace-pre-wrap text-[14px] leading-relaxed text-[#3E4451]">
+                <p className="whitespace-pre-wrap text-lg leading-relaxed text-gray-600 sm:text-[15px]">
                   {announcement.content}
                 </p>
 
                 {socialPlatforms.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[#0D2A5C]/8 pt-3">
+                  <div className="flex flex-wrap gap-2">
                     {socialPlatforms.map((entry) =>
                       entry.link ? (
                         <a
@@ -221,22 +287,20 @@ export default function AnnouncementPopup() {
                           href={entry.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-full bg-[#0D1E3F]/6 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#0D1E3F] transition-colors hover:bg-[#0D1E3F]/12"
+                          className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
                         >
-                          {formatSocialPlatform(entry.platform)}
-                          <ExternalLink className="h-2.5 w-2.5" />
+                          <span className="flex items-center gap-1 uppercase tracking-wide">
+                            {formatSocialPlatform(entry.platform)}{" "}
+                            <ExternalLink className="h-3 w-3" />
+                          </span>
                         </a>
                       ) : null,
                     )}
                   </div>
                 )}
               </div>
-
-              {/* Bottom accent — a single warm ember line, the "signature" mark */}
-              <div className="h-0.75 w-full bg-[linear-gradient(90deg,#00D1B2_0%,#0D47A1_55%,#0D1E3F_100%)]" />
-            </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

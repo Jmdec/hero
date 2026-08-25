@@ -521,7 +521,7 @@ function MultiStepForm() {
         Send Us a Message
       </h2>
       <p className="text-gray-600 mb-6">
-        Fill out the form below and we&apos;ll get back to you within 24 hours
+        Fill out the form below, and our team will get back to you as soon as possible.
       </p>
 
       <StepProgress step={step} />
@@ -1079,16 +1079,15 @@ function MapCard({
           onLoad={() => setLoaded(true)}
           className={`absolute inset-0 transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
         />
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 pointer-events-none flex items-center justify-center">
           <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             View on Google Maps
           </span>
-        </div>
-        <div className="absolute top-3 right-3 z-20 px-3 py-1.5 rounded-full bg-[#0A1E3F] backdrop-blur-sm border border-white/60 shadow-sm">
+
+        <div className="absolute top-3 right-3 z-30 px-3 py-1.5 rounded-full bg-[#0A1E3F] backdrop-blur-sm border border-white/60 shadow-sm pointer-events-none">
           <span className="text-sm font-bold text-white">{title}</span>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
 

@@ -125,7 +125,7 @@ export default function ClientLayout({
         )}
       </AnimatePresence>
 
-      {isPublicPage && <AnnouncementPopup key={pathname} />}
+      {pathname === "/" && <AnnouncementPopup key={pathname} />}
 
       {/* Public Navigation */}
       {isPublicPage && !isLoading && <Navigation />}

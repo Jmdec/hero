@@ -15,14 +15,10 @@ import {
   CheckCircle2,
   X,
   Wallet,
-  QrCode,
-  ArrowRightLeft,
   Upload,
-  Clock,
   AlertCircle,
   MapPin,
   Eye,
-  ShieldAlert,
 } from "lucide-react";
 
 type ServiceId = "private-office" | "virtual-office" | "coworking" | "meeting-room" | "event-space";
@@ -622,7 +618,7 @@ function Step2PrivateOffice({
             value={data.seats}
             onChange={(e) => onChange({ seats: e.target.value })}
             className={errors.seats ? inputErrCls : inputCls}
-            placeholder={`Maximum ${maxSeats}`}
+            placeholder="Number of Seats"
           />
         </Field>
         <Field label="Target Move-in Date" required error={errors.moveInDate}>
