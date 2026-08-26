@@ -35,7 +35,7 @@ export interface ChatConversation {
     agent_started_at?: string | null;
     agent_ended_at?: string | null;
     last_message_at?: string | null;
-    agent_id?: string | null;
+    agent_id?: number | null;
     preferred_contact_details?: string | null;
     preferred_contact_method?: "email" | "phone" | "either" | null;
     inquiry?: {

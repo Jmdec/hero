@@ -1154,16 +1154,22 @@ export default function AdminChatsPage() {
                                                                         </p>
                                                                     </>
                                                                 ) : null}
-                                                            </div>
 
-                                                            {selectedConversation.agent_started_at ? (
-                                                                <p className="mt-1 text-[11px] text-slate-400">
-                                                                    Taken at:{" "}
-                                                                    {new Date(
-                                                                        selectedConversation.agent_started_at,
-                                                                    ).toLocaleString()}
-                                                                </p>
-                                                            ) : null}
+                                                                {selectedConversation.agent_started_at ? (
+                                                                    <>
+                                                                        <span className="hidden text-slate-300 sm:inline">
+                                                                            ·
+                                                                        </span>
+
+                                                                        <p className="text-xs font-semibold text-slate-700">
+                                                                            Taken at:{" "}
+                                                                            {new Date(
+                                                                                selectedConversation.agent_started_at,
+                                                                            ).toLocaleString()}
+                                                                        </p>
+                                                                    </>
+                                                                ) : null}
+                                                            </div>
                                                         </div>
                                                     ) : null}
                                                 </div>
@@ -1198,8 +1204,8 @@ export default function AdminChatsPage() {
                                                             }}
                                                             disabled={markingAddressed}
                                                             className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedIsAddressed
-                                                                    ? "bg-teal-50 text-teal-700 hover:bg-teal-100"
-                                                                    : "text-slate-700 hover:bg-teal-50 hover:text-teal-700"
+                                                                ? "bg-teal-50 text-teal-700 hover:bg-teal-100"
+                                                                : "text-slate-700 hover:bg-teal-50 hover:text-teal-700"
                                                                 }`}
                                                         >
                                                             <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -1225,8 +1231,8 @@ export default function AdminChatsPage() {
                                                                     : "No email on file for this visitor"
                                                             }
                                                             className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedRequestedHistory
-                                                                    ? "bg-sky-50 text-sky-700 hover:bg-sky-100"
-                                                                    : "text-slate-700 hover:bg-sky-50 hover:text-sky-700"
+                                                                ? "bg-sky-50 text-sky-700 hover:bg-sky-100"
+                                                                : "text-slate-700 hover:bg-sky-50 hover:text-sky-700"
                                                                 }`}
                                                         >
                                                             <Mail className="h-4 w-4 shrink-0" />
@@ -1247,13 +1253,20 @@ export default function AdminChatsPage() {
                                                             }}
                                                             disabled={
                                                                 selectedIsEnded ||
-                                                                Boolean(selectedConversation?.agent)
+                                                                Boolean(selectedConversation?.agent) ||
+                                                                selectedConversation.status === "agent_active"
                                                             }
                                                             className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-40"
                                                         >
                                                             <Headset className="h-4 w-4 shrink-0" />
 
-                                                            <span>Take Chat</span>
+                                                            <span>
+                                                                {selectedConversation.agent
+                                                                    ? `Assigned to ${selectedConversation.agent.name ?? "another agent"}`
+                                                                    : selectedConversation.status === "agent_active"
+                                                                        ? "Live agent session active"
+                                                                        : "Take Chat"}
+                                                            </span>
                                                         </button>
 
                                                         {/* Return to AI */}
@@ -1374,18 +1387,6 @@ export default function AdminChatsPage() {
                                                     <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#0D47A1]">
                                                         <Headset className="h-3.5 w-3.5" />
                                                         You own this chat — the AI assistant is paused here.
-                                                    </p>
-                                                ) : null}
-                                                {selectedRequestedHistory ? (
-                                                    <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-sky-600">
-                                                        <Mail className="h-3.5 w-3.5" />
-                                                        This visitor asked for a copy of the chat — use &quot;Send history&quot; above.
-                                                    </p>
-                                                ) : null}
-                                                {!selectedIsAddressed ? (
-                                                    <p className="mb-2 flex items-center gap-1.5 text-xs text-slate-400">
-                                                        <AlertCircle className="h-3.5 w-3.5" />
-                                                        Not yet marked as addressed — check before replying to avoid a duplicate response.
                                                     </p>
                                                 ) : null}
                                                 <textarea
