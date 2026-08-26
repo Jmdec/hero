@@ -1047,7 +1047,7 @@ export default function AdminChatsPage() {
 
                     {/* Chat statistics */}
                     <div className="mb-2.5 flex flex-col gap-2.5 sm:mb-3 sm:gap-3 xl:flex-row xl:items-start">
-                        <div className="min-w-0 flex-1">
+                        <div className="hidden min-w-0 flex-1 lg:block">
                             {statsLoading ? <ChatStatsSkeleton /> : <ChatStatistics analytics={chatAnalytics} onOpenReminderOverview={openReminderOverview} />}
                         </div>
 
