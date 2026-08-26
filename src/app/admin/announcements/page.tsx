@@ -1169,452 +1169,607 @@ export default function AnnouncementsAdmin() {
       {/* View Dialog — read-only details, status is the only editable field */}
       {viewOpen && viewTarget && (
         <ModalBackdrop onClose={closeView}>
-          <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Announcement details
-              </h2>
-              <button
-                onClick={closeView}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+          <div className="flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
 
-            <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 py-5">
-              {/* Title + tag */}
-              <div className="rounded-lg bg-slate-50 p-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200">
-                    <Tag className="h-3 w-3" />
+            {/* Hero Image */}
+            <div className="relative h-48 w-full shrink-0 bg-slate-100 sm:h-56 md:h-64">
+              {getAnnouncementImageUrl(viewTarget) ? (
+                <img
+                  src={getAnnouncementImageUrl(viewTarget) ?? ""}
+                  alt={viewTarget.title || "Announcement image"}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-slate-300">
+                  <FileText className="h-10 w-10 sm:h-12 sm:w-12" />
+                </div>
+              )}
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={closeView}
+                aria-label="Close announcement"
+                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-md backdrop-blur-sm transition hover:bg-white hover:text-slate-700 sm:right-4 sm:top-4"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              {/* Tags */}
+              <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center gap-2 sm:left-4 sm:right-4">
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-medium text-slate-700 shadow">
+                  <Tag className="h-3 w-3" />
+                  <span className="max-w-[180px] truncate">
                     {viewTarget.tag}
                   </span>
-                  <span className="flex items-center gap-1 text-xs text-slate-400">
-                    <Calendar className="h-3 w-3" />
-                    {formatDate(viewTarget.date)}
-                  </span>
-                </div>
-                <p className="text-base font-semibold text-slate-900">
-                  {viewTarget.title}
-                </p>
-              </div>
+                </span>
 
-              {/* Content */}
-              <div>
-                {(viewTarget.image_url || getAnnouncementImageUrl(viewTarget)) ? (
-                  <div className="mb-5 overflow-hidden rounded-lg border border-slate-100">
-                    <img
-                      src={viewTarget.image_url ?? getAnnouncementImageUrl(viewTarget) ?? ""}
-                      alt={viewTarget.title}
-                      className="max-h-64 w-full object-cover"
-                    />
-                  </div>
-                ) : null}
-                <dt className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-400">
-                  <FileText className="h-3 w-3" /> Content
-                </dt>
-                <dd className="whitespace-pre-wrap rounded-lg border border-slate-100 bg-white p-3 text-sm leading-relaxed text-slate-700">
-                  {viewTarget.content || "—"}
-                </dd>
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize shadow ${STATUS_STYLES[viewTarget.status] ??
+                    "bg-white/95 text-slate-600"
+                    }`}
+                >
+                  {viewTarget.status}
+                </span>
               </div>
+            </div>
 
-              {/* Meta */}
-              <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="space-y-5 px-4 py-5 sm:px-6 sm:py-6">
+
+                {/* Title + Date */}
                 <div>
-                  <dt className="flex items-center gap-1 text-xs font-medium text-slate-400">
-                    <Clock className="h-3 w-3" /> Created
-                  </dt>
-                  <dd className="mt-0.5 text-sm text-slate-700">
-                    {formatDate(viewTarget.created_at)}
-                  </dd>
+                  <h2 className="text-lg font-semibold leading-snug text-slate-900 sm:text-xl">
+                    {viewTarget.title}
+                  </h2>
+
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400">
+                    <Calendar className="h-3.5 w-3.5 shrink-0" />
+                    {formatDate(viewTarget.date)}
+                  </p>
                 </div>
-                {viewTarget.updated_at && (
+
+                {/* Content */}
+                <div>
+                  <div className="mb-1.5 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                    <FileText className="h-3 w-3" />
+                    Content
+                  </div>
+
+                  <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700 sm:max-h-72 sm:p-4">
+                    {viewTarget.content || "—"}
+                  </div>
+                </div>
+
+                {/* Created / Updated */}
+                <dl className="grid grid-cols-1 gap-3 rounded-xl border border-slate-100 bg-white p-3 sm:grid-cols-2 sm:p-4">
                   <div>
                     <dt className="flex items-center gap-1 text-xs font-medium text-slate-400">
-                      <Clock className="h-3 w-3" /> Last updated
+                      <Clock className="h-3 w-3" />
+                      Created
                     </dt>
-                    <dd className="mt-0.5 text-sm text-slate-700">
-                      {formatDate(viewTarget.updated_at)}
-                    </dd>
-                  </div>
-                )}
-              </dl>
 
-              {/* Social media — each platform with its own post link */}
-              {normalizeSocialMedia(
-                viewTarget.social_platforms,
-                viewTarget.social_links,
-              ).length > 0 && (
-                  <div>
-                    <dt className="mb-1.5 text-xs font-medium text-slate-400">
-                      Social media
-                    </dt>
-                    <dd className="space-y-1.5">
-                      {formatSocialMedia(
-                        viewTarget.social_platforms,
-                        viewTarget.social_links,
-                      ).map((entry, i) => (
-                        <div
-                          key={`${entry.label}-${i}`}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2"
-                        >
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                            {entry.label}
-                          </span>
-                          {entry.link ? (
-                            <a
-                              href={entry.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex min-w-0 items-center gap-1 truncate text-xs text-blue-600 hover:underline"
-                            >
-                              <Link2 className="h-3 w-3 shrink-0" />
-                              <span className="truncate">{entry.link}</span>
-                            </a>
-                          ) : (
-                            <span className="text-xs text-slate-300">
-                              No link
-                            </span>
-                          )}
-                        </div>
-                      ),
-                      )}
+                    <dd className="mt-1 text-sm text-slate-700">
+                      {formatDate(viewTarget.created_at)}
                     </dd>
                   </div>
-                )}
+
+                  {viewTarget.updated_at && (
+                    <div>
+                      <dt className="flex items-center gap-1 text-xs font-medium text-slate-400">
+                        <Clock className="h-3 w-3" />
+                        Last updated
+                      </dt>
+
+                      <dd className="mt-1 text-sm text-slate-700">
+                        {formatDate(viewTarget.updated_at)}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+
+                {/* Social Media */}
+                {normalizeSocialMedia(
+                  viewTarget.social_platforms,
+                  viewTarget.social_links
+                ).length > 0 && (
+                    <div>
+                      <div className="mb-2 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                        <Megaphone className="h-3 w-3" />
+                        Social Media
+                      </div>
+
+                      <div className="space-y-2">
+                        {formatSocialMedia(
+                          viewTarget.social_platforms,
+                          viewTarget.social_links
+                        ).map((entry, i) => (
+                          <div
+                            key={`${entry.label}-${i}`}
+                            className="flex flex-col gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            {/* Platform */}
+                            <span className="w-fit shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                              {entry.label}
+                            </span>
+
+                            {/* Link */}
+                            {entry.link ? (
+                              <a
+                                href={entry.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex min-w-0 max-w-full items-center gap-1 text-xs text-blue-600 hover:underline sm:max-w-[65%]"
+                              >
+                                <Link2 className="h-3 w-3 shrink-0" />
+
+                                <span className="truncate">
+                                  {entry.link}
+                                </span>
+                              </a>
+                            ) : (
+                              <span className="text-xs text-slate-300">
+                                No link
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Status Editor */}
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
+                  <label
+                    htmlFor="announcement-status"
+                    className="mb-1.5 block text-xs font-medium text-slate-500"
+                  >
+                    Update Status
+                  </label>
+
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <select
+                      id="announcement-status"
+                      value={statusDraft}
+                      onChange={(e) =>
+                        setStatusDraft(
+                          e.target.value as Announcement["status"]
+                        )
+                      }
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:w-48"
+                    >
+                      {STATUS_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={confirmSaveStatus}
+                      disabled={
+                        statusSaving ||
+                        statusDraft === viewTarget.status
+                      }
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                    >
+                      {statusSaving && (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      )}
+
+                      Save Status
+                    </button>
+                  </div>
+
+                  {statusError && (
+                    <p className="mt-2 text-xs text-red-600">
+                      {statusError}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-100 bg-white px-4 py-3 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
+              <button
+                type="button"
+                onClick={closeView}
+                className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 sm:w-auto"
+              >
+                Close
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  closeView();
+                  openEdit(viewTarget);
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 sm:w-auto"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </button>
             </div>
           </div>
         </ModalBackdrop>
       )}
 
       {/* Create / Edit Dialog */}
-      {formOpen && (
-        <ModalBackdrop onClose={() => setFormOpen(false)}>
-          <div className="w-full max-w-xl rounded-xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {editing ? "Edit Announcement" : "New Announcement"}
-              </h2>
-              <button
-                onClick={() => setFormOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="max-h-[70vh] space-y-4 overflow-y-auto px-6 py-5">
-              {formErrors.general && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-                  {formErrors.general}
-                </p>
-              )}
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-600">
-                    Category
-                  </label>
-                  <select
-                    value={form.tag_option}
-                    onChange={(e) => updateCategory(e.target.value as TagOption)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  >
-                    {TAG_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                  {form.tag_option === "Others" && (
-                    <div className="mt-3">
-                      <input
-                        value={form.other_tag}
-                        onChange={(e) => updateOtherTag(e.target.value)}
-                        placeholder="Please specify"
-                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                      />
-                    </div>
-                  )}
-                  {formErrors.tag && (
-                    <p className="mt-1 text-xs text-red-600">
-                      {formErrors.tag}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-600">
-                    Date
-                  </label>
-                  <div className="relative">
-                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="date"
-                      value={form.date}
-                      onChange={(e) => {
-                        const dateValue = e.target.value;
-                        const selectedDate = new Date(dateValue);
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-
-                        setForm((prev) => ({
-                          ...prev,
-                          date: dateValue,
-                          status:
-                            !Number.isNaN(selectedDate.getTime()) &&
-                              selectedDate > today
-                              ? "scheduled"
-                              : prev.status,
-                        }));
-                      }}
-                      className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    />
-                  </div>
-                  {formErrors.date && (
-                    <p className="mt-1 text-xs text-red-600">
-                      {formErrors.date}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-600">
-                    Status
-                  </label>
-
-                  <select
-                    value={form.status}
-                    onChange={(e) => updateField("status", e.target.value as Announcement["status"])}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                  >
-                    {STATUS_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt.charAt(0).toUpperCase() + opt.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {form.status === "scheduled" && (
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">
-                      Publish date & time
-                    </label>
-                    <div className="relative">
-                      <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="datetime-local"
-                        value={form.scheduled_at}
-                        onChange={(e) => updateField("scheduled_at", e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                      />
-                    </div>
-                    {formErrors.scheduled_at && (
-                      <p className="mt-1 text-xs text-red-600">
-                        {formErrors.scheduled_at}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Title
-                </label>
-                <input
-                  value={form.title}
-                  onChange={(e) => updateField("title", e.target.value)}
-                  placeholder="Announcement title"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                />
-                {formErrors.title && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {formErrors.title}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Announcement image
-                </label>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    setImageError("");
-                    if (!file) return;
-
-                    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-                      setImageFiles([]);
-                      setImagePreviews([]);
-                      setImageError("Use a JPG, PNG, or WEBP image.");
-                      event.target.value = "";
-                      return;
-                    }
-
-                    if (file.size > MAX_IMAGE_SIZE) {
-                      setImageFiles([]);
-                      setImagePreviews([]);
-                      setImageError("Images must be 5 MB or smaller.");
-                      event.target.value = "";
-                      return;
-                    }
-
-                    setImageFiles([file]);
-                    setRemoveExistingImage(false);
-                    setImagePreviews([URL.createObjectURL(file)]);
-                  }}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700"
-                />
-                {imageError && <p className="mt-1 text-xs text-red-600">{imageError}</p>}
-                {(imagePreviews.length > 0 || (editing && getAnnouncementImageUrl(editing) && !removeExistingImage)) && (
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={`${preview}-${index}`} className="overflow-hidden rounded-lg border border-slate-200">
-                        <img src={preview} alt={`Announcement image ${index + 1}`} className="h-32 w-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {editing && getAnnouncementImageUrl(editing) && imageFiles.length === 0 && !removeExistingImage ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRemoveExistingImage(true);
-                      setImagePreviews([]);
-                    }}
-                    className="mt-2 text-xs font-medium text-red-600 hover:text-red-700"
-                  >
-                    Remove existing image
-                  </button>
-                ) : null}
-                {removeExistingImage && <p className="mt-1 text-xs text-amber-600">The existing image will be removed when you save.</p>}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">
-                  Content
-                </label>
-                <textarea
-                  value={form.content}
-                  onChange={(e) => updateField("content", e.target.value)}
-                  rows={8}
-                  placeholder="Full announcement content"
-                  className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                />
-                <p className="mt-1 text-xs text-slate-400">
-                  The listing excerpt is generated automatically from this
-                  content.
-                </p>
-                {formErrors.content && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {formErrors.content}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <label className="block text-xs font-medium text-slate-600">
-                    Social Media
-                  </label>
-                </div>
-
-                <div className="space-y-2">
-                  {form.social_media.map((entry, index) => (
-                    <div
-                      key={index}
-                      className="flex flex-col gap-2 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5 sm:flex-row sm:items-center"
-                    >
-                      <select
-                        value={entry.platform}
-                        onChange={(e) =>
-                          updateSocialMedia(index, "platform", e.target.value)
-                        }
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-40"
-                      >
-                        {socialMediaOptionsFor(index).map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-
-                      <div className="relative flex-1">
-                        <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <input
-                          value={entry.link}
-                          onChange={(e) =>
-                            updateSocialMedia(index, "link", e.target.value)
-                          }
-                          placeholder="https://... (link to this post)"
-                          className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                        />
-                      </div>
-
-                      <div className="flex gap-1.5 sm:self-stretch">
-                        <button
-                          type="button"
-                          onClick={() => removeSocialMedia(index)}
-                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-500 hover:bg-slate-50 sm:self-stretch"
-                          aria-label="Remove social media"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {form.social_media.length === 0 && (
-                  <p className="mt-2 text-xs text-slate-400">
-                    Add one row per platform this announcement will be
-                    posted to, along with the link to that post.
-                  </p>
-                )}
-                {formErrors.social_media && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {formErrors.social_media}
-                  </p>
-                )}
-
+      {
+        formOpen && (
+          <ModalBackdrop onClose={() => setFormOpen(false)}>
+            <div className="w-full max-w-xl rounded-xl bg-white shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {editing ? "Edit Announcement" : "New Announcement"}
+                </h2>
                 <button
-                  type="button"
-                  onClick={addSocialMedia}
-                  disabled={allSocialMediaUsed}
-                  className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-300"
+                  onClick={() => setFormOpen(false)}
+                  className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                 >
-                  + Add social media
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
+              <div className="max-h-[70vh] space-y-4 overflow-y-auto px-6 py-5">
+                {formErrors.general && (
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                    {formErrors.general}
+                  </p>
+                )}
 
-            </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">
+                      Category
+                    </label>
+                    <select
+                      value={form.tag_option}
+                      onChange={(e) => updateCategory(e.target.value as TagOption)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    >
+                      {TAG_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                    {form.tag_option === "Others" && (
+                      <div className="mt-3">
+                        <input
+                          value={form.other_tag}
+                          onChange={(e) => updateOtherTag(e.target.value)}
+                          placeholder="Please specify"
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        />
+                      </div>
+                    )}
+                    {formErrors.tag && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {formErrors.tag}
+                      </p>
+                    )}
+                  </div>
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
-              <button
-                onClick={() => setFormOpen(false)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmCreateOrEdit}
-                disabled={saving}
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                {editing ? "Save Changes" : "Create Announcement"}
-              </button>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">
+                      Date
+                    </label>
+                    <div className="relative">
+                      <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="date"
+                        value={form.date}
+                        onChange={(e) => {
+                          const dateValue = e.target.value;
+                          const selectedDate = new Date(dateValue);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+
+                          setForm((prev) => ({
+                            ...prev,
+                            date: dateValue,
+                            status:
+                              !Number.isNaN(selectedDate.getTime()) &&
+                                selectedDate > today
+                                ? "scheduled"
+                                : prev.status,
+                          }));
+                        }}
+                        className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      />
+                    </div>
+                    {formErrors.date && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {formErrors.date}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">
+                      Status
+                    </label>
+
+                    <select
+                      value={form.status}
+                      onChange={(e) => updateField("status", e.target.value as Announcement["status"])}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    >
+                      {STATUS_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {form.status === "scheduled" && (
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                        Publish date & time
+                      </label>
+                      <div className="relative">
+                        <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="datetime-local"
+                          value={form.scheduled_at}
+                          onChange={(e) => updateField("scheduled_at", e.target.value)}
+                          className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        />
+                      </div>
+                      {formErrors.scheduled_at && (
+                        <p className="mt-1 text-xs text-red-600">
+                          {formErrors.scheduled_at}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">
+                    Title
+                  </label>
+                  <input
+                    value={form.title}
+                    onChange={(e) => updateField("title", e.target.value)}
+                    placeholder="Announcement title"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                  {formErrors.title && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {formErrors.title}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">
+                    Announcement image
+                  </label>
+
+                  {(imagePreviews.length > 0 || (editing && getAnnouncementImageUrl(editing) && !removeExistingImage)) ? (
+                    <div className="mb-3 overflow-hidden rounded-xl border border-slate-200">
+                      <img
+                        src={imagePreviews[0] ?? getAnnouncementImageUrl(editing!) ?? ""}
+                        alt="Announcement preview"
+                        className="h-48 w-full object-cover"
+                      />
+                      <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
+                        <span className="text-xs text-slate-500">
+                          {imageFiles.length > 0 ? imageFiles[0].name : "Current image"}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <label className="cursor-pointer text-xs font-medium text-blue-600 hover:text-blue-700">
+                            Replace
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              className="hidden"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                setImageError("");
+                                if (!file) return;
+
+                                if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+                                  setImageFiles([]);
+                                  setImageError("Use a JPG, PNG, or WEBP image.");
+                                  event.target.value = "";
+                                  return;
+                                }
+                                if (file.size > MAX_IMAGE_SIZE) {
+                                  setImageFiles([]);
+                                  setImageError("Images must be 5 MB or smaller.");
+                                  event.target.value = "";
+                                  return;
+                                }
+
+                                setImageFiles([file]);
+                                setRemoveExistingImage(false);
+                                setImagePreviews([URL.createObjectURL(file)]);
+                              }}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImageFiles([]);
+                              setImagePreviews([]);
+                              setRemoveExistingImage(true);
+                            }}
+                            className="text-xs font-medium text-red-600 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center hover:border-blue-300 hover:bg-blue-50/40">
+                      <FileText className="h-6 w-6 text-slate-300" />
+                      <span className="text-sm font-medium text-slate-600">Click to upload an image</span>
+                      <span className="text-xs text-slate-400">JPG, PNG, or WEBP — up to 5MB</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          setImageError("");
+                          if (!file) return;
+
+                          if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+                            setImageFiles([]);
+                            setImagePreviews([]);
+                            setImageError("Use a JPG, PNG, or WEBP image.");
+                            event.target.value = "";
+                            return;
+                          }
+                          if (file.size > MAX_IMAGE_SIZE) {
+                            setImageFiles([]);
+                            setImagePreviews([]);
+                            setImageError("Images must be 5 MB or smaller.");
+                            event.target.value = "";
+                            return;
+                          }
+
+                          setImageFiles([file]);
+                          setRemoveExistingImage(false);
+                          setImagePreviews([URL.createObjectURL(file)]);
+                        }}
+                      />
+                    </label>
+                  )}
+
+                  {imageError && <p className="mt-1 text-xs text-red-600">{imageError}</p>}
+                  {removeExistingImage && (
+                    <p className="mt-1 text-xs text-amber-600">The existing image will be removed when you save.</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">
+                    Content
+                  </label>
+                  <textarea
+                    value={form.content}
+                    onChange={(e) => updateField("content", e.target.value)}
+                    rows={8}
+                    placeholder="Full announcement content"
+                    className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                  <p className="mt-1 text-xs text-slate-400">
+                    The listing excerpt is generated automatically from this
+                    content.
+                  </p>
+                  {formErrors.content && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {formErrors.content}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <label className="block text-xs font-medium text-slate-600">
+                      Social Media
+                    </label>
+                  </div>
+
+                  <div className="space-y-2">
+                    {form.social_media.map((entry, index) => (
+                      <div
+                        key={index}
+                        className="flex flex-col gap-2 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5 sm:flex-row sm:items-center"
+                      >
+                        <select
+                          value={entry.platform}
+                          onChange={(e) =>
+                            updateSocialMedia(index, "platform", e.target.value)
+                          }
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:w-40"
+                        >
+                          {socialMediaOptionsFor(index).map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        <div className="relative flex-1">
+                          <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                          <input
+                            value={entry.link}
+                            onChange={(e) =>
+                              updateSocialMedia(index, "link", e.target.value)
+                            }
+                            placeholder="https://... (link to this post)"
+                            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                          />
+                        </div>
+
+                        <div className="flex gap-1.5 sm:self-stretch">
+                          <button
+                            type="button"
+                            onClick={() => removeSocialMedia(index)}
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-500 hover:bg-slate-50 sm:self-stretch"
+                            aria-label="Remove social media"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {form.social_media.length === 0 && (
+                    <p className="mt-2 text-xs text-slate-400">
+                      Add one row per platform this announcement will be
+                      posted to, along with the link to that post.
+                    </p>
+                  )}
+                  {formErrors.social_media && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {formErrors.social_media}
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={addSocialMedia}
+                    disabled={allSocialMediaUsed}
+                    className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-300"
+                  >
+                    + Add social media
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
+                <button
+                  onClick={() => setFormOpen(false)}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmCreateOrEdit}
+                  disabled={saving}
+                  className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {editing ? "Save Changes" : "Create Announcement"}
+                </button>
+              </div>
             </div>
-          </div>
-        </ModalBackdrop>
-      )}
+          </ModalBackdrop>
+        )
+      }
 
       {/* Confirmation modal — replaces native browser confirm()/alert() for
           delete, status-save, and create/edit actions. */}
@@ -1670,7 +1825,8 @@ export default function AnnouncementsAdmin() {
             </div>
           </div>
         </ModalBackdrop>
-      )}
-    </main>
+      )
+      }
+    </main >
   );
 }

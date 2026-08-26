@@ -31,7 +31,7 @@ interface Announcement {
   date: string;
   image?: string | string[] | null;
   image_url?: string | null;
-  image_urls?: string[] | null;
+  image_urls?: string | string[] | null;
   title: string;
   excerpt: string;
   content: string;
@@ -57,61 +57,76 @@ function tagClass(tag: string) {
   return tag ? TAG_STYLE : FALLBACK_TAG_STYLE;
 }
 
-function getAnnouncementImageUrl(item: Announcement): string | null {
-  if (item.image_url) return item.image_url;
-
-  if (Array.isArray(item.image_urls) && item.image_urls.length > 0) {
-    return item.image_urls[0];
-  }
-
+function getApiBaseUrl(): string {
   const configured =
     process.env.NEXT_PUBLIC_API_URL ||
     process.env.LARAVEL_API_URL ||
     "http://localhost:8000";
-  const normalized = configured.replace(/\/+$/g, "");
-  const base = normalized.endsWith("/api")
-    ? normalized.replace(/\/api$/, "")
-    : normalized;
+  return configured.replace(/\/+$/, "").replace(/\/api$/, "");
+}
 
-  const normalizeInput = (input: string | string[] | null | undefined): string[] => {
-    if (!input) return [];
+function normalizeImageValues(
+  value: string | string[] | null | undefined,
+): string[] {
+  if (!value) return [];
 
-    if (Array.isArray(input)) {
-      return input
-        .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+
+    if (Array.isArray(parsed)) {
+      return parsed
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
         .filter(Boolean);
     }
 
-    const trimmed = input.trim();
-    if (!trimmed) return [];
-
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed)) {
-        return parsed
-          .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
-          .filter(Boolean);
-      }
-    } catch {
-      // not JSON — treat as a single path
+    if (typeof parsed === "string" && parsed.trim()) {
+      return [parsed.trim()];
     }
-
-    return [trimmed];
-  };
-
-  const first = normalizeInput(item.image)[0];
-  if (!first) return null;
-  if (/^https?:\/\//i.test(first)) return first;
-
-  const storagePath = first.replace(/^\/+/, "");
-  const withoutStoragePrefix = storagePath.replace(/^storage\//i, "");
-  const cleanPath = withoutStoragePrefix.replace(/^\/+/, "");
-
-  if (cleanPath.startsWith("storage/")) {
-    return `${base}/${cleanPath}`;
+  } catch {
+    // Treat non-JSON values as a normal path.
   }
 
-  return `${base}/storage/${cleanPath}`;
+  return [trimmed];
+}
+
+function resolveAnnouncementImageUrl(
+  value: string | null | undefined,
+): string | null {
+  if (!value) return null;
+
+  const image = value.trim();
+  if (!image) return null;
+  if (/^https?:\/\//i.test(image)) return image;
+  if (image.startsWith("//")) return `https:${image}`;
+
+  let path = image.replace(/^\/+/, "");
+  path = path.replace(/^public\/storage\//i, "");
+  path = path.replace(/^storage\//i, "");
+
+  return `${getApiBaseUrl()}/storage/${path}`;
+}
+
+function getAnnouncementImageUrl(item: Announcement): string | null {
+  const imageUrl = resolveAnnouncementImageUrl(item.image_url);
+  if (imageUrl) return imageUrl;
+
+  const imageUrls = normalizeImageValues(item.image_urls);
+  const imageUrlsValue = resolveAnnouncementImageUrl(imageUrls[0]);
+  if (imageUrlsValue) return imageUrlsValue;
+
+  const images = normalizeImageValues(item.image);
+  return resolveAnnouncementImageUrl(images[0]);
 }
 
 function formatDate(value: string) {
@@ -173,12 +188,20 @@ function getPageNumbers(current: number, total: number): Array<number | "…"> {
   return pages;
 }
 
-function ImageFallback({ className }: { className?: string }) {
+function ImageFallback({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`flex items-center justify-center bg-linear-to-br from-[#1B3A8C]/10 to-[#00ACC1]/10 ${className ?? ""}`}
+      className={`flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#1B3A8C]/10 via-white to-[#00ACC1]/10 ${className}`}
+      aria-label="No announcement image available"
     >
-      <Newspaper className="h-10 w-10 text-[#1B3A8C]/30" />
+      <div className="flex flex-col items-center justify-center gap-2 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/80 shadow-sm">
+          <Newspaper className="h-7 w-7 text-[#1B3A8C]/40" />
+        </div>
+        <span className="text-xs font-medium text-[#1B3A8C]/50">
+          No image available
+        </span>
+      </div>
     </div>
   );
 }
@@ -221,18 +244,22 @@ function AnnouncementCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.07 }}
       onClick={() => onSelect(item)}
-      className="group bg-white rounded-2xl border border-gray-100 p-6 flex flex-col cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+      className="group flex cursor-pointer flex-col rounded-2xl border border-gray-100 bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
     >
-      <div className="mb-4 overflow-hidden rounded-xl border border-gray-100">
+      <div className="mb-4 h-40 w-full overflow-hidden rounded-xl border border-gray-100">
         {imageUrl && !imageFailed ? (
           <img
             src={imageUrl}
-            alt={item.title}
-            className="h-40 w-full object-cover"
-            onError={() => setImageFailed(true)}
+            alt={item.title || "Announcement"}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+            onError={() => {
+              console.warn("Announcement image failed to load:", imageUrl);
+              setImageFailed(true);
+            }}
           />
         ) : (
-          <ImageFallback className="h-40 w-full" />
+          <ImageFallback className="h-full w-full" />
         )}
       </div>
 
@@ -273,7 +300,7 @@ function AnnouncementCard({
           <span />
         )}
 
-        <div className="inline-flex items-center gap-1.5 text-sm text-md font-bold text-[#1B3A8C] hover:text-[#FFC107] hover:underline transition-all duration-200 hover:scale-105 active:scale-95 group">
+        <div className="inline-flex items-center gap-1.5 text-sm font-bold text-[#1B3A8C] transition-all duration-200 group-hover:scale-105 group-hover:text-[#FFC107] group-hover:underline">
           Read more
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
         </div>
@@ -305,7 +332,7 @@ function AnnouncementModal({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
         onClick={onClose}
-        className="fixed inset-0 z-100 bg-black/40 backdrop-blur-sm"
+        className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm"
       />
 
       <motion.div
@@ -314,7 +341,7 @@ function AnnouncementModal({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 16, scale: 0.97 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
-        className="fixed inset-0 z-100 flex items-center justify-center px-4 py-8 pointer-events-none"
+        className="pointer-events-none fixed inset-0 z-[100] flex items-center justify-center px-4 py-8"
       >
         <div
           onClick={(e) => e.stopPropagation()}
@@ -336,9 +363,13 @@ function AnnouncementModal({
               {imageUrl && !imageFailed ? (
                 <img
                   src={imageUrl}
-                  alt={item.title}
+                  alt={item.title || "Announcement"}
                   className="max-h-64 w-full object-cover"
-                  onError={() => setImageFailed(true)}
+                  loading="lazy"
+                  onError={() => {
+                    console.warn("Announcement modal image failed:", imageUrl);
+                    setImageFailed(true);
+                  }}
                 />
               ) : (
                 <ImageFallback className="h-40 w-full" />
@@ -349,8 +380,8 @@ function AnnouncementModal({
               {item.title}
             </h2>
 
-            <div className="space-y-4 mb-4">
-              {item.content.split("\n\n").map((para, i) => (
+            <div className="mb-4 space-y-4">
+              {(item.content || "").split(/\n\s*\n/).map((para, i) => (
                 <p key={i} className="text-sm text-gray-600 leading-relaxed">
                   {para}
                 </p>
@@ -905,6 +936,7 @@ export default function AnnouncementPage() {
       <AnimatePresence>
         {selected && (
           <AnnouncementModal
+            key={`${selected.id}-${getAnnouncementImageUrl(selected) ?? "no-image"}`}
             item={selected}
             onClose={handleCloseAnnouncementModal}
           />
