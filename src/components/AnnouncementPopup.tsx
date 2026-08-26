@@ -221,9 +221,9 @@ export default function AnnouncementPopup() {
                 : { type: "spring", stiffness: 280, damping: 26 }
             }
             onClick={(e) => e.stopPropagation()}
-            className="relative z-20 mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:max-w-3xl md:flex-row"
+            className="relative z-20 mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:max-w-xl"
           >
-            {/* Close button — consistent placement regardless of column layout */}
+            {/* Close button, floats over the image */}
             <button
               onClick={handleClose}
               className="absolute right-3 top-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow-md backdrop-blur-sm transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-[#0D47A1]"
@@ -232,79 +232,74 @@ export default function AnnouncementPopup() {
               <X className="h-5 w-5" />
             </button>
 
-            {/* Signature: a document-tab / directory-plaque spine, brand gradient.
-            Runs along the top on mobile, the left edge on desktop. */}
-            <motion.div
-              initial={shouldReduceMotion ? { opacity: 0 } : { scaleX: 0 }}
-              animate={shouldReduceMotion ? { opacity: 1 } : { scaleX: 1 }}
-              transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
-              style={{ transformOrigin: "left" }}
-              className="absolute inset-x-0 top-0 z-20 h-1.5 bg-linear-to-r from-[#1B3A8C] via-[#0D47A1] to-[#00ACC1] md:hidden"
-            />
-            <motion.div
-              initial={shouldReduceMotion ? { opacity: 0 } : { scaleY: 0 }}
-              animate={shouldReduceMotion ? { opacity: 1 } : { scaleY: 1 }}
-              transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
-              style={{ transformOrigin: "top" }}
-              className="absolute inset-y-0 left-0 z-20 hidden w-1.5 bg-linear-to-b from-[#1B3A8C] via-[#0D47A1] to-[#00ACC1] md:block"
-            />
+            {/* Full-bleed image banner with a gradient scrim carrying the
+            tag + date. The brand strip runs along the very top edge. */}
+            <div className="relative h-56 w-full shrink-0 overflow-hidden sm:h-64 md:h-72">
+              <motion.div
+                initial={shouldReduceMotion ? { opacity: 0 } : { scaleX: 0 }}
+                animate={shouldReduceMotion ? { opacity: 1 } : { scaleX: 1 }}
+                transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+                style={{ transformOrigin: "left" }}
+                className="absolute inset-x-0 top-0 z-20 h-1.5 bg-linear-to-r from-[#1B3A8C] via-[#0D47A1] to-[#00ACC1]"
+              />
 
-              {/* Image column — fixed banner height on mobile, fills the left half on desktop */}
-              <div className="relative h-44 w-full shrink-0 overflow-hidden sm:h-56 md:h-auto md:w-2/5">
-                <Image
-                  src={imageSrc}
-                  alt={announcement.title}
-                  fill
-                  unoptimized
-                  className="object-cover"
-                  onError={() => setImageFailed(true)}
-                />
-              </div>
+              <Image
+                src={imageSrc}
+                alt={announcement.title}
+                fill
+                unoptimized
+                className="object-cover"
+                onError={() => setImageFailed(true)}
+              />
 
-              {/* Content column */}
-              <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-5 sm:p-6 md:p-7">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-md font-medium text-blue-700">
-                    {announcement.tag}
-                  </span>
-                  <div className="flex items-center gap-1.5 text-md text-gray-400">
-                    <Calendar className="h-3.5 w-3.5" />
-                    {formatDate(announcement.date)}
-                  </div>
+              {/* Scrim so the badges stay legible over any photo */}
+              <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+
+              <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-3 p-4 sm:p-5">
+                <span className="rounded-full bg-white/95 px-3 py-1 text-md font-medium text-blue-700">
+                  {announcement.tag}
+                </span>
+                <div className="flex items-center gap-1.5 text-md text-white/90">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {formatDate(announcement.date)}
                 </div>
-
-                <h3
-                  id="announcement-title"
-                  className="text-2xl font-bold leading-tight tracking-tight text-gray-900 sm:text-2xl"
-                >
-                  {announcement.title}
-                </h3>
-
-                <p className="whitespace-pre-wrap text-lg leading-relaxed text-gray-600 sm:text-[15px]">
-                  {announcement.content}
-                </p>
-
-                {socialPlatforms.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {socialPlatforms.map((entry) =>
-                      entry.link ? (
-                        <a
-                          key={entry.platform}
-                          href={entry.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
-                        >
-                          <span className="flex items-center gap-1 uppercase tracking-wide">
-                            {formatSocialPlatform(entry.platform)}{" "}
-                            <ExternalLink className="h-3 w-3" />
-                          </span>
-                        </a>
-                      ) : null,
-                    )}
-                  </div>
-                )}
               </div>
+            </div>
+
+            {/* Content, single column below the image */}
+            <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-5 sm:p-6">
+              <h3
+                id="announcement-title"
+                className="text-2xl font-bold leading-tight tracking-tight text-gray-900"
+              >
+                {announcement.title}
+              </h3>
+
+              <p className="whitespace-pre-wrap text-lg leading-relaxed text-gray-600 sm:text-[15px]">
+                {announcement.content}
+              </p>
+
+              {socialPlatforms.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
+                  {socialPlatforms.map((entry) =>
+                    entry.link ? (
+                      <a
+                        key={entry.platform}
+                        href={entry.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+                      >
+                        <span className="flex items-center gap-1 uppercase tracking-wide">
+                          {formatSocialPlatform(entry.platform)}{" "}
+                          <ExternalLink className="h-3 w-3" />
+                        </span>
+                      </a>
+                    ) : null,
+                  )}
+                </div>
+              )}
+            </div>
           </motion.div>
         </motion.div>
       )}
