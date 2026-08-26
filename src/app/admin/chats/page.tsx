@@ -1106,7 +1106,7 @@ export default function AdminChatsPage() {
                                                     <span className="text-slate-300">·</span>
                                                     {selectedConversation.messages.length} messages
                                                 </p>
-                                                {selectedConversation.agent ? (
+                                                {selectedConversation.agent && selectedIsAgentOwned ? (
                                                     <div className="mt-2 text-sm text-slate-600">
                                                         <p className="font-medium text-sm">Taken by:</p>
                                                         <p className="text-xs text-slate-500">{selectedConversation.agent.name ?? 'Agent'}{selectedConversation.agent.email ? ` · ${selectedConversation.agent.email}` : ''}</p>

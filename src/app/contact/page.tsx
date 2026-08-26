@@ -331,7 +331,6 @@ const inquiryTypes = [
   { value: "others", label: "Others" },
 ];
 
-// Generic modal shell used for the post-submit confirmation.
 function Modal({
   open,
   onClose,
@@ -353,18 +352,32 @@ function Modal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#071735]/65 backdrop-blur-[2px] px-4 py-5 sm:px-6 sm:mt-7 md:mt-20"
           onClick={onClose}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{
+              duration: 0.25,
+              ease: [0.22, 1, 0.36, 1],
+            }}
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
+            className="relative
+              w-full
+              max-w-[500px]
+              max-h-[500px]
+              lg:max-w-[580px]
+              lg:max-h-[calc(100vh-40px)]
+              overflow-y-auto
+              rounded-[28px]
+              bg-white
+              shadow-[0_25px_80px_rgba(7,23,53,0.25)]
+              scrollbar-thin
+            "
             onClick={(e) => e.stopPropagation()}
           >
             {!hideClose && (
@@ -372,11 +385,13 @@ function Modal({
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-all hover:bg-gray-100 hover:text-gray-700
+                  focus:outline-none focus:ring-2 focus:ring-[#1B3A8C]/20 sm:right-5 sm:top-5"
               >
-                <X className="w-4 h-4" />
+                <X className="h-4 w-4" />
               </button>
             )}
+
             {children}
           </motion.div>
         </motion.div>
@@ -1079,9 +1094,9 @@ function MapCard({
           onLoad={() => setLoaded(true)}
           className={`absolute inset-0 transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
         />
-          <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            View on Google Maps
-          </span>
+        <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          View on Google Maps
+        </span>
 
         <div className="absolute top-3 right-3 z-30 px-3 py-1.5 rounded-full bg-[#0A1E3F] backdrop-blur-sm border border-white/60 shadow-sm pointer-events-none">
           <span className="text-sm font-bold text-white">{title}</span>
@@ -1091,7 +1106,6 @@ function MapCard({
   );
 }
 
-// Success Modal Content
 function SuccessModalContent({
   isVO,
   onClose,
@@ -1099,62 +1113,83 @@ function SuccessModalContent({
   isVO: boolean;
   onClose: () => void;
 }) {
+  const steps = isVO
+    ? [
+      "Our admin team will review and verify your submitted request",
+      "Once verified, we'll email you a secure link to complete payment",
+      "After payment is confirmed, our admin will contact you to finalize your contract",
+    ]
+    : [
+      "We'll review your service requirements and preferences",
+      "A customised quotation will be prepared for you",
+      "Our team will reach out via email or phone to discuss next steps",
+    ];
+
   return (
-    <div className="text-center py-4">
-      <div className="w-16 h-16 bg-[#EEF2FB] rounded-full flex items-center justify-center mx-auto mb-5">
-        <CheckCircle2 className="w-8 h-8 text-[#1B3A8C]" />
+    <div className="px-5 py-7 sm:px-8 md:px-10 md:py-5">
+      {/* Success icon */}
+      <div className="hidden md:flex justify-center">
+        <div className="flex h-[30px] w-[30px] lg:h-[68px] lg:w-[68px] items-center justify-center rounded-full bg-[#EEF2FB] ring-8 ring-[#F7F9FD]">
+          <CheckCircle2 className="h-4 w-4 lg:h-8 lg:w-8 text-[#1B3A8C]" strokeWidth={2.2} />
+        </div>
       </div>
 
-      <p className="text-[10px] tracking-[0.25em] uppercase text-[#64748B] mb-2">
-        {isVO ? "Virtual Office Request" : "Quotation Received"}
-      </p>
-      <h3 className="text-2xl font-bold text-[#0B1F4A] mb-3">Thank You!</h3>
-
-      {isVO ? (
-        <p className="text-[#64748B] text-sm leading-relaxed mb-6">
-          Your virtual office request has been received. Our admin team will review your
-          details and, once verified, email you a secure link to complete payment.
+      {/* Heading */}
+      <div className="mt-5 text-center">
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#64748B]">
+          Inquiry Received
         </p>
-      ) : (
-        <p className="text-[#64748B] text-sm leading-relaxed mb-6">
-          Your quotation request has been received. {" "}
-          A HERO Serviced Office representative will contact you within <strong>24 business hours</strong>.
-        </p>
-      )}
 
-      <div className="bg-[#F4F6FB] rounded-2xl p-5 text-left mb-6 space-y-3">
-        {(isVO
-          ? [
-            "Our admin team will review and verify your submitted request",
-            "Once verified, we'll email you a secure link to complete payment",
-            "After payment is confirmed, our admin will formally contact you to finalize your contract",
-          ]
-          : [
-            "We'll review your service requirements and preferences",
-            "A customised quotation will be prepared for you",
-            "Our team will reach out via email or phone to discuss next steps",
-          ]
-        ).map((s, i) => (
-          <div key={i} className="flex items-start gap-3">
-            <span className="w-5 h-5 rounded-full bg-[#0B1F4A] text-white text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-bold">
-              {i + 1}
-            </span>
-            <p className="text-sm text-[#4A5568] leading-relaxed">{s}</p>
-          </div>
-        ))}
+        <h3 className="lg:text-[26px] font-bold leading-tight text-[#0B1F4A] text-[28px]">
+          Thank You!
+        </h3>
+
+        <p className="mx-auto mt-2 max-w-sm lg:max-w-[470px] text-sm lg:text-[14px] text-[#64748B]">
+          Your quotation request has been received. A HERO Serviced Office
+          representative will contact you within{" "}
+          <strong className="font-semibold text-[#52637D]">
+            24 business hours.
+          </strong>
+        </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+      {/* Next steps */}
+      <div className="mt-4 rounded-[20px] bg-[#F4F6FB] px-4 py-4 sm:px-5 sm:py-5">
+        <div className="space-y-4">
+          {steps.map((text, index) => (
+            <div
+              key={index}
+              className="flex items-start gap-3.5"
+            >
+              <span
+                className="flex h-4 w-4 lg:h-6 lg:w-6 shrink-0 items-center justify-center rounded-full bg-[#0B1F4A] text-xs md:text-sm font-bold text-white"
+              >
+                {index + 1}
+              </span>
+
+              <p className="pt-0.5 text-[13px] leading-5 text-[#4A5568] text-xs">
+                {text}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="mt-6 flex gap-3 flex-row">
         <button
           type="button"
           onClick={onClose}
-          className="px-8 py-3 text-[#0B1F4A] bg-[#FFC107] rounded-full text-sm font-semibold hover:bg-[#FFC107]/80 transition"
+          className="flex min-h-[50px] flex-1 items-center justify-center rounded-full bg-[#FFC107] px-6 py-3 text-xs lg:text-sm
+            font-bold text-[#0B1F4A] transition-all hover:bg-[#FFB900] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#FFC107]/40"
         >
           Submit another request
         </button>
+
         <a
           href="/"
-          className="px-8 py-3 bg-[#F0EDE6] text-[#4A4740] rounded-full text-sm font-semibold hover:bg-[#E5E1D9] transition"
+          className="flex min-h-[50px] flex-1 items-center justify-center rounded-full bg-[#F0EDE6] px-6 py-3 text-xs lg:text-sm font-bold text-[#4A4740] transition-all hover:bg-[#E5E1D9]
+            active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#4A4740]/10"
         >
           Back to home
         </a>

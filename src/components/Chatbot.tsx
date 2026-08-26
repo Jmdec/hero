@@ -973,11 +973,12 @@ const Chatbot = () => {
     }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted]);
 
     // Auto-close inactive conversations
-    const INACTIVITY_MINUTES = 12; // 10–15 minutes
+    const INACTIVITY_MINUTES = 10;
     const INACTIVITY_MS = INACTIVITY_MINUTES * 60 * 1000;
 
     useEffect(() => {
         if (!conversation?.id || !leadSubmitted) return;
+        if (conversationClosed) return;
         if (agentRequested) return; // don't auto-close while awaiting an agent
 
         let timer: number | null = null;
@@ -1010,7 +1011,7 @@ const Chatbot = () => {
         return () => {
             if (timer) window.clearTimeout(timer);
         };
-    }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted, messages.length, agentRequested, syncConversationSnapshot]);
+    }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted, conversationClosed, messages.length, agentRequested, syncConversationSnapshot]);
 
     const requestTranscriptEmail = useCallback(
         async (conversationId: number | undefined) => {

@@ -1,15 +1,28 @@
 export type ContactBranchInterest = "tower-6789" | "insular-life" | "both";
 
+// const RECIPIENTS = {
+//     chairman: process.env.CHAIRMAN_EMAIL || "",
+//     president: process.env.PRESIDENT_EMAIL || "",
+//     generalManager: process.env.GENERAL_MANAGER_EMAIL || "rataguibao@rbtconsulting.com.ph",
+//     salesOfficer: process.env.SALES_OFFICER_EMAIL || "salesofficer@heroph.net",
+//     digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "digitalsalesmarketing@heroph.net",
+//     accounting: process.env.ACCOUNTING_EMAIL || "",
+//     branchManagers: {
+//         S01: process.env.BRANCH_MANAGER_S01_EMAIL || "sales@heroph.net",
+//         S02: process.env.BRANCH_MANAGER_S02_EMAIL || "c_francisco@heroph.net",
+//     },
+// };
+
 const RECIPIENTS = {
-    chairman: process.env.CHAIRMAN_EMAIL || "",
+    chairman: process.env.CHAIRMAN_EMAIL || "eirenegrc.armilla@gmail.com",
     president: process.env.PRESIDENT_EMAIL || "",
-    generalManager: process.env.GENERAL_MANAGER_EMAIL || "rataguibao@rbtconsulting.com.ph",
-    salesOfficer: process.env.SALES_OFFICER_EMAIL || "salesofficer@heroph.net",
-    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "digitalsalesmarketing@heroph.net",
+    generalManager: process.env.GENERAL_MANAGER_EMAIL || "infinitech.eirene@gmail.com",
+    salesOfficer: process.env.SALES_OFFICER_EMAIL || "armilla.eirenegrace@gmail.com",
+    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "",
     accounting: process.env.ACCOUNTING_EMAIL || "",
     branchManagers: {
-        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "sales@heroph.net",
-        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "c_francisco@heroph.net",
+        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "infinitech.eirene@gmail.com",
+        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "infinitech.eirene@gmail.com",
     },
 };
 
