@@ -1109,7 +1109,11 @@ export default function AdminChatsPage() {
                                                 {selectedConversation.agent && selectedIsAgentOwned ? (
                                                     <div className="mt-2 text-sm text-slate-600">
                                                         <p className="font-medium text-sm">Taken by:</p>
-                                                        <p className="text-xs text-slate-500">{selectedConversation.agent.name ?? 'Agent'}{selectedConversation.agent.email ? ` · ${selectedConversation.agent.email}` : ''}</p>
+                                                        <p className="text-xs text-slate-500">
+                                                            {selectedConversation.agent.name ?? "Agent"}
+                                                            {selectedConversation.agent.email ? ` · ${selectedConversation.agent.email}` : ""}
+                                                            {selectedConversation.agent.role ? ` · ${selectedConversation.agent.role === "operation" ? "Operations" : "Admin"}` : ""}
+                                                        </p>
                                                         {selectedConversation.agent_started_at ? (
                                                             <p className="mt-1 text-xs text-slate-400">Taken at: {new Date(selectedConversation.agent_started_at).toLocaleString()}</p>
                                                         ) : null}

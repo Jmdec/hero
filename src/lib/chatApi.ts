@@ -49,6 +49,7 @@ export interface ChatConversation {
         id?: number | null;
         name?: string | null;
         email?: string | null;
+        role?: "admin" | "operation" | string | null;
     } | null;
 }
 
