@@ -980,7 +980,6 @@ const Chatbot = () => {
     useEffect(() => {
         if (!conversation?.id || !leadSubmitted) return;
         if (conversationClosed) return;
-        if (agentRequested) return; // don't auto-close while awaiting an agent
 
         let timer: number | null = null;
         let closed = false;
@@ -997,11 +996,18 @@ const Chatbot = () => {
 
                 try {
                     // Close the conversation on the server and request transcript once.
-                    await chatApi.closeConversation(targetId, true);
+                    const closeResult = await chatApi.closeConversation(targetId, true);
+                    if (closeResult.transcript_sent === false) {
+                        await chatApi.emailChatHistory(targetId);
+                    }
                     const latestConversation = await chatApi.getConversation(targetId);
                     syncConversationSnapshot(latestConversation, { preservePending: false });
-                } catch {
-                    // ignore errors — best-effort
+                } catch (error) {
+                    setSendError(
+                        error instanceof Error
+                            ? `Conversation ended, but the transcript could not be emailed: ${error.message}`
+                            : "Conversation ended, but the transcript could not be emailed.",
+                    );
                 }
             }, INACTIVITY_MS);
         };
@@ -1012,7 +1018,7 @@ const Chatbot = () => {
         return () => {
             if (timer) window.clearTimeout(timer);
         };
-    }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted, conversationClosed, messages.length, agentRequested, syncConversationSnapshot]);
+    }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted, conversationClosed, messages.length, agentRequested, INACTIVITY_MS, syncConversationSnapshot]);
 
     const requestTranscriptEmail = useCallback(
         async (conversationId: number | undefined) => {

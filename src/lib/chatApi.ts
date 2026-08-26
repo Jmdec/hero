@@ -71,6 +71,11 @@ export interface ConversationActionResponse {
     conversation: ConversationResponse;
 }
 
+export interface CloseConversationResponse {
+    message: string;
+    transcript_sent?: boolean | null;
+}
+
 export interface PreferredContactPayload {
     preferred_time: string;
     preferred_method?: "email" | "phone" | "either";
@@ -86,10 +91,6 @@ export class ChatApiError extends Error {
     }
 }
 
-// baseUrl is now ALWAYS null by default, meaning every browser call hits our
-// own Next.js origin (/api/chat/...), which app/api/chat/[...path]/route.ts
-// proxies to Laravel server-side. Pass an explicit baseUrl only if you
-// deliberately want to bypass the proxy (e.g. a trusted server context).
 async function request<T>(
     endpoint: string,
     options: RequestInit = {},
@@ -226,7 +227,7 @@ export const chatApi = {
     },
 
     closeConversation(conversationId: number, sendTranscript = true) {
-        return request(`/chat/${conversationId}/close`, {
+        return request<CloseConversationResponse>(`/chat/${conversationId}/close`, {
             method: "PATCH",
             body: JSON.stringify({ send_transcript: Boolean(sendTranscript) }),
         });
