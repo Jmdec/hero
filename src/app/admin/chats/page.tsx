@@ -1077,67 +1077,119 @@ export default function AdminChatsPage() {
                                 <ConversationSkeleton />
                             ) : selectedConversation ? (
                                 <>
-                                    <div className="shrink-0 border-b border-slate-100 p-4">
-                                        <div className="flex flex-wrap items-center justify-between gap-3">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-3">
-                                                <div>
-                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0D47A1]/10 text-sm font-semibold text-[#0D47A1]">
-                                                        {initialsOf(selectedConversation.inquiry?.full_name)}
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="text-base font-semibold text-slate-900">
-                                                                {selectedConversation.inquiry?.full_name ?? "Guest visitor"}
-                                                            </p>
-                                                            <StatusChip status={selectedConversation.status} />
-                                                            {selectedIsAddressed ? <AddressedChip /> : null}
-                                                            {selectedRequestedHistory ? (
-                                                                <span
-                                                                    title="Visitor asked for a copy of this chat"
-                                                                    className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20"
-                                                                >
-                                                                    <Mail className="h-3 w-3" />
+                                    {/* Header */}
+                                    <div className="shrink-0 border-b border-slate-100 bg-white p-3 sm:p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            {/* Left: Conversation information */}
+                                            <div className="flex min-w-0 flex-1 items-start gap-3">
+                                                {/* Avatar */}
+                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0D47A1]/10 text-sm font-semibold text-[#0D47A1] sm:h-11 sm:w-11">
+                                                    {initialsOf(selectedConversation.inquiry?.full_name)}
+                                                </div>
+
+                                                {/* Details */}
+                                                <div className="min-w-0 flex-1">
+                                                    {/* Name + Status */}
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <p className="truncate text-sm font-semibold text-slate-900 sm:text-base">
+                                                            {selectedConversation.inquiry?.full_name ??
+                                                                "Guest visitor"}
+                                                        </p>
+
+                                                        <StatusChip status={selectedConversation.status} />
+
+                                                        {selectedIsAddressed ? <AddressedChip /> : null}
+
+                                                        {selectedRequestedHistory ? (
+                                                            <span
+                                                                title="Visitor asked for a copy of this chat"
+                                                                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-50 px-2 py-1 text-[10px] font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20 sm:px-2.5 sm:py-1 sm:text-[11px]"
+                                                            >
+                                                                <Mail className="h-3 w-3" />
+                                                                <span className="hidden xs:inline sm:inline">
                                                                     Requested history
                                                                 </span>
-                                                            ) : null}
-                                                        </div>
-                                                        <p className="flex items-center gap-1.5 text-xs text-slate-500 py-1">
-                                                            <Mail className="h-3 w-3" />
-                                                            {selectedConversation.inquiry?.email_address ?? "No email supplied"}
-                                                            <span className="text-slate-300">·</span>
-                                                            {selectedConversation.messages.length} messages
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        {selectedConversation.agent && selectedIsAgentOwned ? (
-                                                            <div className="mt-2 text-sm text-slate-600">
-                                                                <p className="font-medium text-sm">Taken by:</p>
-                                                                <p className="text-xs text-slate-500">
-                                                                    {selectedConversation.agent.name ?? "Agent"}
-                                                                    {selectedConversation.agent.email ? ` · ${selectedConversation.agent.email}` : ""}
-                                                                </p>
-                                                                {selectedConversation.agent_started_at ? (
-                                                                    <p className="mt-1 text-xs text-slate-400">Taken at: {new Date(selectedConversation.agent_started_at).toLocaleString()}</p>
-                                                                ) : null}
-                                                            </div>
+                                                            </span>
                                                         ) : null}
                                                     </div>
+
+                                                    {/* Email + Messages */}
+                                                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                                                        <span className="flex min-w-0 items-center gap-1.5">
+                                                            <Mail className="h-3 w-3 shrink-0" />
+
+                                                            <span className="truncate">
+                                                                {selectedConversation.inquiry?.email_address ??
+                                                                    "No email supplied"}
+                                                            </span>
+                                                        </span>
+
+                                                        <span className="hidden text-slate-300 sm:inline">·</span>
+
+                                                        <span className="shrink-0">
+                                                            {selectedConversation.messages.length} messages
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Agent Information */}
+                                                    {selectedConversation.agent && selectedIsAgentOwned ? (
+                                                        <div className="mt-2.5 rounded-lg bg-slate-50 px-3 py-2">
+                                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                                                <p className="text-xs font-semibold text-slate-700">
+                                                                    Taken by:
+                                                                </p>
+
+                                                                <p className="text-xs text-slate-500">
+                                                                    {selectedConversation.agent.name ?? "Agent"}
+                                                                </p>
+
+                                                                {selectedConversation.agent.email ? (
+                                                                    <>
+                                                                        <span className="hidden text-slate-300 sm:inline">
+                                                                            ·
+                                                                        </span>
+
+                                                                        <p className="max-w-full truncate text-xs text-slate-500">
+                                                                            {selectedConversation.agent.email}
+                                                                        </p>
+                                                                    </>
+                                                                ) : null}
+                                                            </div>
+
+                                                            {selectedConversation.agent_started_at ? (
+                                                                <p className="mt-1 text-[11px] text-slate-400">
+                                                                    Taken at:{" "}
+                                                                    {new Date(
+                                                                        selectedConversation.agent_started_at,
+                                                                    ).toLocaleString()}
+                                                                </p>
+                                                            ) : null}
+                                                        </div>
+                                                    ) : null}
                                                 </div>
                                             </div>
-                                            <div ref={actionsMenuRef} className="relative ml-auto shrink-0 self-start">
+
+                                            {/* Actions */}
+                                            <div
+                                                ref={actionsMenuRef}
+                                                className="relative shrink-0"
+                                            >
                                                 <button
                                                     type="button"
-                                                    onClick={() => setActionsMenuOpen((open) => !open)}
+                                                    onClick={() =>
+                                                        setActionsMenuOpen((open) => !open)
+                                                    }
                                                     aria-label="Open conversation actions"
                                                     aria-haspopup="menu"
                                                     aria-expanded={actionsMenuOpen}
-                                                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1]"
+                                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] sm:h-10 sm:w-10"
                                                 >
                                                     <EllipsisVertical className="h-4 w-4" />
                                                 </button>
 
                                                 {actionsMenuOpen ? (
-                                                    <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                                                    <div className="absolute right-0 top-full z-50 mt-2 w-[calc(100vw-2rem)] max-w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                                                        {/* Mark as Addressed */}
                                                         <button
                                                             type="button"
                                                             onClick={() => {
@@ -1145,14 +1197,21 @@ export default function AdminChatsPage() {
                                                                 void handleToggleAddressed();
                                                             }}
                                                             disabled={markingAddressed}
-                                                            className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedIsAddressed
-                                                                ? "bg-teal-50 text-teal-700 hover:bg-teal-100"
-                                                                : "text-slate-700 hover:bg-teal-50 hover:text-teal-700"
+                                                            className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedIsAddressed
+                                                                    ? "bg-teal-50 text-teal-700 hover:bg-teal-100"
+                                                                    : "text-slate-700 hover:bg-teal-50 hover:text-teal-700"
                                                                 }`}
                                                         >
-                                                            <CheckCircle2 className="h-4 w-4" />
-                                                            {selectedIsAddressed ? "Addressed" : "Mark as addressed"}
+                                                            <CheckCircle2 className="h-4 w-4 shrink-0" />
+
+                                                            <span>
+                                                                {selectedIsAddressed
+                                                                    ? "Addressed"
+                                                                    : "Mark as addressed"}
+                                                            </span>
                                                         </button>
+
+                                                        {/* Send History */}
                                                         <button
                                                             type="button"
                                                             onClick={() => {
@@ -1165,26 +1224,39 @@ export default function AdminChatsPage() {
                                                                     ? "Email the full chat transcript to the visitor"
                                                                     : "No email on file for this visitor"
                                                             }
-                                                            className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedRequestedHistory
-                                                                ? "bg-sky-50 text-sky-700 hover:bg-sky-100"
-                                                                : "text-slate-700 hover:bg-sky-50 hover:text-sky-700"
+                                                            className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedRequestedHistory
+                                                                    ? "bg-sky-50 text-sky-700 hover:bg-sky-100"
+                                                                    : "text-slate-700 hover:bg-sky-50 hover:text-sky-700"
                                                                 }`}
                                                         >
-                                                            <Mail className="h-4 w-4" />
-                                                            {sendingHistory ? "Sending…" : "Send history"}
+                                                            <Mail className="h-4 w-4 shrink-0" />
+
+                                                            <span>
+                                                                {sendingHistory
+                                                                    ? "Sending…"
+                                                                    : "Send history"}
+                                                            </span>
                                                         </button>
+
+                                                        {/* Take Chat */}
                                                         <button
                                                             type="button"
                                                             onClick={() => {
                                                                 setActionsMenuOpen(false);
                                                                 void handleTakeOver();
                                                             }}
-                                                            disabled={selectedIsEnded || Boolean(selectedConversation?.agent)}
-                                                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-40"
+                                                            disabled={
+                                                                selectedIsEnded ||
+                                                                Boolean(selectedConversation?.agent)
+                                                            }
+                                                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-40"
                                                         >
-                                                            <Headset className="h-4 w-4" />
-                                                            Take Chat
+                                                            <Headset className="h-4 w-4 shrink-0" />
+
+                                                            <span>Take Chat</span>
                                                         </button>
+
+                                                        {/* Return to AI */}
                                                         <button
                                                             type="button"
                                                             onClick={() => {
@@ -1192,11 +1264,14 @@ export default function AdminChatsPage() {
                                                                 void handleReturnToAI();
                                                             }}
                                                             disabled={selectedIsEnded}
-                                                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                                                         >
-                                                            <Bot className="h-4 w-4" />
-                                                            Return to AI
+                                                            <Bot className="h-4 w-4 shrink-0" />
+
+                                                            <span>Return to AI</span>
                                                         </button>
+
+                                                        {/* Close */}
                                                         <button
                                                             type="button"
                                                             onClick={() => {
@@ -1204,10 +1279,11 @@ export default function AdminChatsPage() {
                                                                 void handleCloseConversation();
                                                             }}
                                                             disabled={selectedIsEnded}
-                                                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
                                                         >
-                                                            <XCircle className="h-4 w-4" />
-                                                            Close
+                                                            <XCircle className="h-4 w-4 shrink-0" />
+
+                                                            <span>Close</span>
                                                         </button>
                                                     </div>
                                                 ) : null}
@@ -1215,6 +1291,7 @@ export default function AdminChatsPage() {
                                         </div>
                                     </div>
 
+                                    {/* Content area */}
                                     <div className="flex min-h-0 flex-1 flex-col p-4">
                                         <div
                                             className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl bg-slate-50 p-4"
