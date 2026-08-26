@@ -355,7 +355,7 @@ function QuotationStatCardSkeleton() {
 
 function QuotationStatsSkeleton() {
     return (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
                 <QuotationStatCardSkeleton key={i} />
             ))}
@@ -1202,7 +1202,7 @@ export default function AdminQuotationsPage() {
                 {loading ? (
                     <QuotationStatsSkeleton />
                 ) : (
-                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:grid-cols-4">
                         {quotationStatsCards.map((card) => (
                             <QuotationStatCard key={card.label} {...card} />
                         ))}

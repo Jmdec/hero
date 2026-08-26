@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
     AlertCircle,
     ArrowRightLeft,
-    BadgePercent,
     Bot,
     CheckCircle2,
     Clock3,
@@ -12,7 +11,6 @@ import {
     Headset,
     Inbox,
     Mail,
-    MailCheck,
     Menu,
     RefreshCw,
     Search,
@@ -112,7 +110,7 @@ function LiveDot({ className = "" }: { className?: string }) {
 function StatusChip({ status }: { status: string }) {
     const s = statusOf(status);
     return (
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ring-inset ${s.chip}`}>
+        <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ring-inset ${s.chip}`}>
             {s.live ? <LiveDot /> : <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />}
             {s.label}
         </span>
@@ -121,7 +119,7 @@ function StatusChip({ status }: { status: string }) {
 
 function AddressedChip() {
     return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-medium text-teal-700 ring-1 ring-inset ring-teal-600/20">
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-medium text-teal-700 ring-1 ring-inset ring-teal-600/20">
             <CheckCircle2 className="h-3 w-3" />
             Addressed
         </span>
@@ -151,8 +149,8 @@ function ConversationSkeleton() {
                 <div className="flex items-center gap-3">
                     <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-slate-200" />
                     <div className="space-y-2">
-                        <div className="h-4 w-32 sm:w-40 animate-pulse rounded bg-slate-200" />
-                        <div className="h-3 w-44 sm:w-56 animate-pulse rounded bg-slate-100" />
+                        <div className="h-4 w-32 animate-pulse rounded bg-slate-200 sm:w-40" />
+                        <div className="h-3 w-44 animate-pulse rounded bg-slate-100 sm:w-56" />
                     </div>
                 </div>
             </div>
@@ -233,13 +231,6 @@ function formatCountTrend(current: number, previous: number) {
     return `${percent > 0 ? "+" : ""}${percent}% vs previous period`;
 }
 
-function formatRateTrend(current: number, previous: number) {
-    const delta = current - previous;
-    if (Math.abs(delta) < 0.05) return "No change vs previous period";
-
-    return `${delta > 0 ? "+" : ""}${delta.toFixed(1)} pts vs previous period`;
-}
-
 type ReminderOverviewRow = {
     name: string;
     email: string;
@@ -248,6 +239,7 @@ type ReminderOverviewRow = {
 };
 
 type ChatStatCardProps = {
+    icon: typeof Bot;
     label: string;
     value: string;
     supporting: string;
@@ -255,7 +247,7 @@ type ChatStatCardProps = {
     onClick?: () => void;
 };
 
-function ChatStatCard({ label, value, supporting, tone, onClick }: ChatStatCardProps) {
+function ChatStatCard({ icon: Icon, label, value, supporting, tone, onClick }: ChatStatCardProps) {
     const style = CHAT_STAT_TONE_STYLES[tone];
 
     return (
@@ -269,33 +261,34 @@ function ChatStatCard({ label, value, supporting, tone, onClick }: ChatStatCardP
                     onClick();
                 }
             }}
-            className={`relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-4 sm:p-6 text-left shadow-sm ${onClick ? "cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/20" : ""}`}
+            className={`relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-3.5 text-left shadow-sm sm:p-5 lg:p-6 ${onClick ? "cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/20" : ""}`}
         >
             <div className={`absolute left-0 top-0 h-full w-1 ${style.accent}`} />
-            <div className="mb-3 sm:mb-4 flex items-start justify-between">
-                <p className="mb-1 text-xs sm:text-sm font-medium text-slate-500">{label}</p>
+            <div className={`mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg sm:mb-3 sm:h-9 sm:w-9 lg:h-10 lg:w-10 lg:rounded-xl ${style.bg}`}>
+                <Icon className={`h-4 w-4 sm:h-4.5 sm:w-4.5 lg:h-5 lg:w-5 ${style.text}`} />
             </div>
-            <p className="mb-2 text-2xl sm:text-3xl font-bold text-slate-900">{value}</p>
-            <p className="text-[11px] sm:text-xs text-slate-400">{supporting}</p>
+            <p className="mb-1 text-xs font-medium text-slate-500 sm:text-sm">{label}</p>
+            <p className="mb-1.5 text-xl font-bold text-slate-900 sm:text-2xl lg:mb-2 lg:text-3xl">{value}</p>
+            <p className="text-[11px] leading-snug text-slate-400 sm:text-xs">{supporting}</p>
         </article>
     );
 }
 
 function ChatStatCardSkeleton() {
     return (
-        <div className="relative w-full overflow-hidden rounded-2xl border border-transparent bg-white p-4 sm:p-6 shadow-sm animate-pulse">
+        <div className="relative w-full animate-pulse overflow-hidden rounded-2xl border border-transparent bg-white p-3.5 shadow-sm sm:p-5 lg:p-6">
             <div className="absolute left-0 top-0 h-full w-1 bg-slate-200" />
-            <div className="mb-4 h-10 w-10 rounded-xl bg-slate-200" />
-            <div className="mb-3 h-4 w-28 sm:w-32 rounded bg-slate-200" />
-            <div className="mb-3 h-8 sm:h-9 w-24 sm:w-28 rounded bg-slate-200" />
-            <div className="h-3 w-32 sm:w-36 rounded bg-slate-200" />
+            <div className="mb-3 h-8 w-8 rounded-lg bg-slate-200 sm:h-9 sm:w-9 lg:h-10 lg:w-10 lg:rounded-xl" />
+            <div className="mb-3 h-4 w-28 rounded bg-slate-200 sm:w-32" />
+            <div className="mb-3 h-8 w-24 rounded bg-slate-200 sm:h-9 sm:w-28" />
+            <div className="h-3 w-32 rounded bg-slate-200 sm:w-36" />
         </div>
     );
 }
 
 function ChatStatsSkeleton() {
     return (
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
                 <ChatStatCardSkeleton key={index} />
             ))}
@@ -310,7 +303,7 @@ function ChatStatistics({
     analytics: ChatAnalytics | null;
     onOpenReminderOverview: () => void;
 }) {
-    const cards = analytics
+    const cards: ChatStatCardProps[] = analytics
         ? [
             {
                 icon: Bot,
@@ -320,7 +313,7 @@ function ChatStatistics({
                     analytics.chat_leads.trends.conversations.current,
                     analytics.chat_leads.trends.conversations.previous,
                 ),
-                tone: "neutral" as const,
+                tone: "neutral",
             },
             {
                 icon: Headset,
@@ -330,7 +323,7 @@ function ChatStatistics({
                     analytics.chat_leads.trends.live_agent_requests.current,
                     analytics.chat_leads.trends.live_agent_requests.previous,
                 ),
-                tone: "amber" as const,
+                tone: "amber",
             },
             {
                 icon: Clock3,
@@ -339,14 +332,14 @@ function ChatStatistics({
                 supporting: analytics.chat_leads.responded_conversations > 0
                     ? `Across ${analytics.chat_leads.responded_conversations.toLocaleString()} responded conversations`
                     : "No replied conversations yet",
-                tone: "green" as const,
+                tone: "green",
             },
             {
                 icon: Clock3,
                 label: "Preferred Contact Reminders",
                 value: analytics.chat_leads.preferred_contact_reminders.toLocaleString(),
                 supporting: "Notify live agents by 8am",
-                tone: "amber" as const,
+                tone: "amber",
                 onClick: onOpenReminderOverview,
             },
         ]
@@ -356,34 +349,34 @@ function ChatStatistics({
                 label: "Total Conversations",
                 value: "--",
                 supporting: "Analytics unavailable",
-                tone: "neutral" as const,
+                tone: "neutral",
             },
             {
                 icon: Headset,
                 label: "Live Agent Requests",
                 value: "--",
                 supporting: "Analytics unavailable",
-                tone: "amber" as const,
+                tone: "amber",
             },
             {
                 icon: Clock3,
                 label: "Average Response Time",
                 value: "--",
                 supporting: "Analytics unavailable",
-                tone: "green" as const,
+                tone: "green",
             },
             {
                 icon: Clock3,
                 label: "Preferred Contact Reminders",
                 value: "--",
                 supporting: "Notify live agents by 8am",
-                tone: "amber" as const,
+                tone: "amber",
                 onClick: onOpenReminderOverview,
             },
         ];
 
     return (
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
             {cards.map((card) => (
                 <ChatStatCard key={card.label} {...card} />
             ))}
@@ -402,27 +395,27 @@ interface ToastItem {
 function ToastStack({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: number) => void }) {
     if (toasts.length === 0) return null
     return (
-        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-5 sm:right-5 z-100 flex flex-col gap-2 w-auto sm:w-full sm:max-w-sm pointer-events-none">
+        <div className="pointer-events-none fixed inset-x-3 bottom-3 z-[100] flex flex-col gap-2 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-full sm:max-w-sm">
             {toasts.map((t) => (
                 <div
                     key={t.id}
-                    className={`pointer-events-auto flex items-start gap-3 rounded-xl border px-3.5 py-3 sm:px-4 shadow-lg transition-all animate-in fade-in slide-in-from-bottom-2 ${t.tone === "success"
-                        ? "bg-white border-green-200"
-                        : "bg-white border-red-200"
+                    className={`pointer-events-auto flex animate-in items-start gap-3 rounded-xl border px-3.5 py-3 shadow-lg fade-in slide-in-from-bottom-2 sm:px-4 ${t.tone === "success"
+                        ? "border-green-200 bg-white"
+                        : "border-red-200 bg-white"
                         }`}
                 >
                     {t.tone === "success" ? (
-                        <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
                     ) : (
-                        <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                        <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
                     )}
-                    <p className="text-sm text-slate-800 flex-1 leading-snug">{t.message}</p>
+                    <p className="flex-1 text-sm leading-snug text-slate-800">{t.message}</p>
                     <button
                         onClick={() => onDismiss(t.id)}
-                        className="text-slate-400 hover:text-slate-600 transition shrink-0"
+                        className="shrink-0 text-slate-400 transition hover:text-slate-600"
                         aria-label="Dismiss notification"
                     >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="h-3.5 w-3.5" />
                     </button>
                 </div>
             ))}
@@ -446,11 +439,11 @@ function ReminderOverviewModal({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-2 sm:p-4">
             <div className="absolute inset-0" onClick={onClose} />
-            <div className="relative z-10 w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[92vh] flex flex-col">
+            <div className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                 <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
                     <div className="min-w-0">
                         <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#0D47A1]">Overview</p>
-                        <h3 className="mt-1 text-base sm:text-lg font-semibold text-slate-900 truncate">Preferred contact reminders</h3>
+                        <h3 className="mt-1 truncate text-base font-semibold text-slate-900 sm:text-lg">Preferred contact reminders</h3>
                     </div>
                     <button
                         type="button"
@@ -932,6 +925,12 @@ export default function AdminChatsPage() {
         selectedConversationId !== null &&
         (conversationLoading || selectedConversation?.id !== selectedConversationId);
 
+    const filterTabs: { key: AddressedFilter; label: string }[] = [
+        { key: "all", label: "All" },
+        { key: "needs_response", label: "Needs reply" },
+        { key: "addressed", label: "Addressed" },
+    ];
+
     const sidebarSearchHeader = (
         <div className="shrink-0 space-y-2 border-b border-slate-100 p-2.5 sm:p-3">
             <div className="relative">
@@ -943,6 +942,20 @@ export default function AdminChatsPage() {
                     className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#0D47A1] focus:bg-white focus:ring-2 focus:ring-[#0D47A1]/10"
                 />
             </div>
+            <div className="flex gap-1 overflow-x-auto pb-0.5">
+                {filterTabs.map((tab) => (
+                    <button
+                        key={tab.key}
+                        onClick={() => setAddressedFilter(tab.key)}
+                        className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium transition ${addressedFilter === tab.key
+                            ? "bg-[#0D47A1] text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            }`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
         </div>
     );
 
@@ -951,7 +964,7 @@ export default function AdminChatsPage() {
             {loading || refreshing ? (
                 <ConversationListSkeleton />
             ) : filteredConversations.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 rounded-xl bg-slate-50 p-6 sm:p-8 text-center">
+                <div className="flex flex-col items-center gap-2 rounded-xl bg-slate-50 p-6 text-center sm:p-8">
                     <Inbox className="h-5 w-5 text-slate-300" />
                     <p className="text-sm text-slate-500">
                         {conversations.length === 0 ? "No conversations yet." : "Nothing matches that filter."}
@@ -966,7 +979,7 @@ export default function AdminChatsPage() {
                         <button
                             key={conversation.id}
                             onClick={() => handleSelectConversation(conversation.id)}
-                            className={`group relative flex w-full items-start gap-2.5 sm:gap-3 overflow-hidden rounded-xl border p-2 sm:p-2.5 pl-3 sm:pl-3.5 text-left transition ${isActive ? "border-[#0D47A1]/30 bg-[#0D47A1]/4" : "border-transparent hover:bg-slate-50"
+                            className={`group relative flex w-full items-start gap-2.5 overflow-hidden rounded-xl border p-2 pl-3 text-left transition sm:gap-3 sm:p-2.5 sm:pl-3.5 ${isActive ? "border-[#0D47A1]/30 bg-[#0D47A1]/[0.04]" : "border-transparent hover:bg-slate-50"
                                 }`}
                         >
                             <span className={`absolute inset-y-2 left-0 w-1 rounded-full ${s.rail}`} />
@@ -976,9 +989,16 @@ export default function AdminChatsPage() {
                                     <span className="shrink-0 font-mono text-[10px] text-slate-400">{timeAgo(conversation.updated_at)}</span>
                                 </div>
 
+                                <div className="mt-1 flex items-center gap-1.5">
+                                    <StatusChip status={conversation.status} />
+                                    {isAddressed(conversation) ? (
+                                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-teal-500" />
+                                    ) : null}
+                                </div>
+
                                 <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5">
-                                    <p className="truncate text-xs text-slate-500">{conversation.inquiry?.email_address ?? "No email"}</p>
-                                    <span className="font-mono text-[10px] text-slate-400">{conversation.message_count} msgs</span>
+                                    <p className="min-w-0 truncate text-xs text-slate-500">{conversation.inquiry?.email_address ?? "No email"}</p>
+                                    <span className="shrink-0 font-mono text-[10px] text-slate-400">{conversation.message_count} msgs</span>
                                 </div>
                             </div>
                         </button>
@@ -996,38 +1016,37 @@ export default function AdminChatsPage() {
                 loading={reminderOverviewLoading}
                 onClose={() => setReminderOverviewOpen(false)}
             />
-            <div className="flex h-dvh flex-col overflow-hidden">
-                <main className="mx-auto flex w-full min-h-0 max-w-7xl flex-1 flex-col overflow-hidden px-2 pt-2 sm:px-3 md:px-4">
+            <div className="flex h-dvh flex-col overflow-hidden bg-slate-50/60">
+                <main className="mx-auto flex w-full min-h-0 max-w-[1600px] flex-1 flex-col overflow-hidden px-2 pt-2 sm:px-3 sm:pt-3 md:px-4 lg:px-6 lg:pt-4">
                     {/* Mobile/tablet top bar */}
-                    <div className="flex shrink-0 items-center justify-between gap-2 px-1 pb-2 lg:hidden">
+                    <div className="flex shrink-0 items-center justify-between gap-2 px-1 pb-2 md:hidden">
                         <button
                             onClick={() => setSidebarOpen(true)}
                             aria-label="Open conversations menu"
-                            className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2.5 md:px-3 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1]"
+                            className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1]"
                         >
                             <Menu className="h-4 w-4" />
-                            <span className="hidden md:inline text-sm font-medium">Conversations</span>
+                            <span className="text-sm font-medium">Conversations</span>
                         </button>
                         <button
                             onClick={() => void handleManualRefresh()}
                             disabled={refreshing || loading}
                             aria-label="Refresh conversations"
-                            className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2.5 md:px-3 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50"
+                            className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2.5 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-                            <span className="hidden md:inline text-sm font-medium">Refresh</span>
                         </button>
                     </div>
 
                     {error ? (
-                        <div className="flex shrink-0 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 sm:px-4 sm:py-3 text-sm text-rose-700">
+                        <div className="mb-2.5 flex shrink-0 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700 sm:px-4 sm:py-3">
                             <AlertCircle className="h-4 w-4 shrink-0" />
                             {error}
                         </div>
                     ) : null}
 
                     {/* Chat statistics */}
-                    <div className="mb-3 flex flex-col gap-3 xl:flex-row xl:items-start">
+                    <div className="mb-2.5 flex flex-col gap-2.5 sm:mb-3 sm:gap-3 xl:flex-row xl:items-start">
                         <div className="min-w-0 flex-1">
                             {statsLoading ? <ChatStatsSkeleton /> : <ChatStatistics analytics={chatAnalytics} onOpenReminderOverview={openReminderOverview} />}
                         </div>
@@ -1037,28 +1056,28 @@ export default function AdminChatsPage() {
                             disabled={refreshing || loading}
                             title="Refresh conversations"
                             aria-label="Refresh conversations"
-                            className="hidden shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50 lg:inline-flex"
+                            className="hidden shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50 md:inline-flex"
                         >
                             <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
                             <span>Refresh</span>
                         </button>
                     </div>
 
-                    <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
-                        {/* Desktop/tablet-landscape sidebar column */}
-                        <div className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:flex">
+                    <div className="grid min-h-0 flex-1 gap-2.5 overflow-hidden sm:gap-3 md:grid-cols-[240px_minmax(0,1fr)] lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
+                        {/* Persistent sidebar column from tablet (md) up */}
+                        <div className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:flex">
                             {sidebarSearchHeader}
                             {sidebarListBody}
                         </div>
 
-                        {/* Mobile/tablet off-canvas drawer with the same content */}
+                        {/* Mobile off-canvas drawer with the same content */}
                         {sidebarOpen ? (
-                            <div className="fixed inset-0 z-50 lg:hidden">
+                            <div className="fixed inset-0 z-50 md:hidden">
                                 <div
                                     className="absolute inset-0 bg-slate-900/40"
                                     onClick={() => setSidebarOpen(false)}
                                 />
-                                <div className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm md:max-w-md flex-col overflow-hidden bg-white shadow-xl">
+                                <div className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm flex-col overflow-hidden bg-white shadow-xl">
                                     <div className="flex shrink-0 items-center justify-between border-b border-slate-100 p-3">
                                         <p className="text-sm font-semibold text-slate-800">Conversations</p>
                                         <button
@@ -1077,7 +1096,7 @@ export default function AdminChatsPage() {
 
                         <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                             {selectedConversationId === null ? (
-                                <div className="flex h-full flex-col items-center justify-center gap-2 p-6 sm:p-8 text-center">
+                                <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center sm:p-8">
                                     <Inbox className="h-6 w-6 text-slate-300" />
                                     <p className="text-sm text-slate-500">Select a conversation to read the thread and reply.</p>
                                 </div>
@@ -1091,7 +1110,7 @@ export default function AdminChatsPage() {
                                             {/* Left: Conversation information */}
                                             <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:gap-3">
                                                 {/* Avatar */}
-                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0D47A1]/10 text-sm font-semibold text-[#0D47A1] sm:h-11 sm:w-11">
+                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0D47A1]/10 text-sm font-semibold text-[#0D47A1] sm:h-11 sm:w-11">
                                                     {initialsOf(selectedConversation.inquiry?.full_name)}
                                                 </div>
 
@@ -1112,12 +1131,10 @@ export default function AdminChatsPage() {
                                                             {selectedRequestedHistory ? (
                                                                 <span
                                                                     title="Visitor asked for a copy of this chat"
-                                                                    className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-50 px-2 py-1 text-[10px] font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20 sm:px-2.5 sm:py-1 sm:text-[11px]"
+                                                                    className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-sky-50 px-2 py-1 text-[10px] font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20 sm:px-2.5 sm:text-[11px]"
                                                                 >
                                                                     <Mail className="h-3 w-3" />
-                                                                    <span className="inline">
-                                                                        Requested history
-                                                                    </span>
+                                                                    <span>Requested history</span>
                                                                 </span>
                                                             ) : null}
                                                         </div>
@@ -1207,7 +1224,7 @@ export default function AdminChatsPage() {
                                                 </button>
 
                                                 {actionsMenuOpen ? (
-                                                    <div className="absolute right-0 top-full z-50 mt-2 w-[calc(100vw-2rem)] max-w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                                                    <div className="absolute right-0 top-full z-50 mt-2 w-56 max-w-[min(14rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
                                                         {/* Mark as Addressed */}
                                                         <button
                                                             type="button"
@@ -1320,7 +1337,7 @@ export default function AdminChatsPage() {
                                     {/* Content area */}
                                     <div className="flex min-h-0 flex-1 flex-col p-2.5 sm:p-4">
                                         <div
-                                            className="min-h-0 flex-1 space-y-2.5 sm:space-y-3 overflow-y-auto rounded-xl bg-slate-50 p-2.5 sm:p-4"
+                                            className="min-h-0 flex-1 space-y-2.5 overflow-y-auto rounded-xl bg-slate-50 p-2.5 sm:space-y-3 sm:p-4"
                                             style={{
                                                 backgroundImage: "radial-gradient(circle, rgba(15,23,42,0.06) 1px, transparent 1px)",
                                                 backgroundSize: "16px 16px",
@@ -1341,7 +1358,7 @@ export default function AdminChatsPage() {
                                                     return (
                                                         <div key={message.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
                                                             <div
-                                                                className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3 py-2 sm:px-3.5 sm:py-2.5 shadow-sm ${style.bubble}`}
+                                                                className={`max-w-[88%] rounded-2xl px-3 py-2 shadow-sm sm:max-w-[75%] sm:px-3.5 sm:py-2.5 lg:max-w-[65%] ${style.bubble}`}
                                                             >
                                                                 <div className={`mb-1 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wide ${style.label}`}>
                                                                     <SenderIcon className="h-3 w-3" />
@@ -1417,16 +1434,16 @@ export default function AdminChatsPage() {
                                                     style={{ minHeight: REPLY_MIN_HEIGHT, maxHeight: REPLY_MAX_HEIGHT }}
                                                     className="w-full resize-none overflow-y-auto rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#0D47A1] focus:ring-2 focus:ring-[#0D47A1]/10"
                                                 />
-                                                <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                                <div className="mt-2 flex flex-col-reverse gap-2 md:flex-row md:items-center md:justify-between">
                                                     <div className="flex items-center gap-1.5 text-xs text-slate-400">
                                                         <ArrowRightLeft className="h-3.5 w-3.5" />
-                                                        <span className="hidden sm:inline">Enter to send · Shift + Enter for a new line</span>
-                                                        <span className="sm:hidden">Enter to send</span>
+                                                        <span className="hidden md:inline">Enter to send · Shift + Enter for a new line</span>
+                                                        <span className="md:hidden">Enter to send</span>
                                                     </div>
                                                     <button
                                                         onClick={() => void handleSendReply()}
                                                         disabled={sending || !reply.trim()}
-                                                        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0D47A1] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0D47A1]/90 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+                                                        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0D47A1] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0D47A1]/90 disabled:cursor-not-allowed disabled:bg-slate-300 md:w-auto"
                                                     >
                                                         <Send className="h-4 w-4" />
                                                         {sending ? "Sending..." : "Send"}
@@ -1437,7 +1454,7 @@ export default function AdminChatsPage() {
                                     </div>
                                 </>
                             ) : (
-                                <div className="flex h-full flex-col items-center justify-center gap-2 p-6 sm:p-8 text-center">
+                                <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center sm:p-8">
                                     <Inbox className="h-6 w-6 text-slate-300" />
                                     <p className="text-sm text-slate-500">Select a conversation to read the thread and reply.</p>
                                 </div>
