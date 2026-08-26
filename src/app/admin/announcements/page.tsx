@@ -52,6 +52,9 @@ interface Announcement {
   }>;
 }
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200",
   scheduled: "bg-blue-100 text-blue-700 ring-1 ring-inset ring-blue-200",
@@ -356,6 +359,8 @@ export default function AnnouncementsAdmin() {
   const [saving, setSaving] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imageError, setImageError] = useState("");
+  const [removeExistingImage, setRemoveExistingImage] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -530,6 +535,8 @@ export default function AnnouncementsAdmin() {
     setFormErrors({});
     setImageFiles([]);
     setImagePreviews([]);
+    setImageError("");
+    setRemoveExistingImage(false);
     setFormOpen(true);
   }
 
@@ -555,6 +562,8 @@ export default function AnnouncementsAdmin() {
     setImageFiles([]);
     const imageUrl = getAnnouncementImageUrl(a);
     setImagePreviews(imageUrl ? [imageUrl] : []);
+    setImageError("");
+    setRemoveExistingImage(false);
     setFormOpen(true);
   }
 
@@ -654,6 +663,7 @@ export default function AnnouncementsAdmin() {
     setConfirmState(null);
     setSaving(true);
     setFormErrors({});
+    setImageError("");
     const url = isEdit
       ? `/api/admin/announcements/${editing!.id}`
       : `/api/admin/announcements`;
@@ -669,6 +679,10 @@ export default function AnnouncementsAdmin() {
       formData.append("scheduled_at", form.scheduled_at);
       formData.append("publish_to_social", String(form.publish_to_social));
 
+      if (isEdit && removeExistingImage && imageFiles.length === 0) {
+        formData.append("remove_image", "true");
+      }
+
       payload.social_platforms.forEach((platform) => {
         formData.append("social_platforms[]", platform);
       });
@@ -678,9 +692,7 @@ export default function AnnouncementsAdmin() {
       });
 
       if (imageFiles.length > 0) {
-        imageFiles.forEach((file) => {
-          formData.append("images[]", file);
-        });
+        formData.append("image", imageFiles[0]);
       }
 
       const res = await fetch(url, {
@@ -722,6 +734,8 @@ export default function AnnouncementsAdmin() {
       setForm(EMPTY_FORM);
       setImageFiles([]);
       setImagePreviews([]);
+      setImageError("");
+      setRemoveExistingImage(false);
 
       // Show publish feedback if applicable
       if (form.publish_to_social && saved.publish_results && saved.publish_results.length > 0) {
@@ -998,6 +1012,7 @@ export default function AnnouncementsAdmin() {
                 <table className="w-full text-sm">
                   <thead className="bg-blue-50 text-xs font-semibold uppercase tracking-wide text-blue-700">
                     <tr>
+                      <th className="px-5 py-3 text-left">Image</th>
                       <th className="px-5 py-3 text-left">Title</th>
                       <th className="px-5 py-3 text-left">Tag</th>
                       <th className="px-5 py-3 text-left">Status</th>
@@ -1013,6 +1028,19 @@ export default function AnnouncementsAdmin() {
                         onClick={() => openView(a)}
                         className="cursor-pointer hover:bg-blue-50/40"
                       >
+                        <td className="px-5 py-4">
+                          {getAnnouncementImageUrl(a) ? (
+                            <img
+                              src={getAnnouncementImageUrl(a) ?? ""}
+                              alt=""
+                              className="h-12 w-16 rounded object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-12 w-16 items-center justify-center rounded bg-slate-100 text-[10px] text-slate-400">
+                              No image
+                            </div>
+                          )}
+                        </td>
                         <td className="px-5 py-4">
                           <p className="font-semibold text-slate-900">{a.title}</p>
                         </td>
@@ -1174,6 +1202,15 @@ export default function AnnouncementsAdmin() {
 
               {/* Content */}
               <div>
+                {(viewTarget.image_url || getAnnouncementImageUrl(viewTarget)) ? (
+                  <div className="mb-5 overflow-hidden rounded-lg border border-slate-100">
+                    <img
+                      src={viewTarget.image_url ?? getAnnouncementImageUrl(viewTarget) ?? ""}
+                      alt={viewTarget.title}
+                      className="max-h-64 w-full object-cover"
+                    />
+                  </div>
+                ) : null}
                 <dt className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-400">
                   <FileText className="h-3 w-3" /> Content
                 </dt>
@@ -1406,16 +1443,36 @@ export default function AnnouncementsAdmin() {
                 </label>
                 <input
                   type="file"
-                  accept=".webp,.jpeg,.jpg"
-                  multiple
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={(event) => {
-                    const files = Array.from(event.target.files ?? []);
-                    setImageFiles(files);
-                    setImagePreviews(files.map((file) => URL.createObjectURL(file)));
+                    const file = event.target.files?.[0];
+                    setImageError("");
+                    if (!file) return;
+
+                    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+                      setImageFiles([]);
+                      setImagePreviews([]);
+                      setImageError("Use a JPG, PNG, or WEBP image.");
+                      event.target.value = "";
+                      return;
+                    }
+
+                    if (file.size > MAX_IMAGE_SIZE) {
+                      setImageFiles([]);
+                      setImagePreviews([]);
+                      setImageError("Images must be 5 MB or smaller.");
+                      event.target.value = "";
+                      return;
+                    }
+
+                    setImageFiles([file]);
+                    setRemoveExistingImage(false);
+                    setImagePreviews([URL.createObjectURL(file)]);
                   }}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700"
                 />
-                {(imagePreviews.length > 0 || (editing && getAnnouncementImageUrl(editing))) && (
+                {imageError && <p className="mt-1 text-xs text-red-600">{imageError}</p>}
+                {(imagePreviews.length > 0 || (editing && getAnnouncementImageUrl(editing) && !removeExistingImage)) && (
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     {imagePreviews.map((preview, index) => (
                       <div key={`${preview}-${index}`} className="overflow-hidden rounded-lg border border-slate-200">
@@ -1424,6 +1481,19 @@ export default function AnnouncementsAdmin() {
                     ))}
                   </div>
                 )}
+                {editing && getAnnouncementImageUrl(editing) && imageFiles.length === 0 && !removeExistingImage ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRemoveExistingImage(true);
+                      setImagePreviews([]);
+                    }}
+                    className="mt-2 text-xs font-medium text-red-600 hover:text-red-700"
+                  >
+                    Remove existing image
+                  </button>
+                ) : null}
+                {removeExistingImage && <p className="mt-1 text-xs text-amber-600">The existing image will be removed when you save.</p>}
               </div>
 
               <div>

@@ -17,6 +17,7 @@ interface Announcement {
   title: string;
   content: string;
   image?: string | null;
+  image_url?: string | null;
   created_at: string;
   social_platforms?: string[] | null;
   social_links?: Array<string | null> | null;
@@ -67,19 +68,9 @@ const PROMO_TAG_KEYWORDS = ["promo", "promotion", "promotional", "offer", "deal"
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=1000&q=80";
 
-function getAnnouncementImageUrl(image?: string | null) {
-  if (!image) return null;
-
-  const configured =
-    process.env.NEXT_PUBLIC_API_URL ||
-    process.env.LARAVEL_API_URL ||
-    "http://localhost:8000";
-  const normalized = configured.replace(/\/+$/g, "");
-  const base = normalized.endsWith("/api")
-    ? normalized.replace(/\/api$/, "")
-    : normalized;
-
-  return `${base}/storage/${image.replace(/^\/+/, "")}`;
+function getAnnouncementImageUrl(announcement?: Announcement | null) {
+  if (!announcement?.image_url) return null;
+  return announcement.image_url;
 }
 
 function isPromotionalAnnouncement(item: Announcement) {
@@ -120,6 +111,7 @@ export default function AnnouncementPopup() {
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
         )[0];
 
+        setImageFailed(false);
         setAnnouncement(latest);
         setTimeout(() => setOpen(true), 400);
       } catch {
@@ -155,12 +147,7 @@ export default function AnnouncementPopup() {
     };
   }, [open, handleClose]);
 
-  // Reset image-error tracking whenever a new announcement is loaded
-  useEffect(() => {
-    setImageFailed(false);
-  }, [announcement?.id]);
-
-  const uploadedImageSrc = getAnnouncementImageUrl(announcement?.image);
+  const uploadedImageSrc = getAnnouncementImageUrl(announcement);
   const imageSrc =
     uploadedImageSrc && !imageFailed ? uploadedImageSrc : FALLBACK_IMAGE;
 
