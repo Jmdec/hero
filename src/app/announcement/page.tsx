@@ -107,7 +107,19 @@ function resolveAnnouncementImageUrl(
 
   const image = value.trim();
   if (!image) return null;
-  if (/^https?:\/\//i.test(image)) return image;
+  if (/^https?:\/\//i.test(image)) {
+    try {
+      const parsed = new URL(image);
+      if (!/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(parsed.hostname)) {
+        return image;
+      }
+      parsed.protocol = new URL(getApiBaseUrl()).protocol;
+      parsed.host = new URL(getApiBaseUrl()).host;
+      return parsed.toString();
+    } catch {
+      return image;
+    }
+  }
   if (image.startsWith("//")) return `https:${image}`;
 
   let path = image.replace(/^\/+/, "");
@@ -198,9 +210,6 @@ function ImageFallback({ className = "" }: { className?: string }) {
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/80 shadow-sm">
           <Newspaper className="h-7 w-7 text-[#1B3A8C]/40" />
         </div>
-        <span className="text-xs font-medium text-[#1B3A8C]/50">
-          No image available
-        </span>
       </div>
     </div>
   );

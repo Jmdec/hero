@@ -158,20 +158,34 @@ function authHeaders(json = false) {
 }
 
 function getAnnouncementImageUrl(item: Announcement): string | null {
-  if (item.image_url) return item.image_url;
-
-  if (Array.isArray(item.image_urls) && item.image_urls.length > 0) {
-    return item.image_urls[0];
-  }
-
   const configured =
     process.env.NEXT_PUBLIC_API_URL ||
     process.env.LARAVEL_API_URL ||
     "http://localhost:8000";
-  const normalized = configured.replace(/\/+$/g, "");
-  const base = normalized.endsWith("/api")
-    ? normalized.replace(/\/api$/, "")
-    : normalized;
+  const base = configured.replace(/\/+$/g, "").replace(/\/api$/, "");
+
+  const resolve = (value: string): string => {
+    if (/^https?:\/\//i.test(value)) {
+      try {
+        const parsed = new URL(value);
+        if (!/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(parsed.hostname)) return value;
+        parsed.protocol = new URL(base).protocol;
+        parsed.host = new URL(base).host;
+        return parsed.toString();
+      } catch {
+        return value;
+      }
+    }
+    let path = value.replace(/^\/+/, "");
+    path = path.replace(/^public\/storage\//i, "").replace(/^storage\//i, "");
+    return `${base}/storage/${path}`;
+  };
+
+  if (item.image_url) return resolve(item.image_url);
+
+  if (Array.isArray(item.image_urls) && item.image_urls.length > 0) {
+    return resolve(item.image_urls[0]);
+  }
 
   const normalizeInput = (input: string | string[] | null | undefined): string[] => {
     if (!input) return [];
@@ -201,17 +215,7 @@ function getAnnouncementImageUrl(item: Announcement): string | null {
 
   const first = normalizeInput(item.image)[0];
   if (!first) return null;
-  if (/^https?:\/\//i.test(first)) return first;
-
-  const storagePath = first.replace(/^\/+/, "");
-  const withoutStoragePrefix = storagePath.replace(/^storage\//i, "");
-  const cleanPath = withoutStoragePrefix.replace(/^\/+/, "");
-
-  if (cleanPath.startsWith("storage/")) {
-    return `${base}/${cleanPath}`;
-  }
-
-  return `${base}/storage/${cleanPath}`;
+  return resolve(first);
 }
 
 function sortAnnouncements(items: Announcement[]) {
@@ -692,7 +696,9 @@ export default function AnnouncementsAdmin() {
       });
 
       if (imageFiles.length > 0) {
-        formData.append("image", imageFiles[0]);
+        imageFiles.forEach((file) => {
+          formData.append("images[]", file);
+        });
       }
 
       const res = await fetch(url, {
@@ -1555,43 +1561,56 @@ export default function AnnouncementsAdmin() {
 
                   {(imagePreviews.length > 0 || (editing && getAnnouncementImageUrl(editing) && !removeExistingImage)) ? (
                     <div className="mb-3 overflow-hidden rounded-xl border border-slate-200">
-                      <img
-                        src={imagePreviews[0] ?? getAnnouncementImageUrl(editing!) ?? ""}
-                        alt="Announcement preview"
-                        className="h-48 w-full object-cover"
-                      />
+                      <div className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3">
+                        {(imagePreviews.length > 0
+                          ? imagePreviews
+                          : [getAnnouncementImageUrl(editing!) ?? ""]
+                        ).map((preview, index) => (
+                          <img
+                            key={`${preview}-${index}`}
+                            src={preview}
+                            alt={`Announcement preview ${index + 1}`}
+                            className="h-32 w-full rounded-lg object-cover"
+                          />
+                        ))}
+                      </div>
                       <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
                         <span className="text-xs text-slate-500">
-                          {imageFiles.length > 0 ? imageFiles[0].name : "Current image"}
+                          {imageFiles.length > 0
+                            ? `${imageFiles.length} image${imageFiles.length === 1 ? "" : "s"} selected`
+                            : "Current image"}
                         </span>
                         <div className="flex items-center gap-3">
                           <label className="cursor-pointer text-xs font-medium text-blue-600 hover:text-blue-700">
-                            Replace
+                            {imageFiles.length > 0 ? "Replace selection" : "Replace"}
                             <input
                               type="file"
                               accept="image/jpeg,image/png,image/webp"
+                              multiple
                               className="hidden"
                               onChange={(event) => {
-                                const file = event.target.files?.[0];
+                                const files = Array.from(event.target.files ?? []);
                                 setImageError("");
-                                if (!file) return;
+                                if (files.length === 0) return;
 
-                                if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+                                const invalidType = files.find((file) => !ACCEPTED_IMAGE_TYPES.includes(file.type));
+                                if (invalidType) {
                                   setImageFiles([]);
                                   setImageError("Use a JPG, PNG, or WEBP image.");
                                   event.target.value = "";
                                   return;
                                 }
-                                if (file.size > MAX_IMAGE_SIZE) {
+                                const oversized = files.find((file) => file.size > MAX_IMAGE_SIZE);
+                                if (oversized) {
                                   setImageFiles([]);
                                   setImageError("Images must be 5 MB or smaller.");
                                   event.target.value = "";
                                   return;
                                 }
 
-                                setImageFiles([file]);
+                                setImageFiles(files);
                                 setRemoveExistingImage(false);
-                                setImagePreviews([URL.createObjectURL(file)]);
+                                setImagePreviews(files.map((file) => URL.createObjectURL(file)));
                               }}
                             />
                           </label>
@@ -1617,20 +1636,23 @@ export default function AnnouncementsAdmin() {
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
+                        multiple
                         className="hidden"
                         onChange={(event) => {
-                          const file = event.target.files?.[0];
+                          const files = Array.from(event.target.files ?? []);
                           setImageError("");
-                          if (!file) return;
+                          if (files.length === 0) return;
 
-                          if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+                          const invalidType = files.find((file) => !ACCEPTED_IMAGE_TYPES.includes(file.type));
+                          if (invalidType) {
                             setImageFiles([]);
                             setImagePreviews([]);
-                            setImageError("Use a JPG, PNG, or WEBP image.");
+                            setImageError("Use JPG, PNG, or WEBP images only.");
                             event.target.value = "";
                             return;
                           }
-                          if (file.size > MAX_IMAGE_SIZE) {
+                          const oversized = files.find((file) => file.size > MAX_IMAGE_SIZE);
+                          if (oversized) {
                             setImageFiles([]);
                             setImagePreviews([]);
                             setImageError("Images must be 5 MB or smaller.");
@@ -1638,9 +1660,9 @@ export default function AnnouncementsAdmin() {
                             return;
                           }
 
-                          setImageFiles([file]);
+                          setImageFiles(files);
                           setRemoveExistingImage(false);
-                          setImagePreviews([URL.createObjectURL(file)]);
+                          setImagePreviews(files.map((file) => URL.createObjectURL(file)));
                         }}
                       />
                     </label>

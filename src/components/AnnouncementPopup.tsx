@@ -69,8 +69,27 @@ const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=1000&q=80";
 
 function getAnnouncementImageUrl(announcement?: Announcement | null) {
-  if (!announcement?.image_url) return null;
-  return announcement.image_url;
+  const value = announcement?.image_url || announcement?.image;
+  if (!value) return null;
+
+  const configured = process.env.NEXT_PUBLIC_API_URL || process.env.LARAVEL_API_URL || "http://localhost:8000";
+  const base = configured.replace(/\/+$/g, "").replace(/\/api$/, "");
+
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const parsed = new URL(value);
+      if (!/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(parsed.hostname)) return value;
+      parsed.protocol = new URL(base).protocol;
+      parsed.host = new URL(base).host;
+      return parsed.toString();
+    } catch {
+      return value;
+    }
+  }
+
+  let path = value.replace(/^\/+/, "");
+  path = path.replace(/^public\/storage\//i, "").replace(/^storage\//i, "");
+  return `${base}/storage/${path}`;
 }
 
 function isPromotionalAnnouncement(item: Announcement) {
