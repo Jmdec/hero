@@ -421,7 +421,7 @@ To receive a customized quotation or schedule an office tour, please submit your
     },
     "Virtual Office": {
         text:
-`Thank you for your interest in our Virtual Office services!
+            `Thank you for your interest in our Virtual Office services!
 
 Establish a credible business presence in Makati without leasing a physical office. Our Virtual Office plans include a premium business address, mail handling, business registration support, and professional reception services.
 
@@ -430,8 +430,8 @@ For pricing and plan recommendations, please submit your inquiry here:
         cta: CTA_LINKS.virtualOffice,
     },
     "Co-working Space": {
-        text: 
-`Thank you for your interest in our Co-working Space!
+        text:
+            `Thank you for your interest in our Co-working Space!
 
 Enjoy a comfortable and productive workspace with high-speed internet, complimentary coffee, professional amenities, and a collaborative business environment. Flexible daily, weekly, and monthly plans are available.
 
@@ -440,8 +440,8 @@ Reserve your seat or send us your inquiry here:
         cta: CTA_LINKS.coworking,
     },
     "Meeting Rooms": {
-        text: 
-`Thank you for your interest in our Meeting Rooms!
+        text:
+            `Thank you for your interest in our Meeting Rooms!
 
 Our fully equipped meeting rooms are ideal for client presentations, interviews, team meetings, seminars, and business discussions. Flexible hourly and whole-day rental options are available.
 
@@ -745,6 +745,7 @@ const Chatbot = () => {
     const [restoringConversation, setRestoringConversation] = useState(true);
     const [endConversationOpen, setEndConversationOpen] = useState(false);
     const [endingConversation, setEndingConversation] = useState(false);
+    const [reopeningConversation, setReopeningConversation] = useState(false);
     const closeEmailSentRef = useRef(false);
     const conversationRef = useRef<ConversationState | null>(null);
     const leadSubmittedRef = useRef(false);
@@ -1489,6 +1490,29 @@ const Chatbot = () => {
         }
     };
 
+    const handleReopenConversation = async () => {
+        const targetId =
+            conversation?.remoteConversationId ?? conversation?.id ??
+            conversationRef.current?.remoteConversationId ?? conversationRef.current?.id;
+
+        if (!targetId) return;
+
+        setReopeningConversation(true);
+        setSendError("");
+
+        try {
+            const result = await chatApi.reopenConversation(targetId);
+            syncConversationSnapshot(result.conversation, { preservePending: false });
+            setAwaitingPreferredContact(false);
+        } catch (err) {
+            setSendError(
+                err instanceof Error ? err.message : "Unable to reopen this conversation. Please try again.",
+            );
+        } finally {
+            setReopeningConversation(false);
+        }
+    };
+
     const handleFieldChange = (key: LeadField, value: string) => {
         setLeadInfo((prev) => ({ ...prev, [key]: value }));
         if (touched[key]) {
@@ -2093,6 +2117,29 @@ const Chatbot = () => {
                                 <p className="text-[10px] text-gray-300 text-center mt-1">
                                     Powered by HERO Serviced Office
                                 </p>
+                            </div>
+                        )}
+
+                        {leadSubmitted && conversationClosed && (
+                            <div className="px-4 py-4 bg-white border-t border-gray-100 shrink-0 text-center space-y-2">
+                                <p className="text-xs text-gray-500">
+                                    This conversation has ended. If you left it idle by accident, you can pick it back up.
+                                </p>
+                                {sendError && (
+                                    <p className="text-[11px] text-red-500 flex items-center justify-center gap-1">
+                                        <AlertCircle className="w-3 h-3 shrink-0" /> {sendError}
+                                    </p>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => void handleReopenConversation()}
+                                    disabled={reopeningConversation}
+                                    className="inline-flex items-center gap-2 rounded-full bg-[#1B3A8C] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#16318a] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
+                                >
+                                    {reopeningConversation && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    {reopeningConversation ? "Reopening…" : "Reopen Conversation"}
+                                </button>
+                                <p className="text-[10px] text-gray-300">Powered by HERO Serviced Office</p>
                             </div>
                         )}
                     </motion.div>

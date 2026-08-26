@@ -992,363 +992,367 @@ export default function AdminChatsPage() {
             />
             <div className="flex h-dvh flex-col overflow-hidden">
                 <main className="mx-auto flex w-full min-h-0 max-w-7xl flex-1 flex-col overflow-hidden">
-                {/* Mobile/tablet top bar */}
-                <div className="flex shrink-0 items-center justify-between gap-2 px-1 pb-2 lg:hidden">
-                    <button
-                        onClick={() => setSidebarOpen(true)}
-                        aria-label="Open conversations menu"
-                        className="flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1]"
-                    >
-                        <Menu className="h-4 w-4" />
-                    </button>
-                    <button
-                        onClick={() => void handleManualRefresh()}
-                        disabled={refreshing || loading}
-                        aria-label="Refresh conversations"
-                        className="flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-                    </button>
-                </div>
-
-                {error ? (
-                    <div className="flex shrink-0 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                        <AlertCircle className="h-4 w-4 shrink-0" />
-                        {error}
-                    </div>
-                ) : null}
-
-                {/* Chat statistics */}
-                <div className="mb-3 flex flex-col gap-3 xl:flex-row xl:items-start">
-                    <div className="min-w-0 flex-1">
-                        {statsLoading ? <ChatStatsSkeleton /> : <ChatStatistics analytics={chatAnalytics} onOpenReminderOverview={openReminderOverview} />}
+                    {/* Mobile/tablet top bar */}
+                    <div className="flex shrink-0 items-center justify-between gap-2 px-1 pb-2 lg:hidden">
+                        <button
+                            onClick={() => setSidebarOpen(true)}
+                            aria-label="Open conversations menu"
+                            className="flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1]"
+                        >
+                            <Menu className="h-4 w-4" />
+                        </button>
+                        <button
+                            onClick={() => void handleManualRefresh()}
+                            disabled={refreshing || loading}
+                            aria-label="Refresh conversations"
+                            className="flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                        </button>
                     </div>
 
-                    <button
-                        onClick={() => void handleManualRefresh()}
-                        disabled={refreshing || loading}
-                        title="Refresh conversations"
-                        aria-label="Refresh conversations"
-                        className="hidden shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50 lg:inline-flex"
-                    >
-                        <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-                        <span>Refresh</span>
-                    </button>
-                </div>
-
-                <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
-                    {/* Desktop/tablet-landscape sidebar column */}
-                    <div className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:flex">
-                        {sidebarSearchHeader}
-                        {sidebarListBody}
-                    </div>
-
-                    {/* Mobile/tablet off-canvas drawer with the same content */}
-                    {sidebarOpen ? (
-                        <div className="fixed inset-0 z-50 lg:hidden">
-                            <div
-                                className="absolute inset-0 bg-slate-900/40"
-                                onClick={() => setSidebarOpen(false)}
-                            />
-                            <div className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm flex-col overflow-hidden bg-white shadow-xl">
-                                <div className="flex shrink-0 items-center justify-between border-b border-slate-100 p-3">
-                                    <p className="text-sm font-semibold text-slate-800">Conversations</p>
-                                    <button
-                                        onClick={() => setSidebarOpen(false)}
-                                        aria-label="Close conversations menu"
-                                        className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100"
-                                    >
-                                        <X className="h-5 w-5" />
-                                    </button>
-                                </div>
-                                {sidebarSearchHeader}
-                                {sidebarListBody}
-                            </div>
+                    {error ? (
+                        <div className="flex shrink-0 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            {error}
                         </div>
                     ) : null}
 
-                    <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                        {selectedConversationId === null ? (
-                            <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
-                                <Inbox className="h-6 w-6 text-slate-300" />
-                                <p className="text-sm text-slate-500">Select a conversation to read the thread and reply.</p>
+                    {/* Chat statistics */}
+                    <div className="mb-3 flex flex-col gap-3 xl:flex-row xl:items-start">
+                        <div className="min-w-0 flex-1">
+                            {statsLoading ? <ChatStatsSkeleton /> : <ChatStatistics analytics={chatAnalytics} onOpenReminderOverview={openReminderOverview} />}
+                        </div>
+
+                        <button
+                            onClick={() => void handleManualRefresh()}
+                            disabled={refreshing || loading}
+                            title="Refresh conversations"
+                            aria-label="Refresh conversations"
+                            className="hidden shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50 lg:inline-flex"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+
+                    <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
+                        {/* Desktop/tablet-landscape sidebar column */}
+                        <div className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:flex">
+                            {sidebarSearchHeader}
+                            {sidebarListBody}
+                        </div>
+
+                        {/* Mobile/tablet off-canvas drawer with the same content */}
+                        {sidebarOpen ? (
+                            <div className="fixed inset-0 z-50 lg:hidden">
+                                <div
+                                    className="absolute inset-0 bg-slate-900/40"
+                                    onClick={() => setSidebarOpen(false)}
+                                />
+                                <div className="absolute inset-y-0 left-0 flex w-[85%] max-w-sm flex-col overflow-hidden bg-white shadow-xl">
+                                    <div className="flex shrink-0 items-center justify-between border-b border-slate-100 p-3">
+                                        <p className="text-sm font-semibold text-slate-800">Conversations</p>
+                                        <button
+                                            onClick={() => setSidebarOpen(false)}
+                                            aria-label="Close conversations menu"
+                                            className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100"
+                                        >
+                                            <X className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                    {sidebarSearchHeader}
+                                    {sidebarListBody}
+                                </div>
                             </div>
-                        ) : isSwitchingConversation ? (
-                            <ConversationSkeleton />
-                        ) : selectedConversation ? (
-                            <>
-                                <div className="shrink-0 border-b border-slate-100 p-4">
-                                    <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0D47A1]/10 text-sm font-semibold text-[#0D47A1]">
-                                                {initialsOf(selectedConversation.inquiry?.full_name)}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-base font-semibold text-slate-900">
-                                                        {selectedConversation.inquiry?.full_name ?? "Guest visitor"}
-                                                    </p>
-                                                    <StatusChip status={selectedConversation.status} />
-                                                    {selectedIsAddressed ? <AddressedChip /> : null}
-                                                    {selectedRequestedHistory ? (
-                                                        <span
-                                                            title="Visitor asked for a copy of this chat"
-                                                            className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20"
-                                                        >
+                        ) : null}
+
+                        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            {selectedConversationId === null ? (
+                                <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
+                                    <Inbox className="h-6 w-6 text-slate-300" />
+                                    <p className="text-sm text-slate-500">Select a conversation to read the thread and reply.</p>
+                                </div>
+                            ) : isSwitchingConversation ? (
+                                <ConversationSkeleton />
+                            ) : selectedConversation ? (
+                                <>
+                                    <div className="shrink-0 border-b border-slate-100 p-4">
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-3">
+                                                <div>
+                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0D47A1]/10 text-sm font-semibold text-[#0D47A1]">
+                                                        {initialsOf(selectedConversation.inquiry?.full_name)}
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-base font-semibold text-slate-900">
+                                                                {selectedConversation.inquiry?.full_name ?? "Guest visitor"}
+                                                            </p>
+                                                            <StatusChip status={selectedConversation.status} />
+                                                            {selectedIsAddressed ? <AddressedChip /> : null}
+                                                            {selectedRequestedHistory ? (
+                                                                <span
+                                                                    title="Visitor asked for a copy of this chat"
+                                                                    className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20"
+                                                                >
+                                                                    <Mail className="h-3 w-3" />
+                                                                    Requested history
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                        <p className="flex items-center gap-1.5 text-xs text-slate-500 py-1">
                                                             <Mail className="h-3 w-3" />
-                                                            Requested history
-                                                        </span>
-                                                    ) : null}
-                                                </div>
-                                                <p className="flex items-center gap-1.5 text-xs text-slate-500 py-1">
-                                                    <Mail className="h-3 w-3" />
-                                                    {selectedConversation.inquiry?.email_address ?? "No email supplied"}
-                                                    <span className="text-slate-300">·</span>
-                                                    {selectedConversation.messages.length} messages
-                                                </p>
-                                                {selectedConversation.agent && selectedIsAgentOwned ? (
-                                                    <div className="mt-2 text-sm text-slate-600">
-                                                        <p className="font-medium text-sm">Taken by:</p>
-                                                        <p className="text-xs text-slate-500">
-                                                            {selectedConversation.agent.name ?? "Agent"}
-                                                            {selectedConversation.agent.email ? ` · ${selectedConversation.agent.email}` : ""}
-                                                            {selectedConversation.agent.role ? ` · ${selectedConversation.agent.role === "operation" ? "Operations" : "Admin"}` : ""}
+                                                            {selectedConversation.inquiry?.email_address ?? "No email supplied"}
+                                                            <span className="text-slate-300">·</span>
+                                                            {selectedConversation.messages.length} messages
                                                         </p>
-                                                        {selectedConversation.agent_started_at ? (
-                                                            <p className="mt-1 text-xs text-slate-400">Taken at: {new Date(selectedConversation.agent_started_at).toLocaleString()}</p>
+                                                    </div>
+                                                    <div>
+                                                        {selectedConversation.agent && selectedIsAgentOwned ? (
+                                                            <div className="mt-2 text-sm text-slate-600">
+                                                                <p className="font-medium text-sm">Taken by:</p>
+                                                                <p className="text-xs text-slate-500">
+                                                                    {selectedConversation.agent.name ?? "Agent"}
+                                                                    {selectedConversation.agent.email ? ` · ${selectedConversation.agent.email}` : ""}
+                                                                    {selectedConversation.agent.role ? ` · ${selectedConversation.agent.role === "operation" ? "Operations" : "Admin"}` : ""}
+                                                                </p>
+                                                                {selectedConversation.agent_started_at ? (
+                                                                    <p className="mt-1 text-xs text-slate-400">Taken at: {new Date(selectedConversation.agent_started_at).toLocaleString()}</p>
+                                                                ) : null}
+                                                            </div>
                                                         ) : null}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div ref={actionsMenuRef} className="relative ml-auto shrink-0 self-start">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActionsMenuOpen((open) => !open)}
+                                                    aria-label="Open conversation actions"
+                                                    aria-haspopup="menu"
+                                                    aria-expanded={actionsMenuOpen}
+                                                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1]"
+                                                >
+                                                    <EllipsisVertical className="h-4 w-4" />
+                                                </button>
+
+                                                {actionsMenuOpen ? (
+                                                    <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setActionsMenuOpen(false);
+                                                                void handleToggleAddressed();
+                                                            }}
+                                                            disabled={markingAddressed}
+                                                            className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedIsAddressed
+                                                                ? "bg-teal-50 text-teal-700 hover:bg-teal-100"
+                                                                : "text-slate-700 hover:bg-teal-50 hover:text-teal-700"
+                                                                }`}
+                                                        >
+                                                            <CheckCircle2 className="h-4 w-4" />
+                                                            {selectedIsAddressed ? "Addressed" : "Mark as addressed"}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setActionsMenuOpen(false);
+                                                                void handleSendHistory();
+                                                            }}
+                                                            disabled={sendingHistory || !selectedHasEmail}
+                                                            title={
+                                                                selectedHasEmail
+                                                                    ? "Email the full chat transcript to the visitor"
+                                                                    : "No email on file for this visitor"
+                                                            }
+                                                            className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedRequestedHistory
+                                                                ? "bg-sky-50 text-sky-700 hover:bg-sky-100"
+                                                                : "text-slate-700 hover:bg-sky-50 hover:text-sky-700"
+                                                                }`}
+                                                        >
+                                                            <Mail className="h-4 w-4" />
+                                                            {sendingHistory ? "Sending…" : "Send history"}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setActionsMenuOpen(false);
+                                                                void handleTakeOver();
+                                                            }}
+                                                            disabled={selectedIsEnded || Boolean(selectedConversation?.agent)}
+                                                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-40"
+                                                        >
+                                                            <Headset className="h-4 w-4" />
+                                                            Take Chat
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setActionsMenuOpen(false);
+                                                                void handleReturnToAI();
+                                                            }}
+                                                            disabled={selectedIsEnded}
+                                                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                        >
+                                                            <Bot className="h-4 w-4" />
+                                                            Return to AI
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setActionsMenuOpen(false);
+                                                                void handleCloseConversation();
+                                                            }}
+                                                            disabled={selectedIsEnded}
+                                                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                                        >
+                                                            <XCircle className="h-4 w-4" />
+                                                            Close
+                                                        </button>
                                                     </div>
                                                 ) : null}
                                             </div>
                                         </div>
-                                        <div ref={actionsMenuRef} className="relative ml-auto shrink-0 self-start">
-                                            <button
-                                                type="button"
-                                                onClick={() => setActionsMenuOpen((open) => !open)}
-                                                aria-label="Open conversation actions"
-                                                aria-haspopup="menu"
-                                                aria-expanded={actionsMenuOpen}
-                                                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1]"
-                                            >
-                                                <EllipsisVertical className="h-4 w-4" />
-                                            </button>
-
-                                            {actionsMenuOpen ? (
-                                                <div className="absolute right-0 top-full z-20 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setActionsMenuOpen(false);
-                                                            void handleToggleAddressed();
-                                                        }}
-                                                        disabled={markingAddressed}
-                                                        className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedIsAddressed
-                                                            ? "bg-teal-50 text-teal-700 hover:bg-teal-100"
-                                                            : "text-slate-700 hover:bg-teal-50 hover:text-teal-700"
-                                                            }`}
-                                                    >
-                                                        <CheckCircle2 className="h-4 w-4" />
-                                                        {selectedIsAddressed ? "Addressed" : "Mark as addressed"}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setActionsMenuOpen(false);
-                                                            void handleSendHistory();
-                                                        }}
-                                                        disabled={sendingHistory || !selectedHasEmail}
-                                                        title={
-                                                            selectedHasEmail
-                                                                ? "Email the full chat transcript to the visitor"
-                                                                : "No email on file for this visitor"
-                                                        }
-                                                        className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedRequestedHistory
-                                                            ? "bg-sky-50 text-sky-700 hover:bg-sky-100"
-                                                            : "text-slate-700 hover:bg-sky-50 hover:text-sky-700"
-                                                            }`}
-                                                    >
-                                                        <Mail className="h-4 w-4" />
-                                                        {sendingHistory ? "Sending…" : "Send history"}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setActionsMenuOpen(false);
-                                                            void handleTakeOver();
-                                                        }}
-                                                        disabled={selectedIsEnded || Boolean(selectedConversation?.agent)}
-                                                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-40"
-                                                    >
-                                                        <Headset className="h-4 w-4" />
-                                                        Take Chat
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setActionsMenuOpen(false);
-                                                            void handleReturnToAI();
-                                                        }}
-                                                        disabled={selectedIsEnded}
-                                                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                                    >
-                                                        <Bot className="h-4 w-4" />
-                                                        Return to AI
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setActionsMenuOpen(false);
-                                                            void handleCloseConversation();
-                                                        }}
-                                                        disabled={selectedIsEnded}
-                                                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                                    >
-                                                        <XCircle className="h-4 w-4" />
-                                                        Close
-                                                    </button>
-                                                </div>
-                                            ) : null}
-                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="flex min-h-0 flex-1 flex-col p-4">
-                                    <div
-                                        className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl bg-slate-50 p-4"
-                                        style={{
-                                            backgroundImage: "radial-gradient(circle, rgba(15,23,42,0.06) 1px, transparent 1px)",
-                                            backgroundSize: "16px 16px",
-                                        }}
-                                    >
-                                        {selectedConversation.messages.length === 0 ? (
-                                            <div className="flex h-full items-center justify-center text-center text-sm text-slate-500">
-                                                No messages yet. Start the conversation with a welcome note.
+                                    <div className="flex min-h-0 flex-1 flex-col p-4">
+                                        <div
+                                            className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl bg-slate-50 p-4"
+                                            style={{
+                                                backgroundImage: "radial-gradient(circle, rgba(15,23,42,0.06) 1px, transparent 1px)",
+                                                backgroundSize: "16px 16px",
+                                            }}
+                                        >
+                                            {selectedConversation.messages.length === 0 ? (
+                                                <div className="flex h-full items-center justify-center text-center text-sm text-slate-500">
+                                                    No messages yet. Start the conversation with a welcome note.
+                                                </div>
+                                            ) : (
+                                                selectedConversation.messages.map((message) => {
+                                                    const isSystem = message.sender === "system";
+                                                    const senderKey = isSystem ? "assistant" : senderKeyOf(message.sender);
+                                                    const style = isSystem ? SYSTEM_STYLE : SENDER_STYLE[senderKey as SenderKey];
+                                                    const SenderIcon = style.icon;
+                                                    const isAdmin = senderKey === "admin";
+
+                                                    return (
+                                                        <div key={message.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
+                                                            <div
+                                                                className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${style.bubble}`}
+                                                            >
+                                                                <div className={`mb-1 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wide ${style.label}`}>
+                                                                    <SenderIcon className="h-3 w-3" />
+                                                                    <span>{isSystem ? "System" : message.sender}</span>
+                                                                    <span>·</span>
+                                                                    <span>{new Date(message.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                                                                </div>
+                                                                {/* Render a contact button when the system message contains a contact URL */}
+                                                                {isSystem && /contact/i.test(message.message) ? (
+                                                                    (() => {
+                                                                        const match = message.message.match(/(https?:\/\/[^\s]+\/contact|\/contact\b)/i);
+                                                                        const rawUrl = match ? match[0] : null;
+                                                                        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                                                                        const url = rawUrl ? (rawUrl.startsWith('/') ? `${origin}${rawUrl}` : rawUrl) : `${origin}/contact`;
+                                                                        const text = message.message.replace(rawUrl ?? '', '').trim();
+
+                                                                        return (
+                                                                            <div className="flex flex-col gap-2">
+                                                                                {text ? <p className="text-sm leading-relaxed">{text}</p> : null}
+                                                                                <a
+                                                                                    href={url}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    className="inline-flex items-center gap-2 rounded-md bg-[#0D47A1] px-3 py-2 text-sm font-medium text-white hover:bg-[#0D47A1]/90"
+                                                                                >
+                                                                                    Contact Us
+                                                                                    <ArrowRightLeft className="h-4 w-4" />
+                                                                                </a>
+                                                                            </div>
+                                                                        );
+                                                                    })()
+                                                                ) : (
+                                                                    <p className="text-sm leading-relaxed">{message.message}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                            <div ref={messagesEndRef} />
+                                        </div>
+
+                                        {selectedIsEnded ? (
+                                            <div className="mt-3 flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                                                <CheckCircle2 className="h-4 w-4 text-slate-400" />
+                                                This conversation has ended.
                                             </div>
                                         ) : (
-                                            selectedConversation.messages.map((message) => {
-                                                const isSystem = message.sender === "system";
-                                                const senderKey = isSystem ? "assistant" : senderKeyOf(message.sender);
-                                                const style = isSystem ? SYSTEM_STYLE : SENDER_STYLE[senderKey as SenderKey];
-                                                const SenderIcon = style.icon;
-                                                const isAdmin = senderKey === "admin";
-
-                                                return (
-                                                    <div key={message.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
-                                                        <div
-                                                            className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm ${style.bubble}`}
-                                                        >
-                                                            <div className={`mb-1 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wide ${style.label}`}>
-                                                                <SenderIcon className="h-3 w-3" />
-                                                                <span>{isSystem ? "System" : message.sender}</span>
-                                                                <span>·</span>
-                                                                <span>{new Date(message.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                                                            </div>
-                                                            {/* Render a contact button when the system message contains a contact URL */}
-                                                            {isSystem && /contact/i.test(message.message) ? (
-                                                                (() => {
-                                                                    const match = message.message.match(/(https?:\/\/[^\s]+\/contact|\/contact\b)/i);
-                                                                    const rawUrl = match ? match[0] : null;
-                                                                    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                                                                    const url = rawUrl ? (rawUrl.startsWith('/') ? `${origin}${rawUrl}` : rawUrl) : `${origin}/contact`;
-                                                                    const text = message.message.replace(rawUrl ?? '', '').trim();
-
-                                                                    return (
-                                                                        <div className="flex flex-col gap-2">
-                                                                            {text ? <p className="text-sm leading-relaxed">{text}</p> : null}
-                                                                            <a
-                                                                                href={url}
-                                                                                target="_blank"
-                                                                                rel="noopener noreferrer"
-                                                                                className="inline-flex items-center gap-2 rounded-md bg-[#0D47A1] px-3 py-2 text-sm font-medium text-white hover:bg-[#0D47A1]/90"
-                                                                            >
-                                                                                Contact Us
-                                                                                <ArrowRightLeft className="h-4 w-4" />
-                                                                            </a>
-                                                                        </div>
-                                                                    );
-                                                                })()
-                                                            ) : (
-                                                                <p className="text-sm leading-relaxed">{message.message}</p>
-                                                            )}
-                                                        </div>
+                                            <div className="mt-3 shrink-0 rounded-xl border border-slate-200 p-3">
+                                                {selectedNeedsAdmin ? (
+                                                    <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-amber-600">
+                                                        <LiveDot />
+                                                        This visitor asked for a person — sending a reply takes over the chat.
+                                                    </p>
+                                                ) : selectedIsAgentOwned ? (
+                                                    <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#0D47A1]">
+                                                        <Headset className="h-3.5 w-3.5" />
+                                                        You own this chat — the AI assistant is paused here.
+                                                    </p>
+                                                ) : null}
+                                                {selectedRequestedHistory ? (
+                                                    <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-sky-600">
+                                                        <Mail className="h-3.5 w-3.5" />
+                                                        This visitor asked for a copy of the chat — use &quot;Send history&quot; above.
+                                                    </p>
+                                                ) : null}
+                                                {!selectedIsAddressed ? (
+                                                    <p className="mb-2 flex items-center gap-1.5 text-xs text-slate-400">
+                                                        <AlertCircle className="h-3.5 w-3.5" />
+                                                        Not yet marked as addressed — check before replying to avoid a duplicate response.
+                                                    </p>
+                                                ) : null}
+                                                <textarea
+                                                    ref={replyTextareaRef}
+                                                    value={reply}
+                                                    onChange={(event) => setReply(event.target.value)}
+                                                    onKeyDown={(event) => {
+                                                        if (event.key === "Enter" && !event.shiftKey) {
+                                                            event.preventDefault();
+                                                            void handleSendReply();
+                                                        }
+                                                    }}
+                                                    placeholder="Type a reply to the visitor..."
+                                                    rows={1}
+                                                    style={{ minHeight: REPLY_MIN_HEIGHT, maxHeight: REPLY_MAX_HEIGHT }}
+                                                    className="w-full resize-none overflow-y-auto rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#0D47A1] focus:ring-2 focus:ring-[#0D47A1]/10"
+                                                />
+                                                <div className="mt-2 flex items-center justify-between">
+                                                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                                                        <ArrowRightLeft className="h-3.5 w-3.5" />
+                                                        Enter to send · Shift + Enter for a new line
                                                     </div>
-                                                );
-                                            })
-                                        )}
-                                        <div ref={messagesEndRef} />
-                                    </div>
-
-                                    {selectedIsEnded ? (
-                                        <div className="mt-3 flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
-                                            <CheckCircle2 className="h-4 w-4 text-slate-400" />
-                                            This conversation has ended.
-                                        </div>
-                                    ) : (
-                                        <div className="mt-3 shrink-0 rounded-xl border border-slate-200 p-3">
-                                            {selectedNeedsAdmin ? (
-                                                <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-amber-600">
-                                                    <LiveDot />
-                                                    This visitor asked for a person — sending a reply takes over the chat.
-                                                </p>
-                                            ) : selectedIsAgentOwned ? (
-                                                <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#0D47A1]">
-                                                    <Headset className="h-3.5 w-3.5" />
-                                                    You own this chat — the AI assistant is paused here.
-                                                </p>
-                                            ) : null}
-                                            {selectedRequestedHistory ? (
-                                                <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-sky-600">
-                                                    <Mail className="h-3.5 w-3.5" />
-                                                    This visitor asked for a copy of the chat — use &quot;Send history&quot; above.
-                                                </p>
-                                            ) : null}
-                                            {!selectedIsAddressed ? (
-                                                <p className="mb-2 flex items-center gap-1.5 text-xs text-slate-400">
-                                                    <AlertCircle className="h-3.5 w-3.5" />
-                                                    Not yet marked as addressed — check before replying to avoid a duplicate response.
-                                                </p>
-                                            ) : null}
-                                            <textarea
-                                                ref={replyTextareaRef}
-                                                value={reply}
-                                                onChange={(event) => setReply(event.target.value)}
-                                                onKeyDown={(event) => {
-                                                    if (event.key === "Enter" && !event.shiftKey) {
-                                                        event.preventDefault();
-                                                        void handleSendReply();
-                                                    }
-                                                }}
-                                                placeholder="Type a reply to the visitor..."
-                                                rows={1}
-                                                style={{ minHeight: REPLY_MIN_HEIGHT, maxHeight: REPLY_MAX_HEIGHT }}
-                                                className="w-full resize-none overflow-y-auto rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#0D47A1] focus:ring-2 focus:ring-[#0D47A1]/10"
-                                            />
-                                            <div className="mt-2 flex items-center justify-between">
-                                                <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                                                    <ArrowRightLeft className="h-3.5 w-3.5" />
-                                                    Enter to send · Shift + Enter for a new line
+                                                    <button
+                                                        onClick={() => void handleSendReply()}
+                                                        disabled={sending || !reply.trim()}
+                                                        className="inline-flex items-center gap-2 rounded-full bg-[#0D47A1] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0D47A1]/90 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                                    >
+                                                        <Send className="h-4 w-4" />
+                                                        {sending ? "Sending..." : "Send"}
+                                                    </button>
                                                 </div>
-                                                <button
-                                                    onClick={() => void handleSendReply()}
-                                                    disabled={sending || !reply.trim()}
-                                                    className="inline-flex items-center gap-2 rounded-full bg-[#0D47A1] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0D47A1]/90 disabled:cursor-not-allowed disabled:bg-slate-300"
-                                                >
-                                                    <Send className="h-4 w-4" />
-                                                    {sending ? "Sending..." : "Send"}
-                                                </button>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
+                                    <Inbox className="h-6 w-6 text-slate-300" />
+                                    <p className="text-sm text-slate-500">Select a conversation to read the thread and reply.</p>
                                 </div>
-                            </>
-                        ) : (
-                            <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
-                                <Inbox className="h-6 w-6 text-slate-300" />
-                                <p className="text-sm text-slate-500">Select a conversation to read the thread and reply.</p>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
                 </main>
 
                 <ToastStack toasts={toasts} onDismiss={dismissToast} />

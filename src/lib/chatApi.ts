@@ -35,7 +35,7 @@ export interface ChatConversation {
     agent_started_at?: string | null;
     agent_ended_at?: string | null;
     last_message_at?: string | null;
-    agent_id?: number | null;
+    agent_id?: string | null;
     preferred_contact_details?: string | null;
     preferred_contact_method?: "email" | "phone" | "either" | null;
     inquiry?: {
@@ -233,6 +233,13 @@ export const chatApi = {
         });
     },
 
+    reopenConversation(conversationId: number) {
+        return request<ConversationActionResponse>(`/chat/${conversationId}/reopen`, {
+            method: "PATCH",
+            body: JSON.stringify({}),
+        });
+    },
+
     closeConversationOnExit(conversationId: number, sendTranscript = true) {
         // Same-origin now — hits our own Next.js proxy route, not Laravel directly.
         const url = `/api/chat/${conversationId}/close`;
@@ -253,7 +260,7 @@ export const chatApi = {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
                 keepalive: true,
-            }).catch(() => {});
+            }).catch(() => { });
         } catch {
             // Best-effort only — nothing more we can do during teardown.
         }
