@@ -157,17 +157,9 @@ async function createConversationPdf(
   y -= 8;
   divider();
 
-  drawText(`Customer`, smallFont, bold);
-  drawText(customerName, fontSize);
+  drawText(`Client: ${customerName}`, smallFont, bold);
 
-  drawText(`Generated`, smallFont, bold);
-  drawText(
-    new Date().toLocaleString("en-PH", {
-      dateStyle: "long",
-      timeStyle: "short",
-    }),
-    fontSize
-  );
+  drawText(`Generated: ${new Date().toLocaleString("en-PH", { dateStyle: "long", timeStyle: "short" })}`, smallFont, bold);
 
   divider();
 
@@ -309,7 +301,7 @@ export async function POST(
       replyTo: process.env.SMTP_USER || undefined,
       attachments: [
         {
-          filename: `hero-conversation-${conversationId}.pdf`,
+          filename: `HERO-Conversation.pdf`,
           content: attachmentBuffer,
           contentType: "application/pdf",
         },
