@@ -212,7 +212,7 @@ export const chatApi = {
     },
 
     takeChat(conversationId: number) {
-        return request<ConversationActionResponse>(`/admin/chats/${conversationId}/take`, {
+        return request<ConversationActionResponse>(`/chat/chats/${conversationId}/take`, {
             method: "POST",
             body: JSON.stringify({}),
         });

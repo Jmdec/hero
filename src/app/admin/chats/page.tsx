@@ -21,7 +21,7 @@ import {
     X,
     XCircle,
 } from "lucide-react";
-import { chatApi, type ChatConversation, type ConversationResponse } from "@/lib/chatApi";
+import { ChatApiError, chatApi, type ChatConversation, type ConversationResponse } from "@/lib/chatApi";
 
 type StatusKey = "active" | "waiting_admin" | "agent_requested" | "agent_active" | "agent_closed" | "closed";
 
@@ -779,6 +779,12 @@ export default function AdminChatsPage() {
             await refresh();
             pushToast("You've taken over this chat.", "success");
         } catch (err) {
+            if (err instanceof ChatApiError && err.status === 409) {
+                pushToast("This conversation is already taken by another agent.", "error");
+                await refresh();
+                return;
+            }
+
             const message = err instanceof Error ? err.message : "Unable to take the chat. It may have been taken by another agent.";
             setError(message);
             pushToast(message, "error");
@@ -1163,9 +1169,11 @@ export default function AdminChatsPage() {
 
                                                                         <p className="text-xs font-semibold text-slate-700">
                                                                             Taken at:{" "}
-                                                                            {new Date(
-                                                                                selectedConversation.agent_started_at,
-                                                                            ).toLocaleString()}
+                                                                            <span className="text-xs text-slate-500">
+                                                                                {new Date(
+                                                                                    selectedConversation.agent_started_at,
+                                                                                ).toLocaleString()}
+                                                                            </span>
                                                                         </p>
                                                                     </>
                                                                 ) : null}
@@ -1262,7 +1270,7 @@ export default function AdminChatsPage() {
 
                                                             <span>
                                                                 {selectedConversation.agent
-                                                                    ? `Assigned to ${selectedConversation.agent.name ?? "another agent"}`
+                                                                    ? `Taken by ${selectedConversation.agent.name ?? "another agent"}`
                                                                     : selectedConversation.status === "agent_active"
                                                                         ? "Live agent session active"
                                                                         : "Take Chat"}
@@ -1386,7 +1394,7 @@ export default function AdminChatsPage() {
                                                 ) : selectedIsAgentOwned ? (
                                                     <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#0D47A1]">
                                                         <Headset className="h-3.5 w-3.5" />
-                                                        You own this chat — the AI assistant is paused here.
+                                                        Live Agent is active — the AI assistant is paused here.
                                                     </p>
                                                 ) : null}
                                                 <textarea
