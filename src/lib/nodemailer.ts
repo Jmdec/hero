@@ -211,10 +211,14 @@ function formatPaymentMethodLabel(value?: string | null): string {
 
 function quotationRow(label: string, value?: string | number | null): string {
     if (value === null || value === undefined || value === "") return "";
+    const isPhone = label === "Phone" || label === "電話";
+    const renderedValue = isPhone
+        ? `<a href="tel:${encodeURIComponent(String(value))}" style="color:#0D47A1;text-decoration:underline;">${value}</a>`
+        : value;
     return `
         <tr>
             <td style="padding:10px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#64748b;white-space:nowrap;">${label}</td>
-            <td style="padding:10px 0 10px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;font-weight:500;text-align:right;">${value}</td>
+            <td style="padding:10px 0 10px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;font-weight:500;text-align:right;">${renderedValue}</td>
         </tr>`;
 }
 
@@ -299,6 +303,7 @@ function buildQuotationDetailRows(
         quotationRow("Date", dateValue),
         quotationRow("Time", d.time),
         quotationRow("Duration", d.duration_type),
+        quotationRow("Phone", d.phone),
         quotationRow("Other Requirements", d.other_requirements),
         quotationRow("Notes", d.request),
         quotationRow("ID Type", d.id_type),

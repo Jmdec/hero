@@ -16,7 +16,7 @@ import {
   Eye, Home, FileText
 } from "lucide-react";
 
-type PaymentMethod = "qrph" | "online_transfer" | "bank" | null;
+type PaymentMethod = "qrph" | "sterling" | "rcbc" | null;
 
 type GateStatus = "checking" | "valid" | "invalid";
 
@@ -121,10 +121,10 @@ function getPaymentMethodLabel(paymentMethod: PaymentMethod | string | null | un
   switch (paymentMethod) {
     case "qrph":
       return "QRPH";
-    case "online_transfer":
-      return "Online Bank Transfer";
-    case "bank":
-      return "Bank Deposit";
+    case "sterling":
+      return "Sterling Bank of Asia";
+    case "rcbc":
+      return "RCBC Bank";
     default:
       return paymentMethod || "-";
   }
@@ -368,6 +368,7 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
+  const [isDraggingProof, setIsDraggingProof] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -381,42 +382,39 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
     id: Exclude<PaymentMethod, null>;
     icon: React.ElementType;
     label: string;
-    sub: string;
     details: string[];
+    qrImage?: string;
   }> = [
       {
         id: "qrph",
         icon: QrCode,
         label: "QRPH",
-        sub: "Scan to pay via any QRPH-enabled app",
+        qrImage:
+          "/0-02-06-93f656f6d64a18480bdd3a0f550660f7a2362b0780cafcd98fb2a2ce7e5c878c_7700a1e7e393c3cb.png",
         details: [
-          "Account Name: HERO PH INC.",
+          "Account Name: HERO SERVICED OFFICE, INC.",
           "Scan the QRPH code using your preferred banking or e-wallet app.",
-          "Use your full name as payment reference.",
           "Upload your transaction confirmation screenshot for verification.",
         ],
       },
       {
-        id: "online_transfer",
+        id: "sterling",
         icon: ArrowRightLeft,
-        label: "Online Bank Transfer",
-        sub: "Online bank-to-bank transfer",
+        label: "Sterling Bank of Asia",
         details: [
-          "Transfer to: HERO PH INC. official bank account",
-          "Include your full name as transfer note/reference.",
-          "Upload the transfer reference screenshot or PDF receipt.",
+          "Account Name: HERO SERVICED OFFICE, INC.",
+          "Account Number: 541-6-000236-80",
+          "Swift Code: STLAPH22XXX",
         ],
       },
       {
-        id: "bank",
+        id: "rcbc",
         icon: Landmark,
-        label: "Bank Deposit",
-        sub: "Over-the-counter bank deposit",
+        label: "RCBC Bank",
         details: [
-          "Bank: BDO Unibank",
-          "Account Name: HERO PH INC.",
-          "Account Number: 012345678901",
-          "Upload your validated deposit slip or transfer confirmation.",
+          "Account Name: HERO SERVICED OFFICE, INC.",
+          "Account Number: 0000007589020388",
+          "Swift Code: RCBCPHMM",
         ],
       },
     ];
@@ -563,7 +561,6 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
                 >
                   <Icon className={`w-5 h-5 mb-2 ${active ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
                   <p className={`font-bold text-sm ${active ? "text-[#1B3A8C]" : "text-[#0B1F4A]"}`}>{opt.label}</p>
-                  <p className="text-xs text-[#64748B]">{opt.sub}</p>
                 </button>
               );
             })}
@@ -572,6 +569,15 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
           {selectedPaymentOption && (
             <div className="bg-[#F8FAFD] border border-[#D9E2F0] rounded-2xl p-5">
               <p className="text-sm font-bold uppercase tracking-wide text-[#0B1F4A] mb-3">Payment Details</p>
+              {selectedPaymentOption.qrImage && (
+                <div className="mb-4 flex justify-center">
+                  <img
+                    src={selectedPaymentOption.qrImage}
+                    alt="QRPH Payment QR Code"
+                    className="h-48 w-48 rounded-lg border border-[#D9E2F0] object-contain"
+                  />
+                </div>
+              )}
               <ul className="space-y-1.5">
                 {selectedPaymentOption.details.map((detail) => (
                   <li key={detail} className="text-xs text-[#64748B] leading-relaxed flex items-start gap-2">
@@ -591,9 +597,22 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
             <button
               type="button"
               onClick={() => paymentProofRef.current?.click()}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDraggingProof(true);
+              }}
+              onDragLeave={() => setIsDraggingProof(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setIsDraggingProof(false);
+                const droppedFile = event.dataTransfer.files?.[0];
+                if (droppedFile) setPaymentProof(droppedFile);
+              }}
               className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${paymentProof
                 ? "border-[#1B3A8C] bg-[#EEF2FB]"
-                : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
+                : isDraggingProof
+                  ? "border-[#1B3A8C] bg-[#EEF2FB]"
+                  : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"
                 }`}
             >
               <Upload
@@ -606,7 +625,9 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
               >
                 {paymentProof
                   ? paymentProof.name
-                  : "Click to upload receipt image or PDF"}
+                  : isDraggingProof
+                    ? "Drop receipt here"
+                    : "Click or drag to upload receipt image or PDF"}
               </span>
             </button>
 
@@ -649,14 +670,20 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold tracking-wide text-[#0B1F4A] mb-2 uppercase">Reference Number</label>
+            <label
+              htmlFor="quotation-payment-reference"
+              className="block text-xs font-semibold tracking-wide text-[#0B1F4A] mb-2 uppercase"
+            >
+              Reference Number
+            </label>
+
             <input
               id="quotation-payment-reference"
               name="paymentReference"
               type="text"
               value={paymentReference}
               onChange={(e) => setPaymentReference(e.target.value)}
-              className={!paymentReference.trim() ? inputErrCls : inputCls}
+              className={inputCls}
               placeholder="Transaction Reference Number"
             />
           </div>

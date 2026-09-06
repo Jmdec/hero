@@ -364,6 +364,7 @@ export default function AnnouncementsAdmin() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageError, setImageError] = useState("");
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [removeExistingImage, setRemoveExistingImage] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
@@ -569,6 +570,36 @@ export default function AnnouncementsAdmin() {
     setImageError("");
     setRemoveExistingImage(false);
     setFormOpen(true);
+  }
+
+  function handleImageFiles(files: File[]) {
+    setImageError("");
+    if (files.length === 0) return;
+
+    const invalidType = files.find((file) => !ACCEPTED_IMAGE_TYPES.includes(file.type));
+    if (invalidType) {
+      setImageError("Use JPG, PNG, or WEBP images only.");
+      return;
+    }
+
+    const oversized = files.find((file) => file.size > MAX_IMAGE_SIZE);
+    if (oversized) {
+      setImageError("Images must be 5 MB or smaller.");
+      return;
+    }
+
+    setImageFiles((previousFiles) => [...previousFiles, ...files]);
+    setRemoveExistingImage(false);
+    setImagePreviews((previousPreviews) => [
+      ...previousPreviews,
+      ...files.map((file) => URL.createObjectURL(file)),
+    ]);
+  }
+
+  function handleImageDrop(event: React.DragEvent<HTMLElement>) {
+    event.preventDefault();
+    setIsDraggingImage(false);
+    handleImageFiles(Array.from(event.dataTransfer.files ?? []));
   }
 
   function addSocialMedia() {
@@ -1175,205 +1206,190 @@ export default function AnnouncementsAdmin() {
       {/* View Dialog — read-only details, status is the only editable field */}
       {viewOpen && viewTarget && (
         <ModalBackdrop onClose={closeView}>
-          <div className="flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl max-h-[92vh] sm:max-w-xl sm:max-h-[88vh] md:max-w-2xl lg:max-w-4xl lg:max-h-[82vh]">
+            {/* Body: image + main content — stacked on mobile/tablet, side-by-side on desktop */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+              {/* Hero Image */}
+              <div className="relative h-40 w-full shrink-0 bg-slate-100 sm:h-48 md:h-64 lg:h-auto lg:w-[38%] lg:self-stretch">
+                {getAnnouncementImageUrl(viewTarget) ? (
+                  <img
+                    src={getAnnouncementImageUrl(viewTarget) ?? ""}
+                    alt={viewTarget.title || "Announcement image"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-slate-300">
+                    <FileText className="h-10 w-10 sm:h-12 sm:w-12" />
+                  </div>
+                )}
 
-            {/* Hero Image */}
-            <div className="relative h-48 w-full shrink-0 bg-slate-100 sm:h-56 md:h-64">
-              {getAnnouncementImageUrl(viewTarget) ? (
-                <img
-                  src={getAnnouncementImageUrl(viewTarget) ?? ""}
-                  alt={viewTarget.title || "Announcement image"}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-slate-300">
-                  <FileText className="h-10 w-10 sm:h-12 sm:w-12" />
-                </div>
-              )}
-
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={closeView}
-                aria-label="Close announcement"
-                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-md backdrop-blur-sm transition hover:bg-white hover:text-slate-700 sm:right-4 sm:top-4"
-              >
-                <X className="h-4 w-4" />
-              </button>
-
-              {/* Tags */}
-              <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center gap-2 sm:left-4 sm:right-4">
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-medium text-slate-700 shadow">
-                  <Tag className="h-3 w-3" />
-                  <span className="max-w-[180px] truncate">
-                    {viewTarget.tag}
-                  </span>
-                </span>
-
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize shadow ${STATUS_STYLES[viewTarget.status] ??
-                    "bg-white/95 text-slate-600"
-                    }`}
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={closeView}
+                  aria-label="Close announcement"
+                  className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-md backdrop-blur-sm transition hover:bg-white hover:text-slate-700 sm:right-4 sm:top-4"
                 >
-                  {viewTarget.status}
-                </span>
+                  <X className="h-4 w-4" />
+                </button>
+
+                {/* Tags */}
+                <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center gap-2 sm:left-4 sm:right-4">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-medium text-slate-700 shadow">
+                    <Tag className="h-3 w-3" />
+                    <span className="max-w-[180px] truncate">
+                      {viewTarget.tag}
+                    </span>
+                  </span>
+
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize shadow ${STATUS_STYLES[viewTarget.status] ??
+                      "bg-white/95 text-slate-600"
+                      }`}
+                  >
+                    {viewTarget.status}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="space-y-5 px-4 py-5 sm:px-6 sm:py-6">
+              {/* Content */}
+              <div className="min-h-0 flex-1 lg:overflow-y-auto">
+                <div className="space-y-5 px-4 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-7">
 
-                {/* Title + Date */}
-                <div>
-                  <h2 className="text-lg font-semibold leading-snug text-slate-900 sm:text-xl">
-                    {viewTarget.title}
-                  </h2>
-
-                  <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400">
-                    <Calendar className="h-3.5 w-3.5 shrink-0" />
-                    {formatDate(viewTarget.date)}
-                  </p>
-                </div>
-
-                {/* Content */}
-                <div>
-                  <div className="mb-1.5 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-400">
-                    <FileText className="h-3 w-3" />
-                    Content
-                  </div>
-
-                  <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700 sm:max-h-72 sm:p-4">
-                    {viewTarget.content || "—"}
-                  </div>
-                </div>
-
-                {/* Created / Updated */}
-                <dl className="grid grid-cols-1 gap-3 rounded-xl border border-slate-100 bg-white p-3 sm:grid-cols-2 sm:p-4">
+                  {/* Title + Date */}
                   <div>
-                    <dt className="flex items-center gap-1 text-xs font-medium text-slate-400">
-                      <Clock className="h-3 w-3" />
-                      Created
-                    </dt>
+                    <h2 className="text-lg font-semibold leading-snug text-slate-900 sm:text-xl lg:text-2xl">
+                      {viewTarget.title}
+                    </h2>
 
-                    <dd className="mt-1 text-sm text-slate-700">
-                      {formatDate(viewTarget.created_at)}
-                    </dd>
+                    <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400">
+                      <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      {formatDate(viewTarget.date)}
+                    </p>
                   </div>
 
-                  {viewTarget.updated_at && (
+                  {/* Content */}
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                      <FileText className="h-3 w-3" />
+                      Content
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700 sm:max-h-72 sm:p-4">
+                      {viewTarget.content || "—"}
+                    </div>
+                  </div>
+
+                  {/* Created / Updated */}
+                  <dl className="grid grid-cols-1 gap-3 rounded-xl border border-slate-100 bg-white p-3 sm:grid-cols-2 sm:p-4">
                     <div>
                       <dt className="flex items-center gap-1 text-xs font-medium text-slate-400">
                         <Clock className="h-3 w-3" />
-                        Last updated
+                        Created
                       </dt>
 
                       <dd className="mt-1 text-sm text-slate-700">
-                        {formatDate(viewTarget.updated_at)}
+                        {formatDate(viewTarget.created_at)}
                       </dd>
                     </div>
-                  )}
-                </dl>
 
-                {/* Social Media */}
-                {normalizeSocialMedia(
-                  viewTarget.social_platforms,
-                  viewTarget.social_links
-                ).length > 0 && (
-                    <div>
-                      <div className="mb-2 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-400">
-                        <Megaphone className="h-3 w-3" />
-                        Social Media
+                    {viewTarget.updated_at && (
+                      <div>
+                        <dt className="flex items-center gap-1 text-xs font-medium text-slate-400">
+                          <Clock className="h-3 w-3" />
+                          Last updated
+                        </dt>
+
+                        <dd className="mt-1 text-sm text-slate-700">
+                          {formatDate(viewTarget.updated_at)}
+                        </dd>
                       </div>
+                    )}
+                  </dl>
 
-                      <div className="space-y-2">
-                        {formatSocialMedia(
-                          viewTarget.social_platforms,
-                          viewTarget.social_links
-                        ).map((entry, i) => (
-                          <div
-                            key={`${entry.label}-${i}`}
-                            className="flex flex-col gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            {/* Platform */}
-                            <span className="w-fit shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                              {entry.label}
-                            </span>
+                  {/* Social Media */}
+                  {normalizeSocialMedia(
+                    viewTarget.social_platforms,
+                    viewTarget.social_links
+                  ).length > 0 && (
+                      <div>
+                        <div className="mb-2 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+                          <Megaphone className="h-3 w-3" />
+                          Social Media
+                        </div>
 
-                            {/* Link */}
-                            {entry.link ? (
-                              <a
-                                href={entry.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex min-w-0 max-w-full items-center gap-1 text-xs text-blue-600 hover:underline sm:max-w-[65%]"
-                              >
-                                <Link2 className="h-3 w-3 shrink-0" />
-
-                                <span className="truncate">
-                                  {entry.link}
-                                </span>
-                              </a>
-                            ) : (
-                              <span className="text-xs text-slate-300">
-                                No link
+                        <div className="space-y-2">
+                          {formatSocialMedia(
+                            viewTarget.social_platforms,
+                            viewTarget.social_links
+                          ).map((entry, i) => (
+                            <div
+                              key={`${entry.label}-${i}`}
+                              className="flex flex-col gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                              <span className="w-fit shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                {entry.label}
                               </span>
-                            )}
-                          </div>
-                        ))}
+
+                              {entry.link ? (
+                                <a
+                                  href={entry.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex min-w-0 max-w-full items-center gap-1 text-xs text-blue-600 hover:underline sm:max-w-[65%]"
+                                >
+                                  <Link2 className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">{entry.link}</span>
+                                </a>
+                              ) : (
+                                <span className="text-xs text-slate-300">No link</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
+                    )}
+
+                  {/* Status Editor */}
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
+                    <label
+                      htmlFor="announcement-status"
+                      className="mb-1.5 block text-xs font-medium text-slate-500"
+                    >
+                      Update Status
+                    </label>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <select
+                        id="announcement-status"
+                        value={statusDraft}
+                        onChange={(e) =>
+                          setStatusDraft(e.target.value as Announcement["status"])
+                        }
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:w-48"
+                      >
+                        {STATUS_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={confirmSaveStatus}
+                        disabled={statusSaving || statusDraft === viewTarget.status}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                      >
+                        {statusSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Save Status
+                      </button>
                     </div>
-                  )}
 
-                {/* Status Editor */}
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
-                  <label
-                    htmlFor="announcement-status"
-                    className="mb-1.5 block text-xs font-medium text-slate-500"
-                  >
-                    Update Status
-                  </label>
-
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <select
-                      id="announcement-status"
-                      value={statusDraft}
-                      onChange={(e) =>
-                        setStatusDraft(
-                          e.target.value as Announcement["status"]
-                        )
-                      }
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:w-48"
-                    >
-                      {STATUS_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt.charAt(0).toUpperCase() + opt.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={confirmSaveStatus}
-                      disabled={
-                        statusSaving ||
-                        statusDraft === viewTarget.status
-                      }
-                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                    >
-                      {statusSaving && (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      )}
-
-                      Save Status
-                    </button>
+                    {statusError && (
+                      <p className="mt-2 text-xs text-red-600">{statusError}</p>
+                    )}
                   </div>
-
-                  {statusError && (
-                    <p className="mt-2 text-xs text-red-600">
-                      {statusError}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
@@ -1402,7 +1418,8 @@ export default function AnnouncementsAdmin() {
             </div>
           </div>
         </ModalBackdrop>
-      )}
+      )
+      }
 
       {/* Create / Edit Dialog */}
       {
@@ -1560,7 +1577,15 @@ export default function AnnouncementsAdmin() {
                   </label>
 
                   {(imagePreviews.length > 0 || (editing && getAnnouncementImageUrl(editing) && !removeExistingImage)) ? (
-                    <div className="mb-3 overflow-hidden rounded-xl border border-slate-200">
+                    <div
+                      className={`mb-3 overflow-hidden rounded-xl border ${isDraggingImage ? "border-blue-400 bg-blue-50/40" : "border-slate-200"}`}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        setIsDraggingImage(true);
+                      }}
+                      onDragLeave={() => setIsDraggingImage(false)}
+                      onDrop={handleImageDrop}
+                    >
                       <div className="grid grid-cols-2 gap-2 p-2 sm:grid-cols-3">
                         {(imagePreviews.length > 0
                           ? imagePreviews
@@ -1582,35 +1607,14 @@ export default function AnnouncementsAdmin() {
                         </span>
                         <div className="flex items-center gap-3">
                           <label className="cursor-pointer text-xs font-medium text-blue-600 hover:text-blue-700">
-                            {imageFiles.length > 0 ? "Replace selection" : "Replace"}
+                            {imageFiles.length > 0 ? "Add more images" : "Add images"}
                             <input
                               type="file"
                               accept="image/jpeg,image/png,image/webp"
                               multiple
                               className="hidden"
                               onChange={(event) => {
-                                const files = Array.from(event.target.files ?? []);
-                                setImageError("");
-                                if (files.length === 0) return;
-
-                                const invalidType = files.find((file) => !ACCEPTED_IMAGE_TYPES.includes(file.type));
-                                if (invalidType) {
-                                  setImageFiles([]);
-                                  setImageError("Use a JPG, PNG, or WEBP image.");
-                                  event.target.value = "";
-                                  return;
-                                }
-                                const oversized = files.find((file) => file.size > MAX_IMAGE_SIZE);
-                                if (oversized) {
-                                  setImageFiles([]);
-                                  setImageError("Images must be 5 MB or smaller.");
-                                  event.target.value = "";
-                                  return;
-                                }
-
-                                setImageFiles(files);
-                                setRemoveExistingImage(false);
-                                setImagePreviews(files.map((file) => URL.createObjectURL(file)));
+                                handleImageFiles(Array.from(event.target.files ?? []));
                               }}
                             />
                           </label>
@@ -1629,9 +1633,22 @@ export default function AnnouncementsAdmin() {
                       </div>
                     </div>
                   ) : (
-                    <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center hover:border-blue-300 hover:bg-blue-50/40">
+                    <label
+                      className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-8 text-center ${isDraggingImage
+                        ? "border-blue-400 bg-blue-50/40"
+                        : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/40"
+                        }`}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        setIsDraggingImage(true);
+                      }}
+                      onDragLeave={() => setIsDraggingImage(false)}
+                      onDrop={handleImageDrop}
+                    >
                       <FileText className="h-6 w-6 text-slate-300" />
-                      <span className="text-sm font-medium text-slate-600">Click to upload an image</span>
+                      <span className="text-sm font-medium text-slate-600">
+                        {isDraggingImage ? "Drop image here" : "Click or drag to upload an image"}
+                      </span>
                       <span className="text-xs text-slate-400">JPG, PNG, or WEBP — up to 5MB</span>
                       <input
                         type="file"
@@ -1639,30 +1656,7 @@ export default function AnnouncementsAdmin() {
                         multiple
                         className="hidden"
                         onChange={(event) => {
-                          const files = Array.from(event.target.files ?? []);
-                          setImageError("");
-                          if (files.length === 0) return;
-
-                          const invalidType = files.find((file) => !ACCEPTED_IMAGE_TYPES.includes(file.type));
-                          if (invalidType) {
-                            setImageFiles([]);
-                            setImagePreviews([]);
-                            setImageError("Use JPG, PNG, or WEBP images only.");
-                            event.target.value = "";
-                            return;
-                          }
-                          const oversized = files.find((file) => file.size > MAX_IMAGE_SIZE);
-                          if (oversized) {
-                            setImageFiles([]);
-                            setImagePreviews([]);
-                            setImageError("Images must be 5 MB or smaller.");
-                            event.target.value = "";
-                            return;
-                          }
-
-                          setImageFiles(files);
-                          setRemoveExistingImage(false);
-                          setImagePreviews(files.map((file) => URL.createObjectURL(file)));
+                          handleImageFiles(Array.from(event.target.files ?? []));
                         }}
                       />
                     </label>
@@ -1795,59 +1789,60 @@ export default function AnnouncementsAdmin() {
 
       {/* Confirmation modal — replaces native browser confirm()/alert() for
           delete, status-save, and create/edit actions. */}
-      {confirmState && (
-        <ModalBackdrop onClose={() => setConfirmState(null)}>
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
-            <div className="px-6 py-5">
-              <div className="flex items-start gap-3">
-                <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${confirmState.confirmVariant === "danger"
-                    ? "bg-red-100"
-                    : "bg-blue-100"
-                    }`}
-                >
-                  <AlertTriangle
-                    className={`h-5 w-5 ${confirmState.confirmVariant === "danger"
-                      ? "text-red-600"
-                      : "text-blue-600"
+      {
+        confirmState && (
+          <ModalBackdrop onClose={() => setConfirmState(null)}>
+            <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+              <div className="px-6 py-5">
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${confirmState.confirmVariant === "danger"
+                      ? "bg-red-100"
+                      : "bg-blue-100"
                       }`}
-                  />
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold text-slate-900">
-                    {confirmState.title}
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {confirmState.description}
-                  </p>
+                  >
+                    <AlertTriangle
+                      className={`h-5 w-5 ${confirmState.confirmVariant === "danger"
+                        ? "text-red-600"
+                        : "text-blue-600"
+                        }`}
+                    />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900">
+                      {confirmState.title}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {confirmState.description}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
-              <button
-                onClick={() => setConfirmState(null)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmAction}
-                disabled={deleting || saving || statusSaving}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${confirmState.confirmVariant === "danger"
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-blue-600 hover:bg-blue-700"
-                  }`}
-              >
-                {(deleting || saving || statusSaving) && (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                )}
-                {confirmState.confirmLabel}
-              </button>
+              <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
+                <button
+                  onClick={() => setConfirmState(null)}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmAction}
+                  disabled={deleting || saving || statusSaving}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${confirmState.confirmVariant === "danger"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                >
+                  {(deleting || saving || statusSaving) && (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  )}
+                  {confirmState.confirmLabel}
+                </button>
+              </div>
             </div>
-          </div>
-        </ModalBackdrop>
-      )
+          </ModalBackdrop>
+        )
       }
     </main >
   );
