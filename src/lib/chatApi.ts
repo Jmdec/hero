@@ -50,6 +50,17 @@ export interface ChatConversation {
         name?: string | null;
         email?: string | null;
     } | null;
+    group_key?: string;
+    conversation_ids?: number[];
+    sessions?: ChatSession[];
+}
+
+export interface ChatSession {
+    id: number;
+    session_id: string;
+    started_at: string | null;
+    ended_at: string | null;
+    message_count: number;
 }
 
 export interface ChatMessage {
@@ -60,6 +71,8 @@ export interface ChatMessage {
     sent_at: string;
     created_at: string;
     updated_at: string;
+    conversation_session_id?: number;
+    conversation_session_started_at?: string | null;
 }
 
 export interface ConversationResponse extends ChatConversation {
@@ -198,6 +211,10 @@ export const chatApi = {
 
     getConversationBySession(sessionId: string) {
         return request<ConversationResponse>(`/chat/session/${sessionId}`);
+    },
+
+    getConversationGroup(email: string) {
+        return request<ConversationResponse>(`/chat/group/${encodeURIComponent(email)}`);
     },
 
     switchMode(

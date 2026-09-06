@@ -98,6 +98,18 @@ function isAddressed(c: ChatConversation) {
     return Boolean(c.addressed_at);
 }
 
+function normalizedEmail(conversation: ChatConversation) {
+    return (conversation.group_key ?? conversation.inquiry?.email_address ?? `conversation:${conversation.id}`).trim().toLowerCase();
+}
+
+function sessionDividerLabel(message: { conversation_session_id?: number; conversation_session_started_at?: string | null }) {
+    if (!message.conversation_session_id) return null;
+    const date = message.conversation_session_started_at
+        ? new Date(message.conversation_session_started_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+        : null;
+    return `${date ? `${date} • ` : ""}Conversation session`;
+}
+
 function LiveDot({ className = "" }: { className?: string }) {
     return (
         <span className={`relative flex h-2 w-2 ${className}`}>
@@ -475,6 +487,11 @@ export default function AdminChatsPage() {
 
             if (!selectedConversationId && items[0]?.id) {
                 setSelectedConversationId(items[0].id);
+                const email = items[0].group_key ?? items[0].inquiry?.email_address;
+                if (email) {
+                    const grouped = await chatApi.getConversationGroup(email);
+                    if (isMountedRef.current) setSelectedConversation(grouped);
+                }
             }
         } catch (err) {
             if (!isMountedRef.current) return;
@@ -483,6 +500,21 @@ export default function AdminChatsPage() {
             pushToast(message, "error");
         } finally {
             if (isMountedRef.current) setLoading(false);
+        }
+    };
+
+    const loadConversationGroup = async (id: number) => {
+        setConversationLoading(true);
+        try {
+            const conversation = conversations.find((item) => item.id === id);
+            const email = conversation?.group_key ?? conversation?.inquiry?.email_address;
+            if (!email) return;
+            const grouped = await chatApi.getConversationGroup(email);
+            if (isMountedRef.current) setSelectedConversation(grouped);
+        } catch (err) {
+            if (isMountedRef.current) setError(err instanceof Error ? err.message : "Unable to load conversation.");
+        } finally {
+            if (isMountedRef.current) setConversationLoading(false);
         }
     };
 
@@ -511,7 +543,9 @@ export default function AdminChatsPage() {
         const interval = setInterval(async () => {
             if (cancelled) return;
             try {
-                const conversation = await chatApi.getConversation(selectedConversationId);
+                const email = selectedConversation?.group_key ?? selectedConversation?.inquiry?.email_address;
+                if (!email) return;
+                const conversation = await chatApi.getConversationGroup(email);
                 if (cancelled) return;
 
                 setSelectedConversation(prev => {
@@ -535,7 +569,7 @@ export default function AdminChatsPage() {
             cancelled = true;
             clearInterval(interval);
         };
-    }, [selectedConversationId]);
+    }, [selectedConversationId, selectedConversation?.group_key, selectedConversation?.inquiry?.email_address]);
 
     useEffect(() => {
         if (!actionsMenuOpen) return;
@@ -620,7 +654,9 @@ export default function AdminChatsPage() {
         await Promise.all([loadConversations(), loadChatAnalytics(true)]);
         if (selectedConversationId) {
             try {
-                const conversation = await chatApi.getConversation(selectedConversationId);
+                const email = selectedConversation?.group_key ?? selectedConversation?.inquiry?.email_address;
+                if (!email) return;
+                const conversation = await chatApi.getConversationGroup(email);
                 if (isMountedRef.current) setSelectedConversation(conversation);
             } catch {
                 // Ignore refresh errors and keep the existing view intact.
@@ -762,6 +798,7 @@ export default function AdminChatsPage() {
         setSelectedConversationId(id);
         setSidebarOpen(false);
         setActionsMenuOpen(false);
+        void loadConversationGroup(id);
     };
 
     useEffect(() => {
@@ -795,7 +832,7 @@ export default function AdminChatsPage() {
             ? conversations
             : conversations.filter((c) => {
                 const name = c.inquiry?.full_name?.toLowerCase() ?? "";
-                const email = c.inquiry?.email_address?.toLowerCase() ?? "";
+                const email = normalizedEmail(c);
                 return name.includes(q) || email.includes(q);
             });
 
@@ -1216,15 +1253,25 @@ export default function AdminChatsPage() {
                                                     No messages yet. Start the conversation with a welcome note.
                                                 </div>
                                             ) : (
-                                                selectedConversation.messages.map((message) => {
+                                                selectedConversation.messages.map((message, index) => {
                                                     const isSystem = message.sender === "system";
                                                     const senderKey = isSystem ? "assistant" : senderKeyOf(message.sender);
                                                     const style = isSystem ? SYSTEM_STYLE : SENDER_STYLE[senderKey as SenderKey];
                                                     const SenderIcon = style.icon;
                                                     const isAdmin = senderKey === "admin";
 
+                                                    const previousMessage = selectedConversation.messages[index - 1];
+                                                    const hasSessionBoundary = previousMessage && previousMessage.conversation_session_id !== message.conversation_session_id;
                                                     return (
-                                                        <div key={message.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
+                                                        <div key={`${message.conversation_session_id ?? selectedConversation.id}-${message.id}`}>
+                                                            {hasSessionBoundary && (
+                                                                <div className="my-5 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                                                                    <span className="h-px flex-1 bg-slate-200" />
+                                                                    <span>{sessionDividerLabel(message)}</span>
+                                                                    <span className="h-px flex-1 bg-slate-200" />
+                                                                </div>
+                                                            )}
+                                                            <div className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
                                                             <div
                                                                 className={`max-w-[88%] rounded-2xl px-3 py-2 shadow-sm sm:max-w-[75%] sm:px-3.5 sm:py-2.5 lg:max-w-[65%] ${style.bubble}`}
                                                             >
@@ -1261,6 +1308,7 @@ export default function AdminChatsPage() {
                                                                 ) : (
                                                                     <p className="text-sm leading-relaxed">{message.message}</p>
                                                                 )}
+                                                            </div>
                                                             </div>
                                                         </div>
                                                     );

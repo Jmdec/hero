@@ -62,7 +62,8 @@ export async function GET(
         });
     } catch (error) {
         console.error("send-contract proxy error:", error);
-        return NextResponse.json({ message: "Unable to send contract email.", error: String(error) }, { status: 502 });
+        const detail = error instanceof Error ? error.message : String(error);
+        return NextResponse.json({ message: detail || "Unable to send contract email.", error: detail }, { status: 502 });
     }
 }
 
@@ -111,6 +112,7 @@ export async function POST(
         return NextResponse.json({ message: "Contract email sent." });
     } catch (error) {
         console.error("send-contract proxy error:", error);
-        return NextResponse.json({ message: "Unable to send contract email.", error: String(error) }, { status: 502 });
+        const detail = error instanceof Error ? error.message : String(error);
+        return NextResponse.json({ message: detail || "Unable to send contract email.", error: detail }, { status: 502 });
     }
 }

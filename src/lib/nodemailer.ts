@@ -912,7 +912,7 @@ async function renderContractPdfFromContent(args: {
 
         const headingMatch = lines[0].match(/^(?:(\d+\.)|(Art\.\s*\d+))\s*[A-Za-z &]+$/);
         if (headingMatch) {
-            drawSectionHeading(headingMatch[1]);
+            drawSectionHeading(lines[0]);
             for (const fieldLine of lines.slice(1)) {
                 const fieldMatch = fieldLine.match(/^([A-Za-z /&]+):\s*(.*)$/);
                 if (fieldMatch) {
