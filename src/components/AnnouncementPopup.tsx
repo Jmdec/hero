@@ -1,10 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { Calendar, ExternalLink, X } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  AlertCircle,
+  ArrowRight,
+  Calendar,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Inbox,
+  Newspaper,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 
 interface SocialMediaEntry {
   platform: string;
@@ -15,14 +30,20 @@ interface Announcement {
   id: number;
   tag: string;
   date: string;
-  title: string;
-  content: string;
-  image?: string | null;
+  image?: string | string[] | null;
   image_url?: string | null;
-  created_at: string;
+  image_urls?: string | string[] | null;
+  title: string;
+  excerpt: string;
+  content: string;
   social_platforms?: string[] | null;
   social_links?: Array<string | null> | null;
 }
+
+const PAGE_SIZE = 6;
+
+const TAG_STYLE = "bg-blue-50 text-blue-600";
+const FALLBACK_TAG_STYLE = "bg-gray-100 text-gray-600";
 
 const SOCIAL_MEDIA_OPTIONS = [
   { value: "facebook", label: "Facebook" },
@@ -33,23 +54,102 @@ const SOCIAL_MEDIA_OPTIONS = [
   { value: "tiktok", label: "TikTok" },
 ];
 
-const PROMO_TAG_KEYWORDS = [
-  "promo",
-  "promotion",
-  "promotional",
-  "offer",
-  "deal",
-  "sale",
-  "discount",
-];
+function tagClass(tag: string) {
+  return tag ? TAG_STYLE : FALLBACK_TAG_STYLE;
+}
 
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=1200&q=85";
+function getApiBaseUrl(): string {
+  const configured =
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.LARAVEL_API_URL ||
+    "http://localhost:8000";
+  return configured.replace(/\/+$/, "").replace(/\/api$/, "");
+}
 
-function formatSocialPlatform(value: string) {
-  return (
-    SOCIAL_MEDIA_OPTIONS.find((opt) => opt.value === value)?.label ?? value
-  );
+function normalizeImageValues(
+  value: string | string[] | null | undefined,
+): string[] {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+
+    if (Array.isArray(parsed)) {
+      return parsed
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    if (typeof parsed === "string" && parsed.trim()) {
+      return [parsed.trim()];
+    }
+  } catch {
+    // Treat non-JSON values as a normal path.
+  }
+
+  return [trimmed];
+}
+
+function resolveAnnouncementImageUrl(
+  value: string | null | undefined,
+): string | null {
+  if (!value) return null;
+
+  const image = value.trim();
+  if (!image) return null;
+  if (/^https?:\/\//i.test(image)) {
+    try {
+      const parsed = new URL(image);
+      if (!/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(parsed.hostname)) {
+        return image;
+      }
+      parsed.protocol = new URL(getApiBaseUrl()).protocol;
+      parsed.host = new URL(getApiBaseUrl()).host;
+      return parsed.toString();
+    } catch {
+      return image;
+    }
+  }
+  if (image.startsWith("//")) return `https:${image}`;
+
+  let path = image.replace(/^\/+/, "");
+  path = path.replace(/^public\/storage\//i, "");
+  path = path.replace(/^storage\//i, "");
+
+  return `${getApiBaseUrl()}/storage/${path}`;
+}
+
+function getAnnouncementImageUrl(item: Announcement): string | null {
+  const imageUrl = resolveAnnouncementImageUrl(item.image_url);
+  if (imageUrl) return imageUrl;
+
+  const imageUrls = normalizeImageValues(item.image_urls);
+  const imageUrlsValue = resolveAnnouncementImageUrl(imageUrls[0]);
+  if (imageUrlsValue) return imageUrlsValue;
+
+  const images = normalizeImageValues(item.image);
+  return resolveAnnouncementImageUrl(images[0]);
+}
+
+function formatDate(value: string) {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function normalizeSocialMedia(
@@ -60,372 +160,812 @@ function normalizeSocialMedia(
   const normalizedLinks = Array.isArray(links) ? links : [];
 
   const count = Math.max(normalizedPlatforms.length, normalizedLinks.length);
-
   return Array.from({ length: count }, (_, index) => {
     const platform = normalizedPlatforms[index]?.trim();
-
     if (!platform) return null;
-
-    return {
-      platform,
-      link: normalizedLinks[index]?.trim() ?? null,
-    };
+    return { platform, link: normalizedLinks[index]?.trim() ?? null };
   }).filter((item): item is SocialMediaEntry => item !== null);
 }
 
-function formatDate(value: string) {
-  const date = new Date(value);
-
-  if (isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+function formatSocialPlatform(value: string) {
+  return SOCIAL_MEDIA_OPTIONS.find((opt) => opt.value === value)?.label ?? value;
 }
 
-function getAnnouncementImageUrl(announcement?: Announcement | null) {
-  const value = announcement?.image_url || announcement?.image;
+async function getAnnouncements(): Promise<Announcement[]> {
+  const res = await fetch("/api/announcements", { cache: "no-store" });
 
-  if (!value) return null;
-
-  const configured =
-    process.env.NEXT_PUBLIC_API_URL ||
-    process.env.LARAVEL_API_URL ||
-    "http://localhost:8000";
-
-  const base = configured.replace(/\/+$/g, "").replace(/\/api$/, "");
-
-  if (/^https?:\/\//i.test(value)) {
-    try {
-      const parsed = new URL(value);
-
-      if (!/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(parsed.hostname)) {
-        return value;
-      }
-
-      const baseUrl = new URL(base);
-
-      parsed.protocol = baseUrl.protocol;
-      parsed.host = baseUrl.host;
-
-      return parsed.toString();
-    } catch {
-      return value;
-    }
+  if (!res.ok) {
+    throw new Error(`Status ${res.status}`);
   }
 
-  let path = value.replace(/^\/+/, "");
+  const data = await res.json();
 
-  path = path.replace(/^public\/storage\//i, "").replace(/^storage\//i, "");
-
-  return `${base}/storage/${path}`;
+  // index() returns a plain array, not a paginated { data: [...] } shape
+  return Array.isArray(data) ? data : (data.data ?? []);
 }
 
-function isPromotionalAnnouncement(item: Announcement) {
-  const tag = (item.tag || "").toLowerCase();
-  const title = (item.title || "").toLowerCase();
-  const content = (item.content || "").toLowerCase();
+// Builds a compact page-number sequence with ellipses, e.g. [1, "…", 4, 5, 6, "…", 12]
+function getPageNumbers(current: number, total: number): Array<number | "…"> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
-  return PROMO_TAG_KEYWORDS.some(
-    (keyword) =>
-      tag.includes(keyword) ||
-      title.includes(keyword) ||
-      content.includes(keyword),
+  const pages: Array<number | "…"> = [1];
+  if (current > 4) pages.push("…");
+
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) pages.push(i);
+
+  if (current < total - 3) pages.push("…");
+  pages.push(total);
+
+  return pages;
+}
+
+function ImageFallback({ className = "" }: { className?: string }) {
+  return (
+    <div
+      className={`flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#1B3A8C]/10 via-white to-[#00ACC1]/10 ${className}`}
+      aria-label="No announcement image available"
+    >
+      <div className="flex flex-col items-center justify-center gap-2 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/80 shadow-sm">
+          <Newspaper className="h-7 w-7 text-[#1B3A8C]/40" />
+        </div>
+      </div>
+    </div>
   );
 }
 
-export default function AnnouncementPopup() {
-  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+function TagDateRow({ tag, date }: { tag: string; date: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span
+        className={`text-sm font-medium px-3 py-1 rounded-full ${tagClass(tag)}`}
+      >
+        {tag}
+      </span>
+      <div className="flex items-center gap-1.5 text-sm text-gray-400">
+        <Calendar className="h-3.5 w-3.5" />
+        {formatDate(date)}
+      </div>
+    </div>
+  );
+}
 
-  const [open, setOpen] = useState(false);
-
+function AnnouncementCard({
+  item,
+  index,
+  onSelect,
+}: {
+  item: Announcement;
+  index: number;
+  onSelect: (item: Announcement) => void;
+}) {
+  const socialPlatforms = normalizeSocialMedia(
+    item.social_platforms,
+    item.social_links,
+  );
+  const imageUrl = getAnnouncementImageUrl(item);
   const [imageFailed, setImageFailed] = useState(false);
 
-  const shouldReduceMotion = useReducedMotion();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.07 }}
+      onClick={() => onSelect(item)}
+      className="group flex cursor-pointer flex-col rounded-2xl border border-gray-100 bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+    >
+      <div className="mb-4 h-40 w-full overflow-hidden rounded-xl border border-gray-100">
+        {imageUrl && !imageFailed ? (
+          <img
+            src={imageUrl}
+            alt={item.title || "Announcement"}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+            onError={() => {
+              console.warn("Announcement image failed to load:", imageUrl);
+              setImageFailed(true);
+            }}
+          />
+        ) : (
+          <ImageFallback className="h-full w-full" />
+        )}
+      </div>
+
+      <div className="flex items-center justify-between mb-4">
+        <TagDateRow tag={item.tag} date={item.date} />
+      </div>
+
+      <h2 className="text-lg font-bold text-gray-900 leading-snug mb-3">
+        {item.title}
+      </h2>
+
+      <p className="text-sm text-gray-500 leading-relaxed flex-1">
+        {item.excerpt}
+      </p>
+
+      <div className="flex items-center justify-between gap-2 pt-4">
+        {socialPlatforms.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {socialPlatforms.map((entry) =>
+              entry.link ? (
+                <Link
+                  key={entry.platform}
+                  href={entry.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(event) => event.stopPropagation()}
+                  className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-[#0A1E3F] hover:bg-blue-100"
+                >
+                  <span className="flex items-center gap-1 uppercase tracking-wide">
+                    {formatSocialPlatform(entry.platform)}{" "}
+                    <ExternalLink className="h-3 w-3" />
+                  </span>
+                </Link>
+              ) : null,
+            )}
+          </div>
+        ) : (
+          <span />
+        )}
+
+        <div className="inline-flex items-center gap-1.5 text-sm font-bold text-[#1B3A8C] transition-all duration-200 group-hover:scale-105 group-hover:text-[#FFC107] group-hover:underline">
+          Read more
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function AnnouncementModal({
+  item,
+  onClose,
+}: {
+  item: Announcement;
+  onClose: () => void;
+}) {
+  const socialPlatforms = normalizeSocialMedia(
+    item.social_platforms,
+    item.social_links,
+  );
+  const imageUrl = getAnnouncementImageUrl(item);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  return (
+    <>
+      <motion.div
+        key="backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={onClose}
+        className="fixed inset-0 z-[100] bg-[#07162E]/80 backdrop-blur-sm"
+      />
+
+      <motion.div
+        key="modal"
+        initial={{ opacity: 0, y: 24, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 16, scale: 0.97 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+        className="pointer-events-none fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 mt-0 lg:mt-10"
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="relative flex w-full max-w-sm flex-col overflow-hidden rounded-[20px] border border-gray-100 bg-white shadow-[0_30px_80px_rgba(0,0,0,0.35)] pointer-events-auto max-h-[92vh] sm:max-h-[85vh] sm:max-w-lg sm:rounded-3xl md:max-h-[80vh] md:max-w-3xl md:flex-row"
+        >
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-gray-500 shadow-md backdrop-blur-sm transition hover:bg-white hover:text-gray-800 md:right-4 md:top-4"
+          >
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
+          </button>
+
+          {/* Image panel — full-width strip on mobile/tablet, side column on desktop */}
+          <div className="relative h-40 w-full shrink-0 overflow-hidden sm:h-52 md:h-auto md:w-[42%]">
+            {imageUrl && !imageFailed ? (
+              <img
+                src={imageUrl}
+                alt={item.title || "Announcement"}
+                className="h-full w-full object-contain transition-transform duration-300 hover:scale-105"
+                loading="lazy"
+                onError={() => {
+                  console.warn("Announcement modal image failed:", imageUrl);
+                  setImageFailed(true);
+                }}
+              />
+            ) : (
+              <ImageFallback className="h-full w-full" />
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent md:hidden" />
+          </div>
+
+          {/* Content */}
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5 sm:px-7 sm:py-6 md:px-8 md:py-8">
+            <TagDateRow tag={item.tag} date={item.date} />
+
+            <h2 className="mt-4 text-xl font-bold leading-snug text-gray-900 sm:text-2xl">
+              {item.title}
+            </h2>
+
+            <div className="my-4 flex items-center gap-3">
+              <div className="h-[3px] w-10 rounded-full bg-[#FFC107]" />
+              <div className="h-px flex-1 bg-gray-100" />
+            </div>
+
+            <div className="space-y-4">
+              {(item.content || "").split(/\n\s*\n/).map((para, i) => (
+                <p
+                  key={i}
+                  className="text-sm leading-relaxed text-gray-600 sm:text-[15px]"
+                >
+                  {para}
+                </p>
+              ))}
+            </div>
+
+            {socialPlatforms.length > 0 && (
+              <div className="mt-6 border-t border-gray-100 pt-5">
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400">
+                  Learn more
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {socialPlatforms.map((entry) =>
+                    entry.link ? (
+                      <Link
+                        key={entry.platform}
+                        href={entry.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-[11px] font-semibold text-[#1B3A8C] transition hover:bg-blue-100"
+                      >
+                        {formatSocialPlatform(entry.platform)}
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    ) : null,
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+export default function AnnouncementPage() {
+  const [selected, setSelected] = useState<Announcement | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterStatus, setNewsletterStatus] = useState<string | null>(null);
+  const [newsletterError, setNewsletterError] = useState<string | null>(null);
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+
+  // Search / filter / pagination
+  const [query, setQuery] = useState("");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadLatestAnnouncement() {
+    async function load() {
+      setLoading(true);
+      setError(null);
+
       try {
-        const res = await fetch("/api/announcements", {
-          cache: "no-store",
-        });
-
-        if (!res.ok) return;
-
-        const json = await res.json();
-
-        const list: Announcement[] = Array.isArray(json)
-          ? json
-          : (json.data ?? []);
-
-        if (cancelled || list.length === 0) {
-          return;
+        const data = await getAnnouncements();
+        if (!cancelled) setAnnouncements(data);
+      } catch (err) {
+        console.error("Announcement fetch failed:", err);
+        if (!cancelled) {
+          setError("Could not load announcements. Please try again later.");
         }
-
-        const promotionalAnnouncements = list.filter(
-          isPromotionalAnnouncement,
-        );
-
-        if (promotionalAnnouncements.length === 0) {
-          return;
-        }
-
-        const latest = [...promotionalAnnouncements].sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() -
-            new Date(a.created_at).getTime(),
-        )[0];
-
-        if (cancelled) return;
-
-        setImageFailed(false);
-        setAnnouncement(latest);
-
-        const timer = window.setTimeout(() => {
-          if (!cancelled) {
-            setOpen(true);
-          }
-        }, 400);
-
-        return () => window.clearTimeout(timer);
-      } catch {
-        // Do not block the website if announcements fail.
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
 
-    loadLatestAnnouncement();
+    load();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryCount]);
 
-  const handleClose = useCallback(() => {
-    setOpen(false);
-  }, []);
+  const availableTags = useMemo(
+    () =>
+      Array.from(
+        new Set(announcements.map((a) => a.tag).filter(Boolean)),
+      ).sort(),
+    [announcements],
+  );
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return announcements.filter((a) => {
+      const matchesQuery =
+        q.length === 0 ||
+        a.title?.toLowerCase().includes(q) ||
+        a.content?.toLowerCase().includes(q) ||
+        a.tag?.toLowerCase().includes(q) ||
+        a.social_platforms?.some((p) => p.toLowerCase().includes(q)) ||
+        a.date?.toLowerCase().includes(q);
+
+      const matchesTag = !tagFilter || a.tag === tagFilter;
+
+      return matchesQuery && matchesTag;
+    });
+  }, [announcements, query, tagFilter]);
+
+  // Reset to page 1 whenever the active filters change
   useEffect(() => {
-    if (!open) return;
+    setPage(1);
+  }, [query, tagFilter]);
 
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        handleClose();
-      }
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+  const pageNumbers = useMemo(
+    () => getPageNumbers(currentPage, totalPages),
+    [currentPage, totalPages],
+  );
+
+  const hasActiveFilters = query.trim().length > 0 || tagFilter !== null;
+
+  const clearFilters = () => {
+    setQuery("");
+    setTagFilter(null);
+  };
+
+  function setAnnouncementIdQuery(id: number | null) {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (id === null) {
+      params.delete("id");
+    } else {
+      params.set("id", String(id));
     }
 
-    const previousOverflow = document.body.style.overflow;
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }
 
-    document.body.style.overflow = "hidden";
+  function handleSelectAnnouncement(item: Announcement) {
+    setSelected(item);
+    setAnnouncementIdQuery(item.id);
+  }
 
-    window.addEventListener("keydown", onKeyDown);
+  function handleCloseAnnouncementModal() {
+    setSelected(null);
+    setAnnouncementIdQuery(null);
+  }
 
-    return () => {
-      document.body.style.overflow = previousOverflow;
+  useEffect(() => {
+    if (loading || announcements.length === 0) return;
 
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open, handleClose]);
+    const requestedId = searchParams.get("id");
+    if (!requestedId) return;
 
-  const uploadedImageSrc = getAnnouncementImageUrl(announcement);
+    const numericId = Number(requestedId);
+    if (!Number.isInteger(numericId) || numericId <= 0) {
+      setAnnouncementIdQuery(null);
+      return;
+    }
 
-  const imageSrc =
-    uploadedImageSrc && !imageFailed ? uploadedImageSrc : FALLBACK_IMAGE;
+    const matched = announcements.find((item) => item.id === numericId);
+    if (!matched) {
+      setAnnouncementIdQuery(null);
+      return;
+    }
 
-  const socialPlatforms = announcement
-    ? normalizeSocialMedia(
-      announcement.social_platforms,
-      announcement.social_links,
-    )
-    : [];
+    setSelected((prev) => (prev?.id === matched.id ? prev : matched));
+  }, [announcements, loading, searchParams]);
 
   return (
-    <AnimatePresence>
-      {open && announcement && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{
-            duration: shouldReduceMotion ? 0 : 0.25,
-          }}
-          className="fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-[#07162E]/85 p-3 py-6 backdrop-blur-md sm:p-5 sm:py-8 md:p-6"
-          onClick={handleClose}
-        >
-          {/* Decorative HERO-style background glow */}
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute left-[-15%] top-[20%] h-[260px] w-[260px] rounded-full bg-[#1B3A8C]/20 blur-[90px] sm:h-[340px] sm:w-[340px] sm:blur-[110px] lg:h-[420px] lg:w-[420px] lg:blur-[120px]" />
+    <div className="min-h-screen">
+      {/* Hero Section */}
+      <section className="relative text-white py-20 lg:py-32 overflow-hidden">
+        <div className="absolute inset-0">
+          <Image
+            src="/header.webp"
+            alt="About HERO Serviced Office"
+            fill
+            className="object-cover"
+            unoptimized
+            priority
+          />
+          <div className="absolute inset-0 bg-linear-to-t from-[#1B3A8C]/90 via-[#1B3A8C]/70 to-[#1B3A8C]/80" />
+        </div>
 
-            <div className="absolute bottom-[-20%] right-[-10%] h-[320px] w-[320px] rounded-full bg-[#00ACC1]/10 blur-[100px] sm:h-[420px] sm:w-[420px] sm:blur-[120px] lg:h-[500px] lg:w-[500px] lg:blur-[140px]" />
-          </div>
-
-          {/* Chibi mascot, pinned to the bottom-left of the viewport, behind the dialog. */}
-          <div className="pointer-events-none fixed bottom-2 left-2 z-10 hidden lg:block">
-            <Image
-              src="/hero-chibi.webp"
-              alt="HERO Serviced Office"
-              width={340}
-              height={340}
-              unoptimized
-              className="h-auto w-[180px] md:w-[220px] lg:w-[280px] xl:w-[340px]"
-            />
-          </div>
-
+        <div className="px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="announcement-title"
-            initial={
-              shouldReduceMotion
-                ? { opacity: 0 }
-                : {
-                  opacity: 0,
-                  scale: 0.94,
-                  y: 30,
-                }
-            }
-            animate={
-              shouldReduceMotion
-                ? { opacity: 1 }
-                : {
-                  opacity: 1,
-                  scale: 1,
-                  y: 0,
-                }
-            }
-            exit={
-              shouldReduceMotion
-                ? { opacity: 0 }
-                : {
-                  opacity: 0,
-                  scale: 0.96,
-                  y: 16,
-                }
-            }
-            transition={
-              shouldReduceMotion
-                ? { duration: 0.15 }
-                : {
-                  type: "spring",
-                  stiffness: 260,
-                  damping: 24,
-                }
-            }
-            onClick={(e) => e.stopPropagation()}
-            className="relative z-20 mx-auto flex w-full max-w-sm flex-col overflow-hidden rounded-[20px] border border-white/20 bg-white shadow-[0_30px_100px_rgba(0,0,0,0.45)] h-[75vh] sm:max-w-lg sm:rounded-3xl md:h-[78vh] md:max-w-2xl md:flex-row lg:h-[70vh] lg:max-w-4xl lg:rounded-[28px] xl:max-w-5xl lg:left-32 mt-8 md:mt-14 lg:mt-0"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="w-full text-center mx-auto"
           >
-            {/* Close button */}
-            <button
-              type="button"
-              onClick={handleClose}
-              aria-label="Close announcement"
-              className="absolute right-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-[#0B1F4A]/85 text-white shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-[#1B3A8C] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C] sm:right-4 sm:top-4 sm:h-10 sm:w-10 md:h-11 md:w-11"
-            >
-              <X className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
+              News, Updates & Exclusive Offers
+            </h1>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto font-semibold text-shadow-sm">
+              Get the latest from Hero Serviced Office — new locations, events,
+              member benefits, and special promotions delivered straight to your
+              inbox.
+            </p>
+          </motion.div>
+        </div>
+      </section>
 
-            {/* LEFT: Announcement Image (tablet & up) */}
-            <div className="relative hidden min-h-0 w-[42%] shrink-0 overflow-hidden bg-[#0B1F4A] md:block lg:w-[46%]">
-              <Image
-                src={imageSrc}
-                alt={announcement.title}
-                fill
-                priority
-                unoptimized
-                sizes="(min-width: 1024px) 46vw, (min-width: 768px) 42vw, 100vw"
-                className="object-contain"
-                onError={() => setImageFailed(true)}
-              />
-            </div>
-
-            {/* RIGHT: Content */}
-            <div className="flex min-h-0 flex-1 flex-col bg-[#FCFCFB]">
-              {/* Mobile / small-tablet image */}
-              <div className="relative h-40 shrink-0 overflow-hidden xs:h-48 sm:h-56 hidden">
-                <Image
-                  src={imageSrc}
-                  alt={announcement.title}
-                  fill
-                  priority
-                  unoptimized
-                  sizes="100vw"
-                  className="object-cover"
-                  onError={() => setImageFailed(true)}
+      {/* Announcements Grid */}
+      <section className="py-20 bg-[#F5F5F3]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Search + Filters */}
+          <div className="mb-10 flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by title, keyword, or tag…"
+                  className="w-full rounded-full border border-gray-200 bg-white pl-11 pr-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                 />
               </div>
 
-              {/* Content */}
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 sm:px-6 sm:py-7 md:px-8">
-                {/* Category / date */}
-                <div className="flex flex-wrap items-center gap-2 mb-5">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#1B3A8C] sm:text-xs sm:tracking-[0.18em]">
-                    {announcement.tag}
-                  </span>
-
-                  <span className="h-1 w-1 rounded-full bg-[#C9A84C]" />
-
-                  <span className="flex items-center gap-1.5 text-xs text-slate-500 sm:text-sm">
-                    <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-
-                    {formatDate(announcement.date)}
-                  </span>
-                </div>
-
-                {/* Title */}
-                <h3
-                  id="announcement-title"
-                  className="max-w-2xl font-serif text-2xl font-bold leading-[1.2] text-[#1E2A3A] sm:text-3xl sm:leading-[1.15] md:text-xl lg:text-2xl"
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => setFiltersOpen((v) => !v)}
+                  className={`inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-medium transition-colors w-full sm:w-auto ${filtersOpen || tagFilter
+                    ? "border-[#1B3A8C] bg-[#1B3A8C] text-white"
+                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    }`}
                 >
-                  {announcement.title}
-                </h3>
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {tagFilter ? `Tag: ${tagFilter}` : "Filter by tag"}
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${filtersOpen ? "rotate-180" : ""
+                      }`}
+                  />
+                </button>
 
-                {/* Accent */}
-                <div className="my-5 flex items-center gap-3">
-                  <div className="h-[3px] w-10 bg-[#C9A84C] sm:w-14" />
-
-                  <div className="h-px flex-1 bg-[#E5E7EB]" />
-                </div>
-
-                {/* Announcement content */}
-                <div className="max-w-2xl">
-                  <p className="whitespace-pre-wrap text-slate-600 text-sm lg:text-md">
-                    {announcement.content}
-                  </p>
-                </div>
-
-                {/* Social links */}
-                {socialPlatforms.length > 0 && (
-                  <div className="mt-4">
-
-                    <div className="flex flex-wrap gap-2">
-                      {socialPlatforms.map((entry) =>
-                        entry.link ? (
-                          <Link
-                            key={`${entry.platform}-${entry.link}`}
-                            href={entry.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-full border border-[#D9E2F0] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#1B3A8C] shadow-sm transition hover:-translate-y-0.5 hover:border-[#1B3A8C] hover:bg-[#EEF2FB] sm:gap-2 sm:px-4 sm:py-2 sm:text-xs"
+                <AnimatePresence>
+                  {filtersOpen && (
+                    <>
+                      {/* Click-outside catcher */}
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setFiltersOpen(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 z-20 mt-2 w-48 rounded-2xl border border-gray-100 bg-white p-1.5 shadow-lg max-h-64 overflow-y-auto"
+                      >
+                        <button
+                          onClick={() => {
+                            setTagFilter(null);
+                            setFiltersOpen(false);
+                          }}
+                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${!tagFilter
+                            ? "bg-[#1B3A8C]/5 text-[#1B3A8C] font-medium"
+                            : "text-gray-600 hover:bg-gray-50"
+                            }`}
+                        >
+                          All tags
+                        </button>
+                        {availableTags.map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => {
+                              setTagFilter(t);
+                              setFiltersOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${tagFilter === t
+                              ? "bg-[#1B3A8C]/5 text-[#1B3A8C] font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                              }`}
                           >
-                            {formatSocialPlatform(entry.platform)}
-
-                            <ExternalLink className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                          </Link>
-                        ) : null,
-                      )}
-                    </div>
-                  </div>
-                )}
+                            {t}
+                          </button>
+                        ))}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </div>
+
+          {/* Loading state — skeleton cards */}
+          {loading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl border border-gray-100 p-6 animate-pulse"
+                >
+                  <div className="mb-4 h-40 w-full rounded-xl bg-gray-100" />
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-6 w-16 rounded-full bg-gray-100" />
+                    <div className="h-4 w-24 rounded bg-gray-100" />
+                  </div>
+                  <div className="h-4 w-3/4 rounded bg-gray-100 mb-3" />
+                  <div className="space-y-2">
+                    <div className="h-3 rounded bg-gray-100 w-full" />
+                    <div className="h-3 rounded bg-gray-100 w-full" />
+                    <div className="h-3 rounded bg-gray-100 w-2/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Error state */}
+          {!loading && error && (
+            <div className="flex flex-col items-center justify-center text-center py-16 px-4">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 border border-red-100">
+                <AlertCircle className="h-6 w-6 text-red-500" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1.5">
+                Something went wrong
+              </h3>
+              <p className="text-sm text-gray-500 max-w-sm mb-6">{error}</p>
+              <button
+                onClick={() => setRetryCount((c) => c + 1)}
+                className="inline-flex items-center gap-2 rounded-full bg-[#1B3A8C] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#2a4fa8] transition-colors"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Try again
+              </button>
+            </div>
+          )}
+
+          {/* Empty state (no announcements at all, or none match filters) */}
+          {!loading && !error && filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center text-center py-16 px-4">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 border border-gray-200">
+                <Inbox className="h-6 w-6 text-gray-400" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1.5">
+                {announcements.length === 0
+                  ? "No announcements yet"
+                  : "No matches found"}
+              </h3>
+              <p className="text-sm text-gray-500 max-w-sm mb-6">
+                {announcements.length === 0
+                  ? "Check back soon for news and updates from Hero Serviced Office."
+                  : "Try a different search term or clear your filters."}
+              </p>
+              {announcements.length > 0 && (
+                <button
+                  onClick={clearFilters}
+                  className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {!loading && !error && paginated.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paginated.map((item, i) => (
+                  <AnnouncementCard
+                    key={item.id}
+                    item={item}
+                    index={i}
+                    onSelect={handleSelectAnnouncement}
+                  />
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-10 flex flex-col items-center justify-between gap-3 md:flex-row">
+                  <p className="text-sm text-gray-400">
+                    {filtered.length} total{" "}
+                    {filtered.length === 1 ? "announcement" : "announcements"}
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={currentPage === 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Prev
+                    </button>
+
+                    <div className="hidden items-center gap-1 sm:flex">
+                      {pageNumbers.map((p, i) =>
+                        p === "…" ? (
+                          <span
+                            key={`ellipsis-${i}`}
+                            className="px-2 text-sm text-gray-400"
+                          >
+                            …
+                          </span>
+                        ) : (
+                          <button
+                            key={p}
+                            onClick={() => setPage(p)}
+                            className={`h-9 w-9 rounded-lg text-sm font-medium transition-colors ${currentPage === p
+                              ? "bg-[#1B3A8C] text-white"
+                              : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                              }`}
+                          >
+                            {p}
+                          </button>
+                        ),
+                      )}
+                    </div>
+
+                    <span className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 sm:hidden">
+                      Page {currentPage} of {totalPages}
+                    </span>
+
+                    <button
+                      disabled={currentPage === totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-20 bg-linear-to-r from-[#0D47A1] to-[#00ACC1]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <span className="inline-flex items-center gap-2 text-blue-200 uppercase tracking-wider text-sm font-semibold">
+                ✉ Newsletter
+              </span>
+
+              <h2 className="mt-4 text-2xl lg:text-5xl font-bold text-white leading-tight">
+                Subscribe to the Hero
+              </h2>
+
+              <p className="mt-5 text-md text-blue-100 leading-relaxed max-w-xl">
+                One curated email per month with new spaces, member perks,
+                exclusive promos, and Makati business insights. No spam —
+                unsubscribe anytime.
+              </p>
+
+              <div className="mt-5 space-y-2">
+                {[
+                  "Early access to promotional rates",
+                  "Invitations to member-only events",
+                  "Tips for setting up your business in the Philippines",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="flex items-center gap-3 text-blue-100"
+                  >
+                    <div className="w-6 h-6 rounded-full border border-blue-300 flex items-center justify-center">
+                      ✓
+                    </div>
+
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-8 shadow-2xl">
+              <form
+                className="space-y-5"
+                onSubmit={async (e: FormEvent<HTMLFormElement>) => {
+                  e.preventDefault();
+                  setNewsletterStatus(null);
+                  setNewsletterError(null);
+                  setNewsletterSubmitting(true);
+
+                  try {
+                    const res = await fetch("/api/newsletter/subscribe", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({ email: newsletterEmail }),
+                    });
+
+                    const data = await res.json();
+
+                    if (!res.ok) {
+                      setNewsletterError(data.message || "Unable to subscribe right now.");
+                      return;
+                    }
+
+                    setNewsletterStatus(data.message || "Subscribed successfully. Thank you!");
+                    setNewsletterEmail("");
+                  } catch {
+                    setNewsletterError("Unable to subscribe right now.");
+                  } finally {
+                    setNewsletterSubmitting(false);
+                  }
+                }}
+              >
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">
+                    Email address
+                  </label>
+
+                  <input
+                    value={newsletterEmail}
+                    onChange={(e) => setNewsletterEmail(e.target.value)}
+                    type="email"
+                    placeholder="you@company.com"
+                    className="w-full rounded-xl bg-white px-5 py-4 text-gray-800 placeholder:text-gray-400 outline-none focus:ring-4 focus:ring-white/20"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={newsletterSubmitting || newsletterEmail.trim() === ""}
+                  className="w-full rounded-xl bg-white py-4 font-semibold text-[#0D47A1] hover:bg-gray-100 flex items-center justify-center gap-2 disabled:opacity-60 transition-all duration-200 hover:scale-105 active:scale-95 group"
+                >
+                  {newsletterSubmitting ? "Subscribing..." : "Subscribe"}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <p className="text-md text-blue-100 leading-relaxed">
+                  By subscribing you agree to receive marketing emails from Hero
+                  Serviced Office.
+                </p>
+
+                {newsletterStatus && (
+                  <p className="text-sm text-emerald-100">{newsletterStatus}</p>
+                )}
+                {newsletterError && (
+                  <p className="text-sm text-red-100">{newsletterError}</p>
+                )}
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Modal */}
+      <AnimatePresence>
+        {selected && (
+          <AnnouncementModal
+            key={`${selected.id}-${getAnnouncementImageUrl(selected) ?? "no-image"}`}
+            item={selected}
+            onClose={handleCloseAnnouncementModal}
+          />
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
