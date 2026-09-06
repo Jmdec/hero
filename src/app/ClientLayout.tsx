@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Navigation from "../components/Navigation";
@@ -125,7 +125,11 @@ export default function ClientLayout({
         )}
       </AnimatePresence>
 
-      {pathname === "/" && <AnnouncementPopup key={pathname} />}
+      {pathname === "/" && (
+        <Suspense fallback={null}>
+          <AnnouncementPopup key={pathname} />
+        </Suspense>
+      )}
 
       {/* Public Navigation */}
       {isPublicPage && !isLoading && <Navigation />}
