@@ -982,51 +982,6 @@ function Step3({
       errs.phone = "Please enter a valid PH mobile number (e.g. +63 917 123 4567 or 09171234567).";
     }
 
-    if (!contractIdentity.idType) {
-      errs.idType = isVO
-        ? "Please select an accepted ID type (Passport, Driver's License, PhilSys ID, or PRC ID)."
-        : "Please select a government ID type.";
-    }
-    if (!isVO && contractIdentity.idType === "Others" && !contractIdentity.idTypeOther.trim()) {
-      errs.idTypeOther = "Please specify your government ID type.";
-    }
-    if (!contractIdentity.idName.trim()) {
-      errs.idName = "Name on government ID is required.";
-    }
-    if (!contractIdentity.idNumber.trim()) {
-      errs.idNumber = "Government ID number is required.";
-    }
-    if (!contractIdentity.idAddress.trim()) {
-      errs.idAddress = "Address on government ID is required.";
-    }
-    if (!contractIdentity.governmentIdFile) {
-      errs.governmentIdFile = "Please upload a government-issued ID copy.";
-    }
-
-    if (!contractIdentity.signatorySameAsIdHolder) {
-      if (!contractIdentity.signatoryIdType) {
-        errs.signatoryIdType = "Please select the signatory ID type.";
-      }
-      if (!isVO && contractIdentity.signatoryIdType === "Others" && !contractIdentity.signatoryIdTypeOther.trim()) {
-        errs.signatoryIdTypeOther = "Please specify the signatory ID type.";
-      }
-      if (!contractIdentity.signatoryIdName.trim()) {
-        errs.signatoryIdName = "Signatory name on ID is required.";
-      }
-      if (!contractIdentity.signatoryIdNumber.trim()) {
-        errs.signatoryIdNumber = "Signatory ID number is required.";
-      }
-      if (!contractIdentity.signatoryIdAddress.trim()) {
-        errs.signatoryIdAddress = "Signatory address on ID is required.";
-      }
-      if (!contractIdentity.signatoryGovernmentIdFile) {
-        errs.signatoryGovernmentIdFile = "Please upload the signatory's government ID copy.";
-      }
-    }
-
-    if (isVO && !contractIdentity.idName.trim()) {
-      errs.idName = "Name on government ID is required for virtual office.";
-    }
     return errs;
   };
 
@@ -1089,7 +1044,7 @@ function Step3({
       </div>
 
       <div className="mt-7 border-t border-[#D9E2F0] pt-6">
-        <h3 className="text-2xl font-bold text-[#0B1F4A] mb-2">Government ID & Signatory</h3>
+        <h3 className="text-2xl font-bold text-[#0B1F4A] mb-2">Government ID & Signatory (Optional)</h3>
         <p className="text-sm text-[#64748B] mb-5">
           These details are used for contract preparation and verification.
           {isVO && " Accepted IDs for Virtual Office: Passport, Driver's License, Philippine National ID, or PRC ID."}
@@ -1130,7 +1085,7 @@ function Step3({
         </label>
 
         <div className="grid sm:grid-cols-2 gap-5">
-          <Field label="Government ID Type" required error={errors.idType}>
+          <Field label="Government ID Type" error={errors.idType}>
             <select
               id="quotation-id-type"
               name="idType"
@@ -1159,7 +1114,7 @@ function Step3({
             </Field>
           )}
 
-          <Field label="Name on Government ID" required error={errors.idName}>
+          <Field label="Name on Government ID" error={errors.idName}>
             <input
               id="quotation-id-name"
               name="idName"
@@ -1171,7 +1126,7 @@ function Step3({
             />
           </Field>
 
-          <Field label="Government ID Number" required error={errors.idNumber}>
+          <Field label="Government ID Number" error={errors.idNumber}>
             <input
               id="quotation-id-number"
               name="idNumber"
@@ -1185,7 +1140,7 @@ function Step3({
         </div>
 
         <div className="mt-5">
-          <Field label="Address on Government ID" required error={errors.idAddress}>
+          <Field label="Address on Government ID" error={errors.idAddress}>
             <textarea
               id="quotation-id-address"
               name="idAddress"
@@ -1199,7 +1154,7 @@ function Step3({
         </div>
 
         <div className="mt-5">
-          <Field label="Upload Government ID" required error={errors.governmentIdFile}>
+          <Field label="Upload Government ID" error={errors.governmentIdFile}>
             <button
               type="button"
               onClick={() => idUploadRef.current?.click()}
@@ -1243,7 +1198,7 @@ function Step3({
           <div className="mt-5 rounded-2xl border border-[#D9E2F0] bg-[#F8FAFD] p-5 space-y-5">
             <h4 className="text-sm font-bold text-[#0B1F4A]">Alternate Signatory Details</h4>
             <div className="grid sm:grid-cols-2 gap-5">
-              <Field label="Signatory ID Type" required error={errors.signatoryIdType}>
+              <Field label="Signatory ID Type" error={errors.signatoryIdType}>
                 <select
                   id="quotation-signatory-id-type"
                   name="signatoryIdType"
@@ -1259,7 +1214,7 @@ function Step3({
               </Field>
 
               {!isVO && contractIdentity.signatoryIdType === "Others" && (
-                <Field label="Specify Signatory ID Type" required error={errors.signatoryIdTypeOther}>
+                <Field label="Specify Signatory ID Type" error={errors.signatoryIdTypeOther}>
                   <input
                     id="quotation-signatory-id-type-other"
                     name="signatoryIdTypeOther"
@@ -1272,7 +1227,7 @@ function Step3({
                 </Field>
               )}
 
-              <Field label="Signatory Name on Government ID" required error={errors.signatoryIdName}>
+              <Field label="Signatory Name on Government ID" error={errors.signatoryIdName}>
                 <input
                   id="quotation-signatory-id-name"
                   name="signatoryIdName"
@@ -1284,7 +1239,7 @@ function Step3({
                 />
               </Field>
 
-              <Field label="Signatory ID Number" required error={errors.signatoryIdNumber}>
+              <Field label="Signatory ID Number" error={errors.signatoryIdNumber}>
                 <input
                   id="quotation-signatory-id-number"
                   name="signatoryIdNumber"
@@ -1297,7 +1252,7 @@ function Step3({
               </Field>
             </div>
 
-            <Field label="Signatory Address on Government ID" required error={errors.signatoryIdAddress}>
+            <Field label="Signatory Address on Government ID" error={errors.signatoryIdAddress}>
               <textarea
                 id="quotation-signatory-id-address"
                 name="signatoryIdAddress"
@@ -1309,7 +1264,7 @@ function Step3({
               />
             </Field>
 
-            <Field label="Upload Signatory Government ID" required error={errors.signatoryGovernmentIdFile}>
+            <Field label="Upload Signatory Government ID" error={errors.signatoryGovernmentIdFile}>
               <button
                 type="button"
                 onClick={() => signatoryUploadRef.current?.click()}

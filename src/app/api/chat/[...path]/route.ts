@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Server-side only — never exposed to the browser, so no CORS applies here.
 // Falls back to NEXT_PUBLIC_API_URL if you haven't added a separate server-only var.
-const LARAVEL_API_URL =
+const LARAVEL_API_URL = (
     process.env.LARAVEL_API_URL ??
     process.env.NEXT_PUBLIC_API_URL ??
-    "https://infinitech-api23.site";
+    "https://infinitech-api23.site"
+).replace(/\/+$/g, "");
 
 async function proxy(req: NextRequest, path: string[]) {
     const targetPath = path.join("/");

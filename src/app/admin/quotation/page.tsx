@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import VOContract, { mapQuotationDetailToVOContractFields } from "@/components/contracts/VOContract";
+import VOContractDocument from "@/components/contracts/VOContractDocument";
 import {
     Search,
     RefreshCw,
     X,
-    Check,
     Trash2,
     Eye,
     AlertCircle,
@@ -17,9 +18,7 @@ import {
     Pencil,
     Link2,
     FileText,
-    ChevronRight,
     IdCard,
-    ShieldCheck,
     ZoomIn,
     ZoomOut,
     Download,
@@ -80,7 +79,6 @@ interface QuotationDetail {
     signatory_id_url?: string | null;
     signatory_id_path?: string | null;
     signatory_same_as_id_holder?: boolean | null;
-    signatory_role?: string | null;
     months?: number | null;
     package_name?: string | null;
     package_price?: number | string | null;
@@ -90,6 +88,8 @@ interface QuotationDetail {
     contract_admin_fee?: number | string | null;
     discount?: number | string | null;
     discounts?: number | string | null;
+    discount_label?: string | null;
+    discount_type?: string | null;
     price_breakdown?: QuotationPriceBreakdown | null;
     contract_content?: string | null;
     contract_updated_at?: string | null;
@@ -119,6 +119,23 @@ const STATUSES: { value: Status; label: string }[] = [
     { value: "completed", label: "Completed" },
     { value: "cancelled", label: "Cancelled" },
 ];
+
+const SERVICE_AGREEMENT_LABELS: Record<string, string> = {
+    "virtual office": "Virtual Office Service Agreement",
+    "meeting room": "Meeting Room Service Agreement",
+    "private office": "Private Office Service Agreement",
+    "coworking space": "Coworking Space Service Agreement",
+};
+
+function getContractPreviewTitle(serviceName?: string | null): string {
+    const normalized = (serviceName || "").trim().toLowerCase();
+    if (SERVICE_AGREEMENT_LABELS[normalized]) {
+        return SERVICE_AGREEMENT_LABELS[normalized];
+    }
+
+    const cleanName = (serviceName || "Service").trim();
+    return `${cleanName} Service Agreement`;
+}
 
 const STATUS_STYLES: Record<Status, string> = {
     pending: "bg-[#F0F4FB] text-[#64748B] border-[#D9E2F0]",
@@ -164,34 +181,6 @@ const OTHER_SERVICE_STATUS_FLOW: Status[] = [
     "completed",
     "cancelled",
 ];
-
-function ModalBackdrop({
-    onClose,
-    children,
-}: {
-    onClose: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
-            onClick={onClose}
-        >
-            <div onClick={(e) => e.stopPropagation()} className="w-full flex justify-center">
-                {children}
-            </div>
-        </div>
-    );
-}
-
-function hasPaid(quote: Quotation) {
-    return (
-        quote.status === "paid" ||
-        quote.status === "contract_sent" ||
-        quote.status === "completed" ||
-        Boolean(quote.paid_at)
-    );
-}
 
 function StatusBadge({ status }: { status: Status }) {
     const label = STATUSES.find((s) => s.value === status)?.label ?? status;
@@ -239,6 +228,37 @@ function getStatusOptionsForQuotation(quote: Quotation) {
     return STATUSES.filter((status) => allowed.has(status.value));
 }
 
+function hasGovernmentContent(detail: QuotationDetail) {
+    const rawDoc = detail.government_id_url ?? detail.government_id_path ?? detail.government_id_file;
+    return [detail.id_type, detail.id_name, detail.id_number, detail.id_address, rawDoc].some(
+        (value) => typeof value === "string" ? value.trim().length > 0 : Boolean(value)
+    );
+}
+
+function hasSignatoryContent(detail: QuotationDetail) {
+    const sameAsHolder = Boolean(detail.signatory_same_as_id_holder);
+    const idType = sameAsHolder ? detail.id_type : detail.signatory_id_type;
+    const idName = sameAsHolder ? detail.id_name : detail.signatory_id_name;
+    const idNumber = sameAsHolder ? detail.id_number : detail.signatory_id_number;
+    const idAddress = sameAsHolder ? detail.id_address : detail.signatory_id_address;
+    const rawDoc = sameAsHolder
+        ? detail.government_id_url ?? detail.government_id_path ?? detail.government_id_file
+        : detail.signatory_id_url ?? detail.signatory_id_path ?? detail.signatory_id_file;
+
+    const signatoryDetailsValue = detail.signatory_details;
+    const signatoryDetailsText =
+        typeof signatoryDetailsValue === "string"
+            ? signatoryDetailsValue
+            : signatoryDetailsValue && typeof signatoryDetailsValue === "object"
+                ? Object.values(signatoryDetailsValue as Record<string, unknown>)
+                    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+                    .join(" · ")
+                : null;
+
+    return [idType, idName, idNumber, idAddress, rawDoc, signatoryDetailsText].some(
+        (value) => (typeof value === "string" ? value.trim().length > 0 : Boolean(value))
+    );
+}
 function hasPricingData(detail: QuotationDetail) {
     return Boolean(
         detail.price_breakdown ||
@@ -320,7 +340,7 @@ function formatTrend(current: number, previous: number) {
     return `${delta > 0 ? "+" : ""}${delta}%`;
 }
 
-function QuotationStatCard({ label, value, trend, note, icon: Icon, tone = "neutral" }: QuotationStatCardData) {
+function QuotationStatCard({ label, value, trend, tone = "neutral" }: QuotationStatCardData) {
     const t = STAT_TONE_STYLES[tone];
     const trendTone = trend?.startsWith("+")
         ? "text-green-600"
@@ -429,10 +449,8 @@ function ClientInfoSection({ detail }: { detail: QuotationDetail }) {
 function ServiceDetailsSection({ quote }: { quote: Quotation }) {
     const detail = quote.detail;
     const durationLabel =
-        detail?.duration != null && detail?.duration_type
-            ? `${detail.duration} ${detail.duration_type}`
-            : detail?.duration_type ??
-            (detail?.duration != null ? `${detail.duration === 0 ? "month" : "months"}` : "—");
+        detail?.duration_type ??
+        (detail?.duration != null ? `${detail.duration} ${detail.duration === 1 ? "month" : "months"}` : "—");
 
     return (
         <ReceiptSection>
@@ -487,6 +505,8 @@ function PriceBreakdownSection({ detail }: { detail: QuotationDetail }) {
     const vatPct = detail.vat_percentage != null ? Number(detail.vat_percentage) : null;
     const recurringTotal = nested?.recurring_total ?? detail.subtotal;
     const adminFee = nested?.contract_admin_fee ?? detail.contract_admin_fee;
+    const discountAmount = Number(detail.discount ?? detail.discounts ?? 0) || 0;
+    const hasDiscount = discountAmount > 0;
 
     return (
         <ReceiptSection>
@@ -504,6 +524,12 @@ function PriceBreakdownSection({ detail }: { detail: QuotationDetail }) {
 
             {recurringTotal != null && <ReceiptRow label="Subtotal" value={formatCurrency(recurringTotal)} />}
             {adminFee != null && <ReceiptRow label="Contract & Admin Fee" value={formatCurrency(adminFee)} />}
+            {hasDiscount && (
+                <ReceiptRow
+                    label={detail.discount_label ? `Promo (${detail.discount_label})` : "Promo / Discount"}
+                    value={formatCurrency(-discountAmount)}
+                />
+            )}
 
             <div className="mt-3 pt-3 border-t border-[#D9E2F0]">
                 <ReceiptRow label="Amount Due" value={formatCurrency(detail.total)} strong />
@@ -534,6 +560,40 @@ function isLinkableValue(value: string | null | undefined): value is string {
     return /^https?:\/\//i.test(value) || value.startsWith("/");
 }
 
+function GovernmentDetailsSection({
+    detail,
+    onViewId,
+}: {
+    detail: QuotationDetail;
+    onViewId: (doc: { title: string; type: string }) => void;
+}) {
+    if (!hasGovernmentContent(detail)) return null; // <-- single source of truth
+
+    const rawGovernmentDoc = detail.government_id_url ?? detail.government_id_path ?? detail.government_id_file ?? null;
+    const governmentDocUrl = resolveDocumentUrl(rawGovernmentDoc) ?? (isLinkableValue(rawGovernmentDoc) ? rawGovernmentDoc : null);
+
+    return (
+        <ReceiptSection>
+            <ReceiptHeading>Government Details</ReceiptHeading>
+            {detail.id_type && <ReceiptRow label="Government ID Type" value={detail.id_type} />}
+            {detail.id_name && <ReceiptRow label="ID Name" value={detail.id_name} />}
+            {detail.id_number && <ReceiptRow label="ID Number" value={detail.id_number} />}
+            {detail.id_address && <ReceiptRow label="ID Address" value={detail.id_address} />}
+            {governmentDocUrl && (
+                <div className="flex items-baseline justify-between gap-4 py-1.5">
+                    <span className="text-sm text-[#64748B]">Government ID</span>
+                    <button
+                        onClick={() => onViewId({ title: "Government ID", type: "government_id" })}
+                        className="text-right shrink-0 max-w-[65%] wrap-break-word text-sm font-semibold text-[#0B1F4A] hover:underline"
+                    >
+                        View uploaded document
+                    </button>
+                </div>
+            )}
+        </ReceiptSection>
+    );
+}
+
 function SignatoryDetailsSection({
     detail,
     onViewId,
@@ -541,17 +601,12 @@ function SignatoryDetailsSection({
     detail: QuotationDetail;
     onViewId: (doc: { title: string; type: string }) => void;
 }) {
-    const sameAsHolder = Boolean(detail.signatory_same_as_id_holder);
+    if (!hasSignatoryContent(detail)) return null;
 
-    const signatoryDetailsValue = detail.signatory_details;
-    const signatoryDetailsText =
-        typeof signatoryDetailsValue === "string"
-            ? signatoryDetailsValue
-            : signatoryDetailsValue && typeof signatoryDetailsValue === "object"
-                ? Object.values(signatoryDetailsValue as Record<string, unknown>)
-                    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
-                    .join(" · ")
-                : null;
+    const sameAsHolder = Boolean(detail.signatory_same_as_id_holder);
+    const hasSameAsHolderData =
+        detail.signatory_same_as_id_holder !== null &&
+        detail.signatory_same_as_id_holder !== undefined;
 
     const idType = sameAsHolder ? detail.id_type : detail.signatory_id_type;
     const idName = sameAsHolder ? detail.id_name : detail.signatory_id_name;
@@ -561,44 +616,28 @@ function SignatoryDetailsSection({
     const rawSignatoryDoc = sameAsHolder
         ? detail.government_id_url ?? detail.government_id_path ?? detail.government_id_file ?? null
         : detail.signatory_id_url ?? detail.signatory_id_path ?? detail.signatory_id_file ?? null;
-    const rawGovernmentDoc = detail.government_id_url ?? detail.government_id_path ?? detail.government_id_file ?? null;
 
     const signatoryDocUrl = resolveDocumentUrl(rawSignatoryDoc) ?? (isLinkableValue(rawSignatoryDoc) ? rawSignatoryDoc : null);
-    const governmentDocUrl = resolveDocumentUrl(rawGovernmentDoc) ?? (isLinkableValue(rawGovernmentDoc) ? rawGovernmentDoc : null);
-
-    const hasContent = [sameAsHolder, idType, idName, idNumber, idAddress, detail.signatory_role, rawSignatoryDoc, signatoryDetailsText].some(Boolean);
-    if (!hasContent) return null;
 
     return (
         <ReceiptSection>
             <ReceiptHeading>Signatory Details</ReceiptHeading>
+            {hasSameAsHolderData && (idName || idType || idNumber || idAddress) && (
+                <ReceiptRow label="Same as ID holder" value={sameAsHolder ? "Yes" : "No"} />
+            )}
             {idName && <ReceiptRow label="Signatory Name" value={idName} />}
-            {detail.signatory_role && <ReceiptRow label="Role / Position" value={detail.signatory_role} />}
             {idType && <ReceiptRow label="ID Type" value={idType} />}
-            <ReceiptRow label="Same as ID holder" value={sameAsHolder ? "Yes" : "No"} />
             {idNumber && <ReceiptRow label="ID Number" value={idNumber} />}
             {idAddress && <ReceiptRow label="Address" value={idAddress} />}
-
-            {(signatoryDocUrl || governmentDocUrl) && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                    {signatoryDocUrl && (
-                        <button
-                            onClick={() => onViewId({ title: "Signatory ID", type: sameAsHolder ? "government_id" : "signatory_government_id" })}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#C5D2EC] bg-[#EEF2FB] text-[#1B3A8C] text-xs font-semibold hover:opacity-80 transition"
-                        >
-                            <IdCard className="w-3.5 h-3.5" />
-                            View Signatory ID
-                        </button>
-                    )}
-                    {governmentDocUrl && (
-                        <button
-                            onClick={() => onViewId({ title: "Government ID", type: "government_id" })}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#C5D2EC] bg-[#EEF2FB] text-[#1B3A8C] text-xs font-semibold hover:opacity-80 transition"
-                        >
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                            View Government ID
-                        </button>
-                    )}
+            {signatoryDocUrl && (
+                <div className="flex items-baseline justify-between gap-4 py-1.5">
+                    <span className="text-sm text-[#64748B]">Signatory ID</span>
+                    <button
+                        onClick={() => onViewId({ title: "Signatory ID", type: sameAsHolder ? "government_id" : "signatory_government_id" })}
+                        className="text-right shrink-0 max-w-[65%] wrap-break-word text-sm font-semibold text-[#0B1F4A] hover:underline"
+                    >
+                        View uploaded document
+                    </button>
                 </div>
             )}
         </ReceiptSection>
@@ -846,13 +885,6 @@ export default function AdminQuotationsPage() {
         };
         quotations.forEach((q) => { c[q.status] += 1; });
         return c;
-    }, [quotations]);
-
-    const needsAttention = counts.pending + counts.awaiting_payment + counts.payment_verification;
-    const completed = useMemo(() => {
-        return quotations
-            .filter((q) => q.status === "completed" && q.detail && hasPricingData(q.detail))
-            .reduce((sum, q) => sum + (q.detail ? Number(q.detail.total) || 0 : 0), 0);
     }, [quotations]);
 
     const periodStats = useMemo(() => {
@@ -1462,8 +1494,18 @@ export default function AdminQuotationsPage() {
                                 <div>
                                     <ClientInfoSection detail={selected.detail} />
                                     <ReceiptDivider />
-                                    <SignatoryDetailsSection detail={selected.detail} onViewId={viewQuotationDocument} />
-                                    <ReceiptDivider />
+                                    {hasGovernmentContent(selected.detail) && (
+                                        <>
+                                            <GovernmentDetailsSection detail={selected.detail} onViewId={viewQuotationDocument} />
+                                            <ReceiptDivider />
+                                        </>
+                                    )}
+                                    {hasSignatoryContent(selected.detail) && (
+                                        <>
+                                            <SignatoryDetailsSection detail={selected.detail} onViewId={viewQuotationDocument} />
+                                            <ReceiptDivider />
+                                        </>
+                                    )}
                                     <ServiceDetailsSection quote={selected} />
                                 </div>
                             )}
@@ -1496,7 +1538,14 @@ export default function AdminQuotationsPage() {
                                                                 ? "Payment Link Limit Reached"
                                                                 : "Send Payment Link"
                                                         )
-                                                        : "Payment Link Sent"
+                                                        : <>
+                                                            <p>
+                                                                Payment Link Sent
+                                                                <span>
+                                                                    {` (${selected.detail?.payment_link_send_count ?? 0}/3)`}
+                                                                </span>
+                                                            </p>
+                                                        </>
                                                 }
                                             </>
                                         )}
@@ -1580,11 +1629,24 @@ export default function AdminQuotationsPage() {
                         </div>
 
                         <div className="flex-1 overflow-y-auto bg-[#F8FAFD] p-4 sm:p-6">
-                            {!contractEditMode ? (
+                            {isVirtualOffice(contractModalQuote) ? (
+                                contractEditMode ? (
+                                    <VOContract
+                                        hideControls={false}
+                                        initialValues={mapQuotationDetailToVOContractFields(contractModalQuote.detail)}
+                                    />
+                                ) : (
+                                    <div className="mx-auto max-w-3xl bg-white border border-[#D9E2F0] rounded-xl p-6 sm:p-8 shadow-sm">
+                                        <VOContractDocument
+                                            fields={mapQuotationDetailToVOContractFields(contractModalQuote.detail)}
+                                        />
+                                    </div>
+                                )
+                            ) : !contractEditMode ? (
                                 <div className="mx-auto max-w-3xl bg-white border border-[#D9E2F0] rounded-xl p-6 sm:p-8 shadow-sm">
                                     <div className="text-center mb-6">
                                         <p className="text-xl font-bold text-[#1B3A8C]">Hero Serviced Office</p>
-                                        <p className="text-sm text-[#64748B] mt-1">Virtual Office Service Agreement</p>
+                                        <p className="text-sm text-[#64748B] mt-1">{getContractPreviewTitle(contractModalQuote.service_name)}</p>
                                     </div>
                                     <div className="whitespace-pre-wrap text-sm leading-7 text-[#0B1F4A]">{contractDraft}</div>
                                 </div>

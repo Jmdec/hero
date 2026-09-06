@@ -225,12 +225,21 @@ export const chatApi = {
             body: JSON.stringify({}),
         });
     },
+    cancelAgentRequest(conversationId: number) {
+        return request<ConversationActionResponse>(`/chat/${conversationId}/cancel-agent-request`, {
+            method: "PATCH",
+            body: JSON.stringify({}),
+        });
+    },
 
     closeConversation(conversationId: number, sendTranscript = true) {
         return request<CloseConversationResponse>(`/chat/${conversationId}/close`, {
             method: "PATCH",
             body: JSON.stringify({ send_transcript: Boolean(sendTranscript) }),
         });
+    },
+    markConversationDone(conversationId: number, sendTranscript = true) {
+        return this.closeConversation(conversationId, sendTranscript);
     },
 
     reopenConversation(conversationId: number) {

@@ -13,7 +13,7 @@ import {
     UserRound,
     ExternalLink,
 } from "lucide-react";
-import { chatApi, type ConversationResponse } from "../lib/chatApi";
+import { chatApi, ChatApiError, type ConversationResponse } from "../lib/chatApi";
 
 interface CTA {
     label: string;
@@ -30,7 +30,46 @@ interface Message {
 }
 
 const SESSION_STORAGE_KEY = "hero_chat_session_id";
+const CHAT_SESSION_COOKIE_KEY = "hero_chat_session_id";
 const CHAT_STATE_KEY = "hero_chat_state";
+
+function getStoredConversationSessionId(): string | null {
+    if (typeof document === "undefined") return null;
+
+    const cookieValue = document.cookie
+        .split("; ")
+        .find((entry) => entry.startsWith(`${CHAT_SESSION_COOKIE_KEY}=`))
+        ?.split("=")[1];
+
+    if (cookieValue) {
+        return decodeURIComponent(cookieValue);
+    }
+
+    const fallback =
+        window.localStorage.getItem(SESSION_STORAGE_KEY) ??
+        window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+
+    return fallback || null;
+}
+
+function setStoredConversationSessionId(sessionId: string) {
+    if (typeof document === "undefined") return;
+
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    const expires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toUTCString();
+    document.cookie = `${CHAT_SESSION_COOKIE_KEY}=${encodeURIComponent(sessionId)}; path=/; max-age=2592000; expires=${expires}; SameSite=Lax${secure}`;
+
+    window.localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+    window.sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+}
+
+function clearStoredConversationSessionId() {
+    if (typeof document === "undefined") return;
+
+    document.cookie = `${CHAT_SESSION_COOKIE_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+}
 
 interface ModalProps {
     open: boolean;
@@ -326,7 +365,10 @@ const validators = {
             return "Phone number contains invalid characters.";
         return "";
     },
-    company: (_: string) => "",
+    company: (value: string) => {
+        void value;
+        return "";
+    },
 };
 
 type LeadField = keyof typeof validators;
@@ -336,16 +378,6 @@ type ConversationState = {
     session_id: string;
     remoteConversationId?: number;
     status?: string;
-};
-
-type ConversationWithStatus = ConversationState & {
-    status?: string;
-    agent_status?: string;
-    messages?: Array<{
-        sender: string;
-        message: string;
-        sent_at: string;
-    }>;
 };
 
 const formatTime = () =>
@@ -382,13 +414,13 @@ function isAgentAvailableNow(): boolean {
 }
 
 const OUT_OF_HOURS_MESSAGE =
-    "Our live agents are offline right now (Tower 6789 hours: Mon–Fri, 8AM–8PM PHT). Let us know your preferred time and how to reach you (email or phone), and someone from the team will follow up.";
+    "Our live agents are offline right now. Let us know your preferred time and how to reach you (email or phone), and someone from the team will follow up.";
 
 const PREFERRED_CONTACT_RECEIVED_MESSAGE =
-    "Got it, thank you! We've saved your preferred contact details and someone from the team will reach out. Feel free to keep chatting with me in the meantime. 😊";
+    "Got it, thank you! We've saved your preferred contact details and someone from the team will reach out. Feel free to keep chatting with me in the meantime.";
 
 const LIVE_AGENT_FOLLOW_UP_MESSAGE =
-    "In the meantime, you can also reach us directly: info@heroph.net\n\nMon-Fri, 8AM-8PM (Tower 6789) or 24/7 (Insular Life)\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
+    "In the meantime, you can also reach us directly: salesofficer@heroph.net\n+63 02 8801 3417 | +63 917 322 4211\n\nMonday to Friday: 8AM - 8PM\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
 
 const CTA_LINKS = {
     quote: { label: "Request a Quotation", href: "/quotation" },
@@ -406,7 +438,7 @@ const PREDEFINED_REPLIES: Record<string, { text: string; cta?: CTA }> = {
         cta: CTA_LINKS.services,
     },
     "Contact Info": {
-        text: "HERO Serviced Office provides premium, fully-equipped workspaces for businesses of all sizes in the Philippines. With 2+ years of experience and 20+ completed projects, we help companies scale without the overhead of a traditional office.\n\n📍 Tower 6789\n23F Tower6789, 6789 Ayala Avenue, Makati City 1209, Metro Manila, Philippines\n🕐 Mon–Fri, 8AM–8PM\n\n📍 Insular Life Building\n11F Insular Life Building, 6781 Ayala Avenue, Corner Paseo de Roxas, Makati City, Metro Manila, Philippines\n🕐 Open 24/7\n\n📧 Email: info@heroph.net\n\nFeel free to reach out — we'd love to hear from you!",
+        text: "HERO Serviced Office provides premium, fully-equipped workspaces for businesses of all sizes in the Philippines. With 2+ years of experience and 20+ completed projects, we help companies scale without the overhead of a traditional office.\n\n📍 Tower 6789\n23F Tower6789, 6789 Ayala Avenue, Makati City 1209, Metro Manila, Philippines\n🕐 Mon–Fri, 8AM–8PM\n\n📍 Insular Life Building\n11F Insular Life Building, 6781 Ayala Avenue, Corner Paseo de Roxas, Makati City, Metro Manila, Philippines\n🕐 Open 24/7\n\n📧 Email: salesofficer@heroph.net\n📞 Phone: +63 02 8801 3417 | +63 917 322 4211\n\nFeel free to reach out — we'd love to hear from you!",
         cta: CTA_LINKS.contact,
     },
     "Private Office": {
@@ -465,11 +497,11 @@ const BOT_RULES: BotRule[] = [
     {
         keywords: ["thank", "thanks", "thx", "appreciate"],
         reply:
-            "You're very welcome! 😊 Is there anything else I can help you with?",
+            "You're very welcome! Is there anything else I can help you with?",
     },
     {
         keywords: ["bye", "goodbye", "see you"],
-        reply: "Thanks for chatting with us! Have a great day. 👋",
+        reply: "Thanks for chatting with us! Have a great day.",
     },
     {
         keywords: [
@@ -481,7 +513,7 @@ const BOT_RULES: BotRule[] = [
             "good evening",
         ],
         reply:
-            "Hello! 👋 How can I help you today? You can ask about our services, private offices, virtual offices, co-working spaces, meeting rooms, pricing, or how to reach us.",
+            "Hello! How can I help you today? You can ask about our services, private offices, virtual offices, co-working spaces, meeting rooms, pricing, or how to reach us.",
     },
     {
         keywords: ["service", "services", "what do you offer", "offer"],
@@ -547,7 +579,7 @@ const BOT_RULES: BotRule[] = [
     {
         keywords: ["hour", "open", "opening time", "business hours"],
         reply:
-            "Tower 6789's live-chat desk is available Mon–Fri, 8AM–6PM (PHT). Our Insular Life location is staffed 24/7 on-site. You can also email us anytime at info@heroph.net.",
+            "Tower 6789's live-chat desk is available Mon–Fri, 8AM–6PM (PHT). Our Insular Life location is staffed 24/7 on-site. You can also email us anytime at salesofficer@heroph.net.",
     },
     {
         keywords: [
@@ -560,7 +592,7 @@ const BOT_RULES: BotRule[] = [
             "copy of our chat",
         ],
         reply:
-            "Sure — I'll email a copy of this conversation to the address you gave us. It should land in your inbox shortly. 📧",
+            "Sure — I'll email a copy of this conversation to the address you gave us. It should land in your inbox shortly.",
     },
 ];
 
@@ -692,13 +724,14 @@ function renderBotMessageText(text: string): React.ReactNode {
             <p>In the meantime, you can also reach us directly:</p>
             <p>
                 <a
-                    href="mailto:info@heroph.net"
+                    href="mailto:salesofficer@heroph.net"
                     className="text-[#1565C0] underline break-all"
                 >
-                    info@heroph.net
+                    salesofficer@heroph.net
                 </a>
             </p>
-            <p>Mon-Fri, 8AM-8PM (Tower 6789) or 24/7 (Insular Life)</p>
+            <p>+63 02 8801 3417 | +63 917 322 4211</p>
+            <p>Monday to Friday: 8AM - 8PM</p>
             <p>We&apos;ll keep this chat open so an agent can pick up right where we left off.</p>
         </>
     );
@@ -742,10 +775,10 @@ const Chatbot = () => {
     const [agreementTouched, setAgreementTouched] = useState(false);
     const [agentRequested, setAgentRequested] = useState(false);
     const [agentRequestInFlight, setAgentRequestInFlight] = useState(false);
+    const [cancellingAgentRequest, setCancellingAgentRequest] = useState(false);
     const [restoringConversation, setRestoringConversation] = useState(true);
     const [endConversationOpen, setEndConversationOpen] = useState(false);
     const [endingConversation, setEndingConversation] = useState(false);
-    const [reopeningConversation, setReopeningConversation] = useState(false);
     const closeEmailSentRef = useRef(false);
     const conversationRef = useRef<ConversationState | null>(null);
     const leadSubmittedRef = useRef(false);
@@ -775,6 +808,7 @@ const Chatbot = () => {
         "Our Services",
         "Contact Info",
         "Talk to an Agent",
+        "Send this Chat",
     ];
 
     const showResumeNotice = useCallback(() => {
@@ -813,8 +847,7 @@ const Chatbot = () => {
             previousStatusRef.current = latestConversation.status;
 
             if (typeof window !== "undefined") {
-                window.localStorage.setItem(SESSION_STORAGE_KEY, latestConversation.session_id);
-                window.sessionStorage.setItem(SESSION_STORAGE_KEY, latestConversation.session_id);
+                setStoredConversationSessionId(latestConversation.session_id);
             }
 
             for (const text of Array.from(pendingLocalUserTextsRef.current)) {
@@ -939,7 +972,16 @@ const Chatbot = () => {
 
                 syncConversationSnapshot(latestConversation);
                 setSendError("");
-            } catch {
+            } catch (err) {
+                if (err instanceof ChatApiError && err.status === 404) {
+                    window.clearInterval(interval);
+                    setConversationClosed(true);
+                    conversationClosedRef.current = true;
+                    setSendError(
+                        "This conversation is no longer available. Please start a new chat.",
+                    );
+                    return;
+                }
                 // Ignore transient polling errors so the chat stays responsive.
             }
         }, 3000);
@@ -958,8 +1000,13 @@ const Chatbot = () => {
             try {
                 const targetId = conversation.remoteConversationId ?? conversation.id;
                 await chatApi.pingConversation(targetId);
-            } catch {
-                // ignore network errors — heartbeat is best-effort
+            } catch (err) {
+                if (err instanceof ChatApiError && err.status === 404) {
+                    stopped = true;
+                    setConversationClosed(true);
+                    conversationClosedRef.current = true;
+                }
+                // otherwise ignore — heartbeat is best-effort
             }
         };
 
@@ -973,53 +1020,6 @@ const Chatbot = () => {
         };
     }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted]);
 
-    // Auto-close inactive conversations
-    const INACTIVITY_MINUTES = 10;
-    const INACTIVITY_MS = INACTIVITY_MINUTES * 60 * 1000;
-
-    useEffect(() => {
-        if (!conversation?.id || !leadSubmitted) return;
-        if (conversationClosed) return;
-
-        let timer: number | null = null;
-        let closed = false;
-
-        const scheduleClose = () => {
-            if (timer) {
-                window.clearTimeout(timer);
-            }
-            timer = window.setTimeout(async () => {
-                if (closed) return;
-                closed = true;
-
-                const targetId = conversation.remoteConversationId ?? conversation.id;
-
-                try {
-                    // Close the conversation on the server and request transcript once.
-                    const closeResult = await chatApi.closeConversation(targetId, true);
-                    if (closeResult.transcript_sent === false) {
-                        await chatApi.emailChatHistory(targetId);
-                    }
-                    const latestConversation = await chatApi.getConversation(targetId);
-                    syncConversationSnapshot(latestConversation, { preservePending: false });
-                } catch (error) {
-                    setSendError(
-                        error instanceof Error
-                            ? `Conversation ended, but the transcript could not be emailed: ${error.message}`
-                            : "Conversation ended, but the transcript could not be emailed.",
-                    );
-                }
-            }, INACTIVITY_MS);
-        };
-
-        // Start or reset timer whenever messages change (user activity).
-        scheduleClose();
-
-        return () => {
-            if (timer) window.clearTimeout(timer);
-        };
-    }, [conversation?.id, conversation?.remoteConversationId, leadSubmitted, conversationClosed, messages.length, agentRequested, INACTIVITY_MS, syncConversationSnapshot]);
-
     const requestTranscriptEmail = useCallback(
         async (conversationId: number | undefined) => {
             if (!conversationId || closeEmailSentRef.current) return;
@@ -1032,70 +1032,38 @@ const Chatbot = () => {
         [],
     );
 
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-        let cancelled = false;
+    const restorePersistedConversation = useCallback(async () => {
+        if (typeof window === "undefined") {
+            setRestoringConversation(false);
+            return;
+        }
 
-        const restoreConversation = async () => {
-            try {
-                const raw = window.sessionStorage.getItem(CHAT_STATE_KEY);
-                const parsed = raw ? JSON.parse(raw) : null;
-                const storedConversation = parsed?.conversation as ConversationState | undefined;
-                const storedSessionId =
-                    storedConversation?.session_id ??
-                    window.localStorage.getItem(SESSION_STORAGE_KEY) ??
-                    window.sessionStorage.getItem(SESSION_STORAGE_KEY);
-                const storedConversationId = storedConversation?.remoteConversationId ?? storedConversation?.id;
+        const storedSessionId = getStoredConversationSessionId();
+        if (!storedSessionId) {
+            setRestoringConversation(false);
+            return;
+        }
 
-                if (storedSessionId || storedConversationId) {
-                    try {
-                        const latestConversation = storedSessionId
-                            ? await chatApi.getConversationBySession(storedSessionId)
-                            : await chatApi.getConversation(storedConversationId as number);
-
-                        if (!cancelled) {
-                            syncConversationSnapshot(latestConversation, {
-                                showResumed: true,
-                                preservePending: false,
-                            });
-                        }
-
-                        return;
-                    } catch {
-                        window.localStorage.removeItem(SESSION_STORAGE_KEY);
-                        window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
-                    }
-                }
-
-                if (!cancelled && parsed?.conversation && Array.isArray(parsed?.messages)) {
-                    setConversation(parsed.conversation);
-                    conversationRef.current = parsed.conversation;
-                    setMessages(parsed.messages);
-                    setLeadSubmitted(Boolean(parsed.leadSubmitted));
-                    setConversationClosed(Boolean(parsed.conversationClosed));
-                    setIsStarted(Boolean(parsed.leadSubmitted || parsed.messages.length > 0));
-                    setConversationStatus(parsed.conversation?.status ?? null);
-                    setAgentRequested(isLiveAgentOwnedStatus(parsed.conversation?.status ?? null));
-                    previousStatusRef.current = parsed.conversation?.status ?? null;
-                    if (parsed.leadSubmitted) {
-                        showResumeNotice();
-                    }
-                }
-            } catch {
-                // Ignore restore errors.
-            } finally {
-                if (!cancelled) {
-                    setRestoringConversation(false);
-                }
+        try {
+            const existingConversation = await chatApi.getConversationBySession(storedSessionId);
+            syncConversationSnapshot(existingConversation, {
+                showResumed: true,
+                preservePending: false,
+            });
+        } catch (err) {
+            if (err instanceof ChatApiError && err.status === 404) {
+                clearStoredConversationSessionId();
             }
-        };
+        } finally {
+            setRestoringConversation(false);
+        }
+    }, [syncConversationSnapshot]);
 
-        void restoreConversation();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [showResumeNotice, syncConversationSnapshot]);
+    useEffect(() => {
+        queueMicrotask(() => {
+            void restorePersistedConversation();
+        });
+    }, [restorePersistedConversation]);
 
     // Persist chat state so refresh keeps the conversation intact.
     useEffect(() => {
@@ -1135,45 +1103,16 @@ const Chatbot = () => {
         }, 0);
     };
 
-    useEffect(() => {
-        const noop = () => { };
-        window.addEventListener("beforeunload", noop);
-
-        return () => {
-            window.removeEventListener("beforeunload", noop);
-        };
-    }, [leadSubmitted, conversation?.id, conversationClosed]);
 
     const ensureConversation = useCallback(async (): Promise<ConversationState | null> => {
         if (conversationRef.current?.remoteConversationId ?? conversationRef.current?.id) {
             return conversationRef.current;
         }
 
-        if (typeof window === "undefined") {
-            return null;
-        }
-
-        const storedSessionId =
-            window.localStorage.getItem(SESSION_STORAGE_KEY) ??
-            window.sessionStorage.getItem(SESSION_STORAGE_KEY);
-
-        if (!storedSessionId) {
-            return null;
-        }
-
-        try {
-            const latestConversation = await chatApi.getConversationBySession(storedSessionId);
-            syncConversationSnapshot(latestConversation, { preservePending: false });
-            return {
-                id: latestConversation.id,
-                session_id: latestConversation.session_id,
-                remoteConversationId: latestConversation.id,
-                status: latestConversation.status,
-            };
-        } catch {
-            return null;
-        }
-    }, [syncConversationSnapshot]);
+        // Session-restore is disabled; if there's no active conversation yet,
+        // a new one will be created via handleContinue().
+        return null;
+    }, []);
 
     const persistMessage = useCallback(
         async (
@@ -1216,6 +1155,55 @@ const Chatbot = () => {
 
         if (reply === "Talk to an Agent") {
             await handleTalkToAgent();
+            return;
+        }
+
+        if (reply === "Send this Chat") {
+            isProcessingLocalMessageRef.current = true;
+
+            try {
+                const time = formatTime();
+
+                setMessages((prev) => [
+                    ...prev,
+                    { id: makeId(), type: "user", text: reply, time },
+                ]);
+                setIsTyping(true);
+                await nextPaint();
+                setSendError("");
+
+                const activeConversation = await ensureConversation();
+
+                // Persist the user's quick reply selection so it survives polling.
+                void persistMessage(activeConversation, "user", reply);
+
+                // Email the chat history
+                const targetId =
+                    conversation?.remoteConversationId ?? conversation?.id ??
+                    activeConversation?.remoteConversationId ?? activeConversation?.id;
+                
+                if (targetId) {
+                    void requestTranscriptEmail(targetId);
+                }
+
+                await quickReplyDelay();
+                setIsTyping(false);
+                await nextPaint();
+
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        id: makeId(),
+                        type: "bot",
+                        text: "I've sent your chat history to your email address. You should receive it shortly.",
+                        time: formatTime(),
+                        source: "HERO Assistant",
+                    },
+                ]);
+                void persistMessage(activeConversation, "assistant", "I've sent your chat history to your email address. You should receive it shortly.");
+            } finally {
+                isProcessingLocalMessageRef.current = false;
+            }
             return;
         }
 
@@ -1285,7 +1273,7 @@ const Chatbot = () => {
                     type: "bot",
                     text: "Before we connect you to a live agent, please provide your contact details so our team can reach you.",
                     time: formatTime(),
-                    source: "AI Assistant",
+                    source: "HERO Assistant",
                 },
             ]);
             return;
@@ -1322,7 +1310,7 @@ const Chatbot = () => {
                         type: "bot",
                         text: OUT_OF_HOURS_MESSAGE,
                         time: formatTime(),
-                        source: "AI Assistant",
+                        source: "HERO Assistant",
                         cta: CTA_LINKS.contact,
                     },
                 ]);
@@ -1353,7 +1341,7 @@ const Chatbot = () => {
                         type: "bot",
                         text: "⚠️ We could not connect you to an agent right now. Please try again.",
                         time: formatTime(),
-                        source: "AI Assistant",
+                        source: "HERO Assistant",
                     },
                 ]);
                 setAgentRequested(false);
@@ -1362,6 +1350,28 @@ const Chatbot = () => {
             setAgentRequestInFlight(false);
             agentRequestInFlightRef.current = false;
             isProcessingLocalMessageRef.current = false;
+        }
+    };
+
+    const handleCancelAgentRequest = async () => {
+        const targetId =
+            conversation?.remoteConversationId ?? conversation?.id ??
+            conversationRef.current?.remoteConversationId ?? conversationRef.current?.id;
+
+        if (!targetId || cancellingAgentRequest || !isAgentRequestedStatus(conversationStatus)) return;
+
+        setCancellingAgentRequest(true);
+        setSendError("");
+
+        try {
+            const result = await chatApi.cancelAgentRequest(targetId);
+            syncConversationSnapshot(result.conversation, { preservePending: false });
+        } catch (err) {
+            setSendError(
+                err instanceof Error ? err.message : "Unable to cancel the live-agent request.",
+            );
+        } finally {
+            setCancellingAgentRequest(false);
         }
     };
 
@@ -1419,7 +1429,7 @@ const Chatbot = () => {
                         type: "bot",
                         text: PREFERRED_CONTACT_RECEIVED_MESSAGE,
                         time: formatTime(),
-                        source: "AI Assistant",
+                        source: "HERO Assistant",
                         cta: CTA_LINKS.contact,
                     },
                 ]);
@@ -1496,29 +1506,6 @@ const Chatbot = () => {
         }
     };
 
-    const handleReopenConversation = async () => {
-        const targetId =
-            conversation?.remoteConversationId ?? conversation?.id ??
-            conversationRef.current?.remoteConversationId ?? conversationRef.current?.id;
-
-        if (!targetId) return;
-
-        setReopeningConversation(true);
-        setSendError("");
-
-        try {
-            const result = await chatApi.reopenConversation(targetId);
-            syncConversationSnapshot(result.conversation, { preservePending: false });
-            setAwaitingPreferredContact(false);
-        } catch (err) {
-            setSendError(
-                err instanceof Error ? err.message : "Unable to reopen this conversation. Please try again.",
-            );
-        } finally {
-            setReopeningConversation(false);
-        }
-    };
-
     const handleFieldChange = (key: LeadField, value: string) => {
         setLeadInfo((prev) => ({ ...prev, [key]: value }));
         if (touched[key]) {
@@ -1579,14 +1566,7 @@ const Chatbot = () => {
             try { console.debug("CHAT: started conversation", startResponse, newConversation); } catch { }
 
             if (typeof window !== "undefined") {
-                window.localStorage.setItem(
-                    SESSION_STORAGE_KEY,
-                    newConversation.session_id,
-                );
-                window.sessionStorage.setItem(
-                    SESSION_STORAGE_KEY,
-                    newConversation.session_id,
-                );
+                setStoredConversationSessionId(newConversation.session_id);
             }
 
             setConversationStatus("active");
@@ -1700,7 +1680,7 @@ const Chatbot = () => {
                                 <div className="flex h-full items-center justify-center px-6">
                                     <div className="flex items-center gap-2 rounded-full border border-gray-100 bg-white px-4 py-2 text-sm text-gray-500 shadow-sm">
                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                        Restoring conversation...
+                                        Loading conversation...
                                     </div>
                                 </div>
                             )}
@@ -2064,8 +2044,16 @@ const Chatbot = () => {
                         {leadSubmitted && !conversationClosed && (
                             <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
                                 {isAgentRequestedStatus(conversationStatus) && (
-                                    <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                                        Your live-agent request has been sent. The AI assistant is paused while you wait for a human agent.
+                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                                        <span>Your live-agent request has been sent.</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleCancelAgentRequest()}
+                                            disabled={cancellingAgentRequest}
+                                            className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {cancellingAgentRequest ? "Cancelling..." : "Cancel"}
+                                        </button>
                                     </div>
                                 )}
                                 {isLiveAgentActiveStatus(conversationStatus) && (
@@ -2129,22 +2117,13 @@ const Chatbot = () => {
                         {leadSubmitted && conversationClosed && (
                             <div className="px-4 py-4 bg-white border-t border-gray-100 shrink-0 text-center space-y-2">
                                 <p className="text-xs text-gray-500">
-                                    This conversation has ended. If you left it idle by accident, you can pick it back up.
+                                    This conversation has ended.
                                 </p>
                                 {sendError && (
                                     <p className="text-[11px] text-red-500 flex items-center justify-center gap-1">
                                         <AlertCircle className="w-3 h-3 shrink-0" /> {sendError}
                                     </p>
                                 )}
-                                <button
-                                    type="button"
-                                    onClick={() => void handleReopenConversation()}
-                                    disabled={reopeningConversation}
-                                    className="inline-flex items-center gap-2 rounded-full bg-[#1B3A8C] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#16318a] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
-                                >
-                                    {reopeningConversation && <Loader2 className="w-4 h-4 animate-spin" />}
-                                    {reopeningConversation ? "Reopening…" : "Reopen Conversation"}
-                                </button>
                                 <p className="text-[10px] text-gray-300">Powered by HERO Serviced Office</p>
                             </div>
                         )}

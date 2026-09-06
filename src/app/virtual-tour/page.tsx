@@ -31,13 +31,13 @@ interface TourRoom {
 type BuildingId = "tower6789" | "insularLife";
 
 export default function VirtualTourPage() {
-  const [activeTab, setActiveTab] = useState<BuildingId>("insularLife");
+  const [activeTab, setActiveTab] = useState<BuildingId>("tower6789");
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const viewerSectionRef = useRef<HTMLDivElement>(null);
 
   const locationTabs: { id: BuildingId; label: string; icon: typeof Building2 }[] = [
-    { id: "insularLife", label: "Insular Life", icon: Building2 },
     { id: "tower6789", label: "Tower 6789", icon: Building2 },
+    { id: "insularLife", label: "Insular Life", icon: Building2 },
   ];
 
   const switchBuilding = (tabId: BuildingId) => {
@@ -54,7 +54,7 @@ export default function VirtualTourPage() {
         description:
           "A welcoming reception area where guests are greeted and assisted by our professional bilingual team.",
         features: ["Japanese-speaking reception staff", "Guest assistance", "Mail & package handling", "Reception services"],
-        panoramaUrl: "/360-view/IMG_20210422_174408_00_124.webp",
+        panoramaUrl: "/360-view/inlife/SO2-RECEPTION.webp",
         thumbnailUrl: [
           "/360-view/insular-reception.webp",
           "/360-view/_ARM9618.webp"
@@ -72,7 +72,7 @@ export default function VirtualTourPage() {
         description:
           "A relaxing shared lounge perfect for casual meetings, networking, or taking a productive break.",
         features: ["Comfortable seating", "High-speed Wi-Fi", "Networking area", "Quiet ambiance"],
-        panoramaUrl: "/360-view/IMG_20210422_174807_00_125.webp",
+        panoramaUrl: "/360-view/inlife/SO2-LOUNGE-AREA.webp",
         thumbnailUrl: [
           "/360-view/_ARM9675.webp"
         ],
@@ -90,7 +90,7 @@ export default function VirtualTourPage() {
         description:
           "A fully equipped meeting room ideal for presentations, client meetings, interviews, and team collaborations.",
         features: ["Presentation display", "Video conferencing", "High-speed Wi-Fi", "Flexible seating"],
-        panoramaUrl: "/360-view/IMG_20210422_175054_00_126.webp",
+        panoramaUrl: "/360-view/inlife/SO2-CON-A.webp",
         thumbnailUrl: [
           "/360-view/_ARM9682_DENOISED.webp",
           "/360-view/conference_room_high_resolution.webp"
@@ -147,7 +147,7 @@ export default function VirtualTourPage() {
         description:
           "A shared pantry where members can enjoy complimentary refreshments and unwind throughout the day.",
         features: ["Complimentary coffee & tea", "Casual seating", "Refreshment area", "Relaxing atmosphere"],
-        panoramaUrl: "/360-view/IMG_20210318_155931_00_043.webp",
+        panoramaUrl: "/360-view/inlife/SO2-PANTRY.webp",
         thumbnailUrl: [
           "/360-view/_ARM7477.webp",
           "/360-view/_ARM7474.webp",
@@ -174,7 +174,7 @@ export default function VirtualTourPage() {
           "Comfortable waiting lounge",
           "Mail & package handling",
         ],
-        panoramaUrl: "/360-view/IMG_20210429_161245_00_142.webp",
+        panoramaUrl: "/360-view/tower6789/SO1-RECEPTION.webp",
         thumbnailUrl: [
           "/360-view/_ARM7593.webp",
           "/360-view/_ARM8130.webp"
@@ -193,7 +193,7 @@ export default function VirtualTourPage() {
         description:
           "A relaxing shared lounge perfect for casual meetings, networking, or taking a productive break.",
         features: ["Comfortable seating", "High-speed Wi-Fi", "Networking area", "Quiet ambiance"],
-        panoramaUrl: "/360-view/IMG_20210429_162117_00_143.webp",
+        panoramaUrl: "/360-view/tower6789/SO1-LOUNGE.webp",
         thumbnailUrl: [
           "/360-view/_ARM7597.webp",
           "/360-view/_ARM7582.webp",
@@ -237,7 +237,7 @@ export default function VirtualTourPage() {
         description:
           "A fully equipped meeting room ideal for presentations, client meetings, interviews, and team collaborations.",
         features: ["High-speed Wi-Fi", "Presentation display", "Video conferencing", "Flexible seating"],
-        panoramaUrl: "/360-view/IMG_20210318_174813_00_060.webp",
+        panoramaUrl: "/360-view/tower6789/SO1-CON-A.webp",
         thumbnailUrl: [
           "",
         ],
@@ -252,7 +252,7 @@ export default function VirtualTourPage() {
         description:
           "A professional meeting space designed for productive discussions, presentations, and business events.",
         features: ["High-speed Wi-Fi", "Presentation display", "Video conferencing", "Flexible seating"],
-        panoramaUrl: "/360-view/IMG_20210318_173158_00_049.webp",
+        panoramaUrl: "/360-view/tower6789/SO1-CON-B.webp",
         thumbnailUrl: [
           "/360-view/_ARM7558.webp",
         ],

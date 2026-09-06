@@ -350,28 +350,15 @@ function isVirtualOfficePaymongo(
 const RECIPIENTS = {
     chairman: process.env.CHAIRMAN_EMAIL || "",
     president: process.env.PRESIDENT_EMAIL || "",
-    generalManager: process.env.GENERAL_MANAGER_EMAIL || "rataguibao@rbtconsulting.com.ph",
-    salesOfficer: process.env.SALES_OFFICER_EMAIL || "salesofficer@heroph.net",
-    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "digitalsalesmarketing@heroph.net",
+    generalManager: process.env.GENERAL_MANAGER_EMAIL || "",
+    salesOfficer: process.env.SALES_OFFICER_EMAIL || "",
+    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "",
     accounting: process.env.ACCOUNTING_EMAIL || "",
     branchManagers: {
-        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "sales@heroph.net",
-        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "c_francisco@heroph.net",
+        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "",
+        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "",
     },
 };
-
-// const RECIPIENTS = {
-//     chairman: process.env.CHAIRMAN_EMAIL || "eirenegrc.armilla@gmail.com",
-//     president: process.env.PRESIDENT_EMAIL || "",
-//     generalManager: process.env.GENERAL_MANAGER_EMAIL || "infinitech.eirene@gmail.com",
-//     salesOfficer: process.env.SALES_OFFICER_EMAIL || "armilla.eirenegrace@gmail.com",
-//     digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "",
-//     accounting: process.env.ACCOUNTING_EMAIL || "",
-//     branchManagers: {
-//         S01: process.env.BRANCH_MANAGER_S01_EMAIL || "infinitech.eirene@gmail.com",
-//         S02: process.env.BRANCH_MANAGER_S02_EMAIL || "infinitech.eirene@gmail.com",
-//     },
-// };
 
 function getPublicAppBaseUrl(): string {
     const candidates = [
@@ -667,6 +654,21 @@ function buildContractTemplateVariables(quotation: QuotationPayload): Record<str
         contract_admin_fee: contractFeeAmount != null ? formatPhp(contractFeeAmount) : "—",
         discount: derivedDiscount != null ? formatPhp(derivedDiscount) : "—",
         total: grandTotalAmount != null ? formatPhp(grandTotalAmount) : "—",
+        user_name: d.full_name || "TO BE FILLED OUT",
+        user_address: d.id_address || "TO BE FILLED OUT",
+        user_rep: d.signatory_details || d.id_name || "TO BE FILLED OUT",
+        building: quotation.branch || "Tower 6789",
+        premises_address: d.id_address || "23F Tower 6789, 6789 Ayala Avenue, Makati City",
+        commencement_date: "TO BE FILLED OUT",
+        expiration_date: d.months ? `${monthsCount} month(s)` : "TO BE FILLED OUT",
+        fixed_fee: monthlyFeeAmount != null ? formatPhp(monthlyFeeAmount) : "TO BE FILLED OUT",
+        contract_fee: contractFeeAmount != null ? formatPhp(contractFeeAmount) : "TO BE FILLED OUT",
+        user_signer_name: d.signatory_details || d.id_name || d.full_name || "TO BE FILLED OUT",
+        user_signer_address: d.id_address || "TO BE FILLED OUT",
+        user_signer_company: d.company_name || "TO BE FILLED OUT",
+        notary_user_name: d.signatory_details || d.full_name || "TO BE FILLED OUT",
+        notary_user_id: d.id_number || "TO BE FILLED OUT",
+        notary_user_issue: d.id_address || "TO BE FILLED OUT",
     };
 }
 
@@ -678,38 +680,86 @@ function buildVirtualOfficeContractTemplate(): string {
     return [
         "",
         "1. Parties\n",
-        "This {{contract_title_body}} (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\"), effective as of the date of confirmed payment below.",
+        "This Virtual Office Service Agreement (\"Agreement\"), is made by and between:",
         "",
-        "2. Service Details\n",
-        "Service: {{service_name}}\n",
-        "Branch: {{branch}}\n",
-        "Package: {{package}}\n",
-        "Duration: {{duration}}\n",
-        "Start Date: {{start_date}}\n",
-        "Payment Method: {{payment_method}}\n",
-        "Reference No: {{transaction_id}}\n",
+        "PROVIDER",
+        "Name: HERO SERVICED OFFICE, INC.",
+        "Address: 23F Tower 6789, 6789 Ayala Avenue, 1209 Makati City, Metro Manila, Philippines",
         "",
-        "3. Client Information\n",
-        "Name: {{id_name}}\n",
-        "ID Type: {{id_type}}\n",
-        "ID Number: {{id_number}}\n",
-        "Address: {{id_address}}\n",
-        "Signatory Details: {{signatory_details}}\n",
-        "Email: {{email}}\n",
-        "Phone: {{phone}}\n",
+        "USER",
+        "Name: {{user_name}}",
+        "Address: {{user_address}}",
+        "Representative: {{user_rep}}",
+        "Email Address: {{email}}",
+        "Contact No.: {{phone}}",
         "",
-        "4. Price Breakdown\n",
-        "Package: {{package}}\n",
-        "Package Fee: {{package_fee}}\n",
-        "Number of months/duration: {{months}}\n",
-        "Subtotal: {{subtotal}}\n",
-        "VAT ({{vat_percentage}}%): {{vat_amount}}\n",
-        "Contract/Administrative Fee: {{contract_admin_fee}}\n",
-        "Discount: {{discount}}\n",
-        "Total: {{total}}\n",
+        "Summary of Terms and Conditions (Agreement Overview)",
+        "Building: {{building}}",
+        "Premises / Rented Address: {{premises_address}}",
+        "Commencement Date: {{commencement_date}}",
+        "Expiration Date: {{expiration_date}}",
+        "Fixed Fee: {{fixed_fee}}",
+        "Contract Fee: {{contract_fee}}",
         "",
-        "5. Terms & Conditions\n",
-        "{{terms}}",
+        "Art. 1 Use of the Rented Address",
+        "The Provider shall allow the USER to use the Rented Address indicated in the Agreement Overview.",
+        "The USER shall use the Rented Address solely for registration purposes and business correspondences.",
+        "The USER shall hold the Provider harmless from any damage, liability, or responsibility arising from use of the Rented Address.",
+        "",
+        "Art. 2 Fixed Fee and Other Fees",
+        "The USER shall pay to the Provider the Fixed Fee, plus VAT thereon, as consideration for the use of the Rented Address.",
+        "If the USER requests optional services, the USER shall also pay applicable service fees.",
+        "",
+        "Art. 3 Term of Agreement",
+        "This Agreement shall commence on the Commencement Date and continue until the Expiration Date unless earlier terminated or renewed by mutual agreement of the Parties in writing.",
+        "",
+        "Art. 4 Inclusion",
+        "The Fixed Fee covers the use of the Rented Address and such services as are included in the Agreement Overview and the applicable service package of the Provider.",
+        "",
+        "Art. 5 Payment Instruction",
+        "The USER shall pay all amounts due to the Provider on the date or dates indicated in the Agreement Overview, and in accordance with the payment instructions provided by the Provider.",
+        "",
+        "Art. 6 Representations and Warranties",
+        "The USER represents that the information provided in this Agreement is true and correct, and that the USER shall abide by the laws and regulations applicable to the use of the Rented Address.",
+        "",
+        "Art. 7 Responsibility and Liability",
+        "The USER shall be solely responsible for any acts, omissions, liabilities, and consequences arising from the USER's use of the Rented Address and/or from the USER's business correspondences.",
+        "",
+        "Art. 8 Confidentiality",
+        "The Parties shall keep confidential any information exchanged in connection with the subject matter of this Agreement and shall use such information only for the purpose of the Agreement.",
+        "",
+        "Art. 9 Notices",
+        "All notices under this Agreement shall be in writing and shall be deemed valid when delivered by hand, registered mail, or electronic mail to the addresses or email addresses stated in the Agreement.",
+        "",
+        "Art. 10 Governing Law",
+        "This Agreement shall be governed by and construed in accordance with the laws of the Republic of the Philippines, without regard to conflict-of-laws principles.",
+        "",
+        "Art. 11 Entire Agreement",
+        "This Agreement constitutes the entire understanding between the Parties and supersedes all prior negotiations, understandings, and arrangements relating to the subject matter hereof.",
+        "",
+        "Art. 12 Amendment",
+        "Any amendment or modification to this Agreement must be in writing and signed by both Parties to be effective.",
+        "",
+        "Art. 13 Contract Fee",
+        "The USER shall pay the Contract Fee provided in the Agreement Overview, including VAT thereon, to the Provider on the date of execution of this Agreement as an administration fee.",
+        "",
+        "IN WITNESS WHEREOF, the Parties have caused this Agreement to be executed by their respective duly authorized representatives on the date first written above.",
+        "",
+        "The Provider:",
+        "Raymund A. Taguibao",
+        "General Manager",
+        "HERO SERVICED OFFICE, INC.",
+        "",
+        "The USER:",
+        "Name: {{user_signer_name}}",
+        "Address: {{user_signer_address}}",
+        "Company: {{user_signer_company}}",
+        "",
+        "Acknowledgment",
+        "BEFORE ME, a notary public for and in Makati City, Metro Manila, on this date, personally appeared the following:",
+        "Name: {{notary_user_name}}",
+        "Gov't Issued I.D./Passport No.: {{notary_user_id}}",
+        "Date/Place of Issue: {{notary_user_issue}}",
         "",
     ].join("\n");
 }
@@ -790,8 +840,9 @@ async function renderContractPdfFromContent(args: {
     title: string;
     content: string;
     signatoryLabel: string;
+    includeGenericSignature?: boolean;
 }): Promise<Buffer> {
-    const { title, content, signatoryLabel } = args;
+    const { title, content, signatoryLabel, includeGenericSignature = true } = args;
 
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -859,7 +910,7 @@ async function renderContractPdfFromContent(args: {
         const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
         if (lines.length === 0) continue;
 
-        const headingMatch = lines[0].match(/^(\d+\.\s*[A-Za-z &]+)$/);
+        const headingMatch = lines[0].match(/^(?:(\d+\.)|(Art\.\s*\d+))\s*[A-Za-z &]+$/);
         if (headingMatch) {
             drawSectionHeading(headingMatch[1]);
             for (const fieldLine of lines.slice(1)) {
@@ -878,16 +929,18 @@ async function renderContractPdfFromContent(args: {
         cursorY -= 6;
     }
 
-    cursorY -= 20;
-    ensureSpace(140);
-    drawLine("AGREED AND ACCEPTED", { size: 11, bold: true, color: COLOR_PRIMARY, gap: 24 });
-    drawLine("Hero PH Inc.", { bold: true, gap: 40 });
-    drawLine("_______________________________", { gap: 14 });
-    drawLine("Authorized Representative / Date", { size: 9, color: COLOR_MUTED, gap: 30 });
+    if (includeGenericSignature) {
+        cursorY -= 20;
+        ensureSpace(140);
+        drawLine("AGREED AND ACCEPTED", { size: 11, bold: true, color: COLOR_PRIMARY, gap: 24 });
+        drawLine("Hero PH Inc.", { bold: true, gap: 40 });
+        drawLine("_______________________________", { gap: 14 });
+        drawLine("Authorized Representative / Date", { size: 9, color: COLOR_MUTED, gap: 30 });
 
-    drawLine(`${signatoryLabel}`, { bold: true, gap: 40 });
-    drawLine("_______________________________", { gap: 14 });
-    drawLine("Signature / Date", { size: 9, color: COLOR_MUTED });
+        drawLine(`${signatoryLabel}`, { bold: true, gap: 40 });
+        drawLine("_______________________________", { gap: 14 });
+        drawLine("Signature / Date", { size: 9, color: COLOR_MUTED });
+    }
 
     cursorY -= 25;
     ensureSpace(30);
@@ -919,6 +972,7 @@ async function generateVirtualOfficeContractPdf(quotation: QuotationPayload): Pr
         title: contract.contractTitle,
         content,
         signatoryLabel: contract.signatoryName,
+        includeGenericSignature: false,
     });
 }
 

@@ -24,12 +24,12 @@ import { ChatApiError, chatApi, type ChatConversation, type ConversationResponse
 type StatusKey = "active" | "waiting_admin" | "agent_requested" | "agent_active" | "agent_closed" | "closed";
 
 const STATUS: Record<StatusKey, { label: string; rail: string; dot: string; chip: string; live?: boolean; ended?: boolean }> = {
-    active: { label: "AI Assistant", rail: "bg-emerald-500", dot: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" },
+    active: { label: "HERO Assistant", rail: "bg-emerald-500", dot: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" },
     waiting_admin: { label: "Agent Requested", rail: "bg-amber-500", dot: "bg-amber-500", chip: "bg-amber-50 text-amber-700 ring-amber-600/20", live: true },
     agent_requested: { label: "Agent Requested", rail: "bg-amber-500", dot: "bg-amber-500", chip: "bg-amber-50 text-amber-700 ring-amber-600/20", live: true },
     agent_active: { label: "You're live", rail: "bg-[#0D47A1]", dot: "bg-[#0D47A1]", chip: "bg-blue-50 text-[#0D47A1] ring-blue-600/20" },
-    agent_closed: { label: "Ended", rail: "bg-slate-300", dot: "bg-slate-400", chip: "bg-slate-100 text-slate-500 ring-slate-500/10", ended: true },
-    closed: { label: "Ended", rail: "bg-slate-300", dot: "bg-slate-400", chip: "bg-slate-100 text-slate-500 ring-slate-500/10", ended: true },
+    agent_closed: { label: "Done", rail: "bg-slate-300", dot: "bg-slate-400", chip: "bg-slate-100 text-slate-500 ring-slate-500/10", ended: true },
+    closed: { label: "Done", rail: "bg-slate-300", dot: "bg-slate-400", chip: "bg-slate-100 text-slate-500 ring-slate-500/10", ended: true },
 };
 
 const NEEDS_ADMIN: StatusKey[] = ["waiting_admin", "agent_requested"];
@@ -209,6 +209,20 @@ function authHeaders() {
     };
 }
 
+function getLoggedInUserEmail() {
+    if (typeof window === "undefined") return "";
+
+    try {
+        const rawUser = localStorage.getItem("user");
+        if (!rawUser) return "";
+
+        const parsedUser = JSON.parse(rawUser) as { email?: string } | null;
+        return typeof parsedUser?.email === "string" ? parsedUser.email.trim() : "";
+    } catch {
+        return "";
+    }
+}
+
 function formatDurationCompact(seconds: number | null | undefined) {
     if (seconds === null || seconds === undefined || Number.isNaN(seconds)) return "--";
 
@@ -282,104 +296,6 @@ function ChatStatCardSkeleton() {
             <div className="mb-3 h-4 w-28 rounded bg-slate-200 sm:w-32" />
             <div className="mb-3 h-8 w-24 rounded bg-slate-200 sm:h-9 sm:w-28" />
             <div className="h-3 w-32 rounded bg-slate-200 sm:w-36" />
-        </div>
-    );
-}
-
-function ChatStatsSkeleton() {
-    return (
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-                <ChatStatCardSkeleton key={index} />
-            ))}
-        </div>
-    );
-}
-
-function ChatStatistics({
-    analytics,
-    onOpenReminderOverview,
-}: {
-    analytics: ChatAnalytics | null;
-    onOpenReminderOverview: () => void;
-}) {
-    const cards: ChatStatCardProps[] = analytics
-        ? [
-            {
-                icon: Bot,
-                label: "Total Conversations",
-                value: analytics.chat_leads.conversations.toLocaleString(),
-                supporting: formatCountTrend(
-                    analytics.chat_leads.trends.conversations.current,
-                    analytics.chat_leads.trends.conversations.previous,
-                ),
-                tone: "neutral",
-            },
-            {
-                icon: Headset,
-                label: "Live Agent Requests",
-                value: analytics.chat_leads.live_agent_requests.toLocaleString(),
-                supporting: formatCountTrend(
-                    analytics.chat_leads.trends.live_agent_requests.current,
-                    analytics.chat_leads.trends.live_agent_requests.previous,
-                ),
-                tone: "amber",
-            },
-            {
-                icon: Clock3,
-                label: "Average Response Time",
-                value: formatDurationCompact(analytics.chat_leads.average_response_time_seconds),
-                supporting: analytics.chat_leads.responded_conversations > 0
-                    ? `Across ${analytics.chat_leads.responded_conversations.toLocaleString()} responded conversations`
-                    : "No replied conversations yet",
-                tone: "green",
-            },
-            {
-                icon: Clock3,
-                label: "Preferred Contact Reminders",
-                value: analytics.chat_leads.preferred_contact_reminders.toLocaleString(),
-                supporting: "Notify live agents by 8am",
-                tone: "amber",
-                onClick: onOpenReminderOverview,
-            },
-        ]
-        : [
-            {
-                icon: Bot,
-                label: "Total Conversations",
-                value: "--",
-                supporting: "Analytics unavailable",
-                tone: "neutral",
-            },
-            {
-                icon: Headset,
-                label: "Live Agent Requests",
-                value: "--",
-                supporting: "Analytics unavailable",
-                tone: "amber",
-            },
-            {
-                icon: Clock3,
-                label: "Average Response Time",
-                value: "--",
-                supporting: "Analytics unavailable",
-                tone: "green",
-            },
-            {
-                icon: Clock3,
-                label: "Preferred Contact Reminders",
-                value: "--",
-                supporting: "Notify live agents by 8am",
-                tone: "amber",
-                onClick: onOpenReminderOverview,
-            },
-        ];
-
-    return (
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
-            {cards.map((card) => (
-                <ChatStatCard key={card.label} {...card} />
-            ))}
         </div>
     );
 }
@@ -578,6 +494,14 @@ export default function AdminChatsPage() {
         };
     }, []);
 
+    useEffect(() => {
+        const timeoutId = window.setTimeout(() => {
+            void loadConversations();
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
+    }, []);
+
     // Poll the currently open conversation's messages/status separately.
     useEffect(() => {
         if (!selectedConversationId) return;
@@ -596,41 +520,20 @@ export default function AdminChatsPage() {
                     if (prev.status !== conversation.status) return conversation;
                     return prev;
                 });
-            } catch {
-                // Ignore polling errors
+            } catch (err) {
+                if (err instanceof ChatApiError && err.status === 404) {
+                    clearInterval(interval);
+                    setError("This conversation is no longer available.");
+                    setSelectedConversation(null);
+                    setSelectedConversationId(null);
+                }
+                // otherwise ignore transient polling errors
             }
         }, 2000);
 
         return () => {
             cancelled = true;
             clearInterval(interval);
-        };
-    }, [selectedConversationId]);
-
-    useEffect(() => {
-        void loadConversations();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    useEffect(() => {
-        if (!selectedConversationId) return;
-
-        let cancelled = false;
-        setConversationLoading(true);
-
-        (async () => {
-            try {
-                const conversation = await chatApi.getConversation(selectedConversationId);
-                if (!cancelled) setSelectedConversation(conversation);
-            } catch (err) {
-                if (!cancelled) setError(err instanceof Error ? err.message : "Unable to load conversation.");
-            } finally {
-                if (!cancelled) setConversationLoading(false);
-            }
-        })();
-
-        return () => {
-            cancelled = true;
         };
     }, [selectedConversationId]);
 
@@ -657,10 +560,6 @@ export default function AdminChatsPage() {
             document.removeEventListener("keydown", handleEscape);
         };
     }, [actionsMenuOpen]);
-
-    useEffect(() => {
-        setActionsMenuOpen(false);
-    }, [selectedConversationId]);
 
     const loadChatAnalytics = async (silent = false) => {
         if (!silent) {
@@ -789,7 +688,7 @@ export default function AdminChatsPage() {
         try {
             await chatApi.switchMode(selectedConversationId, "assistant");
             await refresh();
-            pushToast("Conversation returned to the AI assistant.", "success");
+            pushToast("Conversation returned to the HERO assistant.", "success");
         } catch (err) {
             const message = err instanceof Error ? err.message : "Unable to return chat to AI.";
             setError(message);
@@ -800,12 +699,18 @@ export default function AdminChatsPage() {
     const handleCloseConversation = async () => {
         if (!selectedConversationId) return;
 
+        const confirmed = typeof window !== "undefined"
+            ? window.confirm("Mark this conversation as done?\n\nThis will close the conversation and indicate that the issue has been resolved.")
+            : true;
+
+        if (!confirmed) return;
+
         try {
-            await chatApi.closeConversation(selectedConversationId, false);
+            await chatApi.markConversationDone(selectedConversationId, false);
             await refresh();
-            pushToast("Conversation closed.", "success");
+            pushToast("Conversation marked as done.", "success");
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Unable to close conversation.";
+            const message = err instanceof Error ? err.message : "Unable to mark conversation as done.";
             setError(message);
             pushToast(message, "error");
         }
@@ -832,22 +737,16 @@ export default function AdminChatsPage() {
     };
 
     const handleSendHistory = async () => {
-        // Guard against firing when there's no conversation selected or no
-        // email on file — the button is disabled for this case, but this
-        // protects against any programmatic/keyboard invocation too.
         if (!selectedConversationId || !selectedConversation) return;
-        if (!selectedConversation.inquiry?.email_address) {
-            pushToast("This visitor has no email on file.", "error");
-            return;
-        }
 
         setSendingHistory(true);
         setError("");
 
         try {
-            const result = await chatApi.emailChatHistory(selectedConversationId);
+            const loggedInUserEmail = getLoggedInUserEmail();
+            const result = await chatApi.emailChatHistory(selectedConversationId, loggedInUserEmail || undefined);
             pushToast(
-                `Chat history sent to ${result?.to ?? selectedConversation.inquiry?.email_address ?? "the visitor"}.`,
+                `Chat history sent to ${result?.to || "the admin account"}.`,
                 "success"
             );
         } catch (err) {
@@ -862,6 +761,7 @@ export default function AdminChatsPage() {
     const handleSelectConversation = (id: number) => {
         setSelectedConversationId(id);
         setSidebarOpen(false);
+        setActionsMenuOpen(false);
     };
 
     useEffect(() => {
@@ -871,8 +771,11 @@ export default function AdminChatsPage() {
     }, [selectedConversation?.messages]);
 
     useEffect(() => {
-        void loadChatAnalytics();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        const timeoutId = window.setTimeout(() => {
+            void loadChatAnalytics();
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
     }, []);
 
     const REPLY_MIN_HEIGHT = 72; // px, ~3 rows
@@ -931,34 +834,6 @@ export default function AdminChatsPage() {
         { key: "addressed", label: "Addressed" },
     ];
 
-    const sidebarSearchHeader = (
-        <div className="shrink-0 space-y-2 border-b border-slate-100 p-2.5 sm:p-3">
-            <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search by name or email"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#0D47A1] focus:bg-white focus:ring-2 focus:ring-[#0D47A1]/10"
-                />
-            </div>
-            <div className="flex gap-1 overflow-x-auto pb-0.5">
-                {filterTabs.map((tab) => (
-                    <button
-                        key={tab.key}
-                        onClick={() => setAddressedFilter(tab.key)}
-                        className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium transition ${addressedFilter === tab.key
-                            ? "bg-[#0D47A1] text-white"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                            }`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-
     const sidebarListBody = (
         <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2 sm:p-2.5">
             {loading || refreshing ? (
@@ -989,13 +864,6 @@ export default function AdminChatsPage() {
                                     <span className="shrink-0 font-mono text-[10px] text-slate-400">{timeAgo(conversation.updated_at)}</span>
                                 </div>
 
-                                <div className="mt-1 flex items-center gap-1.5">
-                                    <StatusChip status={conversation.status} />
-                                    {isAddressed(conversation) ? (
-                                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-teal-500" />
-                                    ) : null}
-                                </div>
-
                                 <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5">
                                     <p className="min-w-0 truncate text-xs text-slate-500">{conversation.inquiry?.email_address ?? "No email"}</p>
                                     <span className="shrink-0 font-mono text-[10px] text-slate-400">{conversation.message_count} msgs</span>
@@ -1016,8 +884,8 @@ export default function AdminChatsPage() {
                 loading={reminderOverviewLoading}
                 onClose={() => setReminderOverviewOpen(false)}
             />
-            <div className="flex h-dvh flex-col overflow-hidden bg-slate-50/60">
-                <main className="mx-auto flex w-full min-h-0 max-w-[1600px] flex-1 flex-col overflow-hidden px-2 pt-2 sm:px-3 sm:pt-3 md:px-4 lg:px-6 lg:pt-4">
+            <div className="flex h-dvh flex-col overflow-hidden">
+                <main className="mx-auto flex w-full min-h-0 max-w-[1600px] flex-1 flex-col overflow-hidden">
                     {/* Mobile/tablet top bar */}
                     <div className="flex shrink-0 items-center justify-between gap-2 px-1 pb-2 md:hidden">
                         <button
@@ -1038,27 +906,54 @@ export default function AdminChatsPage() {
                         </button>
                     </div>
 
-                    {error ? (
-                        <div className="mb-2.5 flex shrink-0 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700 sm:px-4 sm:py-3">
-                            <AlertCircle className="h-4 w-4 shrink-0" />
-                            {error}
-                        </div>
-                    ) : null}
+                    {/* Chat Filters */}
+                    <div className="mb-3 flex gap-3 items-center justify-center">
+                        {/* Search + Filter Tabs */}
+                        <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white p-3">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                                {/* Search */}
+                                <div className="relative min-w-0 flex-1">
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
-                    {/* Chat statistics */}
-                    <div className="mb-2.5 flex flex-col gap-2.5 sm:mb-3 sm:gap-3 xl:flex-row xl:items-start">
-                        <div className="hidden min-w-0 flex-1 lg:block">
-                            {statsLoading ? <ChatStatsSkeleton /> : <ChatStatistics analytics={chatAnalytics} onOpenReminderOverview={openReminderOverview} />}
+                                    <input
+                                        value={query}
+                                        onChange={(e) => setQuery(e.target.value)}
+                                        placeholder="Search by name or email"
+                                        className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#0D47A1] focus:bg-white focus:ring-2 focus:ring-[#0D47A1]/10"
+                                    />
+                                </div>
+
+                                {/* Filter Tabs */}
+                                <div className="min-w-0 lg:max-w-[60%]">
+                                    <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
+                                        {filterTabs.map((tab) => (
+                                            <button
+                                                key={tab.key}
+                                                onClick={() => setAddressedFilter(tab.key)}
+                                                className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${addressedFilter === tab.key
+                                                    ? "bg-[#0D47A1] text-white shadow-sm"
+                                                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                                    }`}
+                                            >
+                                                {tab.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
+                        {/* Refresh */}
                         <button
                             onClick={() => void handleManualRefresh()}
                             disabled={refreshing || loading}
                             title="Refresh conversations"
                             aria-label="Refresh conversations"
-                            className="hidden shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50 md:inline-flex"
+                            className="hidden md:inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:border-[#0D47A1]/30 hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto xl:h-[46px]"
                         >
-                            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                            <RefreshCw
+                                className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+                            />
                             <span>Refresh</span>
                         </button>
                     </div>
@@ -1066,7 +961,6 @@ export default function AdminChatsPage() {
                     <div className="grid min-h-0 flex-1 gap-2.5 overflow-hidden sm:gap-3 md:grid-cols-[240px_minmax(0,1fr)] lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
                         {/* Persistent sidebar column from tablet (md) up */}
                         <div className="hidden min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:flex">
-                            {sidebarSearchHeader}
                             {sidebarListBody}
                         </div>
 
@@ -1088,7 +982,6 @@ export default function AdminChatsPage() {
                                             <X className="h-5 w-5" />
                                         </button>
                                     </div>
-                                    {sidebarSearchHeader}
                                     {sidebarListBody}
                                 </div>
                             </div>
@@ -1127,16 +1020,6 @@ export default function AdminChatsPage() {
                                                             <StatusChip status={selectedConversation.status} />
 
                                                             {selectedIsAddressed ? <AddressedChip /> : null}
-
-                                                            {selectedRequestedHistory ? (
-                                                                <span
-                                                                    title="Visitor asked for a copy of this chat"
-                                                                    className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-sky-50 px-2 py-1 text-[10px] font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20 sm:px-2.5 sm:text-[11px]"
-                                                                >
-                                                                    <Mail className="h-3 w-3" />
-                                                                    <span>Requested history</span>
-                                                                </span>
-                                                            ) : null}
                                                         </div>
                                                     </div>
 
@@ -1254,11 +1137,11 @@ export default function AdminChatsPage() {
                                                                 setActionsMenuOpen(false);
                                                                 void handleSendHistory();
                                                             }}
-                                                            disabled={sendingHistory || !selectedHasEmail}
+                                                            disabled={sendingHistory}
                                                             title={
                                                                 selectedHasEmail
-                                                                    ? "Email the full chat transcript to the visitor"
-                                                                    : "No email on file for this visitor"
+                                                                    ? "Email the full chat transcript to the currently signed-in admin"
+                                                                    : "Email the full chat transcript to the currently signed-in admin"
                                                             }
                                                             className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedRequestedHistory
                                                                 ? "bg-sky-50 text-sky-700 hover:bg-sky-100"
@@ -1311,22 +1194,7 @@ export default function AdminChatsPage() {
                                                         >
                                                             <Bot className="h-4 w-4 shrink-0" />
 
-                                                            <span>Return to AI</span>
-                                                        </button>
-
-                                                        {/* Close */}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setActionsMenuOpen(false);
-                                                                void handleCloseConversation();
-                                                            }}
-                                                            disabled={selectedIsEnded}
-                                                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                                        >
-                                                            <XCircle className="h-4 w-4 shrink-0" />
-
-                                                            <span>Close</span>
+                                                            <span>Return to System</span>
                                                         </button>
                                                     </div>
                                                 ) : null}
@@ -1409,46 +1277,61 @@ export default function AdminChatsPage() {
                                         ) : (
                                             <div className="mt-3 shrink-0 rounded-xl border border-slate-200 p-2.5 sm:p-3">
                                                 {selectedNeedsAdmin ? (
-                                                    <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-amber-600">
-                                                        <LiveDot />
-                                                        This visitor asked for a person — sending a reply takes over the chat.
-                                                    </p>
-                                                ) : selectedIsAgentOwned ? (
-                                                    <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#0D47A1]">
-                                                        <Headset className="h-3.5 w-3.5" />
-                                                        Live Agent is active — the AI assistant is paused here.
-                                                    </p>
-                                                ) : null}
-                                                <textarea
-                                                    ref={replyTextareaRef}
-                                                    value={reply}
-                                                    onChange={(event) => setReply(event.target.value)}
-                                                    onKeyDown={(event) => {
-                                                        if (event.key === "Enter" && !event.shiftKey) {
-                                                            event.preventDefault();
-                                                            void handleSendReply();
-                                                        }
-                                                    }}
-                                                    placeholder="Type a reply to the visitor..."
-                                                    rows={1}
-                                                    style={{ minHeight: REPLY_MIN_HEIGHT, maxHeight: REPLY_MAX_HEIGHT }}
-                                                    className="w-full resize-none overflow-y-auto rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#0D47A1] focus:ring-2 focus:ring-[#0D47A1]/10"
-                                                />
-                                                <div className="mt-2 flex flex-col-reverse gap-2 md:flex-row md:items-center md:justify-between">
-                                                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                                                        <ArrowRightLeft className="h-3.5 w-3.5" />
-                                                        <span className="hidden md:inline">Enter to send · Shift + Enter for a new line</span>
-                                                        <span className="md:hidden">Enter to send</span>
-                                                    </div>
                                                     <button
-                                                        onClick={() => void handleSendReply()}
-                                                        disabled={sending || !reply.trim()}
-                                                        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0D47A1] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0D47A1]/90 disabled:cursor-not-allowed disabled:bg-slate-300 md:w-auto"
+                                                        type="button"
+                                                        onClick={() => void handleTakeOver()}
+                                                        disabled={selectedIsEnded || Boolean(selectedConversation?.agent) || selectedConversation?.status === "agent_active"}
+                                                        className="mb-2 flex w-full items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-left text-xs font-medium text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
                                                     >
-                                                        <Send className="h-4 w-4" />
-                                                        {sending ? "Sending..." : "Send"}
+                                                        <LiveDot />
+                                                        This visitor asked for a person — tap to take over the chat.
                                                     </button>
-                                                </div>
+                                                ) : selectedIsAgentOwned ? (
+                                                    <>
+                                                        <div
+                                                            className="min-h-0 flex-1 space-y-2.5 overflow-y-auto rounded-xl bg-slate-50 p-2.5 sm:space-y-3 sm:p-4"
+                                                            style={{
+                                                                backgroundImage: "radial-gradient(circle, rgba(15,23,42,0.06) 1px, transparent 1px)",
+                                                                backgroundSize: "16px 16px",
+                                                            }}>
+                                                            <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-[#0D47A1]">
+                                                                <Headset className="h-3.5 w-3.5" />
+                                                                Live Agent is active — HERO assistant is paused here.
+                                                            </p>
+
+                                                            <textarea
+                                                                ref={replyTextareaRef}
+                                                                value={reply}
+                                                                onChange={(event) => setReply(event.target.value)}
+                                                                onKeyDown={(event) => {
+                                                                    if (event.key === "Enter" && !event.shiftKey) {
+                                                                        event.preventDefault();
+                                                                        void handleSendReply();
+                                                                    }
+                                                                }}
+                                                                placeholder="Type a reply to the visitor..."
+                                                                rows={1}
+                                                                style={{ minHeight: REPLY_MIN_HEIGHT, maxHeight: REPLY_MAX_HEIGHT }}
+                                                                className="w-full resize-none overflow-y-auto rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-[#0D47A1] focus:ring-2 focus:ring-[#0D47A1]/10"
+                                                            />
+                                                            <div className="mt-2 flex flex-col-reverse gap-2 md:flex-row md:items-center md:justify-between">
+                                                                <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                                                                    <ArrowRightLeft className="h-3.5 w-3.5" />
+                                                                    <span className="hidden md:inline">Enter to send · Shift + Enter for a new line</span>
+                                                                    <span className="md:hidden">Enter to send</span>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => void handleSendReply()}
+                                                                    disabled={sending || !reply.trim()}
+                                                                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0D47A1] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0D47A1]/90 disabled:cursor-not-allowed disabled:bg-slate-300 md:w-auto"
+                                                                >
+                                                                    <Send className="h-4 w-4" />
+                                                                    {sending ? "Sending..." : "Send"}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                ) : null}
                                             </div>
                                         )}
                                     </div>
@@ -1461,10 +1344,10 @@ export default function AdminChatsPage() {
                             )}
                         </div>
                     </div>
-                </main>
+                </main >
 
                 <ToastStack toasts={toasts} onDismiss={dismissToast} />
-            </div>
+            </div >
         </>
     );
 }
