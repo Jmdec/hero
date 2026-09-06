@@ -168,11 +168,11 @@ const EMAIL_TEMPLATES: Record<string, TemplateBuilder> = {
 We’d love to help you find the right fully furnished workspace for your team — with Flexibility That Fits Your Needs. 
 
 Here's a quick overview: 
-- Pricing: starts at PHP 11,000/seat/month  to  PHP 12,000/seat/month 
+- Rates: starts at PHP 11,000/seat/month 
 - Office sizes: available from 1 to 35 persons
 - Contract terms: 3, 6, 9, and  12 months 
-- Inclusions: fully furnished workstation, prestigious business address, high-speed internet (up to 600 Mbps), professional reception services, mail and parcel handling, utilities, housekeeping, pantry and common area access, telephone booth access, access to multifunctional printer, 24/7 secure access.
-- Add-ons available: parking slots, dedicated internet line, dedicated IP, telephone lines, conference room access and lockers.
+- Inclusions: fully furnished workstation, prestigious business address, high-speed internet (up to 600 Mbps), professional reception services, mail handling, utilities, pantry and common area access, unlimited coffee, tea and drinking water, telephone booth access and 24/7 secure access.
+- Add-ons available: parking slots, dedicated internet line, dedicated IP, telephone lines, access to multifunctional printer, conference room access and lockers.
 
 Interested in our service? Request your quotation here: ${quotationLink(c, "private-office")}
 
@@ -187,9 +187,11 @@ HERO Serviced Office`,
 
 Thank you for reaching out about our Virtual Office solutions. Here are our current packages:
 
-- Basic - PHP 2,000/month: business address, registration document assistance, mail handling, 1 day co-working access, 1 hour conference room access
-- Standard - PHP 3,000/month: business address, registration document assistance, mail handling, 2 days co-working access, 2 hours conference room access
-- Premium - PHP 5,000/month: business address, registration document assistance, mail handling, 5 days co-working access, 3 hours conference room access
+- Starter - PHP 1,000/month: business address, provision of documents for business registration, mail handling
+- Standard - PHP 3,000/month: business address, provision of documents for business registration, mail handling, 24 hours co-working access, 2 hours conference room access
+- Premium - PHP 5,000/month: business address, provision of documents for business registration, mail handling, designated mail storage, 32 hours co-working access, 6 hours conference room access, *printing or scanning services 
+
+*Subject to terms and condition
 
 Contract terms are available for 6 or 12 months, and the address can be used for official business registration.
 
@@ -206,8 +208,8 @@ HERO Serviced Office`,
 
 Thanks for your interest in our Co-Working Space. It's a great fit if you'd like a flexible, professional workspace without a long-term commitment. 
 
-- Pricing: PHP 550/day, PHP 2,000/week, or PHP 6,000/month 
-- Inclusions: flexible workstation, high-speed internet (up to 600 Mbps), air-conditioned environment, pantry and lounge access, 24/7 secure access, phone booth access, and free- flowing coffee, tea, and water 
+- Rates: PHP 550/day, PHP 2,000/week, or PHP 6,000/month 
+- Inclusions: flexible workstation, high-speed internet (up to 600 Mbps), air-conditioned environment, pantry and common area access, 24/7 secure access, phone booth access, and free-flowing coffee, tea, and water 
 - Add-ons: printing and scanning services, access cards, meeting room access
 
 Interested in our service? Request your quotation here: ${quotationLink(c, "co-working-space")}
@@ -223,9 +225,9 @@ HERO Serviced Office`,
 
 Thank you for your interest in booking our Meeting Room. Here are the details:
 
-- Pricing: PHP 1,500/hour or PHP 9,000/day (8-10 seater) and PHP 3,000/hour or PHP 18,000/day (18-20 seater)
-- Inclusions: fully furnished conference room, Wi-fi connection  (up to 600 Mbps), reception services, and free-flowing coffee, tea, and water
-- Add-ons: printing and scanning services, projector and screen
+- Rates: Starts at PHP 1,500/hour
+- Inclusions: fully furnished conference room, Wi-fi connection  (up to 600 Mbps), access to pantry area, use of phonebooth, tv monitor, and free-flowing coffee, tea, and water
+- Add-ons: printing and scanning services
 
 Interested in our service? Request your quotation here: ${quotationLink(c, "meeting-room")}
 
@@ -240,9 +242,9 @@ HERO Serviced Office`,
 
 Thank you for considering HERO Serviced Office for your upcoming event. Our Event/Activity Area is a flexible, fully serviced space designed for workshops, training, networking sessions, and product launches.
 
-- Pricing: starts at PHP 7,000 depending on setup and number of participants and duration of the event
-- Inclusions: flexible event space setup, Wifi- connection (up to 600 Mbps), reception services, utilities, basic furniture setup, lounge access, pantry access, free-flowing coffee  and 24/7 secure access (subject to booking schedule)
-- Add-ons: audio-visual equipment, sound system rental, event styling, catering coordination, conference room and extra seating
+- Rate: starts at PHP 7,000 depending on setup, number of participants, and duration of the event
+- Inclusions: flexible event space setup, Wifi-connection (up to 600 Mbps), reception services, utilities, basic furniture setup, pantry access, free-flowing coffee, tea and water,and 24/7 secure access (subject to booking schedule)
+- Add-ons: audio-visual equipment, sound system rental, event styling, catering coordination, and conference room 
 
 Interested in our service? Request your quotation here: ${quotationLink(c, "event-space")}
 
@@ -290,7 +292,7 @@ Thank you for reaching out to HERO Serviced Office. We received your message:
 
 "${c.message || "—"}"
 
-We'd love to learn more about what you're looking for so we can point you to the right workspace solution - Private Office, Virtual Office, Co-Working Space, Conference Room, or Event Space. Could you share a few more details, or let us know a good time for a quick call?
+We would like to kindly follow up regarding our previous communication on the quotation we sent for your review.  Please let us know if you have any questions, clarifications, or additional requirements that we may assist you with. Thank you.
 
 Best regards,
 
