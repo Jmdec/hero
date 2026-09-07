@@ -722,9 +722,6 @@ function resolveContractTemplate(template: string, variables: Record<string, str
 function buildOtherServiceContractTemplate(): string {
     return [
         "Hero Serviced Office",
-        "{{contract_title}}",
-        "",
-        "Date Issued: {{date_issued}}",
         "",
         "1. Parties",
         "This {{contract_title_body}} (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\"), effective as of the date of confirmed payment below.",
@@ -814,7 +811,7 @@ async function renderContractPdfFromContent(args: {
 
     const drawFieldRow = (label: string, value: string) => {
         ensureSpace(30);
-        drawLine(label, { size: 9, bold: true, color: COLOR_MUTED, gap: 0, });
+        drawLine(label, { size: 9, bold: true, color: COLOR_MUTED, gap: 16, });
         drawLine(value || "—", { size: 11, color: COLOR_TEXT, gap: 20, });
     };
 
@@ -938,10 +935,11 @@ async function htmlToPdfBuffer(html: string): Promise<Buffer> {
             await browser.close();
         }
     } catch (error) {
-        console.error("Puppeteer PDF generation failed:", error);
+        const detail = error instanceof Error ? error.message : String(error);
+        console.error("Puppeteer PDF generation failed:", detail);
 
         throw new Error(
-            "PDF generation requires Puppeteer. Install it with: npm install puppeteer"
+            `Virtual Office contract PDF generation failed: ${detail}`
         );
     }
 }
@@ -1085,7 +1083,8 @@ export async function sendQuotationContractEmail(
         <p style="font-size:15px;line-height:1.8;color:#475569;">
             Your ${quotation.service_name.toLowerCase()} contract is ready to review. We have attached the contract document for your review.
         </p>
-        <div style="border-top:1px solid #e5e7eb;padding-top:24px;">
+        <div style="border-top:1px solid #e5e7eb;padding-top:10px;">
+        <h3 style="font-size:16px;font-weight:bold;color:#475569;">Contract Instructions:</h3>
             <ol style="font-size:15px;line-height:1.8;color:#475569;">
                 <li>Sign every page of the contract, except the last page, as this page is reserved for notarization.</li>
                 <li>Once the contract has been signed, please send the completed copy to the appropriate email address:</li>
