@@ -792,6 +792,7 @@ export default function AdminQuotationsPage() {
     const [contractModalQuote, setContractModalQuote] = useState<Quotation | null>(null);
     const [contractEditMode, setContractEditMode] = useState(false);
     const [voContractFields, setVoContractFields] = useState<ReturnType<typeof mapQuotationDetailToVOContractFields> | null>(null);
+    const [voContractInitialFields, setVoContractInitialFields] = useState<ReturnType<typeof mapQuotationDetailToVOContractFields> | null>(null);
 
     async function viewQuotationDocument(document: { title: string; type: string }) {
         if (!selected?.detail?.quotation_document_id) return;
@@ -1068,7 +1069,9 @@ export default function AdminQuotationsPage() {
         setContractEditMode(false);
         setContractDraft(initial);
         setContractSavedSnapshot(initial);
-        setVoContractFields(isVirtualOffice(quote) ? mapQuotationDetailToVOContractFields(quote.detail) : null);
+        const initialVOFields = isVirtualOffice(quote) ? mapQuotationDetailToVOContractFields(quote.detail) : null;
+        setVoContractInitialFields(initialVOFields);
+        setVoContractFields(initialVOFields);
     };
 
     const closeContractViewer = () => {
@@ -1077,6 +1080,8 @@ export default function AdminQuotationsPage() {
         setContractEditMode(false);
         setContractDraft("");
         setContractSavedSnapshot("");
+        setVoContractFields(null);
+        setVoContractInitialFields(null);
     };
 
     const handleSaveContract = async () => {
@@ -1128,6 +1133,11 @@ export default function AdminQuotationsPage() {
             );
             setSelected((current) => (current && current.id === mergedQuote.id ? mergedQuote : current));
             setContractModalQuote(mergedQuote);
+            if (isVirtualOffice(mergedQuote)) {
+                const savedVOFields = mapQuotationDetailToVOContractFields(mergedQuote.detail);
+                setVoContractInitialFields(savedVOFields);
+                setVoContractFields(savedVOFields);
+            }
             setContractSavedSnapshot(contractDraft);
             setContractEditMode(false);
             pushToast("Contract content saved.", "success");
@@ -1647,7 +1657,7 @@ export default function AdminQuotationsPage() {
                                 contractEditMode ? (
                                     <VOContract
                                         hideControls={false}
-                                        initialValues={mapQuotationDetailToVOContractFields(contractModalQuote.detail)}
+                                        initialValues={voContractInitialFields ?? {}}
                                         onFieldsChange={setVoContractFields}
                                     />
                                 ) : (
