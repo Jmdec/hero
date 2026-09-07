@@ -1,15 +1,16 @@
 export type ContactBranchInterest = "tower-6789" | "insular-life" | "both";
 
 const RECIPIENTS = {
-    chairman: process.env.CHAIRMAN_EMAIL || "",
-    president: process.env.PRESIDENT_EMAIL || "",
-    generalManager: process.env.GENERAL_MANAGER_EMAIL || "",
-    salesOfficer: process.env.SALES_OFFICER_EMAIL || "",
-    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "",
-    accounting: process.env.ACCOUNTING_EMAIL || "",
+    chairman: process.env.CHAIRMAN_EMAIL || "hero.chairman@gmail.com",
+    president: process.env.PRESIDENT_EMAIL || "hero.president@gmail.com",
+    generalManager: process.env.GENERAL_MANAGER_EMAIL || "hero.generalmanager@gmail.com",
+    salesOfficer: process.env.SALES_OFFICER_EMAIL || "hero.salesofficer@gmail.com",
+    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "hero.digitalmarketing@gmail.com",
+    accounting: process.env.ACCOUNTING_EMAIL || "hero.accounting@gmail.com",
+    accountingofficer: process.env.ACCOUNTING_OFFICER_EMAIL || "hero.accountingofficer@gmail.com",
     branchManagers: {
-        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "",
-        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "",
+        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "hero.tower6789@gmail.com",
+        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "hero.insularlife@gmail.com",
     },
 };
 

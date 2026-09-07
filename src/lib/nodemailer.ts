@@ -1,10 +1,16 @@
 import nodemailer from "nodemailer";
 import { PDFDocument, StandardFonts, rgb, PDFFont } from "pdf-lib";
+import { mapQuotationToVOContractFields, VOContractFields } from "@/components/contracts/VOContractDocument";
+import { renderVirtualOfficeContractHtml } from "@/lib/renderVOContract.serve";
 
 function resolveSmtpTransportConfig() {
     const host = process.env.SMTP_HOST || process.env.MAIL_HOST;
-    const port = Number.parseInt(process.env.SMTP_PORT || process.env.MAIL_PORT || "587", 10);
+    const configuredPort = Number.parseInt(process.env.SMTP_PORT || process.env.MAIL_PORT || "587", 10);
+    const port = configuredPort;
     const secure = (process.env.SMTP_SECURE || process.env.MAIL_SECURE) === "true" || port === 465;
+    const username = process.env.SMTP_USER || process.env.MAIL_USERNAME;
+    const password = process.env.SMTP_PASS || process.env.MAIL_PASSWORD;
+    const timeout = Number.parseInt(process.env.SMTP_TIMEOUT || process.env.MAIL_TIMEOUT || "15", 10) * 1000;
 
     if (!host) {
         throw new Error("SMTP_HOST (or MAIL_HOST) is not configured.");
@@ -14,10 +20,14 @@ function resolveSmtpTransportConfig() {
         host,
         port,
         secure,
-        auth: process.env.SMTP_USER && process.env.SMTP_PASS
+        connectionTimeout: timeout,
+        greetingTimeout: timeout,
+        socketTimeout: timeout,
+        requireTLS: !secure && (process.env.SMTP_ENCRYPTION || process.env.MAIL_ENCRYPTION) === "tls" || port === 587,
+        auth: username && password
             ? {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS,
+                user: username,
+                pass: password,
             }
             : undefined,
     };
@@ -41,14 +51,18 @@ export async function sendVerificationEmail(
     name: string,
     verificationUrl: string
 ) {
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    const username = process.env.SMTP_USER || process.env.MAIL_USERNAME;
+    const password = process.env.SMTP_PASS || process.env.MAIL_PASSWORD;
+
+    if (!username || !password) {
         throw new Error("SMTP credentials are not configured.");
     }
 
     const mailOptions = {
         from:
             process.env.SMTP_FROM ||
-            `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
+            process.env.MAIL_FROM_ADDRESS ||
+            `"Hero Serviced Office" <${username}>`,
         to: email,
         subject: "Verify Your Email - Hero Serviced Office",
         html: `
@@ -209,16 +223,23 @@ function formatPaymentMethodLabel(value?: string | null): string {
         .join(" ");
 }
 
+function formatClickablePhone(value?: string | null): string {
+    if (!value) return "N/A";
+    const trimmed = String(value).trim();
+    if (!trimmed) return "N/A";
+
+    const digitsOnly = trimmed.replace(/[^\d+]/g, "");
+    if (!digitsOnly) return trimmed;
+
+    return `<a href="tel:${digitsOnly}" style="color:#0D47A1;text-decoration:none;">${trimmed}</a>`;
+}
+
 function quotationRow(label: string, value?: string | number | null): string {
     if (value === null || value === undefined || value === "") return "";
-    const isPhone = label === "Phone" || label === "電話";
-    const renderedValue = isPhone
-        ? `<a href="tel:${encodeURIComponent(String(value))}" style="color:#0D47A1;text-decoration:underline;">${value}</a>`
-        : value;
     return `
         <tr>
             <td style="padding:10px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#64748b;white-space:nowrap;">${label}</td>
-            <td style="padding:10px 0 10px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;font-weight:500;text-align:right;">${renderedValue}</td>
+            <td style="padding:10px 0 10px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;font-weight:500;text-align:right;">${value}</td>
         </tr>`;
 }
 
@@ -242,6 +263,7 @@ function buildQuotationPriceBreakdownRows(quotation: QuotationPayload): string {
 
     if (!hasPrice) return "";
 
+    const discountValue = parseNumberish(d.discounts ?? d.discount);
     const rows = [
         quotationRow(
             "Package Price",
@@ -257,7 +279,10 @@ function buildQuotationPriceBreakdownRows(quotation: QuotationPayload): string {
         ),
         quotationRow("Subtotal", d.subtotal != null ? formatCurrency(d.subtotal) : undefined),
         quotationRow("Contract & Admin Fee", d.contract_admin_fee != null ? formatCurrency(d.contract_admin_fee) : undefined),
-        quotationRow("Total", d.total != null ? formatCurrency(d.total) : undefined),
+        ...(discountValue != null && Number(discountValue) > 0
+            ? [quotationRow("Promo / Discount", `-${formatCurrency(discountValue)}`)]
+            : []),
+        quotationRow("Amount Due", d.total != null ? formatCurrency(d.total) : undefined),
     ].join("");
 
     if (!rows) return "";
@@ -303,7 +328,6 @@ function buildQuotationDetailRows(
         quotationRow("Date", dateValue),
         quotationRow("Time", d.time),
         quotationRow("Duration", d.duration_type),
-        quotationRow("Phone", d.phone),
         quotationRow("Other Requirements", d.other_requirements),
         quotationRow("Notes", d.request),
         quotationRow("ID Type", d.id_type),
@@ -334,10 +358,6 @@ function quotationWrapper(bodyHtml: string): string {
         <div style="padding:16px 40px 40px;">
           ${bodyHtml}
         </div>
-        <div style="background:#f8fafc;padding:20px;text-align:center;font-size:12px;color:#94a3b8;">
-          23F TOWER6789, Ayala Avenue 6789, Makati City 1209, Philippines<br/>
-          salesofficer@heroph.net · © ${new Date().getFullYear()} Hero Serviced Office
-        </div>
       </div>
     </div>
     </body>
@@ -351,19 +371,6 @@ function isVirtualOfficePaymongo(
 
     return service.includes("virtual office");
 }
-
-const RECIPIENTS = {
-    chairman: process.env.CHAIRMAN_EMAIL || "",
-    president: process.env.PRESIDENT_EMAIL || "",
-    generalManager: process.env.GENERAL_MANAGER_EMAIL || "",
-    salesOfficer: process.env.SALES_OFFICER_EMAIL || "",
-    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "",
-    accounting: process.env.ACCOUNTING_EMAIL || "",
-    branchManagers: {
-        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "",
-        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "",
-    },
-};
 
 function getPublicAppBaseUrl(): string {
     const candidates = [
@@ -412,6 +419,13 @@ function toUniqueEmails(values: Array<string | null | undefined>): string[] {
     return list;
 }
 
+function getSystemMailSender(): string {
+    const address = (process.env.MAIL_FROM_ADDRESS || process.env.SMTP_FROM || process.env.SMTP_USER || "").trim();
+    if (!address) throw new Error("MAIL_FROM_ADDRESS or SMTP_USER is not configured.");
+    const name = process.env.MAIL_FROM_NAME || "HERO Serviced Office";
+    return `"${name}" <${address}>`;
+}
+
 function parseRecipientList(input: string | undefined): string[] {
     return (input || "")
         .split(",")
@@ -419,29 +433,52 @@ function parseRecipientList(input: string | undefined): string[] {
         .filter(Boolean);
 }
 
-function getBranchManagerRecipients(branch: string | null | undefined): string[] {
-    const normalized = (branch || "").toLowerCase();
+const RECIPIENTS = {
+    chairman: process.env.CHAIRMAN_EMAIL || "hero.chairman@gmail.com",
+    president: process.env.PRESIDENT_EMAIL || "hero.president@gmail.com",
+    generalManager: process.env.GENERAL_MANAGER_EMAIL || "hero.generalmanager@gmail.com",
+    salesOfficer: process.env.SALES_OFFICER_EMAIL || "hero.salesofficer@gmail.com",
+    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "hero.digitalmarketing@gmail.com",
+    accounting: process.env.ACCOUNTING_EMAIL || "hero.accounting@gmail.com",
+    accountingofficer: process.env.ACCOUNTING_OFFICER_EMAIL || "hero.accountingofficer@gmail.com",
+    branchManagers: {
+        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "hero.tower6789@gmail.com",
+        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "hero.insularlife@gmail.com",
+    },
+};
 
-    if (normalized.includes("insular")) {
-        return [RECIPIENTS.branchManagers.S02];
-    }
-
-    if (normalized.includes("tower") || normalized.includes("6789")) {
-        return [RECIPIENTS.branchManagers.S01];
-    }
-
-    if (normalized.includes("both")) {
-        return [RECIPIENTS.branchManagers.S01, RECIPIENTS.branchManagers.S02];
-    }
-
-    return [RECIPIENTS.branchManagers.S01];
+async function fetchDatabaseRecipients(category: string): Promise<string[]> {
+    console.warn("Frontend database recipient lookup is disabled; Laravel owns notification recipients.", { category });
+    return [];
 }
 
-function getCoreStakeholderRecipients(quotation: QuotationPayload): string[] {
+async function getCategoryRecipientList(category: string, extras: Array<string | null | undefined> = []): Promise<string[]> {
+    const dbRecipients = await fetchDatabaseRecipients(category);
+    const recipients = toUniqueEmails([...dbRecipients, ...extras]);
+    console.info("Form notification recipients resolved", {
+        category,
+        recipientCount: recipients.length,
+        recipients,
+    });
+    return recipients;
+}
+
+async function getCoreStakeholderRecipients(quotation: QuotationPayload): Promise<string[]> {
+    const quoteRecipients = await getCategoryRecipientList("quote");
+    const contractRecipients = await getCategoryRecipientList("contract");
+    const branchHint = (quotation.branch || "").toLowerCase();
+    const scopedContractRecipients = branchHint.includes("insular")
+        ? await getCategoryRecipientList("contract", [RECIPIENTS.branchManagers.S02])
+        : branchHint.includes("tower") || branchHint.includes("6789") || branchHint.includes("both")
+            ? await getCategoryRecipientList("contract", [RECIPIENTS.branchManagers.S01, RECIPIENTS.branchManagers.S02])
+            : contractRecipients;
+
     return toUniqueEmails([
+        ...quoteRecipients,
+        ...scopedContractRecipients,
         RECIPIENTS.chairman,
+        RECIPIENTS.president,
         RECIPIENTS.generalManager,
-        ...getBranchManagerRecipients(quotation.branch),
         RECIPIENTS.salesOfficer,
         RECIPIENTS.digitalMarketing,
         RECIPIENTS.accounting,
@@ -526,25 +563,6 @@ function formatPhp(value: number | null | undefined): string {
     return `PHP ${numeric.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-/** Canonical service -> title-agreement suffix mapping. */
-const SERVICE_AGREEMENT_LABELS: Record<string, string> = {
-    "virtual office": "Virtual Office Service Agreement",
-    "meeting room": "Meeting Room Service Agreement",
-    "private office": "Private Office Service Agreement",
-    "coworking space": "Coworking Space Service Agreement",
-};
-
-export function getContractTitle(serviceName: string | null | undefined): string {
-    const normalized = (serviceName || "").trim().toLowerCase();
-
-    if (SERVICE_AGREEMENT_LABELS[normalized]) {
-        return SERVICE_AGREEMENT_LABELS[normalized];
-    }
-
-    const cleanName = (serviceName || "Service").trim();
-    return `${cleanName} Service Agreement`;
-}
-
 /** Service-specific terms & conditions copy, keyed the same way as the title map. */
 function getServiceSpecificTerms(serviceName: string | null | undefined): string {
     const normalized = (serviceName || "").trim().toLowerCase();
@@ -589,7 +607,7 @@ export function normalizeContractData(quotation: QuotationPayload): ContractData
 
     return {
         service,
-        contractTitle: getContractTitle(service),
+        contractTitle: `${service} Service Agreement`,
         clientName: d.full_name || "Client",
         companyName,
         signatoryName,
@@ -629,6 +647,22 @@ function buildContractTemplateVariables(quotation: QuotationPayload): Record<str
             : null
     );
 
+    const voContractFee = contractFeeAmount != null ? formatPhp(contractFeeAmount) : "—";
+    const voServiceName = (quotation.service_name || "Virtual Office").trim() || "Virtual Office";
+    const voBuilding = quotation.branch || "Tower 6789";
+    const voPremisesAddress = d.id_address || "23F Tower 6789, 6789 Ayala Avenue, Makati City";
+    const voUserName = d.full_name || d.id_name || contract.clientName || "TO BE FILLED OUT";
+    const voUserAddress = d.id_address || "TO BE FILLED OUT";
+    const voUserRep = d.signatory_details || d.id_name || contract.signatoryName || "TO BE FILLED OUT";
+    const voUserEmail = d.email || "TO BE FILLED OUT";
+    const voUserContact = d.phone || "TO BE FILLED OUT";
+    const voSignerName = d.signatory_details || d.id_name || contract.signatoryName || "TO BE FILLED OUT";
+    const voSignerAddress = d.id_address || "TO BE FILLED OUT";
+    const voSignerCompany = d.company_name || "TO BE FILLED OUT";
+    const voNotaryUserName = d.signatory_details || d.full_name || "TO BE FILLED OUT";
+    const voNotaryUserId = d.id_number || "TO BE FILLED OUT";
+    const voNotaryUserIssue = d.id_address || "TO BE FILLED OUT";
+
     return {
         date_issued: contract.dateIssued,
         client_name: contract.clientName,
@@ -656,24 +690,30 @@ function buildContractTemplateVariables(quotation: QuotationPayload): Record<str
         subtotal: subtotalAmount != null ? formatPhp(subtotalAmount) : "—",
         vat_percentage: vatPercent != null ? `${vatPercent}` : "—",
         vat_amount: vatAmount != null ? formatPhp(vatAmount) : "—",
-        contract_admin_fee: contractFeeAmount != null ? formatPhp(contractFeeAmount) : "—",
+        contract_admin_fee: voContractFee,
         discount: derivedDiscount != null ? formatPhp(derivedDiscount) : "—",
         total: grandTotalAmount != null ? formatPhp(grandTotalAmount) : "—",
-        user_name: d.full_name || "TO BE FILLED OUT",
-        user_address: d.id_address || "TO BE FILLED OUT",
-        user_rep: d.signatory_details || d.id_name || "TO BE FILLED OUT",
-        building: quotation.branch || "Tower 6789",
-        premises_address: d.id_address || "23F Tower 6789, 6789 Ayala Avenue, Makati City",
-        commencement_date: "TO BE FILLED OUT",
-        expiration_date: d.months ? `${monthsCount} month(s)` : "TO BE FILLED OUT",
-        fixed_fee: monthlyFeeAmount != null ? formatPhp(monthlyFeeAmount) : "TO BE FILLED OUT",
-        contract_fee: contractFeeAmount != null ? formatPhp(contractFeeAmount) : "TO BE FILLED OUT",
-        user_signer_name: d.signatory_details || d.id_name || d.full_name || "TO BE FILLED OUT",
-        user_signer_address: d.id_address || "TO BE FILLED OUT",
-        user_signer_company: d.company_name || "TO BE FILLED OUT",
-        notary_user_name: d.signatory_details || d.full_name || "TO BE FILLED OUT",
-        notary_user_id: d.id_number || "TO BE FILLED OUT",
-        notary_user_issue: d.id_address || "TO BE FILLED OUT",
+        user_name: voUserName,
+        user_address: voUserAddress,
+        user_rep: voUserRep,
+        user_email: voUserEmail,
+        user_contact: voUserContact,
+        building: voBuilding,
+        premises_address: voPremisesAddress,
+        commencement_date: contract.startDate || "TO BE FILLED OUT",
+        expiration_date: quotation.lease_term || "TO BE FILLED OUT",
+        fixed_fee: voContractFee,
+        contract_fee: voContractFee,
+        user_signer_name: voSignerName,
+        user_signer_address: voSignerAddress,
+        user_signer_company: voSignerCompany,
+        notary_user_name: voNotaryUserName,
+        notary_user_id: voNotaryUserId,
+        notary_user_issue: voNotaryUserIssue,
+        notary_day: "___",
+        notary_month: "________",
+        notary_year: new Date().getFullYear().toString(),
+        service_name_title: voServiceName,
     };
 }
 
@@ -681,115 +721,31 @@ function resolveContractTemplate(template: string, variables: Record<string, str
     return template.replace(/{{\s*([a-z0-9_]+)\s*}}/gi, (_, key: string) => variables[key] ?? "—");
 }
 
-function buildVirtualOfficeContractTemplate(): string {
-    return [
-        "",
-        "1. Parties\n",
-        "This Virtual Office Service Agreement (\"Agreement\"), is made by and between:",
-        "",
-        "PROVIDER",
-        "Name: HERO SERVICED OFFICE, INC.",
-        "Address: 23F Tower 6789, 6789 Ayala Avenue, 1209 Makati City, Metro Manila, Philippines",
-        "",
-        "USER",
-        "Name: {{user_name}}",
-        "Address: {{user_address}}",
-        "Representative: {{user_rep}}",
-        "Email Address: {{email}}",
-        "Contact No.: {{phone}}",
-        "",
-        "Summary of Terms and Conditions (Agreement Overview)",
-        "Building: {{building}}",
-        "Premises / Rented Address: {{premises_address}}",
-        "Commencement Date: {{commencement_date}}",
-        "Expiration Date: {{expiration_date}}",
-        "Fixed Fee: {{fixed_fee}}",
-        "Contract Fee: {{contract_fee}}",
-        "",
-        "Art. 1 Use of the Rented Address",
-        "The Provider shall allow the USER to use the Rented Address indicated in the Agreement Overview.",
-        "The USER shall use the Rented Address solely for registration purposes and business correspondences.",
-        "The USER shall hold the Provider harmless from any damage, liability, or responsibility arising from use of the Rented Address.",
-        "",
-        "Art. 2 Fixed Fee and Other Fees",
-        "The USER shall pay to the Provider the Fixed Fee, plus VAT thereon, as consideration for the use of the Rented Address.",
-        "If the USER requests optional services, the USER shall also pay applicable service fees.",
-        "",
-        "Art. 3 Term of Agreement",
-        "This Agreement shall commence on the Commencement Date and continue until the Expiration Date unless earlier terminated or renewed by mutual agreement of the Parties in writing.",
-        "",
-        "Art. 4 Inclusion",
-        "The Fixed Fee covers the use of the Rented Address and such services as are included in the Agreement Overview and the applicable service package of the Provider.",
-        "",
-        "Art. 5 Payment Instruction",
-        "The USER shall pay all amounts due to the Provider on the date or dates indicated in the Agreement Overview, and in accordance with the payment instructions provided by the Provider.",
-        "",
-        "Art. 6 Representations and Warranties",
-        "The USER represents that the information provided in this Agreement is true and correct, and that the USER shall abide by the laws and regulations applicable to the use of the Rented Address.",
-        "",
-        "Art. 7 Responsibility and Liability",
-        "The USER shall be solely responsible for any acts, omissions, liabilities, and consequences arising from the USER's use of the Rented Address and/or from the USER's business correspondences.",
-        "",
-        "Art. 8 Confidentiality",
-        "The Parties shall keep confidential any information exchanged in connection with the subject matter of this Agreement and shall use such information only for the purpose of the Agreement.",
-        "",
-        "Art. 9 Notices",
-        "All notices under this Agreement shall be in writing and shall be deemed valid when delivered by hand, registered mail, or electronic mail to the addresses or email addresses stated in the Agreement.",
-        "",
-        "Art. 10 Governing Law",
-        "This Agreement shall be governed by and construed in accordance with the laws of the Republic of the Philippines, without regard to conflict-of-laws principles.",
-        "",
-        "Art. 11 Entire Agreement",
-        "This Agreement constitutes the entire understanding between the Parties and supersedes all prior negotiations, understandings, and arrangements relating to the subject matter hereof.",
-        "",
-        "Art. 12 Amendment",
-        "Any amendment or modification to this Agreement must be in writing and signed by both Parties to be effective.",
-        "",
-        "Art. 13 Contract Fee",
-        "The USER shall pay the Contract Fee provided in the Agreement Overview, including VAT thereon, to the Provider on the date of execution of this Agreement as an administration fee.",
-        "",
-        "IN WITNESS WHEREOF, the Parties have caused this Agreement to be executed by their respective duly authorized representatives on the date first written above.",
-        "",
-        "The Provider:",
-        "Raymund A. Taguibao",
-        "General Manager",
-        "HERO SERVICED OFFICE, INC.",
-        "",
-        "The USER:",
-        "Name: {{user_signer_name}}",
-        "Address: {{user_signer_address}}",
-        "Company: {{user_signer_company}}",
-        "",
-        "Acknowledgment",
-        "BEFORE ME, a notary public for and in Makati City, Metro Manila, on this date, personally appeared the following:",
-        "Name: {{notary_user_name}}",
-        "Gov't Issued I.D./Passport No.: {{notary_user_id}}",
-        "Date/Place of Issue: {{notary_user_issue}}",
-        "",
-    ].join("\n");
-}
-
 function buildOtherServiceContractTemplate(): string {
     return [
+        "Hero Serviced Office",
+        "{{contract_title}}",
         "",
-        "1. Parties\n",
+        "Date Issued: {{date_issued}}",
+        "",
+        "1. Parties",
         "This {{contract_title_body}} (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\"), effective as of the date of confirmed payment below.",
         "",
-        "2. Service Details\n",
-        "Service: {{service_name}}\n",
-        "Branch: {{branch}}\n",
-        "Package/Plan: {{package}}\n",
-        "Duration: {{duration}}\n",
-        "Start Date: {{start_date}}\n",
+        "2. Service Details",
+        "Service: {{service_name}}",
+        "Branch: {{branch}}",
+        "Package/Plan: {{package}}",
+        "Duration: {{duration}}",
+        "Start Date: {{start_date}}",
         "",
-        "3. Client Information\n",
-        "Client Name: {{client_name}}\n",
-        "Company: {{company_name}}\n",
-        "Signatory: {{signatory_name}}\n",
-        "Email: {{email}}\n",
-        "Phone: {{phone}}\n",
+        "3. Client Information",
+        "Client Name: {{client_name}}",
+        "Company: {{company_name}}",
+        "Signatory: {{signatory_name}}",
+        "Email: {{email}}",
+        "Phone: {{phone}}",
         "",
-        "4. Terms & Conditions\n",
+        "4. Terms & Conditions",
         "{{terms}}",
         "",
     ].join("\n");
@@ -805,14 +761,6 @@ function withContractTitleBodyVariable(
     };
 }
 
-function buildVirtualOfficeContractContent(quotation: QuotationPayload): string {
-    const variables = withContractTitleBodyVariable(
-        buildVirtualOfficeContractTemplate(),
-        buildContractTemplateVariables(quotation)
-    );
-    return resolveContractTemplate(buildVirtualOfficeContractTemplate(), variables);
-}
-
 function buildOtherServiceContractContent(quotation: QuotationPayload): string {
     const variables = withContractTitleBodyVariable(
         buildOtherServiceContractTemplate(),
@@ -822,9 +770,7 @@ function buildOtherServiceContractContent(quotation: QuotationPayload): string {
 }
 
 function buildServiceContractContentFromAdminTemplate(quotation: QuotationPayload): string {
-    return isVirtualOfficePaymongo(quotation)
-        ? buildVirtualOfficeContractContent(quotation)
-        : buildOtherServiceContractContent(quotation);
+    return buildOtherServiceContractContent(quotation);
 }
 
 function resolveEditableContractContent(
@@ -845,9 +791,8 @@ async function renderContractPdfFromContent(args: {
     title: string;
     content: string;
     signatoryLabel: string;
-    includeGenericSignature?: boolean;
 }): Promise<Buffer> {
-    const { title, content, signatoryLabel, includeGenericSignature = true } = args;
+    const { title, content, signatoryLabel } = args;
 
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -915,9 +860,9 @@ async function renderContractPdfFromContent(args: {
         const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
         if (lines.length === 0) continue;
 
-        const headingMatch = lines[0].match(/^(?:(\d+\.)|(Art\.\s*\d+))\s*[A-Za-z &]+$/);
+        const headingMatch = lines[0].match(/^(\d+\.\s*[A-Za-z &]+)$/);
         if (headingMatch) {
-            drawSectionHeading(lines[0]);
+            drawSectionHeading(headingMatch[1]);
             for (const fieldLine of lines.slice(1)) {
                 const fieldMatch = fieldLine.match(/^([A-Za-z /&]+):\s*(.*)$/);
                 if (fieldMatch) {
@@ -934,25 +879,16 @@ async function renderContractPdfFromContent(args: {
         cursorY -= 6;
     }
 
-    if (includeGenericSignature) {
-        cursorY -= 20;
-        ensureSpace(140);
-        drawLine("AGREED AND ACCEPTED", { size: 11, bold: true, color: COLOR_PRIMARY, gap: 24 });
-        drawLine("Hero PH Inc.", { bold: true, gap: 40 });
-        drawLine("_______________________________", { gap: 14 });
-        drawLine("Authorized Representative / Date", { size: 9, color: COLOR_MUTED, gap: 30 });
+    cursorY -= 20;
+    ensureSpace(140);
+    drawLine("AGREED AND ACCEPTED", { size: 11, bold: true, color: COLOR_PRIMARY, gap: 24 });
+    drawLine("Hero PH Inc.", { bold: true, gap: 40 });
+    drawLine("_______________________________", { gap: 14 });
+    drawLine("Authorized Representative / Date", { size: 9, color: COLOR_MUTED, gap: 30 });
 
-        drawLine(`${signatoryLabel}`, { bold: true, gap: 40 });
-        drawLine("_______________________________", { gap: 14 });
-        drawLine("Signature / Date", { size: 9, color: COLOR_MUTED });
-    }
-
-    cursorY -= 25;
-    ensureSpace(30);
-    drawLine(
-        "23F TOWER6789, Ayala Avenue 6789, Makati City 1209, Philippines · salesofficer@heroph.net",
-        { size: 8, color: COLOR_MUTED, align: "center" }
-    );
+    drawLine(`${signatoryLabel}`, { bold: true, gap: 40 });
+    drawLine("_______________________________", { gap: 14 });
+    drawLine("Signature / Date", { size: 9, color: COLOR_MUTED });
 
     const bytes = await pdfDoc.save();
     return Buffer.from(bytes);
@@ -969,16 +905,76 @@ async function generateNonVirtualOfficeContractPdf(quotation: QuotationPayload):
     });
 }
 
-async function generateVirtualOfficeContractPdf(quotation: QuotationPayload): Promise<Buffer> {
-    const content = resolveEditableContractContent(quotation, buildVirtualOfficeContractContent);
-    const contract = normalizeContractData(quotation);
+async function htmlToPdfBuffer(html: string): Promise<Buffer> {
+    try {
+        const puppeteer = await import("puppeteer");
 
-    return renderContractPdfFromContent({
-        title: contract.contractTitle,
-        content,
-        signatoryLabel: contract.signatoryName,
-        includeGenericSignature: false,
-    });
+        const browser = await puppeteer.default.launch({
+            headless: true,
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+            ],
+        });
+
+        try {
+            const page = await browser.newPage();
+
+            await page.setContent(html, {
+                waitUntil: "load",
+            });
+
+            const pdf = await page.pdf({
+                format: "A4",
+                printBackground: true,
+                margin: {
+                    top: "20mm",
+                    right: "15mm",
+                    bottom: "20mm",
+                    left: "15mm",
+                },
+            });
+
+            return Buffer.from(pdf);
+        } finally {
+            await browser.close();
+        }
+    } catch (error) {
+        console.error("Puppeteer PDF generation failed:", error);
+
+        throw new Error(
+            "PDF generation requires Puppeteer. Install it with: npm install puppeteer"
+        );
+    }
+}
+
+async function generateVirtualOfficeContractPdf(
+    quotation: QuotationPayload
+): Promise<Buffer> {
+    try {
+        // Try to render and convert the nicely formatted VO contract HTML to PDF
+        const contractHtml = await renderVirtualOfficeContractHtml(quotation);
+
+        return await htmlToPdfBuffer(contractHtml);
+    } catch (htmlError) {
+        console.warn(
+            "Failed to generate VO contract from HTML, falling back to text-based PDF:",
+            htmlError
+        );
+
+        const content = resolveEditableContractContent(
+            quotation,
+            buildServiceContractContentFromAdminTemplate
+        );
+
+        const contract = normalizeContractData(quotation);
+
+        return renderContractPdfFromContent({
+            title: contract.contractTitle,
+            content,
+            signatoryLabel: contract.signatoryName,
+        });
+    }
 }
 
 async function generateContractPdfByService(quotation: QuotationPayload): Promise<Buffer> {
@@ -1070,6 +1066,7 @@ export async function sendQuotationContractEmail(
     const d = quotation.detail;
     const firstName = d.full_name.split(" ")[0] || d.full_name;
     const contract = normalizeContractData(quotation);
+    const contractRecipients = await getCategoryRecipientList("contract");
     const attachments = [...getDocumentCopyAttachments(options)];
     const contractBuffer = await generateContractPdfByService(quotation);
 
@@ -1089,23 +1086,43 @@ export async function sendQuotationContractEmail(
         throw new Error("Contract PDF attachment missing. Contract email not sent.");
     }
 
+    const contractRecipientList = contractRecipients.length > 0
+        ? contractRecipients.map((email) => `<li>${email}</li>`).join("")
+        : "<li>Contract recipient not configured yet.</li>";
+
+    // For Virtual Office contracts, render the contract document HTML; otherwise use instructions
+    let contractContent = "";
+    if (isVirtualOfficePaymongo(quotation)) {
+        try {
+            contractContent = await renderVirtualOfficeContractHtml(quotation);
+        } catch (error) {
+            console.error("Failed to render VO contract HTML, falling back to instructions", error);
+            contractContent = `
+                <p style="font-size:15px;line-height:1.8;color:#475569;">
+                    Your ${quotation.service_name.toLowerCase()} contract is ready to review. Please see the attached contract document.
+                </p>`;
+        }
+    }
+
     const body = `
-        <p style="font-size:15px;line-height:1.8;color:#475569;">Hi ${firstName},</p>
+        <p style="font-size:15px;line-height:1.8;color:#475569;">Good Day Mr/Ms. ${firstName},</p>
         <p style="font-size:15px;line-height:1.8;color:#475569;">
-            Your ${quotation.service_name.toLowerCase()} contract is ready to review. We have attached the latest contract document for your reference.
+            Your ${quotation.service_name.toLowerCase()} contract is ready to review. We have attached the contract document for your review.
         </p>
-        <p style="font-size:15px;line-height:1.8;color:#475569;">
-            Please review the PDF carefully and reply to this email if you need any updates before we proceed.
-        </p>
-        <table style="width:100%;border-collapse:collapse;margin-top:16px;">
-            ${buildQuotationDetailRows(quotation, {
-        hideSeatsForVirtualOffice: true,
-        formattedDate: true,
-    })}
-        </table>`;
+        <div style="border-top:1px solid #e5e7eb;padding-top:24px;">
+            <ol style="font-size:15px;line-height:1.8;color:#475569;">
+                <li>Sign every page of the contract, except the last page, as this page is reserved for notarization.</li>
+                <li>Once the contract has been signed, please send the completed copy to the appropriate email address:</li>
+                <ul style="font-size:15px;line-height:1.8;color:#475569;">
+                    <li>23F Tower 6789: sales@heroph.net </li>
+                    <li>Insular Life Building: c_francisco@heroph.net</li>
+                </ul>
+                <li>Our representatives will acknowledge receipt once the signed contract has been received.</li>
+            </ol>
+        </div>`;
 
     const mailOptions = {
-        from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
+        from: process.env.SMTP_USER ? `"Hero Serviced Office" <${process.env.SMTP_USER}>` : undefined,
         to: d.email,
         replyTo: d.email,
         subject: `Your ${quotation.service_name} contract`,
@@ -1126,12 +1143,7 @@ export async function sendQuotationPaymentVerificationEmail(
     }
 
     const d = quotation.detail;
-    const recipients = toUniqueEmails([
-        RECIPIENTS.accounting,
-        RECIPIENTS.salesOfficer,
-        RECIPIENTS.digitalMarketing,
-        ...parseRecipientList(process.env.ACCOUNTING_NOTIFICATION_EMAILS),
-    ]);
+    const recipients = await getCategoryRecipientList("payment");
     const attachments = [...getDocumentCopyAttachments(options)];
     const quoteId = (quotation as QuotationPayload & { id?: string | number }).id;
     const verifyPaymentUrl = options.verifyPaymentUrl || options.contractSendUrl || (
@@ -1155,12 +1167,12 @@ export async function sendQuotationPaymentVerificationEmail(
             </a>
         </p>
         <p style="font-size:12px;color:#94a3b8;text-align:center;line-height:1.6;">
-            This will notify the admin department that payment has been verified and is correct. The contract will still need to be sent manually by an admin.
+            This will notify the admin department that payment has been verified and is correct.
         </p>` : ""}
         <table style="width:100%;border-collapse:collapse;margin-top:16px;">
             ${quotationRow("Client", d.full_name)}
             ${quotationRow("Email", d.email)}
-            ${quotationRow("Phone", d.phone)}
+            ${quotationRow("Phone", formatClickablePhone(d.phone))}
             ${quotationRow("Branch", quotation.branch)}
             ${quotationRow("Payment Method", d.payment_method)}
             ${quotationRow("Reference No", d.transaction_id)}
@@ -1168,7 +1180,7 @@ export async function sendQuotationPaymentVerificationEmail(
         </table>`;
 
     const mailOptions = {
-        from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
+        from: getSystemMailSender(),
         to: recipients,
         replyTo: d.email,
         subject: `Payment verification for ${quotation.service_name} quotation`,
@@ -1189,11 +1201,27 @@ export async function sendQuotationPaymentVerifiedAdminEmail(
     }
 
     const d = quotation.detail;
-    const recipients = toUniqueEmails([
-        ...getCoreStakeholderRecipients(quotation),
-        ...parseRecipientList(process.env.ADMIN_NOTIFICATION_EMAILS),
-    ]);
+    const recipients = await getCategoryRecipientList("payment");
+    if (recipients.length === 0) {
+        throw new Error("No active recipients configured for payment notifications.");
+    }
     const attachments = [...getDocumentCopyAttachments(options)];
+    const readyForContract = canGenerateContract(quotation, options);
+
+    // Attach Virtual Office contract PDF if payment conditions are met
+    if (readyForContract && isVirtualOfficePaymongo(quotation)) {
+        try {
+            const contractBuffer = await generateVirtualOfficeContractPdf(quotation);
+            attachments.push({
+                filename: "Hero-Virtual-Office-Contract.pdf",
+                content: contractBuffer,
+                contentType: "application/pdf",
+            });
+        } catch (error) {
+            console.error("Failed to generate VO contract for payment verified email:", error);
+        }
+    }
+
     const receiptRow = quotationRow("Receipt File", d.receipt || d.receipt_url);
     const priceBreakdownRows = buildQuotationPriceBreakdownRows(quotation);
     const quoteId = (quotation as QuotationPayload & { id?: string | number }).id;
@@ -1208,21 +1236,15 @@ export async function sendQuotationPaymentVerifiedAdminEmail(
         <p style="font-size:15px;line-height:1.8;color:#475569;">
             Payment for <strong>${d.full_name}</strong> for the <strong>${quotation.service_name}</strong> quotation has been verified and confirmed to be correct and true.
         </p>
-        <p style="font-size:14px;line-height:1.7;color:#64748b;">
-            The uploaded payment receipt is included below and attached to this email for your review.
-        </p>
         <p style="text-align:center;margin:24px 0;">
             <a href="${dashboardUrl}" style="display:inline-block;padding:14px 24px;background:#0D47A1;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:700;">
                 Go to Quotation Dashboard
             </a>
         </p>
-        <p style="font-size:14px;line-height:1.7;color:#64748b;">
-            The contract is still required to be sent manually by an admin to the client. Use the dashboard link above to open the quotation queue and send the contract.
-        </p>
         <table style="width:100%;border-collapse:collapse;margin-top:16px;">
             ${quotationRow("Client", d.full_name)}
             ${quotationRow("Email", d.email)}
-            ${quotationRow("Phone", d.phone)}
+            ${quotationRow("Phone", formatClickablePhone(d.phone))}
             ${quotationRow("Branch", quotation.branch)}
             ${quotationRow("Payment Method", d.payment_method)}
             ${quotationRow("Reference No", d.transaction_id)}
@@ -1231,12 +1253,12 @@ export async function sendQuotationPaymentVerifiedAdminEmail(
         </table>`;
 
     const mailOptions = {
-        from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
+        from: getSystemMailSender(),
         to: recipients,
         replyTo: d.email,
         subject: `Payment verified for ${quotation.service_name} quotation`,
         html: quotationWrapper(body),
-        text: `Payment for ${d.full_name} (${quotation.service_name}) has been verified and marked as paid. The contract must still be sent manually by an admin.`,
+        text: `Payment for ${d.full_name} (${quotation.service_name}) has been verified and marked as paid. Contract attached.`,
         attachments,
     };
 
@@ -1268,36 +1290,28 @@ export async function sendQuotationAdminEmail(
         }
     }
 
-    const configuredAdmins = parseRecipientList(process.env.ADMIN_NOTIFICATION_EMAILS);
-    const stakeholders = getCoreStakeholderRecipients(quotation);
-    const allAdminRecipients = configuredAdmins.length > 0
-        ? toUniqueEmails([...configuredAdmins, ...stakeholders])
-        : toUniqueEmails(stakeholders);
-    const chairmanRecipient = RECIPIENTS.chairman.trim();
-    const englishRecipients = chairmanRecipient
-        ? allAdminRecipients.filter((email) => email.toLowerCase() !== chairmanRecipient.toLowerCase())
-        : allAdminRecipients;
+    const englishRecipients = await getCategoryRecipientList("quote");
+    const japaneseRecipients: string[] = [];
+
+    if (englishRecipients.length === 0 && japaneseRecipients.length === 0) {
+        throw new Error("No active recipients configured for quotation notifications.");
+    }
 
     const englishBody = `
         <p style="font-size:15px;line-height:1.8;color:#475569;">
             A new ${quotation.service_name.toLowerCase()} quotation request has come in.
         </p>
-        <p style="font-size:14px;line-height:1.7;color:#64748b;">
-            This notification is being routed to the relevant team members for follow-up, including the branch manager, general manager, sales officer, and digital marketing.
-        </p>
         <table style="width:100%;border-collapse:collapse;margin-top:8px;">
             ${quotationRow("Name", d.full_name)}
             ${quotationRow("Company", d.company_name)}
             ${quotationRow("Email", d.email)}
-            ${quotationRow("Phone", d.phone)}
+            ${quotationRow("Phone", formatClickablePhone(d.phone))}
             ${quotationRow("Branch", quotation.branch)}
             ${buildQuotationDetailRows(quotation, {
         formattedDate: true,
     })}
             ${quotationRow("Reference No", d.transaction_id)}
             ${quotationRow("Receipt File", d.receipt)}
-            ${quotationRow("Government ID File", d.government_id_file)}
-            ${quotationRow("Signatory ID File", d.signatory_id_file)}
         </table>`;
 
     const japaneseBody = `
@@ -1311,7 +1325,7 @@ export async function sendQuotationAdminEmail(
             ${quotationRow("お客様名", d.full_name)}
             ${quotationRow("会社名", d.company_name)}
             ${quotationRow("メール", d.email)}
-            ${quotationRow("電話", d.phone)}
+            ${quotationRow("電話", formatClickablePhone(d.phone))}
             ${quotationRow("支店", quotation.branch)}
             ${buildQuotationDetailRows(quotation, {
         formattedDate: true,
@@ -1322,7 +1336,7 @@ export async function sendQuotationAdminEmail(
 
     if (englishRecipients.length > 0) {
         tasks.push(sendQuotationMailWithErrorHandling({
-            from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
+            from: getSystemMailSender(),
             to: englishRecipients,
             replyTo: d.email,
             subject: `New ${quotation.service_name} request from ${d.full_name}`,
@@ -1332,10 +1346,10 @@ export async function sendQuotationAdminEmail(
         }));
     }
 
-    if (chairmanRecipient) {
+    if (japaneseRecipients.length > 0) {
         tasks.push(sendQuotationMailWithErrorHandling({
-            from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
-            to: chairmanRecipient,
+            from: getSystemMailSender(),
+            to: japaneseRecipients,
             replyTo: d.email,
             subject: `【新規見積】${quotation.service_name} の依頼が届きました`,
             html: quotationWrapper(japaneseBody),
@@ -1407,6 +1421,7 @@ async function sendQuotationMailWithErrorHandling(
         console.log("Sending email...");
         console.log("To:", mailOptions.to);
         console.log("Subject:", mailOptions.subject);
+        console.log("From:", mailOptions.from);
         console.log(
             "Attachments:",
             mailOptions.attachments?.map((a) => ({
