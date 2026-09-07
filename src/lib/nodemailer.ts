@@ -437,6 +437,7 @@ const RECIPIENTS = {
     chairman: process.env.CHAIRMAN_EMAIL || "hero.chairman@gmail.com",
     president: process.env.PRESIDENT_EMAIL || "hero.president@gmail.com",
     generalManager: process.env.GENERAL_MANAGER_EMAIL || "rataguibao@rbtconsulting.com.ph",
+    adminOfficer: process.env.ADMIN_OFFICER_EMAIL || "hero.adminofficer@gmail.com",
     salesOfficer: process.env.SALES_OFFICER_EMAIL || "salesofficer@heroph.net",
     digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "digitalsalesmarketing@heroph.net",
     accounting: process.env.ACCOUNTING_EMAIL || "accounting@heroph.net",
@@ -503,7 +504,10 @@ function getPaymentVerifiedRecipients(branch: string | null | undefined): string
         ? RECIPIENTS.branchManagers.S02
         : RECIPIENTS.branchManagers.S01;
 
-    return toUniqueEmails([branchManager]);
+    return toUniqueEmails([
+        branchManager,
+        RECIPIENTS.adminOfficer,
+    ]);
 }
 
 function getDocumentCopyAttachments(options: QuotationNotificationOptions) {
