@@ -403,6 +403,14 @@ export default function AnnouncementPopup() {
                   <div className="mt-4">
 
                     <div className="flex flex-wrap gap-2">
+                      <Link
+                        href={`/announcements?id=${announcement.id}`}
+                        onClick={handleClose}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-[#D9E2F0] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#1B3A8C] shadow-sm transition hover:-translate-y-0.5 hover:border-[#1B3A8C] hover:bg-[#EEF2FB] sm:gap-2 sm:px-4 sm:py-2 sm:text-xs"
+                      >
+                        View Announcement
+                      </Link>
+
                       {socialPlatforms.map((entry) =>
                         entry.link ? (
                           <Link
