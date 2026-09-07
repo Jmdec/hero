@@ -497,6 +497,15 @@ function getQuotationRecipients(branch: string | null | undefined): string[] {
     ]);
 }
 
+function getPaymentVerifiedRecipients(branch: string | null | undefined): string[] {
+    const normalizedBranch = String(branch || "").trim().toLowerCase();
+    const branchManager = normalizedBranch.includes("insular") || normalizedBranch === "s02"
+        ? RECIPIENTS.branchManagers.S02
+        : RECIPIENTS.branchManagers.S01;
+
+    return toUniqueEmails([branchManager]);
+}
+
 function getDocumentCopyAttachments(options: QuotationNotificationOptions) {
     return [
         options.paymentProofCopy,
@@ -1193,7 +1202,7 @@ export async function sendQuotationPaymentVerifiedAdminEmail(
     }
 
     const d = quotation.detail;
-    const recipients = await getCategoryRecipientList("payment_verified");
+    const recipients = getPaymentVerifiedRecipients(quotation.branch);
     if (recipients.length === 0) {
         throw new Error("No active recipients configured for payment notifications.");
     }
@@ -1237,7 +1246,8 @@ export async function sendQuotationPaymentVerifiedAdminEmail(
             ${quotationRow("Reference No", d.transaction_id)}
             ${receiptRow}
             ${priceBreakdownRows}
-        </table>`;
+        </table>
+        <span style="color:#475569;">${dashboardUrl}</span>`;
 
     const mailOptions = {
         from: getSystemMailSender(),
