@@ -1022,11 +1022,13 @@ const Chatbot = () => {
 
     const requestTranscriptEmail = useCallback(
         async (conversationId: number | undefined) => {
-            if (!conversationId || closeEmailSentRef.current) return;
+            if (!conversationId || closeEmailSentRef.current) return false;
             try {
                 await chatApi.emailChatHistory(conversationId);
                 closeEmailSentRef.current = true;
+                return true;
             } catch {
+                return false;
             }
         },
         [],
@@ -1182,9 +1184,9 @@ const Chatbot = () => {
                     conversation?.remoteConversationId ?? conversation?.id ??
                     activeConversation?.remoteConversationId ?? activeConversation?.id;
                 
-                if (targetId) {
-                    void requestTranscriptEmail(targetId);
-                }
+                const transcriptSent = targetId
+                    ? await requestTranscriptEmail(targetId)
+                    : false;
 
                 await quickReplyDelay();
                 setIsTyping(false);
@@ -1195,12 +1197,20 @@ const Chatbot = () => {
                     {
                         id: makeId(),
                         type: "bot",
-                        text: "I've sent your chat history to your email address. You should receive it shortly.",
+                        text: transcriptSent
+                            ? "I've sent your chat history to your email address. You should receive it shortly."
+                            : "I couldn't send your chat history right now. Please try again or contact our team directly.",
                         time: formatTime(),
                         source: "HERO Assistant",
                     },
                 ]);
-                void persistMessage(activeConversation, "assistant", "I've sent your chat history to your email address. You should receive it shortly.");
+                void persistMessage(
+                    activeConversation,
+                    "assistant",
+                    transcriptSent
+                        ? "I've sent your chat history to your email address. You should receive it shortly."
+                        : "I couldn't send your chat history right now. Please try again or contact our team directly.",
+                );
             } finally {
                 isProcessingLocalMessageRef.current = false;
             }

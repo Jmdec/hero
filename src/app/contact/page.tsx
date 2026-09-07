@@ -208,15 +208,12 @@ function DynamicFields({
       return (
         <div className="space-y-6">
           {field(
-            "planType",
-            "Plan Type",
-            select("planType", [
-              { value: "address-only", label: "Address Only" },
-              { value: "address-reception", label: "Address + Reception" },
-              {
-                value: "address-reception-phone",
-                label: "Address + Reception + Phone Answering",
-              },
+            "package",
+            "Package",
+            select("package", [
+              { value: "basic", label: "Basic" },
+              { value: "standard", label: "Standard" },
+              { value: "premium", label: "Premium" },
             ]),
           )}
           {field(
@@ -604,60 +601,59 @@ function MultiStepForm() {
                       placeholder="John Doe"
                     />
                   </div>
+
                   <div>
-                    <Label htmlFor="email" required>
-                      Email
+                    <Label htmlFor="phone" required>
+                      Phone Number
                     </Label>
                     <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
                       onChange={handleChange}
+                      onBlur={handlePhoneBlur}
                       required
-                      className={inputCls}
-                      placeholder="john@company.com"
+                      aria-invalid={Boolean(phoneError)}
+                      aria-describedby={phoneError ? "phone-error" : undefined}
+                      className={`${inputCls} ${phoneError ? "border-red-400 focus:ring-red-400" : ""}`}
+                      placeholder="+63 XXX XXX XXXX"
                     />
+                    {phoneError && (
+                      <p id="phone-error" className="mt-1.5 text-xs text-red-600">
+                        {phoneError}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="phone" required>
-                    Phone Number
+                  <Label htmlFor="email" required>
+                    Email
                   </Label>
                   <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
                     onChange={handleChange}
-                    onBlur={handlePhoneBlur}
                     required
-                    aria-invalid={Boolean(phoneError)}
-                    aria-describedby={phoneError ? "phone-error" : undefined}
-                    className={`${inputCls} ${phoneError ? "border-red-400 focus:ring-red-400" : ""}`}
-                    placeholder="+63 XXX XXX XXXX"
+                    className={inputCls}
+                    placeholder="john@company.com"
                   />
-                  {phoneError && (
-                    <p id="phone-error" className="mt-1.5 text-xs text-red-600">
-                      {phoneError}
-                    </p>
-                  )}
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="company">Company</Label>
-                    <input
-                      type="text"
-                      id="company"
-                      name="company"
-                      value={formData.company}
-                      onChange={handleChange}
-                      className={inputCls}
-                      placeholder="Your Company"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="company">Company</Label>
+                  <input
+                    type="text"
+                    id="company"
+                    name="company"
+                    value={formData.company}
+                    onChange={handleChange}
+                    className={inputCls}
+                    placeholder="Your Company"
+                  />
                 </div>
 
                 <div>

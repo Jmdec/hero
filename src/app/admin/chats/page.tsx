@@ -235,6 +235,20 @@ function getLoggedInUserEmail() {
     }
 }
 
+function getLoggedInUserRole() {
+    if (typeof window === "undefined") return "";
+
+    try {
+        const rawUser = localStorage.getItem("user");
+        if (!rawUser) return "";
+
+        const parsedUser = JSON.parse(rawUser) as { role?: string } | null;
+        return typeof parsedUser?.role === "string" ? parsedUser.role.trim().toLowerCase() : "";
+    } catch {
+        return "";
+    }
+}
+
 function formatDurationCompact(seconds: number | null | undefined) {
     if (seconds === null || seconds === undefined || Number.isNaN(seconds)) return "--";
 
@@ -860,6 +874,7 @@ export default function AdminChatsPage() {
         ? messagesRequestedHistory(selectedConversation.messages)
         : false;
     const selectedHasEmail = Boolean(selectedConversation?.inquiry?.email_address);
+    const canTakeOverAssignedChat = getLoggedInUserRole() === "operation";
 
     const isSwitchingConversation =
         selectedConversationId !== null &&
@@ -1203,16 +1218,18 @@ export default function AdminChatsPage() {
                                                             }}
                                                             disabled={
                                                                 selectedIsEnded ||
-                                                                Boolean(selectedConversation?.agent) ||
-                                                                selectedConversation.status === "agent_active"
+                                                                (Boolean(selectedConversation?.agent) && !canTakeOverAssignedChat) ||
+                                                                (selectedConversation.status === "agent_active" && !canTakeOverAssignedChat)
                                                             }
                                                             className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-[#0D47A1]/5 hover:text-[#0D47A1] disabled:cursor-not-allowed disabled:opacity-40"
                                                         >
                                                             <Headset className="h-4 w-4 shrink-0" />
 
                                                             <span>
-                                                                {selectedConversation.agent
+                                                                {selectedConversation.agent && !canTakeOverAssignedChat
                                                                     ? `Taken by ${selectedConversation.agent.name ?? "another agent"}`
+                                                                    : selectedConversation.agent && canTakeOverAssignedChat
+                                                                        ? "Take over chat"
                                                                     : selectedConversation.status === "agent_active"
                                                                         ? "Live agent session active"
                                                                         : "Take Chat"}

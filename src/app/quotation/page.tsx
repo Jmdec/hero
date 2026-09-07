@@ -1620,7 +1620,7 @@ export default function GetAQuotePage() {
 
     if (service) {
       setSelectedService(service);
-      setStep(2);
+      setStep(1);
     }
   }, [searchParams]);
   const [virtualOffice, setVirtualOffice] = useState<VirtualOfficeFields>({ package: "", startDate: "", months: "" });

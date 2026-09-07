@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Navigation from "../components/Navigation";
@@ -21,7 +21,9 @@ export default function ClientLayout({
   const isAuthPage =
     pathname === "/login" ||
     pathname === "/register" ||
-    pathname === "/verify-email";
+    pathname === "/verify-email" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password";
 
   // Admin pages
   const isAdminPage = pathname.startsWith("/admin");
@@ -125,11 +127,7 @@ export default function ClientLayout({
         )}
       </AnimatePresence>
 
-      {pathname === "/" && (
-        <Suspense fallback={null}>
-          <AnnouncementPopup key={pathname} />
-        </Suspense>
-      )}
+      {pathname === "/" && <AnnouncementPopup key={pathname} />}
 
       {/* Public Navigation */}
       {isPublicPage && !isLoading && <Navigation />}
