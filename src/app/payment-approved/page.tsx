@@ -78,15 +78,8 @@ export default function PaymentApprovedPage() {
             disabled={isSending || !quotationId}
             className="mt-8 w-full rounded-xl bg-[#0D47A1] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0B3B8A] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSending ? "Sending notifications..." : "Email Notify Admin & Recipients"}
+            {isSending ? "Sending Verification..." : "Resend Verification"}
           </button>
-
-          <a
-            href="/admin/quotation"
-            className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-[#D9E2F0] bg-[#F8FAFD] px-5 py-3 text-sm font-semibold text-[#0B1F4A] transition hover:bg-[#EEF4FF]"
-          >
-            Go to Quotation Dashboard
-          </a>
         </div>
       </div>
     </div>
