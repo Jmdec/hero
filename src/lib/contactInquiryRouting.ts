@@ -3,14 +3,14 @@ export type ContactBranchInterest = "tower-6789" | "insular-life" | "both";
 const RECIPIENTS = {
     chairman: process.env.CHAIRMAN_EMAIL || "hero.chairman@gmail.com",
     president: process.env.PRESIDENT_EMAIL || "hero.president@gmail.com",
-    generalManager: process.env.GENERAL_MANAGER_EMAIL || "hero.generalmanager@gmail.com",
-    salesOfficer: process.env.SALES_OFFICER_EMAIL || "hero.salesofficer@gmail.com",
-    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "hero.digitalmarketing@gmail.com",
-    accounting: process.env.ACCOUNTING_EMAIL || "hero.accounting@gmail.com",
-    accountingofficer: process.env.ACCOUNTING_OFFICER_EMAIL || "hero.accountingofficer@gmail.com",
+    generalManager: process.env.GENERAL_MANAGER_EMAIL || "rataguibao@rbtconsulting.com.ph",
+    salesOfficer: process.env.SALES_OFFICER_EMAIL || "salesofficer@heroph.net",
+    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "digitalsalesmarketing@heroph.net",
+    accounting: process.env.ACCOUNTING_EMAIL || "accounting@heroph.net",
+    accountingofficer: process.env.ACCOUNTING_OFFICER_EMAIL || "accountingofficer@heroph.net",
     branchManagers: {
-        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "hero.tower6789@gmail.com",
-        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "hero.insularlife@gmail.com",
+        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "sales@heroph.net",
+        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "c_francisco@heroph.net",
     },
 };
 
