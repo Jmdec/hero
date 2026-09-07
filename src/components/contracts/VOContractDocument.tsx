@@ -29,6 +29,7 @@ export function mapQuotationToVOContractFields(quotation: {
         id_name?: string | null;
         email?: string | null;
         phone?: string | null;
+        contact_address?: string | null;
         company_name?: string | null;
         id_number?: string | null;
         signatory_id_address?: string | null;
@@ -58,22 +59,22 @@ export function mapQuotationToVOContractFields(quotation: {
     
     return {
         userName: d.full_name || d.id_name || "TO BE FILLED OUT",
-        userAddress: d.id_address || "TO BE FILLED OUT",
+        userAddress: d.contact_address || d.id_address || "TO BE FILLED OUT",
         userRep: d.signatory_details || d.id_name || "TO BE FILLED OUT",
         userEmail: d.email || "TO BE FILLED OUT",
         userContact: d.phone || "TO BE FILLED OUT",
         building: quotation.branch || "Tower 6789",
-        premisesAddress: d.id_address || "23F Tower 6789, 6789 Ayala Avenue, Makati City",
+        premisesAddress: d.contact_address || d.id_address || "23F Tower 6789, 6789 Ayala Avenue, Makati City",
         commencementDate: commencement,
         expirationDate: expiration,
         fixedFee: formatAmount(d.package_price),
         contractFee: formatAmount(d.contract_admin_fee),
         userSignerName: d.signatory_details || d.id_name || d.full_name || "TO BE FILLED OUT",
-        userSignerAddress: d.signatory_id_address || d.id_address || "TO BE FILLED OUT",
+        userSignerAddress: d.contact_address || d.signatory_id_address || d.id_address || "TO BE FILLED OUT",
         userSignerCompany: d.company_name || "TO BE FILLED OUT",
         notaryUserName: d.signatory_details || d.full_name || "TO BE FILLED OUT",
         notaryUserId: d.id_number || d.signatory_id_number || "TO BE FILLED OUT",
-        notaryUserIssue: d.id_address || d.signatory_id_address || "TO BE FILLED OUT",
+        notaryUserIssue: d.contact_address || d.id_address || d.signatory_id_address || "TO BE FILLED OUT",
         notaryDay: String(notaryDate.getDate()).padStart(2, "0"),
         notaryMonth: notaryDate.toLocaleString("en-US", { month: "long" }),
         notaryYear: String(notaryDate.getFullYear()),

@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   serverExternalPackages: ["@sparticuz/chromium"],
+  outputFileTracingIncludes: {
+    "/*": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+  },
 };
 
 export default withPWA(nextConfig);

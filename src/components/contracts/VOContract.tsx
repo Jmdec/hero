@@ -50,6 +50,7 @@ export function mapVOContractFieldsToQuotationDetail(fields: VOContractFields) {
         full_name: fields.userName,
         email: fields.userEmail,
         phone: fields.userContact,
+        contact_address: fields.userAddress || fields.premisesAddress,
         id_address: fields.userAddress || fields.premisesAddress,
         signatory_details: fields.userRep || fields.userSignerName,
         id_number: fields.notaryUserId,
@@ -68,6 +69,7 @@ export function mapQuotationDetailToVOContractFields(detail?: Partial<{
     company_name: string | null;
     email: string | null;
     phone: string | null;
+    contact_address?: string | null;
     id_name: string | null;
     id_address: string | null;
     signatory_details: string | null;
@@ -94,12 +96,12 @@ export function mapQuotationDetailToVOContractFields(detail?: Partial<{
 
     return {
         userName: detail?.full_name || detail?.id_name || "",
-        userAddress: detail?.id_address || "",
+        userAddress: detail?.contact_address || detail?.id_address || "",
         userRep: detail?.signatory_details || detail?.id_name || "",
         userEmail: detail?.email || "",
         userContact: detail?.phone || "",
         building: detail?.branch || "Tower 6789",
-        premisesAddress: detail?.id_address || "",
+        premisesAddress: detail?.contact_address || detail?.id_address || "",
         commencementDate: commencement,
         expirationDate: expiration,
         fixedFee: detail?.package_price
@@ -111,11 +113,11 @@ export function mapQuotationDetailToVOContractFields(detail?: Partial<{
             ? `PHP ${Number(detail.contract_admin_fee).toLocaleString("en-PH")}`
             : "",
         userSignerName: detail?.signatory_details || detail?.full_name || "",
-        userSignerAddress: detail?.signatory_id_address || detail?.id_address || "",
+        userSignerAddress: detail?.contact_address || detail?.signatory_id_address || detail?.id_address || "",
         userSignerCompany: detail?.company_name || "",
         notaryUserName: detail?.signatory_details || detail?.full_name || "",
         notaryUserId: detail?.id_number || detail?.signatory_id_number || "",
-        notaryUserIssue: detail?.id_address || detail?.signatory_id_address || "",
+        notaryUserIssue: detail?.contact_address || detail?.id_address || detail?.signatory_id_address || "",
         notaryDay: startDate ? String(startDate.getDate()) : "",
         notaryMonth: startDate ? startDate.toLocaleDateString("en-PH", { month: "long" }) : "",
         notaryYear: startDate ? String(startDate.getFullYear()) : "2026",

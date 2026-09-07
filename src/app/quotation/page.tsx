@@ -30,6 +30,7 @@ interface ContactFields {
   company: string;
   email: string;
   phone: string;
+  address: string;
 }
 
 interface ContractIdentityFields {
@@ -1042,6 +1043,19 @@ function Step3({
           />
         </Field>
       </div>
+      <div>
+        <Field label="Address">
+          <textarea
+            id="quotation-contact-address"
+            name="address"
+            rows={3}
+            value={contact.address}
+            onChange={(e) => setContact((p) => ({ ...p, address: e.target.value }))}
+            className={inputCls + " resize-none"}
+            placeholder="Your address (optional)"
+          />
+        </Field>
+      </div>
 
       <div className="mt-7 border-t border-[#D9E2F0] pt-6">
         <h3 className="text-2xl font-bold text-[#0B1F4A] mb-2">Government ID & Signatory (Optional)</h3>
@@ -1592,7 +1606,7 @@ export default function GetAQuotePage() {
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<ServiceId | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<BranchId | null>(null);
-  const [contact, setContact] = useState<ContactFields>({ name: "", company: "", email: "", phone: "" });
+  const [contact, setContact] = useState<ContactFields>({ name: "", company: "", email: "", phone: "", address: "" });
   const [contractIdentity, setContractIdentity] = useState<ContractIdentityFields>({
     idType: "",
     idTypeOther: "",
@@ -1689,7 +1703,7 @@ export default function GetAQuotePage() {
     setStep(1);
     setSelectedService(null);
     setSelectedBranch(null);
-    setContact({ name: "", company: "", email: "", phone: "" });
+    setContact({ name: "", company: "", email: "", phone: "", address: "" });
     setContractIdentity({
       idType: "",
       idTypeOther: "",
@@ -1728,6 +1742,7 @@ export default function GetAQuotePage() {
       company_name: contact.company || null,
       email: contact.email,
       phone: contact.phone,
+      contact_address: contact.address || null,
       request: notes || null,
       payment_method: null,
       transaction_id: null,
