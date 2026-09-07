@@ -483,6 +483,20 @@ async function getCategoryRecipientList(category: string, extras: Array<string |
     return recipients;
 }
 
+function getQuotationRecipients(branch: string | null | undefined): string[] {
+    const normalizedBranch = String(branch || "").trim().toLowerCase();
+    const branchManager = normalizedBranch.includes("insular") || normalizedBranch === "s02"
+        ? RECIPIENTS.branchManagers.S02
+        : RECIPIENTS.branchManagers.S01;
+
+    return toUniqueEmails([
+        RECIPIENTS.generalManager,
+        branchManager,
+        RECIPIENTS.salesOfficer,
+        RECIPIENTS.digitalMarketing,
+    ]);
+}
+
 function getDocumentCopyAttachments(options: QuotationNotificationOptions) {
     return [
         options.paymentProofCopy,
@@ -1210,7 +1224,7 @@ export async function sendQuotationPaymentVerifiedAdminEmail(
     );
 
     const body = `
-        <p style="font-size:15px;line-height:1.8;color:#475569;">Hi Admin Team,</p>
+        <p style="font-size:15px;line-height:1.8;color:#475569;">Good Day,</p>
         <p style="font-size:15px;line-height:1.8;color:#475569;">
             Payment for <strong>${d.full_name}</strong> for the <strong>${quotation.service_name}</strong> quotation has been verified and confirmed to be correct and true.
         </p>
@@ -1263,7 +1277,7 @@ export async function sendQuotationAdminEmail(
         }
     }
 
-    const englishRecipients = await getCategoryRecipientList("quote");
+    const englishRecipients = getQuotationRecipients(quotation.branch);
     const japaneseRecipients = toUniqueEmails([
         RECIPIENTS.president,
         RECIPIENTS.chairman,
