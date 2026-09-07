@@ -59,6 +59,7 @@ export function mapVOContractFieldsToQuotationDetail(fields: VOContractFields) {
         months: monthsMatch ? Number(monthsMatch[1]) : null,
         package_price: packagePrice,
         contract_admin_fee: contractAdminFee,
+        vo_contract_fields: fields,
     };
 }
 
@@ -78,6 +79,7 @@ export function mapQuotationDetailToVOContractFields(detail?: Partial<{
     date?: string | null;
     months?: number | string | null;
     package_price?: number | string | null;
+    vo_contract_fields?: Partial<VOContractFields> | null;
     branch?: string | null;
 }> | null): VOContractFields {
     const startDate = detail?.date ? new Date(detail.date) : null;
@@ -87,6 +89,8 @@ export function mapQuotationDetailToVOContractFields(detail?: Partial<{
             : startDate!.toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })
         : "";
     const expiration = detail?.months ? `${detail.months} month(s)` : "";
+
+    const savedFields = detail?.vo_contract_fields ?? {};
 
     return {
         userName: detail?.full_name || detail?.id_name || "",
@@ -115,6 +119,7 @@ export function mapQuotationDetailToVOContractFields(detail?: Partial<{
         notaryDay: startDate ? String(startDate.getDate()) : "",
         notaryMonth: startDate ? startDate.toLocaleDateString("en-PH", { month: "long" }) : "",
         notaryYear: startDate ? String(startDate.getFullYear()) : "2026",
+        ...savedFields,
     };
 }
 

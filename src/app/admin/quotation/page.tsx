@@ -96,6 +96,7 @@ interface QuotationDetail {
     price_breakdown?: QuotationPriceBreakdown | null;
     contract_content?: string | null;
     contract_updated_at?: string | null;
+    vo_contract_fields?: Partial<ReturnType<typeof mapQuotationDetailToVOContractFields>> | null;
 }
 interface Quotation {
     id: number;
@@ -1113,6 +1114,7 @@ export default function AdminQuotationsPage() {
                     package: contractModalQuote.package,
                     event_type: contractModalQuote.event_type,
                     status: contractModalQuote.status,
+                    branch: voContractFields?.building ?? contractModalQuote.branch,
                     detail: updatedDetail,
                 }),
             });
