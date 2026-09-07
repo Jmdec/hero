@@ -44,7 +44,7 @@ const PROMO_TAG_KEYWORDS = [
 ];
 
 const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=1200&q=85";
+  "/pop-up-image-fallback.png";
 
 function formatSocialPlatform(value: string) {
   return (

@@ -33,6 +33,9 @@ export interface ChatConversation {
     addressed_at?: string | null;
     agent_requested_at?: string | null;
     agent_started_at?: string | null;
+    agent_notification_sent_at?: string | null;
+    agent_notification_failed_at?: string | null;
+    agent_notification_error?: string | null;
     agent_ended_at?: string | null;
     last_message_at?: string | null;
     agent_id?: number | null;
@@ -234,6 +237,16 @@ export const chatApi = {
             method: "POST",
             body: JSON.stringify({}),
         });
+    },
+
+    retryLiveAgentNotification(conversationId: number) {
+        return request<ConversationActionResponse>(
+            `/chat/chats/${conversationId}/agent-notification/retry`,
+            {
+                method: "POST",
+                body: JSON.stringify({}),
+            },
+        );
     },
 
     endLiveAgent(conversationId: number) {

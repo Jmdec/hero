@@ -1326,7 +1326,6 @@ const Chatbot = () => {
                 ]);
                 void persistMessage(activeConversation, "assistant", OUT_OF_HOURS_MESSAGE);
                 setAwaitingPreferredContact(true);
-                return;
             }
 
             try {

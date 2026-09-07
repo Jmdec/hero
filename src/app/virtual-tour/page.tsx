@@ -183,8 +183,6 @@ export default function VirtualTourPage() {
         hotspots: [
           { targetId: "lounge", targetName: "Lounge", lon: -120, lat: -12, label: "Enter the lounge" },
           { targetId: "pantry", targetName: "Pantry", lon: 0, lat: 0, label: "Go to the pantry" },
-          { targetId: "conference-room-a", targetName: "Conference Room A", lon: -140, lat: 0, label: "Visit Conference Room A" },
-          { targetId: "conference-room-b", targetName: "Conference Room B", lon: 140, lat: 0, label: "Visit Conference Room B" },
         ],
       },
       {

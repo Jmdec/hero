@@ -489,8 +489,8 @@ export default function AdminChatsPage() {
     // don't call setState after unmount.
     const isMountedRef = useRef(true);
 
-    const loadConversations = async () => {
-        setLoading(true);
+    const loadConversations = async (silent = false) => {
+        if (!silent) setLoading(true);
         setError("");
 
         try {
@@ -499,7 +499,7 @@ export default function AdminChatsPage() {
             if (!isMountedRef.current) return;
             setConversations(items);
 
-            if (!selectedConversationId && items[0]?.id) {
+            if (!silent && !selectedConversationId && items[0]?.id) {
                 setSelectedConversationId(items[0].id);
                 const email = items[0].group_key ?? items[0].inquiry?.email_address;
                 if (email) {
@@ -508,12 +508,12 @@ export default function AdminChatsPage() {
                 }
             }
         } catch (err) {
-            if (!isMountedRef.current) return;
+            if (!isMountedRef.current || silent) return;
             const message = err instanceof Error ? err.message : "Unable to load conversations.";
             setError(message);
             pushToast(message, "error");
         } finally {
-            if (isMountedRef.current) setLoading(false);
+            if (isMountedRef.current && !silent) setLoading(false);
         }
     };
 
@@ -544,8 +544,14 @@ export default function AdminChatsPage() {
         const timeoutId = window.setTimeout(() => {
             void loadConversations();
         }, 0);
+        const intervalId = window.setInterval(() => {
+            void loadConversations(true);
+        }, 5000);
 
-        return () => window.clearTimeout(timeoutId);
+        return () => {
+            window.clearTimeout(timeoutId);
+            window.clearInterval(intervalId);
+        };
     }, []);
 
     // Poll the currently open conversation's messages/status separately.
@@ -728,6 +734,20 @@ export default function AdminChatsPage() {
             }
 
             const message = err instanceof Error ? err.message : "Unable to take the chat. It may have been taken by another agent.";
+            setError(message);
+            pushToast(message, "error");
+        }
+    };
+
+    const handleRetryNotification = async () => {
+        if (!selectedConversationId) return;
+
+        try {
+            await chatApi.retryLiveAgentNotification(selectedConversationId);
+            await refresh();
+            pushToast("Live-agent notification resent.", "success");
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Unable to resend the live-agent notification.";
             setError(message);
             pushToast(message, "error");
         }
@@ -1208,6 +1228,20 @@ export default function AdminChatsPage() {
                                                                     : "Send history"}
                                                             </span>
                                                         </button>
+
+                                                        {selectedNeedsAdmin && selectedConversation.agent_notification_failed_at ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setActionsMenuOpen(false);
+                                                                    void handleRetryNotification();
+                                                                }}
+                                                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-amber-700 transition hover:bg-amber-50"
+                                                            >
+                                                                <RefreshCw className="h-4 w-4 shrink-0" />
+                                                                <span>Retry agent notification</span>
+                                                            </button>
+                                                        ) : null}
 
                                                         {/* Take Chat */}
                                                         <button

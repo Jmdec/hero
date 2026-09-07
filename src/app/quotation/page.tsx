@@ -1043,8 +1043,8 @@ function Step3({
           />
         </Field>
       </div>
-      <div>
-        <Field label="Address">
+      <div className="mt-5">
+        <Field label="Address" required error={errors.address}>
           <textarea
             id="quotation-contact-address"
             name="address"
