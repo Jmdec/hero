@@ -164,8 +164,7 @@ async function sendInquiryNotifications(payload: ContactInquiryPayload, openInqu
     }));
   }
 
-  for (const recipient of [recipients.president, recipients.chairman]) {
-    if (!recipient) continue;
+  for (const recipient of recipients.japaneseRecipients) {
     tasks.push(sendMail({
       to: recipient,
       subject: `【新規お問い合わせ】${payload.name} / ${getJapaneseInquiryLabel(payload.inquiryType)}`,

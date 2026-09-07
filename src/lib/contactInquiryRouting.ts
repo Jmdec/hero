@@ -77,9 +77,15 @@ export function getContactInquiryRecipients(branchInterest?: string | null) {
             ? [RECIPIENTS.branchManagers.S02]
             : [RECIPIENTS.branchManagers.S01];
 
+    const japaneseRecipients = toUniqueEmails([
+        RECIPIENTS.president,
+        RECIPIENTS.chairman,
+    ]);
+
     return {
         president: RECIPIENTS.president,
         chairman: RECIPIENTS.chairman,
+        japaneseRecipients,
         standardRecipients: toUniqueEmails([
             RECIPIENTS.generalManager,
             ...branchRecipients,

@@ -779,7 +779,6 @@ const Chatbot = () => {
     const [restoringConversation, setRestoringConversation] = useState(true);
     const [endConversationOpen, setEndConversationOpen] = useState(false);
     const [endingConversation, setEndingConversation] = useState(false);
-    const closeEmailSentRef = useRef(false);
     const conversationRef = useRef<ConversationState | null>(null);
     const leadSubmittedRef = useRef(false);
     const conversationClosedRef = useRef(false);
@@ -1022,10 +1021,9 @@ const Chatbot = () => {
 
     const requestTranscriptEmail = useCallback(
         async (conversationId: number | undefined) => {
-            if (!conversationId || closeEmailSentRef.current) return false;
+            if (!conversationId) return false;
             try {
                 await chatApi.emailChatHistory(conversationId);
-                closeEmailSentRef.current = true;
                 return true;
             } catch {
                 return false;

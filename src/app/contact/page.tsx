@@ -822,7 +822,7 @@ function MultiStepForm() {
                   <button
                     type="button"
                     onClick={goBack}
-                    className="flex items-center gap-2 ppx-8 py-4 rounded-full border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-2 px-8 py-4 rounded-full border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     Back
