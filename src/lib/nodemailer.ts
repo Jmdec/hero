@@ -460,7 +460,12 @@ async function getCategoryRecipientList(category: string, extras: Array<string |
             RECIPIENTS.accounting,
             RECIPIENTS.accountingofficer,
         ]
-        : [
+        : category === "payment_verified"
+            ? [
+                RECIPIENTS.branchManagers.S01,
+                RECIPIENTS.branchManagers.S02,
+            ]
+            : [
             RECIPIENTS.president,
             RECIPIENTS.chairman,
             RECIPIENTS.generalManager,
@@ -468,7 +473,7 @@ async function getCategoryRecipientList(category: string, extras: Array<string |
             RECIPIENTS.salesOfficer,
             RECIPIENTS.branchManagers.S01,
             RECIPIENTS.branchManagers.S02,
-        ];
+            ];
     const recipients = toUniqueEmails([...dbRecipients, ...configuredRecipients, ...extras]);
     console.info("Form notification recipients resolved", {
         category,
@@ -944,30 +949,8 @@ async function htmlToPdfBuffer(html: string): Promise<Buffer> {
 async function generateVirtualOfficeContractPdf(
     quotation: QuotationPayload
 ): Promise<Buffer> {
-    try {
-        // Try to render and convert the nicely formatted VO contract HTML to PDF
-        const contractHtml = await renderVirtualOfficeContractHtml(quotation);
-
-        return await htmlToPdfBuffer(contractHtml);
-    } catch (htmlError) {
-        console.warn(
-            "Failed to generate VO contract from HTML, falling back to text-based PDF:",
-            htmlError
-        );
-
-        const content = resolveEditableContractContent(
-            quotation,
-            buildServiceContractContentFromAdminTemplate
-        );
-
-        const contract = normalizeContractData(quotation);
-
-        return renderContractPdfFromContent({
-            title: contract.contractTitle,
-            content,
-            signatoryLabel: contract.signatoryName,
-        });
-    }
+    const contractHtml = await renderVirtualOfficeContractHtml(quotation);
+    return await htmlToPdfBuffer(contractHtml);
 }
 
 async function generateContractPdfByService(quotation: QuotationPayload): Promise<Buffer> {
@@ -1194,7 +1177,7 @@ export async function sendQuotationPaymentVerifiedAdminEmail(
     }
 
     const d = quotation.detail;
-    const recipients = await getCategoryRecipientList("payment");
+    const recipients = await getCategoryRecipientList("payment_verified");
     if (recipients.length === 0) {
         throw new Error("No active recipients configured for payment notifications.");
     }
@@ -1284,7 +1267,10 @@ export async function sendQuotationAdminEmail(
     }
 
     const englishRecipients = await getCategoryRecipientList("quote");
-    const japaneseRecipients: string[] = [];
+    const japaneseRecipients = toUniqueEmails([
+        RECIPIENTS.president,
+        RECIPIENTS.chairman,
+    ]);
 
     if (englishRecipients.length === 0 && japaneseRecipients.length === 0) {
         throw new Error("No active recipients configured for quotation notifications.");
