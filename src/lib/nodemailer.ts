@@ -454,7 +454,18 @@ async function fetchDatabaseRecipients(category: string): Promise<string[]> {
 
 async function getCategoryRecipientList(category: string, extras: Array<string | null | undefined> = []): Promise<string[]> {
     const dbRecipients = await fetchDatabaseRecipients(category);
-    const recipients = toUniqueEmails([...dbRecipients, ...extras]);
+    const configuredRecipients = [
+        RECIPIENTS.chairman,
+        RECIPIENTS.president,
+        RECIPIENTS.generalManager,
+        RECIPIENTS.salesOfficer,
+        RECIPIENTS.digitalMarketing,
+        RECIPIENTS.accounting,
+        RECIPIENTS.accountingofficer,
+        RECIPIENTS.branchManagers.S01,
+        RECIPIENTS.branchManagers.S02,
+    ];
+    const recipients = toUniqueEmails([...dbRecipients, ...configuredRecipients, ...extras]);
     console.info("Form notification recipients resolved", {
         category,
         recipientCount: recipients.length,

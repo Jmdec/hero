@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import VOContract, { mapQuotationDetailToVOContractFields } from "@/components/contracts/VOContract";
+import VOContract, {
+    mapQuotationDetailToVOContractFields,
+    mapVOContractFieldsToQuotationDetail,
+} from "@/components/contracts/VOContract";
 import VOContractDocument from "@/components/contracts/VOContractDocument";
 import {
     Search,
@@ -788,6 +791,7 @@ export default function AdminQuotationsPage() {
     const [sendingContractId, setSendingContractId] = useState<number | null>(null);
     const [contractModalQuote, setContractModalQuote] = useState<Quotation | null>(null);
     const [contractEditMode, setContractEditMode] = useState(false);
+    const [voContractFields, setVoContractFields] = useState<ReturnType<typeof mapQuotationDetailToVOContractFields> | null>(null);
 
     async function viewQuotationDocument(document: { title: string; type: string }) {
         if (!selected?.detail?.quotation_document_id) return;
@@ -1064,6 +1068,7 @@ export default function AdminQuotationsPage() {
         setContractEditMode(false);
         setContractDraft(initial);
         setContractSavedSnapshot(initial);
+        setVoContractFields(isVirtualOffice(quote) ? mapQuotationDetailToVOContractFields(quote.detail) : null);
     };
 
     const closeContractViewer = () => {
@@ -1079,10 +1084,19 @@ export default function AdminQuotationsPage() {
 
         setSavingContract(true);
         try {
-            const updatedDetail = {
-                ...contractModalQuote.detail,
-                contract_content: contractDraft,
-            };
+            const updatedDetail: QuotationDetail = contractModalQuote.service_name.trim().toLowerCase() === "virtual office" && voContractFields
+                ? (() => {
+                    const mapped = mapVOContractFieldsToQuotationDetail(voContractFields);
+                    return {
+                        ...contractModalQuote.detail,
+                        ...mapped,
+                        date: mapped.date ?? "",
+                    };
+                })()
+                : {
+                    ...contractModalQuote.detail,
+                    contract_content: contractDraft,
+                };
 
             const res = await fetch(`/api/quotations/${contractModalQuote.id}`, {
                 method: "PUT",
@@ -1634,6 +1648,7 @@ export default function AdminQuotationsPage() {
                                     <VOContract
                                         hideControls={false}
                                         initialValues={mapQuotationDetailToVOContractFields(contractModalQuote.detail)}
+                                        onFieldsChange={setVoContractFields}
                                     />
                                 ) : (
                                     <div className="mx-auto max-w-3xl bg-white border border-[#D9E2F0] rounded-xl p-6 sm:p-8 shadow-sm">

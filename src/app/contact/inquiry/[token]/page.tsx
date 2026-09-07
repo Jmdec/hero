@@ -128,7 +128,7 @@ export default function PublicInquiryPage() {
     ];
 
     return (
-        <div className={`min-h-screen bg-[#F7F4EC] px-4 py-10 sm:px-6 lg:px-8`}>
+        <div className={`min-h-screen bg-white px-4 py-10 sm:px-6 lg:px-8`}>
             <div className="mx-auto w-full max-w-3xl font-body">
 
                 {/* Directory header band */}
@@ -162,25 +162,45 @@ export default function PublicInquiryPage() {
                     {infoRows.map((row, i) => (
                         <div
                             key={row.label}
-                            className={`flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4 ${i !== infoRows.length - 1 ? "border-b border-[#EDE9DD]" : ""
+                            className={`flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4 ${i !== infoRows.length - 1
+                                    ? "border-b border-[#EDE9DD]"
+                                    : ""
                                 }`}
                         >
-                            <span className="text-[11px] uppercase tracking-[0.18em] text-[#A9824C]/60">
+                            <span className="text-[11px] uppercase tracking-[0.18em] text-[#12203A]">
                                 {row.label}
                             </span>
-                            <span className="text-right text-sm md:text-md text-[#12203A]">
-                                {row.value}
-                            </span>
+
+                            {row.label === "Phone" ? (
+                                <a
+                                    href={`tel:${row.value.replace(/[^\d+]/g, "")}`}
+                                    className="text-right text-sm text-[#12203A] underline decoration-[#A9824C] decoration-2 underline-offset-4 transition hover:text-[#A9824C] md:text-base"
+                                    aria-label={`Call ${row.value}`}
+                                >
+                                    {row.value}
+                                </a>
+                            ) : row.label === "Email" ? (
+                                <a
+                                    href={`mailto:${row.value}`}
+                                    className="text-right text-sm text-[#12203A] underline decoration-[#A9824C] decoration-2 underline-offset-4 transition hover:text-[#A9824C] md:text-base"
+                                >
+                                    {row.value}
+                                </a>
+                            ) : (
+                                <span className="text-right text-sm text-[#12203A] md:text-base">
+                                    {row.value}
+                                </span>
+                            )}
                         </div>
                     ))}
                 </div>
 
                 {/* Message */}
                 <div className="border-x border-t border-[#DCD5C6] bg-white px-8 py-8 sm:px-10">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-[#A9824C]">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-[#12203A]">
                         Message
                     </p>
-                    <div className="mt-3 border-l-2 border-[#A9824C] pl-5">
+                    <div className="mt-3 border-l-2 border-[#12203A] pl-5">
                         <p className="whitespace-pre-wrap text-sm md:text-md leading-7 text-[#2A3547]">
                             {inquiry.message}
                         </p>

@@ -31,34 +31,52 @@ export function mapQuotationToVOContractFields(quotation: {
         phone?: string | null;
         company_name?: string | null;
         id_number?: string | null;
+        signatory_id_address?: string | null;
+        signatory_id_number?: string | null;
+        package_price?: number | string | null;
+        contract_admin_fee?: number | string | null;
+        date?: string | null;
+        months?: number | string | null;
     } | null;
     branch?: string | null;
     lease_term?: string | null;
 }): VOContractFields {
     const d = quotation.detail || {};
-    const today = new Date();
+    const startDate = d.date ? new Date(d.date) : null;
+    const commencement = d.date
+        ? Number.isNaN(startDate?.getTime() ?? NaN)
+            ? String(d.date)
+            : startDate!.toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })
+        : "TO BE FILLED OUT";
+    const expiration = d.months ? `${d.months} month(s)` : quotation.lease_term || "TO BE FILLED OUT";
+    const formatAmount = (value?: number | string | null) => {
+        if (value === null || value === undefined || value === "") return "TO BE FILLED OUT";
+        const amount = Number(value);
+        return Number.isFinite(amount) ? `PHP ${amount.toLocaleString("en-PH")}` : String(value);
+    };
+    const notaryDate = startDate && !Number.isNaN(startDate.getTime()) ? startDate : new Date();
     
     return {
-        userName: d.full_name || "TO BE FILLED OUT",
+        userName: d.full_name || d.id_name || "TO BE FILLED OUT",
         userAddress: d.id_address || "TO BE FILLED OUT",
         userRep: d.signatory_details || d.id_name || "TO BE FILLED OUT",
         userEmail: d.email || "TO BE FILLED OUT",
         userContact: d.phone || "TO BE FILLED OUT",
         building: quotation.branch || "Tower 6789",
         premisesAddress: d.id_address || "23F Tower 6789, 6789 Ayala Avenue, Makati City",
-        commencementDate: "TO BE FILLED OUT",
-        expirationDate: quotation.lease_term || "TO BE FILLED OUT",
-        fixedFee: "TO BE FILLED OUT",
-        contractFee: "TO BE FILLED OUT",
+        commencementDate: commencement,
+        expirationDate: expiration,
+        fixedFee: formatAmount(d.package_price),
+        contractFee: formatAmount(d.contract_admin_fee),
         userSignerName: d.signatory_details || d.id_name || d.full_name || "TO BE FILLED OUT",
-        userSignerAddress: d.id_address || "TO BE FILLED OUT",
+        userSignerAddress: d.signatory_id_address || d.id_address || "TO BE FILLED OUT",
         userSignerCompany: d.company_name || "TO BE FILLED OUT",
         notaryUserName: d.signatory_details || d.full_name || "TO BE FILLED OUT",
-        notaryUserId: d.id_number || "TO BE FILLED OUT",
-        notaryUserIssue: d.id_address || "TO BE FILLED OUT",
-        notaryDay: String(today.getDate()).padStart(2, "0"),
-        notaryMonth: today.toLocaleString("en-US", { month: "long" }),
-        notaryYear: String(today.getFullYear()),
+        notaryUserId: d.id_number || d.signatory_id_number || "TO BE FILLED OUT",
+        notaryUserIssue: d.id_address || d.signatory_id_address || "TO BE FILLED OUT",
+        notaryDay: String(notaryDate.getDate()).padStart(2, "0"),
+        notaryMonth: notaryDate.toLocaleString("en-US", { month: "long" }),
+        notaryYear: String(notaryDate.getFullYear()),
     };
 }
 
