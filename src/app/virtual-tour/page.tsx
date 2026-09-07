@@ -116,6 +116,38 @@ export default function VirtualTourPage() {
         ],
       },
       {
+        id: "w-14-office",
+        name: "Office W-14",
+        description:
+          "A modern office space designed for productivity and collaboration.",
+        features: ["Ergonomic furniture", "High-speed Wi-Fi", "Natural lighting", "Quiet environment"],
+        panoramaUrl: "/360-view/inlife/SO2-OFFICE-W14.webp",
+        thumbnailUrl: [
+          "/360-view/inlife/W-14.jpg",
+        ],
+        connectsTo: ["hallway-1"],
+        hotspots: [
+          { targetId: "hallway-1", targetName: "Hallway", lon: 0, lat: -10, label: "Go back to the hallway" },
+        ],
+      },
+      {
+        id: "w-31-office",
+        name: "Office W-31",
+        description:
+          "A modern office space designed for productivity and collaboration.",
+        features: ["Ergonomic furniture", "High-speed Wi-Fi", "Natural lighting", "Quiet environment"],
+        panoramaUrl: "/360-view/inlife/SO2-OFFICE-W31.webp",
+        thumbnailUrl: [
+          "/360-view/inlife/_ARM7461.webp",
+          "/360-view/inlife/_ARM7465.webp",
+          "/360-view/inlife/_ARM7471.webp",
+        ],
+        connectsTo: ["hallway-2"],
+        hotspots: [
+          { targetId: "hallway-2", targetName: "Hallway", lon: 0, lat: -10, label: "Go back to the hallway" },
+        ],
+      },
+      {
         id: "hallway-1",
         name: "Hallway",
         description: "A connecting hallway providing access between the building's shared spaces and offices.",
@@ -125,6 +157,7 @@ export default function VirtualTourPage() {
         hotspots: [
           { targetId: "reception", targetName: "Reception", lon: 10, lat: -5, label: "Go back to Reception" },
           { targetId: "conference-room-b", targetName: "Conference Room B", lon: -20, lat: -10, label: "Visit Conference Room B" },
+          { targetId: "w-14-office", targetName: "Office W-14", lon: 40, lat: -10, label: "Visit Office W-14" },
           { targetId: "hallway-2", targetName: "Hallway", lon: -200, lat: -5, label: "Go to other Hallway" },
         ],
       },
@@ -138,6 +171,7 @@ export default function VirtualTourPage() {
         hotspots: [
           { targetId: "pantry", targetName: "Pantry", lon: -175, lat: -5, label: "Go to Pantry Area" },
           { targetId: "conference-room-a", targetName: "Conference Room A", lon: -130, lat: -5, label: "Visit Conference Room A" },
+          { targetId: "w-31-office", targetName: "Office W-31", lon: 10, lat: -5, label: "Visit Office W-31" },
           { targetId: "hallway-1", targetName: "Hallway", lon: -15, lat: -5, label: "Go to other Hallway" },
         ],
       },
@@ -183,6 +217,7 @@ export default function VirtualTourPage() {
         hotspots: [
           { targetId: "lounge", targetName: "Lounge", lon: -120, lat: -12, label: "Enter the lounge" },
           { targetId: "pantry", targetName: "Pantry", lon: 0, lat: 0, label: "Go to the pantry" },
+          { targetId: "conference-room-b", targetName: "Conference Room B", lon: 118, lat: 0, label: "Visit Conference Room B" },
         ],
       },
       {
@@ -200,7 +235,7 @@ export default function VirtualTourPage() {
         hotspots: [
           { targetId: "reception", targetName: "Reception", lon: -160, lat: -10, label: "Return to reception" },
           { targetId: "hallway-1", targetName: "Hallway", lon: 185, lat: 0, label: "Continue down the hall" },
-          { targetId: "conference-room-a", targetName: "Conference Room A", lon: -100, lat: 0, label: "Visit Conference Room A" },
+          { targetId: "conference-room-a", targetName: "Conference Room A", lon: -10, lat: 0, label: "Visit Conference Room A" },
           { targetId: "", targetName: "Brochure Area", lon: 40, lat: 0, label: "Brochure" },
         ],
       },
@@ -210,10 +245,10 @@ export default function VirtualTourPage() {
         description: "A connecting hallway providing access between the building's shared spaces and offices.",
         features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
         panoramaUrl: "/360-view/IMG_20210318_174407_00_055.webp",
-        connectsTo: ["conference-room-c", "hallway-2"],
+        connectsTo: ["w-05-office", "hallway-2"],
         hotspots: [
           { targetId: "reception", targetName: "Reception", lon: -5, lat: 0, label: "Return to reception" },
-          { targetId: "conference-room-c", targetName: "Conference Room C", lon: -60, lat: -10, label: "Visit Conference Room C" },
+          { targetId: "w-05-office", targetName: "W-05 Office", lon: -60, lat: 0, label: "Visit W-05 Office" },
           { targetId: "hallway-2", targetName: "Hallway", lon: -180, lat: 0, label: "Continue deeper into the floor" },
         ],
       },
@@ -225,8 +260,40 @@ export default function VirtualTourPage() {
         panoramaUrl: "/360-view/IMG_20210429_171553_00_158.webp",
         connectsTo: ["hallway-1", "pantry"],
         hotspots: [
-          { targetId: "hallway-1", targetName: "Hallway", lon: -180, lat: -9, label: "Return to the main hall" },
+          { targetId: "hallway-1", targetName: "Hallway", lon: -180, lat: 0, label: "Return to the main hall" },
           { targetId: "pantry", targetName: "Pantry", lon: 0, lat: 0, label: "See the pantry" },
+          { targetId: "w-21-office", targetName: "W-21 Office", lon: 35, lat: 0, label: "Visit W-21 Office" },
+        ],
+      },
+      {
+        id: "w-05-office",
+        name: "W-05 Office",
+        description: "A modern office space designed for productivity and collaboration.",
+        features: ["High-speed Wi-Fi", "Ergonomic furniture", "Natural lighting", "Quiet environment"],
+        panoramaUrl: "/360-view/tower6789/IMG_20210318_181657_00_066.webp",
+        thumbnailUrl: [
+          "/360-view/tower6789/_ARM7510.webp",
+          "/360-view/tower6789/_ARM7508.webp",
+          "/360-view/tower6789/_ARM7506.webp",
+        ],
+        connectsTo: ["hallway-1"],
+        hotspots: [
+          { targetId: "hallway-1", targetName: "Hallway", lon: 0, lat: -9, label: "Return to the main hall" },
+        ],
+      },
+      {
+        id: "w-21-office",
+        name: "W-21 Office",
+        description: "A modern office space designed for productivity and collaboration.",
+        features: ["High-speed Wi-Fi", "Ergonomic furniture", "Natural lighting", "Quiet environment"],
+        panoramaUrl: "/360-view/tower6789/SO1-OFFIC-W-21-(1).webp",
+        thumbnailUrl: [
+          "/360-view/tower6789/W-21.jpg",
+          "/360-view/tower6789/W-21(1).jpg",
+        ],
+        connectsTo: ["hallway-2"],
+        hotspots: [
+          { targetId: "hallway-2", targetName: "Hallway", lon: -25, lat: -9, label: "Return to the main hall" },
         ],
       },
       {
@@ -256,7 +323,7 @@ export default function VirtualTourPage() {
         ],
         connectsTo: ["hallway-2"],
         hotspots: [
-          { targetId: "hallway-2", targetName: "Hallway", lon: 90, lat: -10, label: "Return to the hall" },
+          { targetId: "hallway-2", targetName: "Hallway", lon: 0, lat: -10, label: "Return to the hall" },
         ],
       },
       {
@@ -298,7 +365,7 @@ export default function VirtualTourPage() {
   // Featured rooms
   const FEATURED_ROOM_IDS: Record<BuildingId, string[]> = {
     insularLife: ["reception", "lounge", "phonebooth", "conference-room-a", "conference-room-b", "pantry"],
-    tower6789: ["reception", "lounge", "conference-room-a", "conference-room-b", "pantry"],
+    tower6789: ["reception", "lounge", "w-05-office", "w-21-office", "conference-room-a", "conference-room-b", "pantry"],
   };
 
   const activeRooms = roomsByTab[activeTab];
