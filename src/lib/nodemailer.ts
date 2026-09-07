@@ -902,14 +902,17 @@ async function generateNonVirtualOfficeContractPdf(quotation: QuotationPayload):
 
 async function htmlToPdfBuffer(html: string): Promise<Buffer> {
     try {
-        const puppeteer = await import("puppeteer");
+        const chromium = (await import("@sparticuz/chromium")).default;
+        const puppeteer = (await import("puppeteer-core")).default;
 
-        const browser = await puppeteer.default.launch({
-            headless: true,
+        const browser = await puppeteer.launch({
             args: [
+                ...chromium.args,
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
             ],
+            executablePath: await chromium.executablePath(),
+            headless: true,
         });
 
         try {

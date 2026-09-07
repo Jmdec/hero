@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-  "postinstall": "puppeteer browsers install chrome",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
@@ -12,6 +11,7 @@
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
     "@photo-sphere-viewer/core": "^5.14.1",
+    "@sparticuz/chromium": "^149.0.0",
     "@types/three": "^0.184.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -25,7 +25,7 @@
     "nodemailer": "^9.0.1",
     "openai": "^6.42.0",
     "pdf-lib": "^1.17.1",
-    "puppeteer": "^25.10.0",
+    "puppeteer-core": "^25.10.0",
     "radix-ui": "^1.6.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
