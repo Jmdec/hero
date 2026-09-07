@@ -150,6 +150,7 @@ async function sendInquiryNotifications(payload: ContactInquiryPayload, openInqu
   const japaneseHtml = buildJapaneseInternalInquiryHtml(payload, openInquiryUrl);
   const text = `${subject}\n\nBranch: ${getContactBranchLabel(branchInterest)}\nEmail: ${payload.email}\nPhone: ${payload.phone}\n\n${payload.message}`;
   const japaneseText = `新しいお問い合わせが届きました。\n\n顧客名: ${payload.name}\nメール: ${payload.email}\n電話: ${payload.phone}\n会社: ${payload.company ?? "なし"}\n支店: ${getJapaneseBranchLabel(branchInterest)}\nお問い合わせ種別: ${getJapaneseInquiryLabel(payload.inquiryType)}\n\nメッセージ:\n${payload.message}\n\n詳細: ${openInquiryUrl}`;
+  const clientSubject = "We received your HERO Serviced Office inquiry";
 
   const tasks: Promise<unknown>[] = [];
 
@@ -174,7 +175,19 @@ async function sendInquiryNotifications(payload: ContactInquiryPayload, openInqu
     }));
   }
 
-  await Promise.allSettled(tasks);
+  if (tasks.length === 0) {
+    throw new Error("No contact email recipients are configured.");
+  }
+
+  const results = await Promise.allSettled(tasks);
+  const failures = results.filter(
+    (result): result is PromiseRejectedResult => result.status === "rejected",
+  );
+
+  if (failures.length > 0) {
+    console.error("Contact inquiry email delivery failed:", failures.map(({ reason }) => reason));
+    throw new Error("One or more contact inquiry emails could not be sent.");
+  }
 }
 
 // Public route hit by the contact form on the website.

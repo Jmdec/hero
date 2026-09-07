@@ -1,15 +1,17 @@
 import nodemailer from "nodemailer";
 
-// SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, MAIL_FROM
+const smtpHost = process.env.SMTP_HOST || process.env.MAIL_HOST;
+const smtpPort = Number(process.env.SMTP_PORT || process.env.MAIL_PORT || 587);
+const smtpSecure = process.env.SMTP_SECURE === "true" || process.env.MAIL_SECURE === "true" || smtpPort === 465;
+const smtpUser = process.env.SMTP_USER || process.env.MAIL_USERNAME;
+const smtpPass = process.env.SMTP_PASS || process.env.MAIL_PASSWORD;
 
 export const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT || 587),
-  secure: process.env.SMTP_SECURE === "true", // true for port 465, false for 587
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
+  host: smtpHost,
+  port: smtpPort,
+  secure: smtpSecure,
+  requireTLS: !smtpSecure && (process.env.SMTP_ENCRYPTION || process.env.MAIL_ENCRYPTION) === "tls",
+  auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined,
 });
 
 export async function sendMail({
@@ -34,7 +36,9 @@ export async function sendMail({
   return transporter.sendMail({
     from:
       process.env.MAIL_FROM ||
-      `"HERO Serviced Office" <${process.env.SMTP_USER}>`,
+      process.env.SMTP_FROM ||
+      process.env.MAIL_FROM_ADDRESS ||
+      `"HERO Serviced Office" <${smtpUser}>`,
     to,
     subject,
     html,
@@ -63,7 +67,7 @@ function toUniqueEmails(values: Array<string | null | undefined>): string[] {
 export function getAdminNotificationRecipients(): string[] {
   const list: string[] = [];
 
-  const primary = (process.env.HERO_ADMIN_EMAILS || process.env.HERO_ADMIN_EMAIL || process.env.MAIL_FROM || process.env.SMTP_USER || "").toString();
+  const primary = (process.env.HERO_ADMIN_EMAILS || process.env.HERO_ADMIN_EMAIL || process.env.MAIL_FROM || process.env.SMTP_FROM || process.env.MAIL_FROM_ADDRESS || process.env.SMTP_USER || "").toString();
   if (primary) {
     list.push(...primary.split(/[;,]+/));
   }

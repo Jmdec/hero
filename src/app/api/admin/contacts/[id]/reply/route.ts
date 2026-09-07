@@ -170,7 +170,11 @@ export async function POST(
     subject: emailSubject,
     html,
     text: message,
-    replyTo: process.env.MAIL_FROM,
+    replyTo:
+      process.env.MAIL_FROM ||
+      process.env.SMTP_FROM ||
+      process.env.MAIL_FROM_ADDRESS ||
+      process.env.SMTP_USER,
   });
 
   // 3. record the reply back in Laravel (auth required again)

@@ -415,8 +415,6 @@ function MultiStepForm() {
   const [dynamicData, setDynamicData] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "error">("idle");
-  // Tracks the success modal, and remembers whether the submitted inquiry
-  // was a Virtual Office request (since formData gets reset right after).
   const [modal, setModal] = useState<"idle" | "success">("idle");
   const [lastSubmittedWasVO, setLastSubmittedWasVO] = useState(false);
 
@@ -824,7 +822,7 @@ function MultiStepForm() {
                   <button
                     type="button"
                     onClick={goBack}
-                    className="flex items-center gap-2 px-5 py-3 rounded-full border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-2 ppx-8 py-4 rounded-full border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     Back

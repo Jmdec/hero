@@ -1214,11 +1214,6 @@ export async function sendQuotationPaymentVerifiedAdminEmail(
         <p style="font-size:15px;line-height:1.8;color:#475569;">
             Payment for <strong>${d.full_name}</strong> for the <strong>${quotation.service_name}</strong> quotation has been verified and confirmed to be correct and true.
         </p>
-        <p style="text-align:center;margin:24px 0;">
-            <a href="${dashboardUrl}" style="display:inline-block;padding:14px 24px;background:#0D47A1;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:700;">
-                Go to Quotation Dashboard
-            </a>
-        </p>
         <table style="width:100%;border-collapse:collapse;margin-top:16px;">
             ${quotationRow("Client", d.full_name)}
             ${quotationRow("Email", d.email)}
