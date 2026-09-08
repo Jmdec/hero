@@ -41,6 +41,7 @@ interface PaymentQuotation {
 		months?: number | string | null;
 		subtotal?: number | string | null;
 		contract_admin_fee?: number | string | null;
+		contract_vat?: number | string | null;
 	} | null;
 }
 
@@ -378,6 +379,7 @@ export default function PaymentVerificationPage() {
 			["Duration", durationLabel],
 			["Subtotal", formatAmount(detail.subtotal)],
 			["Contract & Admin Fee", formatAmount(detail.contract_admin_fee)],
+			["Contract/Admin Fee VAT (12%)", formatAmount(detail.contract_vat)],
 			["Total Amount", formatAmount(detail.total)],
 		];
 	}, [detail, durationLabel]);

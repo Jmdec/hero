@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         const data = await res.json().catch(() => null);
         const savedQuotation = ((data && typeof data === "object" && "data" in data)
             ? (data as any).data
-            : data) as (QuotationPayload & { id?: number | string }) | null;
+            : data) as (QuotationPayload & { id?: number | string; registered_business?: boolean | null }) | null;
 
         let notificationResult: { userSent: boolean; adminSent: boolean } | null = null;
 
@@ -121,6 +121,8 @@ export async function POST(request: NextRequest) {
                     governmentIdCopy,
                     signatoryGovernmentIdCopy,
                     useBackendDelivery: false,
+                    adminOnly: savedQuotation.registered_business === true,
+                    salesOfficerOnly: savedQuotation.registered_business === true,
                 });
 
                 console.log("Quotation notifications dispatched", {

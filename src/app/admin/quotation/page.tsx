@@ -44,6 +44,7 @@ interface QuotationPriceBreakdown {
     months?: number | null;
     recurring_total?: number | null;
     contract_admin_fee?: number | null;
+    contract_vat?: number | null;
 }
 
 interface QuotationDetail {
@@ -90,6 +91,7 @@ interface QuotationDetail {
     vat_amount?: number | string | null;
     subtotal?: number | string | null;
     contract_admin_fee?: number | string | null;
+    contract_vat?: number | string | null;
     discount?: number | string | null;
     discounts?: number | string | null;
     discount_label?: string | null;
@@ -580,6 +582,7 @@ function PriceBreakdownSection({ detail }: { detail: QuotationDetail }) {
     const vatPct = detail.vat_percentage != null ? Number(detail.vat_percentage) : null;
     const recurringTotal = nested?.recurring_total ?? detail.subtotal;
     const adminFee = nested?.contract_admin_fee ?? detail.contract_admin_fee;
+    const contractVat = detail.contract_vat ?? nested?.contract_vat;
     const discountAmount = Number(detail.discount ?? detail.discounts ?? 0) || 0;
     const hasDiscount = discountAmount > 0;
 
@@ -599,6 +602,7 @@ function PriceBreakdownSection({ detail }: { detail: QuotationDetail }) {
 
             {recurringTotal != null && <ReceiptRow label="Subtotal" value={formatCurrency(recurringTotal)} />}
             {adminFee != null && <ReceiptRow label="Contract & Admin Fee" value={formatCurrency(adminFee)} />}
+            {contractVat != null && <ReceiptRow label="Contract/Admin Fee VAT (12%)" value={formatCurrency(contractVat)} />}
             {hasDiscount && (
                 <ReceiptRow
                     label={detail.discount_label ? `Promo (${detail.discount_label})` : "Promo / Discount"}

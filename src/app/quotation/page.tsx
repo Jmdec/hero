@@ -70,6 +70,7 @@ interface VirtualOfficeFields {
 interface CoworkingFields {
   seats: string;
   startDate: string;
+  endDate: string;
   terms: string;
   otherRequirements: string;
 }
@@ -84,6 +85,7 @@ interface MeetingRoomFields {
 
 interface EventSpaceFields {
   eventDate: string;
+  time: string;
   attendees: string;
   duration: string;
   eventType: string;
@@ -123,8 +125,26 @@ const VO_STEPS = BASE_STEPS;
 
 const PRIVATE_TERMS = ["3 Months", "6 Months", "9 Months", "12 Months"];
 const COWORKING_TERMS = ["Daily", "Weekly", "Monthly", "Yearly"];
+
+function getCoworkingTermFromDates(startDate: string, endDate: string): string {
+  if (!startDate || !endDate) return "";
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+    return "";
+  }
+
+  const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 1) return "Daily";
+  if (diffDays <= 6) return "Weekly";
+  if (diffDays <= 90) return "Monthly";
+  return "Yearly";
+}
 const TIME_SLOTS = [
-  ["0:00", "8:00 AM"], ["9:00", "9:00 AM"], ["10:00", "10:00 AM"], ["11:00", "11:00 AM"],
+  ["0:00", "7:00 AM"], ["9:00", "9:00 AM"], ["10:00", "10:00 AM"], ["11:00", "11:00 AM"],
   ["13:00", "1:00 PM"], ["14:00", "2:00 PM"], ["15:00", "3:00 PM"], ["16:00", "4:00 PM"],
   ["17:00", "5:00 PM"], ["18:00", "6:00 PM"], ["19:00", "7:00 PM"], ["20:00", "8:00 PM"],
 ];
@@ -176,12 +196,13 @@ const isValidPhone = (phone: string) =>
 function computeVirtualOfficeTotal(pkg: string, months: string) {
   const base = VO_PACKAGE_PRICES[pkg] ?? 0;
   const vat = base * VO_VAT_RATE;
-  
+
   const monthlySubtotal = base + vat; // Monthly package price including VAT
-  const numMonths = Math.max(1, Number(months) || 1); 
+  const numMonths = Math.max(1, Number(months) || 1);
   const recurring = monthlySubtotal * numMonths; // Monthly cost × number of months
   const contractAdminFee = VO_CONTRACT_ADMIN_FEE[pkg] ?? 0; // One-time contract/admin fee
-  const total = recurring + contractAdminFee; // Final total
+  const contractVat = contractAdminFee * VO_VAT_RATE;
+  const total = recurring + contractAdminFee + contractVat; // Final total
   return {
     base,
     vat,
@@ -189,6 +210,7 @@ function computeVirtualOfficeTotal(pkg: string, months: string) {
     numMonths,
     recurring,
     contractAdminFee,
+    contractVat,
     total,
   };
 }
@@ -309,9 +331,11 @@ function Modal({
 // Success Modal Content
 function SuccessModalContent({
   isVO,
+  registeredBusiness,
   onClose,
 }: {
   isVO: boolean;
+  registeredBusiness: boolean | null;
   onClose: () => void;
 }) {
   return (
@@ -325,7 +349,11 @@ function SuccessModalContent({
       </p>
       <h3 className="text-2xl font-bold text-[#0B1F4A] mb-3">Thank You!</h3>
 
-      {isVO ? (
+      {isVO && registeredBusiness ? (
+        <p className="text-[#64748B] text-sm leading-relaxed mb-6">
+          Your request has been submitted. Our Sales Officer will email you the necessary instructions.
+        </p>
+      ) : isVO ? (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
           Your virtual office request has been received. Our admin team will review your
           details and, once verified, email you a secure link to complete payment.
@@ -338,17 +366,22 @@ function SuccessModalContent({
       )}
 
       <div className="bg-[#F4F6FB] rounded-2xl p-5 text-left mb-6 space-y-3">
-        {(isVO
+        {(isVO && registeredBusiness
           ? [
-            "Our admin team will review and verify your submitted request",
-            "Once verified, we'll email you a secure link to complete payment",
-            "After payment is confirmed, our admin will formally contact you to finalize your contract",
+            "Your request has been forwarded to our Sales Officer",
+            "The necessary instructions will be sent to you by email",
           ]
-          : [
-            "We'll review your service requirements and preferences",
-            "A customised quotation will be prepared for you",
-            "Our team will reach out via email or phone to discuss next steps",
-          ]
+          : isVO
+            ? [
+              "Our admin team will review and verify your submitted request",
+              "Once verified, we'll email you a secure link to complete payment",
+              "After payment is confirmed, our admin will formally contact you to finalize your contract",
+            ]
+            : [
+              "We'll review your service requirements and preferences",
+              "A customised quotation will be prepared for you",
+              "Our team will reach out via email or phone to discuss next steps",
+            ]
         ).map((s, i) => (
           <div key={i} className="flex items-start gap-3">
             <span className="w-5 h-5 rounded-full bg-[#0B1F4A] text-white text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-bold">
@@ -479,7 +512,8 @@ function Step1({
 
   const handleNext = () => {
     setTouched(true);
-    if (selectedService && selectedBranch) onNext();
+    const branchRequired = selectedService !== "private-office";
+    if (selectedService && (selectedBranch || !branchRequired)) onNext();
   };
 
   return (
@@ -519,7 +553,7 @@ function Step1({
         <div className="mb-8">
 
           <h3 className="mt-4 text-3xl font-bold text-[#0B1F4A]">
-            Select Preferred Branch
+            Select Preferred Branch{selectedService === "private-office" && " (Optional)"}
           </h3>
 
           <p className="mt-3 text-base leading-relaxed text-slate-500">
@@ -531,15 +565,19 @@ function Step1({
         <div className="grid gap-5 md:grid-cols-2">
           {BRANCHES.map((b) => {
             const active = selectedBranch === b.id;
+            const disabled = selectedService === "event-space" && b.id === "tower-6789";
 
             return (
               <button
                 key={b.id}
                 type="button"
-                onClick={() => setSelectedBranch(b.id)}
-                className={`group relative overflow-hidden rounded-3xl border bg-white p-6 text-left transition-all duration-300 ${active
-                  ? "border-[#1B3A8C] shadow-xl shadow-blue-100 ring-2 ring-[#1B3A8C]/10"
-                  : "border-slate-200 hover:-translate-y-1 hover:border-[#1B3A8C]/40 hover:shadow-lg"
+                disabled={disabled}
+                onClick={() => !disabled && setSelectedBranch(b.id)}
+                className={`group relative overflow-hidden rounded-3xl border bg-white p-6 text-left transition-all duration-300 ${disabled
+                  ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-50"
+                  : active
+                    ? "border-[#1B3A8C] shadow-xl shadow-blue-100 ring-2 ring-[#1B3A8C]/10"
+                    : "border-slate-200 hover:-translate-y-1 hover:border-[#1B3A8C]/40 hover:shadow-lg"
                   }`}
               >
                 {/* Active Accent */}
@@ -563,7 +601,7 @@ function Step1({
                     </h4>
 
                     <p className="mt-2 text-sm leading-6 text-slate-500">
-                      {b.address}
+                      {disabled ? "Unavailable for Event Space" : b.address}
                     </p>
                   </div>
                 </div>
@@ -572,7 +610,7 @@ function Step1({
           })}
         </div>
 
-        {touched && !selectedBranch && (
+        {touched && !selectedBranch && selectedService !== "private-office" && (
           <div className="mt-6 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             <AlertCircle className="h-5 w-5 shrink-0" />
             <span>Please select a branch to continue.</span>
@@ -599,15 +637,8 @@ function Step2PrivateOffice({
 }) {
   const today = new Date().toISOString().split("T")[0];
   const maxSeats = branch ? PRIVATE_OFFICE_MAX_SEATS[branch] : Math.max(...Object.values(PRIVATE_OFFICE_MAX_SEATS));
-  const branchLabel = BRANCHES.find((b) => b.id === branch)?.label;
   return (
     <div className="space-y-5">
-      {branchLabel && (
-        <div className="flex items-center gap-2 text-xs font-semibold text-[#1B3A8C] bg-[#EEF2FB] border border-[#C5D2EC] rounded-xl px-4 py-2.5">
-          <MapPin className="w-3.5 h-3.5 shrink-0" />
-          {branchLabel} · Maximum {maxSeats} seats available
-        </div>
-      )}
       <div className="grid sm:grid-cols-2 gap-5">
         <Field label="Number of Seats" required error={errors.seats}>
           <input
@@ -811,6 +842,37 @@ function Step2Coworking({
   return (
     <div className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-5">
+
+        <Field label="Preferred Start Date" required error={errors.startDate}>
+          <input
+            id="coworking-start-date"
+            name="startDate"
+            type="date"
+            min={today}
+            value={data.startDate}
+            onChange={(e) => {
+              const nextStartDate = e.target.value;
+              const calculatedTerm = getCoworkingTermFromDates(nextStartDate, data.endDate);
+              onChange({ startDate: nextStartDate, terms: calculatedTerm || data.terms });
+            }}
+            className={errors.startDate ? inputErrCls : inputCls}
+          />
+        </Field>
+        <Field label="End Date" required error={errors.endDate}>
+          <input
+            id="coworking-end-date"
+            name="endDate"
+            type="date"
+            min={data.startDate || today}
+            value={data.endDate}
+            onChange={(e) => {
+              const nextEndDate = e.target.value;
+              const calculatedTerm = getCoworkingTermFromDates(data.startDate, nextEndDate);
+              onChange({ endDate: nextEndDate, terms: calculatedTerm || data.terms });
+            }}
+            className={errors.endDate ? inputErrCls : inputCls}
+          />
+        </Field>
         <Field label="Number of Seats" required error={errors.seats}>
           <input
             id="coworking-seats"
@@ -823,21 +885,14 @@ function Step2Coworking({
             placeholder="e.g. 2"
           />
         </Field>
-        <Field label="Preferred Start Date" required error={errors.startDate}>
-          <input
-            id="coworking-start-date"
-            name="startDate"
-            type="date"
-            min={today}
-            value={data.startDate}
-            onChange={(e) => onChange({ startDate: e.target.value })}
-            className={errors.startDate ? inputErrCls : inputCls}
+        <Field label="Terms" required error={errors.terms}>
+          <PillSelect
+            options={COWORKING_TERMS}
+            value={data.terms || getCoworkingTermFromDates(data.startDate, data.endDate)}
+            onChange={(v) => onChange({ terms: v })}
           />
         </Field>
       </div>
-      <Field label="Terms" required error={errors.terms}>
-        <PillSelect options={COWORKING_TERMS} value={data.terms} onChange={(v) => onChange({ terms: v })} />
-      </Field>
       <Field label="Other Requirements">
         <textarea
           id="coworking-other-requirements"
@@ -919,6 +974,12 @@ function Step2EventSpace({
         <Field label="Event Date" required error={errors.eventDate}>
           <input id="event-space-date" name="eventDate" type="date" min={today} value={data.eventDate} onChange={(e) => onChange({ eventDate: e.target.value })} className={errors.eventDate ? inputErrCls : inputCls} />
         </Field>
+        <Field label="Event Time" required error={errors.time}>
+          <select id="event-space-time" name="time" value={data.time} onChange={(e) => onChange({ time: e.target.value })} className={errors.time ? inputErrCls : inputCls}>
+            <option value="">Select time</option>
+            {TIME_SLOTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </Field>
         <Field label="Estimated Attendees" required error={errors.attendees}>
           <input id="event-space-attendees" name="attendees" type="number" min={1} value={data.attendees} onChange={(e) => onChange({ attendees: e.target.value })} className={errors.attendees ? inputErrCls : inputCls} placeholder="e.g. 50" />
         </Field>
@@ -949,6 +1010,8 @@ function Step3({
   contractIdentity,
   setContact,
   setContractIdentity,
+  registeredBusiness,
+  setRegisteredBusiness,
   onBack,
   onNext,
 }: {
@@ -957,6 +1020,8 @@ function Step3({
   contractIdentity: ContractIdentityFields;
   setContact: React.Dispatch<React.SetStateAction<ContactFields>>;
   setContractIdentity: React.Dispatch<React.SetStateAction<ContractIdentityFields>>;
+  registeredBusiness: boolean | null;
+  setRegisteredBusiness: (value: boolean) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
@@ -981,6 +1046,10 @@ function Step3({
       errs.phone = "Phone number is required.";
     } else if (!isValidPhone(contact.phone)) {
       errs.phone = "Please enter a valid PH mobile number (e.g. +63 917 123 4567 or 09171234567).";
+    }
+    if (!contact.address.trim()) errs.address = "Address is required.";
+    if (isVO && registeredBusiness === null) {
+      errs.registeredBusiness = "Please select Yes or No.";
     }
 
     return errs;
@@ -1052,262 +1121,185 @@ function Step3({
             value={contact.address}
             onChange={(e) => setContact((p) => ({ ...p, address: e.target.value }))}
             className={inputCls + " resize-none"}
-            placeholder="Your address (optional)"
+            placeholder="Your address"
           />
         </Field>
       </div>
 
-      <div className="mt-7 border-t border-[#D9E2F0] pt-6">
-        <h3 className="text-2xl font-bold text-[#0B1F4A] mb-2">Government ID & Signatory (Optional)</h3>
-        <p className="text-sm text-[#64748B] mb-5">
-          These details are used for contract preparation and verification.
-          {isVO && " Accepted IDs for Virtual Office: Passport, Driver's License, Philippine National ID, or PRC ID."}
-        </p>
-
-        <label className="my-5 flex items-start gap-3 cursor-pointer group">
-          <div className="relative mt-0.5 shrink-0">
-            <input
-              id="quotation-signatory-same"
-              name="signatorySameAsIdHolder"
-              type="checkbox"
-              checked={contractIdentity.signatorySameAsIdHolder}
-              onChange={(e) =>
-                setContractIdentity((p) => ({
-                  ...p,
-                  signatorySameAsIdHolder: e.target.checked,
-                  signatoryIdType: e.target.checked ? "" : p.signatoryIdType,
-                  signatoryIdTypeOther: e.target.checked ? "" : p.signatoryIdTypeOther,
-                  signatoryIdName: e.target.checked ? "" : p.signatoryIdName,
-                  signatoryIdNumber: e.target.checked ? "" : p.signatoryIdNumber,
-                  signatoryIdAddress: e.target.checked ? "" : p.signatoryIdAddress,
-                  signatoryGovernmentIdFile: e.target.checked ? null : p.signatoryGovernmentIdFile,
-                }))
-              }
-              className="sr-only"
+      {isVO && (
+        <div className="mt-5">
+          <Field label="Are you a Registered Business?" required error={errors.registeredBusiness}>
+            <PillSelect
+              options={["Yes", "No"]}
+              value={registeredBusiness === true ? "Yes" : registeredBusiness === false ? "No" : ""}
+              onChange={(value) => setRegisteredBusiness(value === "Yes")}
             />
-            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-150 ${contractIdentity.signatorySameAsIdHolder ? "bg-[#0B1F4A] border-[#0B1F4A]" : "border-[#D9E2F0] bg-white group-hover:border-[#1B3A8C]"}`}>
-              {contractIdentity.signatorySameAsIdHolder && (
-                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </div>
-          </div>
-          <span className="text-sm text-[#4A5568] leading-relaxed">
-            The client name on the government ID will be the signatory.
-          </span>
-        </label>
-
-        <div className="grid sm:grid-cols-2 gap-5">
-          <Field label="Government ID Type" error={errors.idType}>
-            <select
-              id="quotation-id-type"
-              name="idType"
-              value={contractIdentity.idType}
-              onChange={(e) => setContractIdentity((p) => ({ ...p, idType: e.target.value, idTypeOther: "" }))}
-              className={errors.idType ? inputErrCls : inputCls}
-            >
-              <option value="">Select ID type</option>
-              {idTypeOptions.map((idType) => (
-                <option key={idType} value={idType}>{idType}</option>
-              ))}
-            </select>
           </Field>
-
-          {!isVO && contractIdentity.idType === "Others" && (
-            <Field label="Specify ID Type" required error={errors.idTypeOther}>
-              <input
-                id="quotation-id-type-other"
-                name="idTypeOther"
-                type="text"
-                value={contractIdentity.idTypeOther}
-                onChange={(e) => setContractIdentity((p) => ({ ...p, idTypeOther: e.target.value }))}
-                className={errors.idTypeOther ? inputErrCls : inputCls}
-                placeholder="Enter ID type"
-              />
-            </Field>
+          {registeredBusiness !== null && (
+            <div className="mt-4 rounded-xl border border-[#D9E2F0] bg-[#F8FAFD] px-4 py-3 text-sm text-[#4A5568]">
+              <p className="font-semibold text-[#0B1F4A]">Applicable requirements</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {registeredBusiness ? (
+                  <>
+                    <li>DTI or SEC Certificate</li>
+                    <li>BIR Certificate of Registration (COR)</li>
+                    <li>Government-issued ID with signature</li>
+                    <li>Other applicable company documents</li>
+                  </>
+                ) : (
+                  <>
+                    <li>Government-issued ID with signature</li>
+                    <li>Other required documents for registration</li>
+                  </>
+                )}
+              </ul>
+            </div>
           )}
-
-          <Field label="Name on Government ID" error={errors.idName}>
-            <input
-              id="quotation-id-name"
-              name="idName"
-              type="text"
-              value={contractIdentity.idName}
-              onChange={(e) => setContractIdentity((p) => ({ ...p, idName: e.target.value }))}
-              className={errors.idName ? inputErrCls : inputCls}
-              placeholder="As shown on your ID"
-            />
-          </Field>
-
-          <Field label="Government ID Number" error={errors.idNumber}>
-            <input
-              id="quotation-id-number"
-              name="idNumber"
-              type="text"
-              value={contractIdentity.idNumber}
-              onChange={(e) => setContractIdentity((p) => ({ ...p, idNumber: e.target.value }))}
-              className={errors.idNumber ? inputErrCls : inputCls}
-              placeholder="Enter ID number"
-            />
-          </Field>
         </div>
+      )}
 
-        <div className="mt-5">
-          <Field label="Address on Government ID" error={errors.idAddress}>
-            <textarea
-              id="quotation-id-address"
-              name="idAddress"
-              rows={3}
-              value={contractIdentity.idAddress}
-              onChange={(e) => setContractIdentity((p) => ({ ...p, idAddress: e.target.value }))}
-              className={(errors.idAddress ? inputErrCls : inputCls) + " resize-none"}
-              placeholder="Complete address as shown on your ID"
-            />
-          </Field>
-        </div>
+      {(!isVO || registeredBusiness === false) && (
+        <div className="mt-7 border-t border-[#D9E2F0] pt-6">
+          <h3 className="text-2xl font-bold text-[#0B1F4A] mb-2">Government & Signatory</h3>
+          <p className="text-sm text-[#64748B] mb-5">
+            These details are used for contract preparation and verification.
+            {isVO && " Accepted IDs for Virtual Office: Passport, Driver's License, Philippine National ID, or PRC ID."}
+          </p>
 
-        <div className="mt-5">
-          <Field label="Upload Government ID" error={errors.governmentIdFile}>
-            <button
-              type="button"
-              onClick={() => idUploadRef.current?.click()}
-              className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${contractIdentity.governmentIdFile ? "border-[#1B3A8C] bg-[#EEF2FB]" : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"}`}
-            >
-              <Upload className={`w-5 h-5 ${contractIdentity.governmentIdFile ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
-              <span className={`text-sm font-semibold ${contractIdentity.governmentIdFile ? "text-[#1B3A8C]" : "text-[#64748B]"}`}>
-                {contractIdentity.governmentIdFile ? contractIdentity.governmentIdFile.name : "Click to upload government ID"}
-              </span>
-            </button>
-            <input
-              ref={idUploadRef}
-              id="quotation-government-id-file"
-              name="governmentIdFile"
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="hidden"
-              onChange={(e) => setContractIdentity((p) => ({ ...p, governmentIdFile: e.target.files?.[0] ?? null }))}
-            />
-            <p className="text-xs text-[#64748B] mt-2">Accepted: JPG, PNG, PDF - Max 10 MB</p>
-            {contractIdentity.governmentIdFile && isPreviewableFile(contractIdentity.governmentIdFile) && (
-              <div className="mt-3 rounded-xl border border-[#D9E2F0] bg-white px-3 py-2 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-[#0B1F4A]">Preview uploaded ID</p>
-                  <p className="text-[11px] text-[#64748B] truncate">{contractIdentity.governmentIdFile.name}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPreviewTarget({ title: "Government ID Preview", file: contractIdentity.governmentIdFile! })}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1B3A8C] hover:underline shrink-0"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  View
-                </button>
+          <label className="my-5 flex items-start gap-3 cursor-pointer group">
+            <div className="relative mt-0.5 shrink-0">
+              <input
+                id="quotation-signatory-same"
+                name="signatorySameAsIdHolder"
+                type="checkbox"
+                checked={contractIdentity.signatorySameAsIdHolder}
+                onChange={(e) =>
+                  setContractIdentity((p) => ({
+                    ...p,
+                    signatorySameAsIdHolder: e.target.checked,
+                    signatoryIdType: e.target.checked ? "" : p.signatoryIdType,
+                    signatoryIdTypeOther: e.target.checked ? "" : p.signatoryIdTypeOther,
+                    signatoryIdName: e.target.checked ? "" : p.signatoryIdName,
+                    signatoryIdNumber: e.target.checked ? "" : p.signatoryIdNumber,
+                    signatoryIdAddress: e.target.checked ? "" : p.signatoryIdAddress,
+                    signatoryGovernmentIdFile: e.target.checked ? null : p.signatoryGovernmentIdFile,
+                  }))
+                }
+                className="sr-only"
+              />
+              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-150 ${contractIdentity.signatorySameAsIdHolder ? "bg-[#0B1F4A] border-[#0B1F4A]" : "border-[#D9E2F0] bg-white group-hover:border-[#1B3A8C]"}`}>
+                {contractIdentity.signatorySameAsIdHolder && (
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
               </div>
-            )}
-          </Field>
-        </div>
-
-        {!contractIdentity.signatorySameAsIdHolder && (
-          <div className="mt-5 rounded-2xl border border-[#D9E2F0] bg-[#F8FAFD] p-5 space-y-5">
-            <h4 className="text-sm font-bold text-[#0B1F4A]">Alternate Signatory Details</h4>
-            <div className="grid sm:grid-cols-2 gap-5">
-              <Field label="Signatory ID Type" error={errors.signatoryIdType}>
-                <select
-                  id="quotation-signatory-id-type"
-                  name="signatoryIdType"
-                  value={contractIdentity.signatoryIdType}
-                  onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdType: e.target.value, signatoryIdTypeOther: "" }))}
-                  className={errors.signatoryIdType ? inputErrCls : inputCls}
-                >
-                  <option value="">Select ID type</option>
-                  {idTypeOptions.map((idType) => (
-                    <option key={idType} value={idType}>{idType}</option>
-                  ))}
-                </select>
-              </Field>
-
-              {!isVO && contractIdentity.signatoryIdType === "Others" && (
-                <Field label="Specify Signatory ID Type" error={errors.signatoryIdTypeOther}>
-                  <input
-                    id="quotation-signatory-id-type-other"
-                    name="signatoryIdTypeOther"
-                    type="text"
-                    value={contractIdentity.signatoryIdTypeOther}
-                    onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdTypeOther: e.target.value }))}
-                    className={errors.signatoryIdTypeOther ? inputErrCls : inputCls}
-                    placeholder="Enter ID type"
-                  />
-                </Field>
-              )}
-
-              <Field label="Signatory Name on Government ID" error={errors.signatoryIdName}>
-                <input
-                  id="quotation-signatory-id-name"
-                  name="signatoryIdName"
-                  type="text"
-                  value={contractIdentity.signatoryIdName}
-                  onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdName: e.target.value }))}
-                  className={errors.signatoryIdName ? inputErrCls : inputCls}
-                  placeholder="As shown on signatory ID"
-                />
-              </Field>
-
-              <Field label="Signatory ID Number" error={errors.signatoryIdNumber}>
-                <input
-                  id="quotation-signatory-id-number"
-                  name="signatoryIdNumber"
-                  type="text"
-                  value={contractIdentity.signatoryIdNumber}
-                  onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdNumber: e.target.value }))}
-                  className={errors.signatoryIdNumber ? inputErrCls : inputCls}
-                  placeholder="Enter signatory ID number"
-                />
-              </Field>
             </div>
+            <span className="text-sm text-[#4A5568] leading-relaxed">
+              The client name on the government ID will be the signatory.
+            </span>
+          </label>
 
-            <Field label="Signatory Address on Government ID" error={errors.signatoryIdAddress}>
-              <textarea
-                id="quotation-signatory-id-address"
-                name="signatoryIdAddress"
-                rows={3}
-                value={contractIdentity.signatoryIdAddress}
-                onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdAddress: e.target.value }))}
-                className={(errors.signatoryIdAddress ? inputErrCls : inputCls) + " resize-none"}
-                placeholder="Complete address as shown on signatory ID"
+          <div className="grid sm:grid-cols-2 gap-5">
+            <Field label="Government ID Type" error={errors.idType}>
+              <select
+                id="quotation-id-type"
+                name="idType"
+                value={contractIdentity.idType}
+                onChange={(e) => setContractIdentity((p) => ({ ...p, idType: e.target.value, idTypeOther: "" }))}
+                className={errors.idType ? inputErrCls : inputCls}
+              >
+                <option value="">Select ID type</option>
+                {idTypeOptions.map((idType) => (
+                  <option key={idType} value={idType}>{idType}</option>
+                ))}
+              </select>
+            </Field>
+
+            {!isVO && contractIdentity.idType === "Others" && (
+              <Field label="Specify ID Type" required error={errors.idTypeOther}>
+                <input
+                  id="quotation-id-type-other"
+                  name="idTypeOther"
+                  type="text"
+                  value={contractIdentity.idTypeOther}
+                  onChange={(e) => setContractIdentity((p) => ({ ...p, idTypeOther: e.target.value }))}
+                  className={errors.idTypeOther ? inputErrCls : inputCls}
+                  placeholder="Enter ID type"
+                />
+              </Field>
+            )}
+
+            <Field label="Name on Government ID" error={errors.idName}>
+              <input
+                id="quotation-id-name"
+                name="idName"
+                type="text"
+                value={contractIdentity.idName}
+                onChange={(e) => setContractIdentity((p) => ({ ...p, idName: e.target.value }))}
+                className={errors.idName ? inputErrCls : inputCls}
+                placeholder="As shown on your ID"
               />
             </Field>
 
-            <Field label="Upload Signatory Government ID" error={errors.signatoryGovernmentIdFile}>
+            <Field label="Government ID Number" error={errors.idNumber}>
+              <input
+                id="quotation-id-number"
+                name="idNumber"
+                type="text"
+                value={contractIdentity.idNumber}
+                onChange={(e) => setContractIdentity((p) => ({ ...p, idNumber: e.target.value }))}
+                className={errors.idNumber ? inputErrCls : inputCls}
+                placeholder="Enter ID number"
+              />
+            </Field>
+          </div>
+
+          <div className="mt-5">
+            <Field label="Address on Government ID" error={errors.idAddress}>
+              <textarea
+                id="quotation-id-address"
+                name="idAddress"
+                rows={3}
+                value={contractIdentity.idAddress}
+                onChange={(e) => setContractIdentity((p) => ({ ...p, idAddress: e.target.value }))}
+                className={(errors.idAddress ? inputErrCls : inputCls) + " resize-none"}
+                placeholder="Complete address as shown on your ID"
+              />
+            </Field>
+          </div>
+
+          <div className="mt-5">
+            <Field label="Upload Government ID" error={errors.governmentIdFile}>
               <button
                 type="button"
-                onClick={() => signatoryUploadRef.current?.click()}
-                className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${contractIdentity.signatoryGovernmentIdFile ? "border-[#1B3A8C] bg-[#EEF2FB]" : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"}`}
+                onClick={() => idUploadRef.current?.click()}
+                className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${contractIdentity.governmentIdFile ? "border-[#1B3A8C] bg-[#EEF2FB]" : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"}`}
               >
-                <Upload className={`w-5 h-5 ${contractIdentity.signatoryGovernmentIdFile ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
-                <span className={`text-sm font-semibold ${contractIdentity.signatoryGovernmentIdFile ? "text-[#1B3A8C]" : "text-[#64748B]"}`}>
-                  {contractIdentity.signatoryGovernmentIdFile ? contractIdentity.signatoryGovernmentIdFile.name : "Click to upload signatory government ID"}
+                <Upload className={`w-5 h-5 ${contractIdentity.governmentIdFile ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
+                <span className={`text-sm font-semibold ${contractIdentity.governmentIdFile ? "text-[#1B3A8C]" : "text-[#64748B]"}`}>
+                  {contractIdentity.governmentIdFile ? contractIdentity.governmentIdFile.name : "Click to upload government ID"}
                 </span>
               </button>
               <input
-                ref={signatoryUploadRef}
-                id="quotation-signatory-government-id-file"
-                name="signatoryGovernmentIdFile"
+                ref={idUploadRef}
+                id="quotation-government-id-file"
+                name="governmentIdFile"
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
                 className="hidden"
-                onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryGovernmentIdFile: e.target.files?.[0] ?? null }))}
+                onChange={(e) => setContractIdentity((p) => ({ ...p, governmentIdFile: e.target.files?.[0] ?? null }))}
               />
               <p className="text-xs text-[#64748B] mt-2">Accepted: JPG, PNG, PDF - Max 10 MB</p>
-              {contractIdentity.signatoryGovernmentIdFile && isPreviewableFile(contractIdentity.signatoryGovernmentIdFile) && (
+              {contractIdentity.governmentIdFile && isPreviewableFile(contractIdentity.governmentIdFile) && (
                 <div className="mt-3 rounded-xl border border-[#D9E2F0] bg-white px-3 py-2 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-[#0B1F4A]">Preview uploaded signatory ID</p>
-                    <p className="text-[11px] text-[#64748B] truncate">{contractIdentity.signatoryGovernmentIdFile.name}</p>
+                    <p className="text-xs font-semibold text-[#0B1F4A]">Preview uploaded ID</p>
+                    <p className="text-[11px] text-[#64748B] truncate">{contractIdentity.governmentIdFile.name}</p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setPreviewTarget({ title: "Signatory ID Preview", file: contractIdentity.signatoryGovernmentIdFile! })}
+                    onClick={() => setPreviewTarget({ title: "Government ID Preview", file: contractIdentity.governmentIdFile! })}
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1B3A8C] hover:underline shrink-0"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -1317,10 +1309,125 @@ function Step3({
               )}
             </Field>
           </div>
-        )}
-      </div>
 
-      <NavRow onBack={onBack} onNext={handleNext} />
+          {!contractIdentity.signatorySameAsIdHolder && (
+            <div className="mt-5 rounded-2xl border border-[#D9E2F0] bg-[#F8FAFD] p-5 space-y-5">
+              <h4 className="text-sm font-bold text-[#0B1F4A]">Alternate Signatory Details</h4>
+              <div className="grid sm:grid-cols-2 gap-5">
+                <Field label="Signatory ID Type" error={errors.signatoryIdType}>
+                  <select
+                    id="quotation-signatory-id-type"
+                    name="signatoryIdType"
+                    value={contractIdentity.signatoryIdType}
+                    onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdType: e.target.value, signatoryIdTypeOther: "" }))}
+                    className={errors.signatoryIdType ? inputErrCls : inputCls}
+                  >
+                    <option value="">Select ID type</option>
+                    {idTypeOptions.map((idType) => (
+                      <option key={idType} value={idType}>{idType}</option>
+                    ))}
+                  </select>
+                </Field>
+
+                {!isVO && contractIdentity.signatoryIdType === "Others" && (
+                  <Field label="Specify Signatory ID Type" error={errors.signatoryIdTypeOther}>
+                    <input
+                      id="quotation-signatory-id-type-other"
+                      name="signatoryIdTypeOther"
+                      type="text"
+                      value={contractIdentity.signatoryIdTypeOther}
+                      onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdTypeOther: e.target.value }))}
+                      className={errors.signatoryIdTypeOther ? inputErrCls : inputCls}
+                      placeholder="Enter ID type"
+                    />
+                  </Field>
+                )}
+
+                <Field label="Signatory Name on Government ID" error={errors.signatoryIdName}>
+                  <input
+                    id="quotation-signatory-id-name"
+                    name="signatoryIdName"
+                    type="text"
+                    value={contractIdentity.signatoryIdName}
+                    onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdName: e.target.value }))}
+                    className={errors.signatoryIdName ? inputErrCls : inputCls}
+                    placeholder="As shown on signatory ID"
+                  />
+                </Field>
+
+                <Field label="Signatory ID Number" error={errors.signatoryIdNumber}>
+                  <input
+                    id="quotation-signatory-id-number"
+                    name="signatoryIdNumber"
+                    type="text"
+                    value={contractIdentity.signatoryIdNumber}
+                    onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdNumber: e.target.value }))}
+                    className={errors.signatoryIdNumber ? inputErrCls : inputCls}
+                    placeholder="Enter signatory ID number"
+                  />
+                </Field>
+              </div>
+
+              <Field label="Signatory Address on Government ID" error={errors.signatoryIdAddress}>
+                <textarea
+                  id="quotation-signatory-id-address"
+                  name="signatoryIdAddress"
+                  rows={3}
+                  value={contractIdentity.signatoryIdAddress}
+                  onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryIdAddress: e.target.value }))}
+                  className={(errors.signatoryIdAddress ? inputErrCls : inputCls) + " resize-none"}
+                  placeholder="Complete address as shown on signatory ID"
+                />
+              </Field>
+
+              <Field label="Upload Signatory Government ID" error={errors.signatoryGovernmentIdFile}>
+                <button
+                  type="button"
+                  onClick={() => signatoryUploadRef.current?.click()}
+                  className={`w-full flex items-center justify-center gap-3 px-6 py-5 rounded-2xl border-[1.5px] border-dashed transition-all duration-200 ${contractIdentity.signatoryGovernmentIdFile ? "border-[#1B3A8C] bg-[#EEF2FB]" : "border-[#D9E2F0] hover:border-[#1B3A8C] hover:bg-[#EEF2FB]"}`}
+                >
+                  <Upload className={`w-5 h-5 ${contractIdentity.signatoryGovernmentIdFile ? "text-[#1B3A8C]" : "text-[#64748B]"}`} />
+                  <span className={`text-sm font-semibold ${contractIdentity.signatoryGovernmentIdFile ? "text-[#1B3A8C]" : "text-[#64748B]"}`}>
+                    {contractIdentity.signatoryGovernmentIdFile ? contractIdentity.signatoryGovernmentIdFile.name : "Click to upload signatory government ID"}
+                  </span>
+                </button>
+                <input
+                  ref={signatoryUploadRef}
+                  id="quotation-signatory-government-id-file"
+                  name="signatoryGovernmentIdFile"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => setContractIdentity((p) => ({ ...p, signatoryGovernmentIdFile: e.target.files?.[0] ?? null }))}
+                />
+                <p className="text-xs text-[#64748B] mt-2">Accepted: JPG, PNG, PDF - Max 10 MB</p>
+                {contractIdentity.signatoryGovernmentIdFile && isPreviewableFile(contractIdentity.signatoryGovernmentIdFile) && (
+                  <div className="mt-3 rounded-xl border border-[#D9E2F0] bg-white px-3 py-2 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-[#0B1F4A]">Preview uploaded signatory ID</p>
+                      <p className="text-[11px] text-[#64748B] truncate">{contractIdentity.signatoryGovernmentIdFile.name}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTarget({ title: "Signatory ID Preview", file: contractIdentity.signatoryGovernmentIdFile! })}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1B3A8C] hover:underline shrink-0"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      View
+                    </button>
+                  </div>
+                )}
+              </Field>
+            </div>
+          )}
+        </div>
+      )}
+
+      <NavRow
+        onBack={onBack}
+        onNext={handleNext}
+        nextLabel={isVO && registeredBusiness === true ? "Submit" : "Continue"}
+      />
 
       <FilePreviewModal target={previewTarget} onClose={() => setPreviewTarget(null)} />
     </div>
@@ -1356,6 +1463,8 @@ function VOPricingBreakdown({ pkg, months }: { pkg: string; months: string }) {
           <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">Subtotal</span><span className="text-[#0B1F4A] font-medium">{peso(b.recurring)}</span></div>
         <div className="flex justify-between">
           <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">Contract & Admin Fee</span><span className="text-[#0B1F4A] font-medium">{peso(b.contractAdminFee)}</span></div>
+        <div className="flex justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">Contract/Admin Fee VAT (12%)</span><span className="text-[#0B1F4A] font-medium">{peso(b.contractVat)}</span></div>
         <div className="flex justify-between border-t border-[#D9E2F0] pt-2 mt-2">
           <span className="font-bold text-[#0B1F4A]">Total</span><span className="font-bold text-[#1B3A8C]">{peso(b.total)}</span></div>
       </div>
@@ -1415,6 +1524,7 @@ function Step4({
     if (selectedService === "coworking") return [
       { label: "Seats", value: coworking.seats },
       { label: "Start Date", value: coworking.startDate },
+      { label: "End Date", value: coworking.endDate },
       { label: "Pass Type", value: coworking.terms },
       { label: "Other Requirements", value: coworking.otherRequirements },
     ];
@@ -1427,6 +1537,7 @@ function Step4({
     ];
     if (selectedService === "event-space") return [
       { label: "Event Date", value: eventSpace.eventDate },
+      { label: "Event Time", value: eventSpace.time },
       { label: "Attendees", value: eventSpace.attendees },
       { label: "Duration", value: eventSpace.duration },
       { label: "Event Type", value: eventSpace.eventType },
@@ -1628,7 +1739,7 @@ export default function GetAQuotePage() {
     const branch = searchParams.get("branch");
     const service = normalizeQuotationService(searchParams.get("service") ?? searchParams.get("type"));
 
-    if (branch && BRANCHES.some((b) => b.id === branch)) {
+    if (branch && BRANCHES.some((b) => b.id === branch) && !(service === "event-space" && branch === "tower-6789")) {
       setSelectedBranch(branch as BranchId);
     }
 
@@ -1637,10 +1748,12 @@ export default function GetAQuotePage() {
       setStep(1);
     }
   }, [searchParams]);
+
   const [virtualOffice, setVirtualOffice] = useState<VirtualOfficeFields>({ package: "", startDate: "", months: "" });
-  const [coworking, setCoworking] = useState<CoworkingFields>({ seats: "", startDate: "", terms: "", otherRequirements: "" });
+  const [registeredBusiness, setRegisteredBusiness] = useState<boolean | null>(null);
+  const [coworking, setCoworking] = useState<CoworkingFields>({ seats: "", startDate: "", endDate: "", terms: "", otherRequirements: "" });
   const [meetingRoom, setMeetingRoom] = useState<MeetingRoomFields>({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
-  const [eventSpace, setEventSpace] = useState<EventSpaceFields>({ eventDate: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
+  const [eventSpace, setEventSpace] = useState<EventSpaceFields>({ eventDate: "", time: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1676,7 +1789,11 @@ export default function GetAQuotePage() {
     if (selectedService === "coworking") {
       if (!coworking.seats || Number(coworking.seats) < 1) errs.seats = "Please enter a valid number of seats.";
       if (!coworking.startDate) errs.startDate = "Please select a preferred start date.";
-      if (!coworking.terms) errs.passType = "Please select a pass type.";
+      if (!coworking.endDate) errs.endDate = "Please select an end date.";
+      if (coworking.startDate && coworking.endDate && new Date(coworking.endDate) < new Date(coworking.startDate)) {
+        errs.endDate = "End date must be on or after the start date.";
+      }
+      if (!coworking.terms) errs.terms = "Please select a pass type.";
     }
     if (selectedService === "meeting-room") {
       if (!meetingRoom.date) errs.date = "Please select a reservation date.";
@@ -1686,6 +1803,7 @@ export default function GetAQuotePage() {
     }
     if (selectedService === "event-space") {
       if (!eventSpace.eventDate) errs.eventDate = "Please select an event date.";
+      if (!eventSpace.time) errs.time = "Please select an event time.";
       if (!eventSpace.attendees || Number(eventSpace.attendees) < 1) errs.attendees = "Please enter an estimated number of attendees.";
       if (!eventSpace.duration) errs.duration = "Please select an event duration.";
       if (!eventSpace.eventType) errs.eventType = "Please select an event type.";
@@ -1696,7 +1814,8 @@ export default function GetAQuotePage() {
   const handleStep2Next = () => {
     const errs = validateStep2();
     setStep2Errors(errs);
-    if (Object.keys(errs).length === 0) setStep(3);
+    if (Object.keys(errs).length !== 0) return;
+    setStep(3);
   };
 
   const handleReset = useCallback(() => {
@@ -1721,9 +1840,10 @@ export default function GetAQuotePage() {
     });
     setPrivateOffice({ seats: "", moveInDate: "", leaseTerm: "", otherRequirements: "" });
     setVirtualOffice({ package: "", startDate: "", months: "" });
-    setCoworking({ seats: "", startDate: "", terms: "", otherRequirements: "" });
+    setRegisteredBusiness(null);
+    setCoworking({ seats: "", startDate: "", endDate: "", terms: "", otherRequirements: "" });
     setMeetingRoom({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
-    setEventSpace({ eventDate: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
+    setEventSpace({ eventDate: "", time: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
     setNotes("");
     setConsent(false);
     setStep2Errors({});
@@ -1788,6 +1908,7 @@ export default function GetAQuotePage() {
         duration: pricing.numMonths,
         subtotal: pricing.recurring,
         contract_admin_fee: pricing.contractAdminFee,
+        contract_vat: pricing.contractVat,
         total: pricing.total,
       };
       detail.package_name = virtualOffice.package;
@@ -1797,13 +1918,15 @@ export default function GetAQuotePage() {
       detail.duration = pricing.numMonths;
       detail.subtotal = pricing.recurring;
       detail.contract_admin_fee = pricing.contractAdminFee;
+      detail.contract_vat = pricing.contractVat;
       detail.total = pricing.total;
       total = pricing.total;
       pkg = virtualOffice.package;
     } else if (selectedService === "coworking") {
       detail.seats = Number(coworking.seats) || null;
       detail.date = coworking.startDate;
-      detail.duration_type = coworking.terms;
+      detail.end_date = coworking.endDate || null;
+      detail.duration_type = coworking.terms || getCoworkingTermFromDates(coworking.startDate, coworking.endDate);
       detail.other_requirements = coworking.otherRequirements || null;
     } else if (selectedService === "meeting-room") {
       detail.seats = Number(meetingRoom.participants) || null;
@@ -1814,6 +1937,7 @@ export default function GetAQuotePage() {
     } else if (selectedService === "event-space") {
       detail.seats = Number(eventSpace.attendees) || null;
       detail.date = eventSpace.eventDate;
+      detail.time = eventSpace.time;
       detail.duration_type = eventSpace.duration;
       detail.other_requirements = eventSpace.otherRequirements || null;
       event_type = eventSpace.eventType;
@@ -1835,13 +1959,14 @@ export default function GetAQuotePage() {
       lease_term,
       package: pkg,
       event_type,
+      registered_business: selectedService === "virtual-office" ? registeredBusiness : null,
       status: "pending",
       detail,
     };
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  async function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
     setSubmitError(null);
     setIsSubmitting(true);
 
@@ -1987,7 +2112,13 @@ export default function GetAQuotePage() {
                 {step === 1 && (
                   <Step1
                     selectedService={selectedService}
-                    setSelectedService={(s) => { setSelectedService(s); setStep2Errors({}); }}
+                    setSelectedService={(s) => {
+                      setSelectedService(s);
+                      if (s === "event-space" && selectedBranch === "tower-6789") {
+                        setSelectedBranch(null);
+                      }
+                      setStep2Errors({});
+                    }}
                     selectedBranch={selectedBranch}
                     setSelectedBranch={(b) => { setSelectedBranch(b); setStep2Errors({}); }}
                     onNext={() => setStep(2)}
@@ -2017,8 +2148,10 @@ export default function GetAQuotePage() {
                     contractIdentity={contractIdentity}
                     setContact={setContact}
                     setContractIdentity={setContractIdentity}
+                    registeredBusiness={registeredBusiness}
+                    setRegisteredBusiness={setRegisteredBusiness}
                     onBack={() => setStep(2)}
-                    onNext={() => setStep(4)}
+                    onNext={() => registeredBusiness === true ? void handleSubmit() : setStep(4)}
                   />
                 )}
 
@@ -2057,6 +2190,7 @@ export default function GetAQuotePage() {
       >
         <SuccessModalContent
           isVO={isVO}
+          registeredBusiness={registeredBusiness}
           onClose={handleSuccessClose}
         />
       </Modal>

@@ -44,6 +44,7 @@ interface PricingBreakdown {
   duration: number;
   subtotal: number;
   contractAdminFee: number;
+  contractVat: number;
   total: number;
 }
 
@@ -95,9 +96,10 @@ function computeVirtualOfficeTotal(
 
   // Get contract/admin fee for the selected package
   const contractAdminFee = VO_CONTRACT_ADMIN_FEE[pkg] ?? 0;
+  const contractVat = contractAdminFee * VO_VAT_RATE;
 
   // Final total
-  const total = recurring + contractAdminFee;
+  const total = recurring + contractAdminFee + contractVat;
 
   return {
     packagePrice: base,
@@ -106,6 +108,7 @@ function computeVirtualOfficeTotal(
     duration: numMonths,
     subtotal: recurring,
     contractAdminFee,
+    contractVat,
     total,
   };
 }
@@ -189,6 +192,7 @@ function usePaymentLinkGate() {
               duration: Number(data.pricing.duration ?? 1),
               subtotal: Number(data.pricing.subtotal ?? 0),
               contractAdminFee: Number(data.pricing.contract_admin_fee ?? 0),
+              contractVat: Number(data.pricing.contract_vat ?? 0),
               total: Number(data.pricing.total ?? 0),
             }
             : null,
@@ -297,6 +301,10 @@ function FloatingReceipt({
                 <div className="flex justify-between">
                   <span className="text-[#64748B]">Contract & Admin Fee</span>
                   <span className="text-[#0B1F4A] font-medium">{peso(pricing.contractAdminFee)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#64748B]">Contract/Admin Fee VAT (12%)</span>
+                  <span className="text-[#0B1F4A] font-medium">{peso(pricing.contractVat)}</span>
                 </div>
               </div>
             </div>

@@ -196,6 +196,8 @@ export interface QuotationDetail {
     company_name?: string | null;
     email: string;
     phone: string;
+    address?: string | null;
+    registered_business?: boolean | null;
     request?: string | null;
     payment_method?: string | null;
     transaction_id?: string | null;
@@ -214,6 +216,7 @@ export interface QuotationDetail {
     vat_percentage?: number | string | null;
     vat_amount?: number | string | null;
     contract_admin_fee?: number | string | null;
+    contract_vat?: number | string | null;
     discount?: number | string | null;
     discounts?: number | string | null;
     contract_content?: string | null;
@@ -247,6 +250,8 @@ export interface QuotationNotificationOptions {
     contractSendUrl?: string;
     verifyPaymentUrl?: string;
     useBackendDelivery?: boolean;
+    adminOnly?: boolean;
+    salesOfficerOnly?: boolean;
 }
 
 const VO_PACKAGE_PRICES: Record<string, string> = {
@@ -311,6 +316,7 @@ function buildQuotationPriceBreakdownRows(quotation: QuotationPayload): string {
         d.vat_amount != null ||
         d.subtotal != null ||
         d.contract_admin_fee != null ||
+        d.contract_vat != null ||
         d.total != null;
 
     if (!hasPrice) return "";
@@ -331,6 +337,7 @@ function buildQuotationPriceBreakdownRows(quotation: QuotationPayload): string {
         ),
         quotationRow("Subtotal", d.subtotal != null ? formatCurrency(d.subtotal) : undefined),
         quotationRow("Contract & Admin Fee", d.contract_admin_fee != null ? formatCurrency(d.contract_admin_fee) : undefined),
+        quotationRow("Contract/Admin Fee VAT (12%)", d.contract_vat != null ? formatCurrency(d.contract_vat) : undefined),
         ...(discountValue != null && Number(discountValue) > 0
             ? [quotationRow("Promo / Discount", `-${formatCurrency(discountValue)}`)]
             : []),
@@ -606,11 +613,22 @@ async function getCategoryRecipientList(category: string, extras: Array<string |
     return recipients;
 }
 
-function getQuotationRecipients(branch: string | null | undefined): string[] {
+function getQuotationRecipients(
+    serviceName: string | null | undefined,
+    branch: string | null | undefined
+): string[] {
     const normalizedBranch = String(branch || "").trim().toLowerCase();
-    const branchManager = normalizedBranch.includes("insular") || normalizedBranch === "s02"
-        ? RECIPIENTS.branchManagers.S02
-        : RECIPIENTS.branchManagers.S01;
+    const branchManager = getBranchManagerRecipient(branch);
+    const isPrivateOffice = String(serviceName || "").trim().toLowerCase().includes("private office");
+
+    if (isPrivateOffice) {
+        return toUniqueEmails([
+            RECIPIENTS.salesOfficer,
+            ...(normalizedBranch
+                ? [branchManager]
+                : [RECIPIENTS.branchManagers.S01, RECIPIENTS.branchManagers.S02]),
+        ]);
+    }
 
     return toUniqueEmails([
         RECIPIENTS.generalManager,
@@ -618,6 +636,13 @@ function getQuotationRecipients(branch: string | null | undefined): string[] {
         RECIPIENTS.salesOfficer,
         RECIPIENTS.digitalMarketing,
     ]);
+}
+
+function getBranchManagerRecipient(branch: string | null | undefined): string {
+    const normalizedBranch = String(branch || "").trim().toLowerCase();
+    return normalizedBranch.includes("insular") || normalizedBranch === "s02"
+        ? RECIPIENTS.branchManagers.S02
+        : RECIPIENTS.branchManagers.S01;
 }
 
 function getPaymentVerifiedRecipients(branch: string | null | undefined): string[] {
@@ -1187,7 +1212,7 @@ export async function sendQuotationUserEmail(
     const body = `
         <p style="font-size:15px;line-height:1.8;color:#475569;">Hi ${firstName},</p>
         <p style="font-size:15px;line-height:1.8;color:#475569;">
-            Thank you for your interest in Hero Serviced Office, Inc.. We've received your
+            Thank you for your interest in Hero Serviced Office, Inc. We've received your
             ${quotation.service_name.toLowerCase()} request and our team will get back
             to you within <strong>24 business hours</strong>.
         </p>
@@ -1222,8 +1247,10 @@ export async function sendQuotationUserEmail(
 
 // Branch name -> branch manager email
 const BRANCH_MANAGER_EMAIL_MAP: Record<string, string> = {
-    "insular life": "insularlife.branch@heroofficesolutions.com",
-    "tower 6789": "tower6789.branch@heroofficesolutions.com",
+    // "insular life": "c_francisco@heroph.net",
+    // "tower 6789": "sales@heroph.net",
+    "insular life": "hero.branchmanager.s01@gmail.com",
+    "tower 6789": "hero.branchmanager.s02@gmail.com",
 };
 
 function resolveBranchManagerEmail(branch?: string | null): string {
@@ -1651,7 +1678,14 @@ export async function sendQuotationAdminEmail(
         }
     }
 
-    const quotationRecipients = getQuotationRecipients(quotation.branch);
+    const quotationRecipients = options.salesOfficerOnly
+        ? toUniqueEmails([
+            RECIPIENTS.salesOfficer,
+            ...(quotation.service_name?.toLowerCase().includes("virtual office")
+                ? [getBranchManagerRecipient(quotation.branch)]
+                : []),
+        ])
+        : getQuotationRecipients(quotation.service_name, quotation.branch);
 
     if (quotationRecipients.length === 0) {
         throw new Error("No active recipients configured for quotation notifications.");
@@ -1665,8 +1699,10 @@ export async function sendQuotationAdminEmail(
             ${quotationRow("Name", d.full_name)}
             ${quotationRow("Company", d.company_name)}
             ${quotationRow("Email", d.email)}
+            ${quotationRow("Address", d.address)}
             ${quotationRow("Phone", formatClickablePhone(d.phone))}
             ${quotationRow("Branch", quotation.branch)}
+            ${quotationRow("Registered Business", d.registered_business ? "Yes" : "No")}
             ${buildQuotationDetailRows(quotation, {
         formattedDate: true,
     })}
@@ -1835,8 +1871,10 @@ export async function sendQuotationNotifications(
     }
 
     // Fallback: send directly using nodemailer from this server
-    const [userResult, adminResult] = await Promise.allSettled([
-        sendQuotationUserEmail(quotation, options),
+    const userResult = options.adminOnly
+        ? { status: "fulfilled" as const, value: { success: true } }
+        : await Promise.allSettled([sendQuotationUserEmail(quotation, options)]).then(([result]) => result);
+    const [adminResult] = await Promise.allSettled([
         sendQuotationAdminEmail(quotation, options),
     ]);
 
