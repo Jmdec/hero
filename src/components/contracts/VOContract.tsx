@@ -1,8 +1,7 @@
 "use client";
 
 import { type ChangeEvent, useEffect, useState } from "react";
-
-import VOContractDocument, { type VOContractFields } from "./VOContractDocument";
+import VOContractDocument, { type VOContractFields, resolveBranchAddress } from "./VOContractDocument";
 
 type FieldKey = keyof VOContractFields;
 
@@ -50,7 +49,6 @@ export function mapVOContractFieldsToQuotationDetail(fields: VOContractFields) {
         full_name: fields.userName,
         email: fields.userEmail,
         phone: fields.userContact,
-        contact_address: fields.userAddress || fields.premisesAddress,
         id_address: fields.userAddress || fields.premisesAddress,
         signatory_details: fields.userRep || fields.userSignerName,
         id_number: fields.notaryUserId,
@@ -60,7 +58,6 @@ export function mapVOContractFieldsToQuotationDetail(fields: VOContractFields) {
         months: monthsMatch ? Number(monthsMatch[1]) : null,
         package_price: packagePrice,
         contract_admin_fee: contractAdminFee,
-        vo_contract_fields: fields,
     };
 }
 
@@ -69,7 +66,6 @@ export function mapQuotationDetailToVOContractFields(detail?: Partial<{
     company_name: string | null;
     email: string | null;
     phone: string | null;
-    contact_address?: string | null;
     id_name: string | null;
     id_address: string | null;
     signatory_details: string | null;
@@ -81,27 +77,35 @@ export function mapQuotationDetailToVOContractFields(detail?: Partial<{
     date?: string | null;
     months?: number | string | null;
     package_price?: number | string | null;
-    vo_contract_fields?: Partial<VOContractFields> | null;
     branch?: string | null;
 }> | null): VOContractFields {
     const startDate = detail?.date ? new Date(detail.date) : null;
+    
     const commencement = detail?.date
         ? Number.isNaN(startDate?.getTime() ?? NaN)
             ? String(detail.date)
             : startDate!.toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })
         : "";
-    const expiration = detail?.months ? `${detail.months} month(s)` : "";
 
-    const savedFields = detail?.vo_contract_fields ?? {};
+    const expiration = (() => {
+        if (!startDate || Number.isNaN(startDate.getTime())) return "";
+        const months = detail?.months ? Number(detail.months) : 12;
+        const endDate = new Date(startDate);
+        endDate.setMonth(endDate.getMonth() + (Number.isFinite(months) ? months : 12));
+        endDate.setDate(endDate.getDate() - 1);
+        return endDate.toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+    })();
+
+    const { building, premisesAddress } = resolveBranchAddress(detail?.branch || "Tower 6789");
 
     return {
         userName: detail?.full_name || detail?.id_name || "",
-        userAddress: detail?.contact_address || detail?.id_address || "",
+        userAddress: detail?.id_address || "",
         userRep: detail?.signatory_details || detail?.id_name || "",
         userEmail: detail?.email || "",
         userContact: detail?.phone || "",
-        building: detail?.branch || "Tower 6789",
-        premisesAddress: detail?.contact_address || detail?.id_address || "",
+        building,
+        premisesAddress,
         commencementDate: commencement,
         expirationDate: expiration,
         fixedFee: detail?.package_price
@@ -113,15 +117,14 @@ export function mapQuotationDetailToVOContractFields(detail?: Partial<{
             ? `PHP ${Number(detail.contract_admin_fee).toLocaleString("en-PH")}`
             : "",
         userSignerName: detail?.signatory_details || detail?.full_name || "",
-        userSignerAddress: detail?.contact_address || detail?.signatory_id_address || detail?.id_address || "",
+        userSignerAddress: detail?.signatory_id_address || detail?.id_address || "",
         userSignerCompany: detail?.company_name || "",
         notaryUserName: detail?.signatory_details || detail?.full_name || "",
         notaryUserId: detail?.id_number || detail?.signatory_id_number || "",
-        notaryUserIssue: detail?.contact_address || detail?.id_address || detail?.signatory_id_address || "",
+        notaryUserIssue: detail?.id_address || detail?.signatory_id_address || "",
         notaryDay: startDate ? String(startDate.getDate()) : "",
         notaryMonth: startDate ? startDate.toLocaleDateString("en-PH", { month: "long" }) : "",
         notaryYear: startDate ? String(startDate.getFullYear()) : "2026",
-        ...savedFields,
     };
 }
 

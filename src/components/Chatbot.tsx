@@ -250,7 +250,7 @@ function PrivacyPolicyContent() {
 
             <Section title="(8) Inquiry Contact">
                 <p>Contact person: Minoru Kobayashi</p>
-                <p>Company name: Hero Serviced Office Inc.</p>
+                <p>Company name: Hero Serviced Office, Inc. Inc.</p>
                 <p>
                     Address: 23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila,
                     Philippines
@@ -273,7 +273,7 @@ function TermsOfServiceContent() {
     return (
         <>
             <p className="mb-4">
-                By accessing or using the services provided by Hero Serviced Office
+                By accessing or using the services provided by Hero Serviced Office, Inc.
                 Inc., you agree to be bound by these Terms of Service. Please read them
                 carefully before using our services.
             </p>
@@ -298,7 +298,7 @@ function TermsOfServiceContent() {
             </Section>
 
             <Section title="4. Limitation of Liability">
-                Hero Serviced Office Inc. shall not be liable for any indirect,
+                Hero Serviced Office, Inc. Inc. shall not be liable for any indirect,
                 incidental, or consequential damages arising from your use of our
                 services. Our total liability shall not exceed the amount paid by you
                 for the services in the preceding month.
@@ -325,7 +325,7 @@ function TermsOfServiceContent() {
 
             <Section title="8. Contact">
                 <p>For questions about these Terms, please contact us:</p>
-                <p>Hero Serviced Office Inc.</p>
+                <p>Hero Serviced Office, Inc. Inc.</p>
                 <p>
                     23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines
                 </p>
@@ -438,14 +438,14 @@ const PREDEFINED_REPLIES: Record<string, { text: string; cta?: CTA }> = {
         cta: CTA_LINKS.services,
     },
     "Contact Info": {
-        text: "HERO Serviced Office provides premium, fully-equipped workspaces for businesses of all sizes in the Philippines. With 2+ years of experience and 20+ completed projects, we help companies scale without the overhead of a traditional office.\n\n📍 Tower 6789\n23F Tower6789, 6789 Ayala Avenue, Makati City 1209, Metro Manila, Philippines\n🕐 Mon–Fri, 8AM–8PM\n\n📍 Insular Life Building\n11F Insular Life Building, 6781 Ayala Avenue, Corner Paseo de Roxas, Makati City, Metro Manila, Philippines\n🕐 Open 24/7\n\n📧 Email: salesofficer@heroph.net\n📞 Phone: +63 02 8801 3417 | +63 917 322 4211\n\nFeel free to reach out — we'd love to hear from you!",
+        text: "Hero Serviced Office, Inc. provides premium, fully-equipped workspaces for businesses of all sizes in the Philippines. With 2+ years of experience and 20+ completed projects, we help companies scale without the overhead of a traditional office.\n\n📍 Tower 6789\n23F Tower6789, 6789 Ayala Avenue, Makati City 1209, Metro Manila, Philippines\n🕐 Mon–Fri, 8AM–8PM\n\n📍 Insular Life Building\n11F Insular Life Building, 6781 Ayala Avenue, Corner Paseo de Roxas, Makati City, Metro Manila, Philippines\n🕐 Open 24/7\n\n📧 Email: salesofficer@heroph.net\n📞 Phone: +63 02 8801 3417 | +63 917 322 4211\n\nFeel free to reach out — we'd love to hear from you!",
         cta: CTA_LINKS.contact,
     },
     "Private Office": {
         text: `
 Thank you for your interest in our Private Offices!
 
-HERO Serviced Office offers fully furnished and professional office spaces designed for startups, SMEs, and growing businesses. Our private offices include high-speed internet, reception services, meeting room access, business support, and a prestigious Makati business address.
+Hero Serviced Office, Inc. offers fully furnished and professional office spaces designed for startups, SMEs, and growing businesses. Our private offices include high-speed internet, reception services, meeting room access, business support, and a prestigious Makati business address.
 
 To receive a customized quotation or schedule an office tour, please submit your inquiry here:
 `,
@@ -1633,7 +1633,7 @@ const Chatbot = () => {
                 {isChatOpen && (
                     <motion.div
                         role="dialog"
-                        aria-label="HERO Serviced Office chat"
+                        aria-label="Hero Serviced Office, Inc. chat"
                         initial={{ opacity: 0, y: 16, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -1652,7 +1652,7 @@ const Chatbot = () => {
                                 <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
                                     <Image
                                         src="/header_logo_icon.png"
-                                        alt="HERO Serviced Office Logo"
+                                        alt="Hero Serviced Office, Inc. Logo"
                                         width={24}
                                         height={24}
                                         className="w-6 h-6 object-contain"
@@ -1661,7 +1661,7 @@ const Chatbot = () => {
 
                                 <div>
                                     <p className="text-white font-semibold text-md leading-tight">
-                                        HERO Serviced Office
+                                        Hero Serviced Office, Inc.
                                     </p>
                                 </div>
                             </div>
@@ -1719,7 +1719,7 @@ const Chatbot = () => {
                                         Get started <ChevronRight className="w-4 h-4" />
                                     </button>
                                     <p className="text-xs text-gray-400">
-                                        Powered by HERO Serviced Office
+                                        Powered by Hero Serviced Office, Inc.
                                     </p>
                                 </motion.div>
                             )}
@@ -1872,7 +1872,7 @@ const Chatbot = () => {
                                         )}
                                     </button>
                                     <p className="text-[11px] text-gray-400 text-center">
-                                        Powered by HERO Serviced Office
+                                        Powered by Hero Serviced Office, Inc.
                                     </p>
                                 </motion.div>
                             )}
@@ -2116,7 +2116,7 @@ const Chatbot = () => {
                                     </button>
                                 </div>
                                 <p className="text-[10px] text-gray-300 text-center mt-1">
-                                    Powered by HERO Serviced Office
+                                    Powered by Hero Serviced Office, Inc.
                                 </p>
                             </div>
                         )}
@@ -2131,7 +2131,7 @@ const Chatbot = () => {
                                         <AlertCircle className="w-3 h-3 shrink-0" /> {sendError}
                                     </p>
                                 )}
-                                <p className="text-[10px] text-gray-300">Powered by HERO Serviced Office</p>
+                                <p className="text-[10px] text-gray-300">Powered by Hero Serviced Office, Inc.</p>
                             </div>
                         )}
                     </motion.div>

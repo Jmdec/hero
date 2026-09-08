@@ -333,7 +333,7 @@ function SuccessModalContent({
       ) : (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
           Your quotation request has been received. {" "}
-          A HERO Serviced Office representative will contact you within <strong>24 business hours</strong>.
+          A Hero Serviced Office, Inc. representative will contact you within <strong>24 business hours</strong>.
         </p>
       )}
 
@@ -523,7 +523,7 @@ function Step1({
           </h3>
 
           <p className="mt-3 text-base leading-relaxed text-slate-500">
-            Select the HERO Serviced Office location where you'd like to inquire,
+            Select the Hero Serviced Office, Inc. location where you'd like to inquire,
             schedule a visit, or reserve your workspace.
           </p>
         </div>
@@ -1502,7 +1502,7 @@ function Step4({
             onClick={() => setModal("privacy")}
             className="text-[#1B3A8C] font-semibold hover:underline"
           >
-            HERO Serviced Office's Privacy Policy
+            Hero Serviced Office, Inc.'s Privacy Policy
           </button>.
         </span>
       </label>
@@ -1945,7 +1945,7 @@ export default function GetAQuotePage() {
         <div className="absolute inset-0">
           <Image
             src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80"
-            alt="Hero Serviced Office"
+            alt="Hero Serviced Office, Inc."
             fill
             className="object-cover"
             unoptimized
@@ -2125,7 +2125,7 @@ function PrivacyPolicyContent() {
       </Section>
       <Section title="(8) Inquiry Contact">
         <p>Contact person: Minoru Kobayashi</p>
-        <p>Company name: Hero Serviced Office Inc.</p>
+        <p>Company name: Hero Serviced Office, Inc. Inc.</p>
         <p>Address: 23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines</p>
         <p>
           E-mail:{" "}

@@ -701,7 +701,7 @@ export default function Home() {
                 No testimonials yet
               </h3>
               <p className="text-sm text-gray-500 max-w-sm">
-                Be the first to share your experience at Hero Serviced Office.
+                Be the first to share your experience at Hero Serviced Office, Inc..
               </p>
 
               <button
@@ -998,7 +998,7 @@ export default function Home() {
                               rows={4}
                               value={form.quote}
                               onChange={(e) => set("quote", e.target.value)}
-                              placeholder="Tell us about your experience working at Hero Serviced Office…"
+                              placeholder="Tell us about your experience working at Hero Serviced Office, Inc.…"
                               className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all resize-none"
                             />
                           </div>

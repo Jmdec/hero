@@ -141,7 +141,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <Loading
         variant="screen"
         title="Loading admin workspace"
-        subtitle="Hero Serviced Office — Admin"
+        subtitle="Hero Serviced Office, Inc. — Admin"
       />
     );
   }
@@ -179,7 +179,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex flex-col items-center flex-1 min-w-0">
             <Image
               src="/header_logo_manila.png"
-              alt="HERO Serviced Office Logo"
+              alt="Hero Serviced Office, Inc. Logo"
               width={180}
               height={45}
               className="h-auto w-auto max-w-[160px] sm:max-w-[180px]"

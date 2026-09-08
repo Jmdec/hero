@@ -26,11 +26,11 @@ export const metadata: Metadata = {
 
   title: {
     default:
-      "HERO Serviced Office | Premium Flexible Workspace in Makati, Philippines",
-    template: "%s | HERO Serviced Office",
+      "Hero Serviced Office, Inc. | Premium Flexible Workspace in Makati, Philippines",
+    template: "%s | Hero Serviced Office, Inc.",
   },
   description:
-    "HERO Serviced Office offers premium private offices, co-working, virtual offices, and meeting rooms on Ayala Avenue, Makati. Bilingual Japanese–English support. PEZA-certified. Move in within 24 hours.",
+    "Hero Serviced Office, Inc. offers premium private offices, co-working, virtual offices, and meeting rooms on Ayala Avenue, Makati. Bilingual Japanese–English support. PEZA-certified. Move in within 24 hours.",
   keywords: [
     // Core service keywords
     "serviced office Makati",
@@ -56,10 +56,10 @@ export const metadata: Metadata = {
     "SEC registered address Philippines",
   ],
 
-  authors: [{ name: "HERO Serviced Office, Inc.", url: "https://heroph.net" }],
-  creator: "HERO Serviced Office, Inc.",
-  publisher: "HERO Serviced Office, Inc.",
-  applicationName: "HERO Serviced Office",
+  authors: [{ name: "Hero Serviced Office, Inc., Inc.", url: "https://heroph.net" }],
+  creator: "Hero Serviced Office, Inc., Inc.",
+  publisher: "Hero Serviced Office, Inc., Inc.",
+  applicationName: "Hero Serviced Office, Inc.",
   referrer: "origin-when-cross-origin",
   category: "Business Services",
   classification: "Serviced Office and Business Center",
@@ -70,9 +70,9 @@ export const metadata: Metadata = {
     locale: "en_PH",
     alternateLocale: ["en_US", "ja_JP"],
     url: "https://heroph.net",
-    siteName: "HERO Serviced Office",
+    siteName: "Hero Serviced Office, Inc.",
     title:
-      "HERO Serviced Office | Premium Flexible Workspace in Makati, Philippines",
+      "Hero Serviced Office, Inc. | Premium Flexible Workspace in Makati, Philippines",
     description:
       "Private offices, co-working, virtual offices, and meeting rooms on Ayala Avenue, Makati. Bilingual Japanese–English support. PEZA-certified. Move in within 24 hours.",
     images: [
@@ -80,7 +80,7 @@ export const metadata: Metadata = {
         url: "https://heroph.net/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "HERO Serviced Office — Premium Workspace on Ayala Avenue, Makati",
+        alt: "Hero Serviced Office, Inc. — Premium Workspace on Ayala Avenue, Makati",
         type: "image/jpeg",
       },
     ],
@@ -92,13 +92,13 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@herophilippines",
     creator: "@herophilippines",
-    title: "HERO Serviced Office | Premium Flexible Workspace in Makati",
+    title: "Hero Serviced Office, Inc. | Premium Flexible Workspace in Makati",
     description:
       "Private offices, co-working, and virtual offices on Ayala Avenue, Makati. Bilingual Japanese–English support. PEZA-certified.",
     images: [
       {
         url: "https://heroph.net/og-image.jpg",
-        alt: "HERO Serviced Office — Premium Workspace on Ayala Avenue, Makati",
+        alt: "Hero Serviced Office, Inc. — Premium Workspace on Ayala Avenue, Makati",
       },
     ],
   },
@@ -165,7 +165,7 @@ export const metadata: Metadata = {
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "default",
     "apple-mobile-web-app-title": "HERO Office",
-    "application-name": "HERO Serviced Office",
+    "application-name": "Hero Serviced Office, Inc.",
     "msapplication-TileColor": "#0f2d52",
     "msapplication-config": "/browserconfig.xml",
     "format-detection": "telephone=yes",
@@ -201,7 +201,7 @@ const localBusinessSchema = {
   "@context": "https://schema.org",
   "@type": ["LocalBusiness", "RealEstateAgent"],
   "@id": "https://heroph.net/#business",
-  name: "HERO Serviced Office, Inc.",
+  name: "Hero Serviced Office, Inc., Inc.",
   alternateName: ["HERO Office", "ヒーローサービスオフィス"],
   image: [
     "https://heroph.net/og-image.jpg",
@@ -210,7 +210,7 @@ const localBusinessSchema = {
   ],
   logo: "https://heroph.net/logo.jpg",
   description:
-    "HERO Serviced Office provides premium private offices, shared desks, co-working areas, virtual office addresses, and meeting rooms in Makati City. Bilingual Japanese–English support. PEZA-certified location at Tower 6789.",
+    "Hero Serviced Office, Inc. provides premium private offices, shared desks, co-working areas, virtual office addresses, and meeting rooms in Makati City. Bilingual Japanese–English support. PEZA-certified location at Tower 6789.",
   priceRange: "₱₱–₱₱₱₱",
   currenciesAccepted: "PHP",
   paymentAccepted: "Cash, Credit Card, Bank Transfer, GCash, Maya",
@@ -333,7 +333,7 @@ const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   "@id": "https://heroph.net/#organization",
-  name: "HERO Serviced Office, Inc.",
+  name: "Hero Serviced Office, Inc., Inc.",
   url: "https://heroph.net",
   logo: {
     "@type": "ImageObject",
@@ -389,7 +389,7 @@ const websiteSchema = {
   "@type": "WebSite",
   "@id": "https://heroph.net/#website",
   url: "https://heroph.net",
-  name: "HERO Serviced Office",
+  name: "Hero Serviced Office, Inc.",
   description:
     "Premium serviced offices in Makati, Philippines with bilingual Japanese–English support.",
   publisher: { "@id": "https://heroph.net/#organization" },
@@ -411,7 +411,7 @@ const faqSchema = {
   mainEntity: [
     {
       "@type": "Question",
-      name: "How quickly can I move into a HERO Serviced Office?",
+      name: "How quickly can I move into a Hero Serviced Office, Inc.?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "You can move in within 24 hours of completing the reservation and payment process online.",
@@ -419,7 +419,7 @@ const faqSchema = {
     },
     {
       "@type": "Question",
-      name: "Does HERO Serviced Office offer short-term leases?",
+      name: "Does Hero Serviced Office, Inc. offer short-term leases?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "Yes. HERO offers flexible lease terms starting from one month for private serviced offices.",
@@ -427,7 +427,7 @@ const faqSchema = {
     },
     {
       "@type": "Question",
-      name: "Is HERO Serviced Office PEZA-certified?",
+      name: "Is Hero Serviced Office, Inc. PEZA-certified?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "Yes. The Tower 6789 location on Ayala Avenue, Makati is PEZA-certified, providing tax incentives for qualifying foreign investors and companies.",
@@ -435,7 +435,7 @@ const faqSchema = {
     },
     {
       "@type": "Question",
-      name: "Does HERO Serviced Office have Japanese-speaking staff?",
+      name: "Does Hero Serviced Office, Inc. have Japanese-speaking staff?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "Yes. HERO has bilingual staff fluent in both Japanese and English to support Japanese companies expanding into the Philippines.",
@@ -443,7 +443,7 @@ const faqSchema = {
     },
     {
       "@type": "Question",
-      name: "What office types does HERO Serviced Office offer?",
+      name: "What office types does Hero Serviced Office, Inc. offer?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "HERO offers private offices (1–35 seats), shared desk booths, co-working café areas, virtual office address registration, and conference rooms for up to 10 people.",
@@ -451,10 +451,10 @@ const faqSchema = {
     },
     {
       "@type": "Question",
-      name: "Where is HERO Serviced Office located?",
+      name: "Where is Hero Serviced Office, Inc. located?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "HERO Serviced Office has two Makati locations: 23F Tower 6789, Ayala Avenue, and the 11F Insular Life Building, Ayala Avenue, Makati City, Philippines.",
+        text: "Hero Serviced Office, Inc. has two Makati locations: 23F Tower 6789, Ayala Avenue, and the 11F Insular Life Building, Ayala Avenue, Makati City, Philippines.",
       },
     },
     {
@@ -467,7 +467,7 @@ const faqSchema = {
     },
     {
       "@type": "Question",
-      name: "What payment methods does HERO Serviced Office accept?",
+      name: "What payment methods does Hero Serviced Office, Inc. accept?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "HERO accepts cash, credit and debit cards, bank transfer, GCash, and Maya.",
@@ -494,8 +494,8 @@ const breadcrumbSchema = {
 const serviceSchema = {
   "@context": "https://schema.org",
   "@type": "ItemList",
-  name: "HERO Serviced Office Services",
-  description: "Office solutions available at HERO Serviced Office, Makati",
+  name: "Hero Serviced Office, Inc. Services",
+  description: "Office solutions available at Hero Serviced Office, Inc., Makati",
   itemListElement: [
     {
       "@type": "ListItem",
@@ -615,14 +615,14 @@ export default function RootLayout({
         <meta property="og:image:height" content="630" />
         <meta
           property="og:image:alt"
-          content="HERO Serviced Office — Premium Workspace on Ayala Avenue, Makati"
+          content="Hero Serviced Office, Inc. — Premium Workspace on Ayala Avenue, Makati"
         />
 
         {/* ── Twitter image ── */}
         <meta name="twitter:image" content="https://heroph.net/og-image.jpg" />
         <meta
           name="twitter:image:alt"
-          content="HERO Serviced Office — Premium Workspace, Makati"
+          content="Hero Serviced Office, Inc. — Premium Workspace, Makati"
         />
 
         {/* ── Japanese locale signal ── */}

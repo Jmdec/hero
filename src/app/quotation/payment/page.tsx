@@ -13,7 +13,8 @@ import {
   QrCode,
   Receipt,
   Upload,
-  Eye, Home, FileText
+  Eye, Home, FileText,
+  Loader2
 } from "lucide-react";
 
 type PaymentMethod = "qrph" | "sterling" | "rcbc" | null;
@@ -357,12 +358,19 @@ function PaymentLinkInvalid({ message }: { message?: string | null }) {
 
 function PaymentLinkLoading() {
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
-      <span className="inline-block w-8 h-8 rounded-full border-2 border-[#D9E2F0] border-t-[#1B3A8C] animate-spin" />
-      <p className="mt-4 text-sm text-[#64748B]">Verifying your payment link...</p>
-    </div>
-  );
+    <main className="flex min-h-screen items-center justify-center bg-[#F4F7FB] px-6">
+      <div className="text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm">
+          <Loader2 className="h-5 w-5 animate-spin text-[#0D47A1]" />
+        </div>
+        <p className="mt-4 text-sm font-semibold text-[#0B1F4A]">
+          Loading payment gateway...
+        </p>
+      </div>
+    </main>
+  )
 }
+
 
 function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
@@ -392,7 +400,7 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
         qrImage:
           "/0-02-06-93f656f6d64a18480bdd3a0f550660f7a2362b0780cafcd98fb2a2ce7e5c878c_7700a1e7e393c3cb.png",
         details: [
-          "Account Name: HERO SERVICED OFFICE, INC.",
+          "Account Name: Hero Serviced Office, Inc., INC.",
           "Scan the QRPH code using your preferred banking or e-wallet app.",
           "Upload your transaction confirmation screenshot for verification.",
         ],
@@ -402,7 +410,7 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
         icon: ArrowRightLeft,
         label: "Sterling Bank of Asia",
         details: [
-          "Account Name: HERO SERVICED OFFICE, INC.",
+          "Account Name: Hero Serviced Office, Inc., INC.",
           "Account Number: 541-6-000236-80",
           "Swift Code: STLAPH22XXX",
         ],
@@ -412,7 +420,7 @@ function PaymentLinkFlow({ context }: { context: PaymentLinkContext }) {
         icon: Landmark,
         label: "RCBC Bank",
         details: [
-          "Account Name: HERO SERVICED OFFICE, INC.",
+          "Account Name: Hero Serviced Office, Inc., INC.",
           "Account Number: 0000007589020388",
           "Swift Code: RCBCPHMM",
         ],

@@ -108,7 +108,7 @@ function buildGmailStyleHtml(
     .map((entry) => {
       const date = new Date(entry.created_at).toLocaleString();
       const who =
-        entry.type === "inbound" ? inquiryName : "HERO Serviced Office";
+        entry.type === "inbound" ? inquiryName : "Hero Serviced Office, Inc.";
       return `
         <div style="margin-top:16px;padding-left:12px;border-left:2px solid #ccc;color:#555;">
           <p style="margin:0 0 4px;font-size:12px;color:#888;">On ${date}, ${who} wrote:</p>

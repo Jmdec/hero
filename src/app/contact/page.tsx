@@ -860,15 +860,15 @@ function MultiStepForm() {
 const faqTabs = [
   {
     id: "service",
-    label: "About HERO Serviced Office",
+    label: "About Hero Serviced Office, Inc.",
     faqs: [
       {
         q: "What are the advantages of serviced offices?",
-        a: "HERO Serviced Office is equipped with the facilities and services necessary to start a business, so the initial cost of opening an office can be reduced and business can be started immediately. You can also flexibly choose the size of the room and the period of use according to your purpose.",
+        a: "Hero Serviced Office, Inc. is equipped with the facilities and services necessary to start a business, so the initial cost of opening an office can be reduced and business can be started immediately. You can also flexibly choose the size of the room and the period of use according to your purpose.",
       },
       {
         q: "Where is the office located?",
-        a: "HERO Serviced Office is conveniently located near Ayala Triangle Park along Ayala Avenue, the main street in Makati City, Metro Manila, Philippines.",
+        a: "Hero Serviced Office, Inc. is conveniently located near Ayala Triangle Park along Ayala Avenue, the main street in Makati City, Metro Manila, Philippines.",
       },
       {
         q: "What is the surrounding environment like?",
@@ -1139,7 +1139,7 @@ function SuccessModalContent({
         </h3>
 
         <p className="mx-auto mt-2 max-w-sm lg:max-w-[470px] text-sm lg:text-[14px] text-[#64748B]">
-          Your quotation request has been received. A HERO Serviced Office
+          Your quotation request has been received. A Hero Serviced Office, Inc.
           representative will contact you within{" "}
           <strong className="font-semibold text-[#52637D]">
             24 business hours.
@@ -1200,7 +1200,7 @@ export default function ContactPage() {
         <div className="absolute inset-0">
           <Image
             src="/header.webp"
-            alt="About HERO Serviced Office"
+            alt="About Hero Serviced Office, Inc."
             fill
             className="object-cover"
             unoptimized
@@ -1266,7 +1266,7 @@ export default function ContactPage() {
                   <p className="text-xs uppercase tracking-widest text-gray-500 font-medium">
                     Office Location
                   </p>
-                  <h4 className="font-semibold text-gray-900">HERO Serviced Office</h4>
+                  <h4 className="font-semibold text-gray-900">Hero Serviced Office, Inc.</h4>
                   <p className="text-sm text-gray-600">
                     Ayala Avenue, Makati City, Philippines
                   </p>

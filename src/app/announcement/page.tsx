@@ -570,7 +570,7 @@ export default function AnnouncementPage() {
         <div className="absolute inset-0">
           <Image
             src="/header.webp"
-            alt="About HERO Serviced Office"
+            alt="About Hero Serviced Office, Inc."
             fill
             className="object-cover"
             unoptimized
@@ -590,7 +590,7 @@ export default function AnnouncementPage() {
               News, Updates & Exclusive Offers
             </h1>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto font-semibold text-shadow-sm">
-              Get the latest from Hero Serviced Office — new locations, events,
+              Get the latest from Hero Serviced Office, Inc. — new locations, events,
               member benefits, and special promotions delivered straight to your
               inbox.
             </p>
@@ -738,7 +738,7 @@ export default function AnnouncementPage() {
               </h3>
               <p className="text-sm text-gray-500 max-w-sm mb-6">
                 {announcements.length === 0
-                  ? "Check back soon for news and updates from Hero Serviced Office."
+                  ? "Check back soon for news and updates from Hero Serviced Office, Inc.."
                   : "Try a different search term or clear your filters."}
               </p>
               {announcements.length > 0 && (

@@ -268,7 +268,7 @@ export default function AnnouncementPopup() {
           <div className="pointer-events-none fixed bottom-2 left-2 z-10 hidden lg:block">
             <Image
               src="/hero-chibi.webp"
-              alt="HERO Serviced Office"
+              alt="Hero Serviced Office, Inc."
               width={340}
               height={340}
               unoptimized

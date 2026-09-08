@@ -573,7 +573,7 @@ function ServicesPageContent() {
         <div className="absolute inset-0">
           <Image
             src="/header.webp"
-            alt="About HERO Serviced Office"
+            alt="About Hero Serviced Office, Inc."
             fill
             className="object-cover"
             unoptimized

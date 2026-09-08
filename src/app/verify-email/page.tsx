@@ -65,7 +65,7 @@ function VerifyEmailContent() {
 
                 <div className="p-10 text-center">
                     <p className="text-xs font-semibold uppercase tracking-widest text-[#0D47A1] mb-8">
-                        Hero Serviced Office
+                        Hero Serviced Office, Inc.
                     </p>
 
                     {/* Loading */}
@@ -174,7 +174,7 @@ function VerifyEmailContent() {
                 </div>
 
                 <div className="bg-gray-50 px-10 py-5 text-center text-xs text-gray-400 border-t border-gray-100">
-                    © {new Date().getFullYear()} Hero Serviced Office. All rights reserved.
+                    © {new Date().getFullYear()} Hero Serviced Office, Inc.. All rights reserved.
                 </div>
             </motion.div>
         </div>
@@ -188,7 +188,7 @@ export default function VerifyEmailPage() {
                 <Loading
                     variant="screen"
                     title="Verifying your email"
-                    subtitle="Hero Serviced Office"
+                    subtitle="Hero Serviced Office, Inc."
                 />
             }
         >

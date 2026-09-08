@@ -101,7 +101,7 @@ export default function Navigation() {
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/header_logo_manila.png"
-              alt="HERO Serviced Office"
+              alt="Hero Serviced Office, Inc."
               width={170}
               height={55}
               className="w-32 sm:w-36 md:w-40 lg:w-44 h-auto"

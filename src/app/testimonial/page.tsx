@@ -261,7 +261,7 @@ export default function TestimonialPage() {
         <div className="absolute inset-0">
           <Image
             src="/header.webp"
-            alt="About HERO Serviced Office"
+            alt="About Hero Serviced Office, Inc."
             fill
             className="object-cover"
             unoptimized
@@ -281,7 +281,7 @@ export default function TestimonialPage() {
             </h1>
             <p className="text-xl text-gray-300 max-w-4xl mx-auto font-semibold text-shadow-sm">
               From international expansions to homegrown startups, our members
-              choose Hero Serviced Office for the address, the service, and the
+              choose Hero Serviced Office, Inc. for the address, the service, and the
               community.
             </p>
           </motion.div>
@@ -459,7 +459,7 @@ export default function TestimonialPage() {
               </h3>
               <p className="text-sm text-gray-500 max-w-sm mb-6">
                 {testimonials.length === 0
-                  ? "Be the first to share your experience at Hero Serviced Office."
+                  ? "Be the first to share your experience at Hero Serviced Office, Inc.."
                   : "Try a different search term or clear your filters."}
               </p>
               {testimonials.length === 0 ? (
@@ -830,7 +830,7 @@ export default function TestimonialPage() {
                               rows={4}
                               value={form.quote}
                               onChange={(e) => set("quote", e.target.value)}
-                              placeholder="Tell us about your experience working at Hero Serviced Office…"
+                              placeholder="Tell us about your experience working at Hero Serviced Office, Inc.…"
                               className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all resize-none"
                             />
                           </div>

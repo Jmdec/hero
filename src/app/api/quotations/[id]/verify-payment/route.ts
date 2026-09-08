@@ -46,11 +46,20 @@ async function handleVerifyPayment(
     request: NextRequest,
     requestOrigin?: string
 ) {
+    const authorization = request.headers.get("authorization");
+    if (!authorization) {
+        return {
+            status: 401,
+            body: NextResponse.json({ message: "Authentication is required." }, { status: 401 }),
+        };
+    }
+
     const quoteRes = await fetch(`${LARAVEL_API_BASE}/quotations/${encodeURIComponent(id)}`, {
         method: "GET",
         headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
+            Authorization: authorization,
         },
         cache: "no-store",
     });
@@ -90,6 +99,7 @@ async function handleVerifyPayment(
         headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
+            Authorization: authorization,
         },
         body: JSON.stringify(updatedQuotation),
     });
@@ -127,23 +137,6 @@ async function handleVerifyPayment(
     };
 }
 
-export async function GET(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    const { id } = await params;
-    try {
-        const result = await handleVerifyPayment(id, request, request.nextUrl.origin);
-        return result.body;
-    } catch (error) {
-        console.error("verify-payment proxy error:", error);
-        return NextResponse.json(
-            { message: "Unable to verify payment.", error: String(error) },
-            { status: 502 }
-        );
-    }
-}
-
 export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -151,6 +144,9 @@ export async function POST(
     const { id } = await params;
     try {
         const result = await handleVerifyPayment(id, request, request.nextUrl.origin);
+        if (result.status === 302) {
+            return NextResponse.json({ success: true, message: "Payment verified." });
+        }
         return result.body;
     } catch (error) {
         console.error("verify-payment proxy error:", error);

@@ -120,7 +120,7 @@ export default function ClientLayout({
             <Loading
               variant="screen"
               title={isRouteLoading ? "Opening page" : "Preparing your workspace"}
-              subtitle="Hero Serviced Office"
+              subtitle="Hero Serviced Office, Inc."
               progress={isRouteLoading ? undefined : loadProgress}
             />
           </motion.div>

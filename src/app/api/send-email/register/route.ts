@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="background-color: #0D47A1; padding: 40px 30px; text-align: center;">
                     <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">
-                      Hero Serviced Office
+                      Hero Serviced Office, Inc.
                     </h1>
                     <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.75); font-size: 13px; letter-spacing: 0.5px;">
                       Customer Communication
@@ -67,10 +67,10 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="background-color: #f8faff; padding: 28px 36px; text-align: center; border-top: 1px solid #e8edf5;">
                     <p style="margin: 0 0 8px 0; color: #6b7a99; font-size: 13px;">
-                      This email was sent from Hero Serviced Office
+                      This email was sent from Hero Serviced Office, Inc.
                     </p>
                     <p style="margin: 0; color: #9aa5b4; font-size: 11px; letter-spacing: 0.3px;">
-                      © ${new Date().getFullYear()} Hero Serviced Office. All rights reserved.
+                      © ${new Date().getFullYear()} Hero Serviced Office, Inc.. All rights reserved.
                     </p>
                   </td>
                 </tr>

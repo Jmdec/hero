@@ -162,7 +162,7 @@ function getPreferredVisitSchedule(c: Contact) {
 
 const EMAIL_TEMPLATES: Record<string, TemplateBuilder> = {
   "private-office": (c) => ({
-    subject: `Your Private Office Inquiry at HERO Serviced Office`,
+    subject: `Your Private Office Inquiry at Hero Serviced Office, Inc.`,
     body: `${greeting(c)}
 
 We’d love to help you find the right fully furnished workspace for your team — with Flexibility That Fits Your Needs. 
@@ -178,11 +178,11 @@ Interested in our service? Request your quotation here: ${quotationLink(c, "priv
 
 Best regards,
 
-HERO Serviced Office`,
+Hero Serviced Office, Inc.`,
   }),
 
   "virtual-office": (c) => ({
-    subject: `Your Virtual Office Inquiry at HERO Serviced Office`,
+    subject: `Your Virtual Office Inquiry at Hero Serviced Office, Inc.`,
     body: `${greeting(c)}
 
 Thank you for reaching out about our Virtual Office solutions. Here are our current packages:
@@ -199,11 +199,11 @@ Interested in our service? Request your quotation here: ${quotationLink(c, "virt
 
 Best regards,
 
-HERO Serviced Office`,
+Hero Serviced Office, Inc.`,
   }),
 
   "co-working-space": (c) => ({
-    subject: `Your Co-Working Space Inquiry at HERO Serviced Office`,
+    subject: `Your Co-Working Space Inquiry at Hero Serviced Office, Inc.`,
     body: `${greeting(c)}
 
 Thanks for your interest in our Co-Working Space. It's a great fit if you'd like a flexible, professional workspace without a long-term commitment. 
@@ -216,11 +216,11 @@ Interested in our service? Request your quotation here: ${quotationLink(c, "co-w
 
 Best regards,
 
-HERO Serviced Office`,
+Hero Serviced Office, Inc.`,
   }),
 
   "meeting-room": (c) => ({
-    subject: `Your Conference Room Booking Inquiry at HERO Serviced Office`,
+    subject: `Your Conference Room Booking Inquiry at Hero Serviced Office, Inc.`,
     body: `${greeting(c)}
 
 Thank you for your interest in booking our Meeting Room. Here are the details:
@@ -233,14 +233,14 @@ Interested in our service? Request your quotation here: ${quotationLink(c, "meet
 
 Best regards,
 
-HERO Serviced Office`,
+Hero Serviced Office, Inc.`,
   }),
 
   "event-space": (c) => ({
-    subject: `Your Event & Activity Space Inquiry at HERO Serviced Office`,
+    subject: `Your Event & Activity Space Inquiry at Hero Serviced Office, Inc.`,
     body: `${greeting(c)}
 
-Thank you for considering HERO Serviced Office for your upcoming event. Our Event/Activity Area is a flexible, fully serviced space designed for workshops, training, networking sessions, and product launches.
+Thank you for considering Hero Serviced Office, Inc. for your upcoming event. Our Event/Activity Area is a flexible, fully serviced space designed for workshops, training, networking sessions, and product launches.
 
 - Rate: starts at PHP 7,000 depending on setup, number of participants, and duration of the event
 - Inclusions: flexible event space setup, Wifi-connection (up to 600 Mbps), reception services, utilities, basic furniture setup, pantry access, free-flowing coffee, tea and water,and 24/7 secure access (subject to booking schedule)
@@ -250,14 +250,14 @@ Interested in our service? Request your quotation here: ${quotationLink(c, "even
 
 Best regards,
 
-HERO Serviced Office`,
+Hero Serviced Office, Inc.`,
   }),
 
   "ocular-visit": (c) => ({
-    subject: `Scheduling Your Ocular Visit at HERO Serviced Office`,
+    subject: `Scheduling Your Ocular Visit at Hero Serviced Office, Inc.`,
     body: `${greeting(c)}
 
-Thank you for your interest in visiting HERO Serviced Office. We'd be happy to give you a tour of our workspaces at Tower 6789 or the Insular Life Building along Ayala Avenue, Makati.
+Thank you for your interest in visiting Hero Serviced Office, Inc.. We'd be happy to give you a tour of our workspaces at Tower 6789 or the Insular Life Building along Ayala Avenue, Makati.
 
 Here’s your scheduled ocular visit details:
 - Preferred branch: ${getBranchValue(c)}
@@ -268,27 +268,27 @@ We look forward to showing you around and discussing the best fit for your busin
 
 Best regards,
 
-HERO Serviced Office`,
+Hero Serviced Office, Inc.`,
   }),
 
   partnership: (c) => ({
-    subject: `Thank You for Your Partnership Inquiry - HERO Serviced Office`,
+    subject: `Thank You for Your Partnership Inquiry - Hero Serviced Office, Inc.`,
     body: `${greeting(c)}
 
-Thank you for reaching out about a potential partnership with HERO Serviced Office. We're always glad to explore opportunities that create value for both sides.
+Thank you for reaching out about a potential partnership with Hero Serviced Office, Inc.. We're always glad to explore opportunities that create value for both sides.
 
 Could you share a bit more detail about the partnership you have in mind (e.g., referral, corporate agreement, event collaboration) along with your company background? This will help us route your inquiry to the right team and respond with the most relevant information.
 
 Best regards,
 
-HERO Serviced Office`,
+Hero Serviced Office, Inc.`,
   }),
 
   others: (c) => ({
-    subject: `Following Up on Your Inquiry - HERO Serviced Office`,
+    subject: `Following Up on Your Inquiry - Hero Serviced Office, Inc.`,
     body: `${greeting(c)}
 
-Thank you for reaching out to HERO Serviced Office. We received your message:
+Thank you for reaching out to Hero Serviced Office, Inc.. We received your message:
 
 "${c.message || "—"}"
 
@@ -296,7 +296,7 @@ We would like to kindly follow up regarding our previous communication on the qu
 
 Best regards,
 
-HERO Serviced Office`,
+Hero Serviced Office, Inc.`,
   }),
 }
 

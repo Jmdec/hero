@@ -123,23 +123,6 @@ async function handlePaymentApproved(id: string, request: NextRequest, requestOr
   };
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  try {
-    const result = await handlePaymentApproved(id, request, request.nextUrl.origin);
-    return result.body;
-  } catch (error) {
-    console.error("payment-approved proxy error:", error);
-    return NextResponse.json(
-      { message: "Unable to approve payment.", error: String(error) },
-      { status: 502 }
-    );
-  }
-}
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

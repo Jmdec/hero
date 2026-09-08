@@ -38,7 +38,7 @@ export async function sendMail({
       process.env.MAIL_FROM ||
       process.env.SMTP_FROM ||
       process.env.MAIL_FROM_ADDRESS ||
-      `"HERO Serviced Office" <${smtpUser}>`,
+      `"Hero Serviced Office, Inc." <${smtpUser}>`,
     to,
     subject,
     html,

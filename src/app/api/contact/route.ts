@@ -150,7 +150,7 @@ async function sendInquiryNotifications(payload: ContactInquiryPayload, openInqu
   const japaneseHtml = buildJapaneseInternalInquiryHtml(payload, openInquiryUrl);
   const text = `${subject}\n\nBranch: ${getContactBranchLabel(branchInterest)}\nEmail: ${payload.email}\nPhone: ${payload.phone}\n\n${payload.message}`;
   const japaneseText = `新しいお問い合わせが届きました。\n\n顧客名: ${payload.name}\nメール: ${payload.email}\n電話: ${payload.phone}\n会社: ${payload.company ?? "なし"}\n支店: ${getJapaneseBranchLabel(branchInterest)}\nお問い合わせ種別: ${getJapaneseInquiryLabel(payload.inquiryType)}\n\nメッセージ:\n${payload.message}\n\n詳細: ${openInquiryUrl}`;
-  const clientSubject = "We received your HERO Serviced Office inquiry";
+  const clientSubject = "We received your Hero Serviced Office, Inc. inquiry";
 
   const tasks: Promise<unknown>[] = [];
 

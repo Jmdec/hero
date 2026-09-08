@@ -172,7 +172,7 @@ const groupCompanies = [
 const messageen = {
   president: {
     message:
-`Thank you very much for your continued support of HERO Serviced Office. We are deeply
+`Thank you very much for your continued support of Hero Serviced Office, Inc.. We are deeply
 grateful for the trust and encouragement you have extended to us.
 
 Our office provides a flexible working environment tailored to the growth of your business
@@ -191,7 +191,7 @@ We truly appreciate your continued support.
   },
   chairman: {
     message: 
-`At HERO Serviced Office, we believe that strong relationships are built on trust, sincerity,
+`At Hero Serviced Office, Inc., we believe that strong relationships are built on trust, sincerity,
 and continuous improvement. We are grateful for the confidence our clients and partners
 have placed in us, and we remain committed to providing an environment where
 businesses can grow with stability and confidence. We sincerely appreciate the continued
@@ -202,7 +202,7 @@ trust and support, and we look forward to building a brighter future together`,
 const messagejp = {
   president: {
     message: 
-`HERO Serviced Officeをご愛顧いただき、誠にありがとうございます。皆様
+`Hero Serviced Office, Inc.をご愛顧いただき、誠にありがとうございます。皆様
 からいただいている深いご信頼と温かいご支援に、スタッフ一同心より感謝申し
 上げます。
 
@@ -221,7 +221,7 @@ const messagejp = {
   },
   chairman: {
     message: 
-`HERO Serviced Officeでは、強固な信頼関係は、信頼、誠実さ、そして絶え間ない改善
+`Hero Serviced Office, Inc.では、強固な信頼関係は、信頼、誠実さ、そして絶え間ない改善
 への取り組みによって築かれるものと信じております。お客様ならびにパートナーの皆
 様より賜りましたご信頼に、心より感謝申し上げます。
 
@@ -304,7 +304,7 @@ export default function AboutPage() {
   ];
 
   const whyHero = [
-    { num: "01", title: "Prime Business Location", desc: "Located at the heart of the business district, HERO Serviced Office provides convenient access to major companies, transportation hubs, restaurants, and essential business establishments." },
+    { num: "01", title: "Prime Business Location", desc: "Located at the heart of the business district, Hero Serviced Office, Inc. provides convenient access to major companies, transportation hubs, restaurants, and essential business establishments." },
     { num: "02", title: "Japanese & English Staff Support", desc: "Our professional team provides Japanese and English communication support to ensure smooth coordination and assistance for local and international clients." },
     { num: "03", title: "24/7 Office Access", desc: "Enjoy flexible working hours with round-the-clock access to your workspace whenever your business requires it." },
     { num: "04", title: "Fully Furnished, Ready to Use Offices", desc: "Move in and start working immediately with fully equipped private offices designed for productivity and convenience." },
@@ -325,7 +325,7 @@ export default function AboutPage() {
         <div className="absolute inset-0">
           <Image
             src="/header.webp"
-            alt="About HERO Serviced Office"
+            alt="About Hero Serviced Office, Inc."
             fill
             className="object-cover"
             unoptimized
@@ -341,7 +341,7 @@ export default function AboutPage() {
             className="w-full text-center mx-auto text-shadow-4xl"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
-              About HERO Serviced Office
+              About Hero Serviced Office, Inc.
             </h1>
             <p className="text-xl text-gray-300 text-semibold text-shadow-sm">
               Your trusted partner for premium office solutions in the heart of Makati's business district
@@ -364,7 +364,7 @@ export default function AboutPage() {
             </h2>
             <div className="space-y-4 text-gray-600 text-justify">
               <p>
-                HERO Serviced Office traces its roots to a Japan-based business group established with the
+                Hero Serviced Office, Inc. traces its roots to a Japan-based business group established with the
                 goal of developing service-oriented enterprises that support modern commercial activity. The
                 group initially operated across multiple business sectors, gradually building expertise in service
                 management, operational efficiency, and client-centered solutions.
@@ -382,7 +382,7 @@ export default function AboutPage() {
                 meeting facilities—forming a complete workspace ecosystem.
               </p>
               <p className="font-semibold">
-                Today, HERO Serviced Office continues to operate, focusing on service quality, operational
+                Today, Hero Serviced Office, Inc. continues to operate, focusing on service quality, operational
                 efficiency, and business enablement across diverse industries and markets.
               </p>
             </div>

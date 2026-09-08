@@ -15,6 +15,21 @@ const RECIPIENTS = {
     },
 };
 
+// const RECIPIENTS = {
+//     chairman: process.env.CHAIRMAN_EMAIL || "hero.chairman@gmail.com",
+//     president: process.env.PRESIDENT_EMAIL || "hero.president@gmail.com",
+//     generalManager: process.env.GENERAL_MANAGER_EMAIL || "hero.generalmanager@gmail.com",
+//     adminOfficer: process.env.ADMIN_OFFICER_EMAIL || "hero.adminofficer@gmail.com",
+//     salesOfficer: process.env.SALES_OFFICER_EMAIL || "hero.salesofficer@gmail.com",
+//     digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "hero.digitalmarketing@gmail.com",
+//     accounting: process.env.ACCOUNTING_EMAIL || "hero.accounting@gmail.com",
+//     accountingofficer: process.env.ACCOUNTING_OFFICER_EMAIL || "hero.accountingofficer@gmail.com",
+//     branchManagers: {
+//         S01: process.env.BRANCH_MANAGER_S01_EMAIL || "hero.branchmanager.s01@gmail.com",
+//         S02: process.env.BRANCH_MANAGER_S02_EMAIL || "hero.branchmanager.s02@gmail.com",
+//     },
+// };
+
 const INQUIRY_LABELS: Record<string, string> = {
     "private-office": "Private Office",
     "virtual-office": "Virtual Office",

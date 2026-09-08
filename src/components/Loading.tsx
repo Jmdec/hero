@@ -19,7 +19,7 @@ interface LoadingProps {
 export function Loading({
     variant = "screen",
     title = "Preparing your workspace",
-    subtitle = "Hero Serviced Office",
+    subtitle = "Hero Serviced Office, Inc.",
     progress,
     showProgress = true,
 }: LoadingProps) {

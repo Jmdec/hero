@@ -46,6 +46,67 @@ export async function verifyEmailConfig() {
     }
 }
 
+/**
+ * Shared responsive styles injected into every email's <head>.
+ * Email clients strip most external/embedded CSS, but Gmail (web + app),
+ * Apple Mail, Outlook.com/new Outlook, and Yahoo all honor a <style> block
+ * in <head>, including @media queries. Outlook desktop (Word-rendering
+ * engine) ignores @media, but degrades gracefully to the inline/table
+ * styles below, so nothing breaks there — it just stays desktop-sized.
+ */
+const RESPONSIVE_EMAIL_STYLES = `
+    body { margin:0; padding:0; background:#f4f7fb; font-family:Arial,Helvetica,sans-serif; }
+    table { border-collapse:collapse; }
+    img { border:0; line-height:100%; outline:none; text-decoration:none; }
+    a { text-decoration:none; }
+    .email-bg { background:#f4f7fb; padding:40px 20px; }
+    .email-card { width:100%; max-width:600px; margin:0 auto; background:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #e8edf5; }
+    .email-header { padding:40px; text-align:center; }
+    .email-body { padding:0 40px 40px; }
+    .email-footer { background:#f8fafc; padding:20px; text-align:center; font-size:12px; color:#94a3b8; }
+    .email-btn { display:inline-block; padding:16px 36px; background:#0D47A1; color:#ffffff !important; text-decoration:none; font-weight:bold; border-radius:8px; font-size:15px; }
+    .detail-table { width:100%; border-collapse:collapse; margin-top:16px; }
+    .detail-label { padding:10px 0; border-bottom:1px solid #eef2f7; font-size:12px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:#64748b; white-space:nowrap; vertical-align:top; }
+    .detail-value { padding:10px 0 10px 16px; border-bottom:1px solid #eef2f7; font-size:14px; color:#1e293b; font-weight:500; text-align:right; word-break:break-word; }
+
+    @media only screen and (max-width: 600px) {
+        .email-bg { padding:24px 12px !important; }
+        .email-card { border-radius:12px !important; }
+        .email-header { padding:28px 20px 8px !important; }
+        .email-header h1 { font-size:22px !important; }
+        .email-body { padding:0 20px 28px !important; }
+        .email-body h2 { font-size:18px !important; }
+        .email-btn { display:block !important; width:100% !important; box-sizing:border-box !important; padding:16px 20px !important; text-align:center !important; }
+        .detail-label, .detail-value {
+            display:block !important;
+            width:100% !important;
+            text-align:left !important;
+            padding:4px 0 !important;
+            white-space:normal !important;
+        }
+        .detail-label { border-bottom:0 !important; padding-top:10px !important; }
+        .detail-value { padding-bottom:10px !important; }
+        .word-break { word-break:break-all !important; }
+    }
+`;
+
+function emailDocument(headExtra: string, bodyHtml: string): string {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="color-scheme" content="light" />
+        <meta name="supported-color-schemes" content="light" />
+        <style>${RESPONSIVE_EMAIL_STYLES}${headExtra}</style>
+        </head>
+        <body>
+        ${bodyHtml}
+        </body>
+        </html>`;
+}
+
 export async function sendVerificationEmail(
     email: string,
     name: string,
@@ -58,49 +119,38 @@ export async function sendVerificationEmail(
         throw new Error("SMTP credentials are not configured.");
     }
 
+    const bodyHtml = `
+        <div class="email-bg">
+        <div class="email-card">
+        <div style="height:6px;background:#0D47A1;"></div>
+        <div class="email-header">
+        <h1 style="margin:0;font-size:28px;color:#0D47A1;">Hero Serviced Office, Inc.</h1>
+        <p style="margin-top:8px;color:#64748b;font-size:15px;">Your Workspace for Success.</p>
+        </div>
+        <div class="email-body">
+        <h2 style="margin:0 0 20px;color:#1e293b;">Welcome, ${name}!</h2>
+        <p style="font-size:15px;line-height:1.8;color:#475569;">Thank you for creating your Hero Serviced Office, Inc. account. Before you can access your account, please verify your email address by clicking the button below.</p>
+        <div style="text-align:center;margin:40px 0;">
+        <a href="${verificationUrl}" class="email-btn">Verify Email</a>
+        </div>
+        <p style="font-size:13px;color:#64748b;line-height:1.7;">If the button doesn't work, copy and paste this link into your browser:</p>
+        <p class="word-break" style="font-size:12px;word-break:break-all;background:#f8fafc;padding:12px;border-radius:6px;color:#0D47A1;">${verificationUrl}</p>
+        <p style="margin-top:30px;font-size:13px;color:#64748b;">If you didn't create an account, you can safely ignore this email.</p>
+        </div>
+        <div class="email-footer">© ${new Date().getFullYear()} Hero Serviced Office, Inc.<br>All rights reserved.</div>
+        </div>
+        </div>`;
+
     const mailOptions = {
         from:
             process.env.SMTP_FROM ||
             process.env.MAIL_FROM_ADDRESS ||
-            `"Hero Serviced Office" <${username}>`,
+            `"Hero Serviced Office, Inc." <${username}>`,
         to: email,
-        subject: "Verify Your Email - Hero Serviced Office",
-        html: `
-            <!DOCTYPE html>
-            <html>
-            <head>
-            <meta charset="UTF-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <style>
-            body{margin:0;padding:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;}
-            </style>
-            </head>
-            <body>
-            <div style="background:#f4f7fb;padding:40px 20px;">
-            <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e8edf5;">
-            <div style="height:6px;background:#0D47A1;"></div>
-            <div style="padding:40px;text-align:center;">
-            <h1 style="margin:0;font-size:28px;color:#0D47A1;">Hero Serviced Office</h1>
-            <p style="margin-top:8px;color:#64748b;font-size:15px;">Your Workspace for Success.</p>
-            </div>
-            <div style="padding:0 40px 40px;">
-            <h2 style="margin:0 0 20px;color:#1e293b;">Welcome, ${name}!</h2>
-            <p style="font-size:15px;line-height:1.8;color:#475569;">Thank you for creating your Hero Serviced Office account. Before you can access your account, please verify your email address by clicking the button below.</p>
-            <div style="text-align:center;margin:40px 0;">
-            <a href="${verificationUrl}" style="display:inline-block;padding:16px 36px;background:#0D47A1;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:8px;font-size:15px;">Verify Email</a>
-            </div>
-            <p style="font-size:13px;color:#64748b;line-height:1.7;">If the button doesn't work, copy and paste this link into your browser:</p>
-            <p style="font-size:12px;word-break:break-all;background:#f8fafc;padding:12px;border-radius:6px;color:#0D47A1;">${verificationUrl}</p>
-            <p style="margin-top:30px;font-size:13px;color:#64748b;">If you didn't create an account, you can safely ignore this email.</p>
-            </div>
-            <div style="background:#f8fafc;padding:20px;text-align:center;font-size:12px;color:#94a3b8;">© ${new Date().getFullYear()} Hero Serviced Office<br>All rights reserved.</div>
-            </div>
-            </div>
-            </body>
-            </html>
-        `,
+        subject: "Verify Your Email - Hero Serviced Office, Inc.",
+        html: emailDocument("", bodyHtml),
         text: `
-            Welcome to Hero Serviced Office, ${name}
+            Welcome to Hero Serviced Office, Inc., ${name}
 
             Please verify your email address using the link below:
 
@@ -108,7 +158,7 @@ export async function sendVerificationEmail(
 
             If you did not create this account, you may safely ignore this email.
 
-            © ${new Date().getFullYear()} Hero Serviced Office
+            © ${new Date().getFullYear()} Hero Serviced Office, Inc.
         `,
     };
 
@@ -171,6 +221,8 @@ export interface QuotationDetail {
 }
 
 export interface QuotationPayload {
+    id?: number | string;
+    quotation_id?: string | null;
     service_id?: number | null;
     service_name: string;
     branch?: string | null;
@@ -238,8 +290,8 @@ function quotationRow(label: string, value?: string | number | null): string {
     if (value === null || value === undefined || value === "") return "";
     return `
         <tr>
-            <td style="padding:10px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#64748b;white-space:nowrap;">${label}</td>
-            <td style="padding:10px 0 10px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;font-weight:500;text-align:right;">${value}</td>
+            <td class="detail-label">${label}</td>
+            <td class="detail-value">${value}</td>
         </tr>`;
 }
 
@@ -305,6 +357,23 @@ function formatQuotationDate(value?: string | null): string | null {
     });
 }
 
+const getVirtualOfficeSeatAttendee = (plan?: string | null): string => {
+    const normalizedPlan = String(plan || "").trim().toLowerCase();
+
+    if (normalizedPlan === "basic") {
+        return "N/A";
+    }
+
+    if (
+        normalizedPlan === "standard" ||
+        normalizedPlan === "premium"
+    ) {
+        return "1 person";
+    }
+
+    return "N/A";
+};
+
 function buildQuotationDetailRows(
     q: QuotationPayload,
     options: {
@@ -314,14 +383,33 @@ function buildQuotationDetailRows(
 ): string {
     const d = q.detail;
     const isVirtualOffice = isVirtualOfficePaymongo(q);
-    const seatsRow = options.hideSeatsForVirtualOffice && isVirtualOffice
-        ? ""
-        : quotationRow("Seats / Attendees", d.seats);
-    const dateValue = options.formattedDate ? formatQuotationDate(d.date) : d.date;
+
+    const selectedPlan =
+        q.package ||
+        d.package_name ||
+        null;
+
+    const seatsAttendee = isVirtualOffice
+        ? getVirtualOfficeSeatAttendee(selectedPlan)
+        : d.seats != null
+            ? String(d.seats)
+            : null;
+
+    const seatsRow =
+        options.hideSeatsForVirtualOffice && isVirtualOffice
+            ? ""
+            : quotationRow(
+                "Seats / Attendees",
+                seatsAttendee
+            );
+
+    const dateValue = options.formattedDate
+        ? formatQuotationDate(d.date)
+        : d.date;
 
     return [
         quotationRow("Service", q.service_name),
-        quotationRow("Package", q.package),
+        quotationRow("Package", selectedPlan),
         quotationRow("Lease Term", q.lease_term),
         quotationRow("Event Type", q.event_type),
         seatsRow,
@@ -339,29 +427,21 @@ function buildQuotationDetailRows(
 }
 
 function quotationWrapper(bodyHtml: string): string {
-    return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <style>body{margin:0;padding:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;}</style>
-    </head>
-    <body>
-    <div style="background:#f4f7fb;padding:40px 20px;">
-      <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e8edf5;">
+    const inner = `
+    <div class="email-bg">
+      <div class="email-card">
         <div style="height:6px;background:#0D47A1;"></div>
-        <div style="padding:32px 40px 8px;text-align:center;">
-          <h1 style="margin:0;font-size:22px;color:#0D47A1;">Hero Serviced Office</h1>
+        <div class="email-header" style="padding-bottom:8px;">
+          <h1 style="margin:0;font-size:22px;color:#0D47A1;">Hero Serviced Office, Inc.</h1>
           <p style="margin-top:6px;color:#64748b;font-size:13px;">Your Workspace for Success.</p>
         </div>
-        <div style="padding:16px 40px 40px;">
+        <div class="email-body" style="padding-top:16px;">
           ${bodyHtml}
         </div>
       </div>
-    </div>
-    </body>
-    </html>`;
+    </div>`;
+
+    return emailDocument("", inner);
 }
 
 function isVirtualOfficePaymongo(
@@ -403,6 +483,35 @@ function getPublicAppBaseUrl(): string {
     return "http://localhost:8000";
 }
 
+function getPublicFrontendBaseUrl(): string {
+    const candidates = [
+        process.env.NEXT_PUBLIC_APP_URL,
+        process.env.NEXT_PUBLIC_SITE_URL,
+        process.env.APP_URL,
+        process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+        "http://localhost:3000",
+    ].filter((value): value is string => Boolean(value));
+
+    const isProd = process.env.NODE_ENV === "production";
+    for (const candidate of candidates) {
+        const normalized = candidate.replace(/\/+$/g, "");
+        if (!/^https?:\/\//i.test(normalized)) continue;
+
+        if (isProd) {
+            try {
+                const host = new URL(normalized).hostname.toLowerCase();
+                if (host === "localhost" || host === "127.0.0.1" || host === "::1") continue;
+            } catch {
+                continue;
+            }
+        }
+
+        return normalized;
+    }
+
+    return "http://localhost:3000";
+}
+
 function toUniqueEmails(values: Array<string | null | undefined>): string[] {
     const seen = new Set<string>();
     const list: string[] = [];
@@ -422,7 +531,7 @@ function toUniqueEmails(values: Array<string | null | undefined>): string[] {
 function getSystemMailSender(): string {
     const address = (process.env.MAIL_FROM_ADDRESS || process.env.SMTP_FROM || process.env.SMTP_USER || "").trim();
     if (!address) throw new Error("MAIL_FROM_ADDRESS or SMTP_USER is not configured.");
-    const name = process.env.MAIL_FROM_NAME || "HERO Serviced Office";
+    const name = process.env.MAIL_FROM_NAME || "Hero Serviced Office, Inc.";
     return `"${name}" <${address}>`;
 }
 
@@ -432,6 +541,21 @@ function parseRecipientList(input: string | undefined): string[] {
         .map((e) => e.trim())
         .filter(Boolean);
 }
+
+// const RECIPIENTS = {
+//     chairman: process.env.CHAIRMAN_EMAIL || "hero.chairman@gmail.com",
+//     president: process.env.PRESIDENT_EMAIL || "hero.president@gmail.com",
+//     generalManager: process.env.GENERAL_MANAGER_EMAIL || "hero.generalmanager@gmail.com",
+//     adminOfficer: process.env.ADMIN_OFFICER_EMAIL || "hero.adminofficer@gmail.com",
+//     salesOfficer: process.env.SALES_OFFICER_EMAIL || "hero.salesofficer@gmail.com",
+//     digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "hero.digitalmarketing@gmail.com",
+//     accounting: process.env.ACCOUNTING_EMAIL || "hero.accounting@gmail.com",
+//     accountingofficer: process.env.ACCOUNTING_OFFICER_EMAIL || "hero.accountingofficer@gmail.com",
+//     branchManagers: {
+//         S01: process.env.BRANCH_MANAGER_S01_EMAIL || "hero.branchmanager.s01@gmail.com",
+//         S02: process.env.BRANCH_MANAGER_S02_EMAIL || "hero.branchmanager.s02@gmail.com",
+//     },
+// };
 
 const RECIPIENTS = {
     chairman: process.env.CHAIRMAN_EMAIL || "hero.chairman@gmail.com",
@@ -467,13 +591,11 @@ async function getCategoryRecipientList(category: string, extras: Array<string |
                 RECIPIENTS.branchManagers.S02,
             ]
             : [
-            RECIPIENTS.president,
-            RECIPIENTS.chairman,
-            RECIPIENTS.generalManager,
-            RECIPIENTS.digitalMarketing,
-            RECIPIENTS.salesOfficer,
-            RECIPIENTS.branchManagers.S01,
-            RECIPIENTS.branchManagers.S02,
+                RECIPIENTS.generalManager,
+                RECIPIENTS.digitalMarketing,
+                RECIPIENTS.salesOfficer,
+                RECIPIENTS.branchManagers.S01,
+                RECIPIENTS.branchManagers.S02,
             ];
     const recipients = toUniqueEmails([...dbRecipients, ...configuredRecipients, ...extras]);
     console.info("Form notification recipients resolved", {
@@ -506,6 +628,7 @@ function getPaymentVerifiedRecipients(branch: string | null | undefined): string
 
     return toUniqueEmails([
         branchManager,
+        RECIPIENTS.salesOfficer,
         RECIPIENTS.adminOfficer,
     ]);
 }
@@ -748,7 +871,7 @@ function resolveContractTemplate(template: string, variables: Record<string, str
 
 function buildOtherServiceContractTemplate(): string {
     return [
-        "Hero Serviced Office",
+        "Hero Serviced Office, Inc.",
         "",
         "1. Parties",
         "This {{contract_title_body}} (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\"), effective as of the date of confirmed payment below.",
@@ -872,7 +995,7 @@ async function renderContractPdfFromContent(args: {
     };
 
     const today = new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
-    drawLine("Hero Serviced Office", { size: 20, bold: true, color: COLOR_PRIMARY, align: "center", gap: 26 });
+    drawLine("Hero Serviced Office, Inc.", { size: 20, bold: true, color: COLOR_PRIMARY, align: "center", gap: 26 });
     drawLine(title, { size: 11, color: COLOR_MUTED, align: "center", gap: 28 });
     drawLine(`Date Issued: ${today}`, { size: 10, gap: 24 });
 
@@ -928,49 +1051,87 @@ async function generateNonVirtualOfficeContractPdf(quotation: QuotationPayload):
 }
 
 async function htmlToPdfBuffer(html: string): Promise<Buffer> {
-    try {
-        const chromium = (await import("@sparticuz/chromium")).default;
-        const puppeteer = (await import("puppeteer-core")).default;
+    let browser;
 
-        const browser = await puppeteer.launch({
-            args: [
-                ...chromium.args,
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-            ],
-            executablePath: await chromium.executablePath(),
-            headless: true,
+    try {
+        const isProduction = process.env.NODE_ENV === "production";
+
+        if (isProduction) {
+            // Vercel / serverless
+            const chromium = (await import("@sparticuz/chromium")).default;
+            const puppeteer = (await import("puppeteer-core")).default;
+
+            const executablePath = await chromium.executablePath();
+
+            console.log("Starting production Chromium:", {
+                executablePath,
+                isProduction,
+            });
+
+            browser = await puppeteer.launch({
+                args: [
+                    ...chromium.args,
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                ],
+                executablePath,
+                headless: true,
+            });
+        } else {
+            // Windows / local development
+            const puppeteer = (await import("puppeteer")).default;
+
+            console.log("Starting local Puppeteer Chromium");
+
+            browser = await puppeteer.launch({
+                headless: true,
+            });
+        }
+
+        const page = await browser.newPage();
+
+        await page.setContent(html, {
+            waitUntil: "load",
         });
 
-        try {
-            const page = await browser.newPage();
+        const pdf = await page.pdf({
+            format: "A4",
+            printBackground: true,
+            margin: {
+                top: "20mm",
+                right: "15mm",
+                bottom: "20mm",
+                left: "15mm",
+            },
+        });
 
-            await page.setContent(html, {
-                waitUntil: "load",
-            });
-
-            const pdf = await page.pdf({
-                format: "A4",
-                printBackground: true,
-                margin: {
-                    top: "20mm",
-                    right: "15mm",
-                    bottom: "20mm",
-                    left: "15mm",
-                },
-            });
-
-            return Buffer.from(pdf);
-        } finally {
-            await browser.close();
-        }
+        return Buffer.from(pdf);
     } catch (error) {
-        const detail = error instanceof Error ? error.message : String(error);
-        console.error("Puppeteer PDF generation failed:", detail);
+        const detail =
+            error instanceof Error
+                ? error.message
+                : String(error);
+
+        console.error(
+            "Puppeteer PDF generation failed:",
+            error
+        );
 
         throw new Error(
             `Virtual Office contract PDF generation failed: ${detail}`
         );
+    } finally {
+        if (browser) {
+            try {
+                await browser.close();
+            } catch (closeError) {
+                console.error(
+                    "Failed to close Puppeteer browser:",
+                    closeError
+                );
+            }
+        }
     }
 }
 
@@ -1026,12 +1187,12 @@ export async function sendQuotationUserEmail(
     const body = `
         <p style="font-size:15px;line-height:1.8;color:#475569;">Hi ${firstName},</p>
         <p style="font-size:15px;line-height:1.8;color:#475569;">
-            Thank you for your interest in Hero Serviced Office. We've received your
+            Thank you for your interest in Hero Serviced Office, Inc.. We've received your
             ${quotation.service_name.toLowerCase()} request and our team will get back
             to you within <strong>24 business hours</strong>.
         </p>
         ${docCopyLine}
-        <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+        <table class="detail-table">
             ${buildQuotationDetailRows(quotation, {
         hideSeatsForVirtualOffice: true,
         formattedDate: true,
@@ -1044,7 +1205,7 @@ export async function sendQuotationUserEmail(
     const mailOptions = {
         from:
             process.env.SMTP_FROM ||
-            `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
+            `"Hero Serviced Office, Inc." <${process.env.SMTP_USER}>`,
         to: quotation.detail.email,
         subject: `We've received your ${quotation.service_name} request`,
         html: quotationWrapper(body),
@@ -1052,11 +1213,23 @@ export async function sendQuotationUserEmail(
 
         Thank you for your ${quotation.service_name} request. Our team will get back to you within 24 business hours.
 
-© ${new Date().getFullYear()} Hero Serviced Office`,
+© ${new Date().getFullYear()} Hero Serviced Office, Inc.`,
         attachments,
     };
 
     return sendQuotationMailWithErrorHandling(mailOptions);
+}
+
+// Branch name -> branch manager email
+const BRANCH_MANAGER_EMAIL_MAP: Record<string, string> = {
+    "insular life": "insularlife.branch@heroofficesolutions.com",
+    "tower 6789": "tower6789.branch@heroofficesolutions.com",
+};
+
+function resolveBranchManagerEmail(branch?: string | null): string {
+    if (!branch) return "";
+    const key = branch.trim().toLowerCase();
+    return BRANCH_MANAGER_EMAIL_MAP[key] || "";
 }
 
 export async function sendQuotationContractEmail(
@@ -1073,6 +1246,7 @@ export async function sendQuotationContractEmail(
     const contractRecipients = await getCategoryRecipientList("contract");
     const attachments = [...getDocumentCopyAttachments(options)];
     const contractBuffer = await generateContractPdfByService(quotation);
+    const branchManagerEmail = resolveBranchManagerEmail(quotation.branch);
 
     // Dynamic filename: "[Client Name] - [Service] Service Agreement.pdf"
     const contractFilename = `${contract.clientName} - ${contract.contractTitle}.pdf`;
@@ -1115,19 +1289,18 @@ export async function sendQuotationContractEmail(
         </p>
         <div style="border-top:1px solid #e5e7eb;padding-top:10px;">
         <h3 style="font-size:16px;font-weight:bold;color:#475569;">Contract Instructions:</h3>
-            <ol style="font-size:15px;line-height:1.8;color:#475569;">
-                <li>Sign every page of the contract, except the last page, as this page is reserved for notarization.</li>
-                <li>Once the contract has been signed, please send the completed copy to the appropriate email address:</li>
-                <ul style="font-size:15px;line-height:1.8;color:#475569;">
-                    <li>23F Tower 6789: sales@heroph.net </li>
-                    <li>Insular Life Building: c_francisco@heroph.net</li>
+            <ol style="font-size:15px;line-height:1.8;color:#475569;padding-left:20px;">
+                <li style="margin-bottom:8px;">Sign every page of the contract, except the last page, as this page is reserved for notarization.</li>
+                <li style="margin-bottom:8px;">Once the contract has been signed, please send the completed copy to the appropriate email address:</li>
+                <ul style="font-size:15px;line-height:1.8;color:#475569;padding-left:20px;">
+                    <li>${branchManagerEmail || "Branch manager email not configured yet."}</li>
                 </ul>
                 <li>Our representatives will acknowledge receipt once the signed contract has been received.</li>
             </ol>
         </div>`;
 
     const mailOptions = {
-        from: process.env.SMTP_USER ? `"Hero Serviced Office" <${process.env.SMTP_USER}>` : undefined,
+        from: process.env.SMTP_USER ? `"Hero Serviced Office, Inc." <${process.env.SMTP_USER}>` : undefined,
         to: d.email,
         replyTo: d.email,
         subject: `Your ${quotation.service_name} contract`,
@@ -1148,53 +1321,226 @@ export async function sendQuotationPaymentVerificationEmail(
     }
 
     const d = quotation.detail;
-    const recipients = await getCategoryRecipientList("payment");
+
+    const normalizedBranch = String(quotation.branch || "")
+        .trim()
+        .toLowerCase();
+
+    const branchManager =
+        normalizedBranch.includes("insular") ||
+            normalizedBranch === "s02"
+            ? RECIPIENTS.branchManagers.S02
+            : RECIPIENTS.branchManagers.S01;
+
+    const accountingRecipients = toUniqueEmails([
+        RECIPIENTS.accounting,
+        RECIPIENTS.accountingofficer,
+    ]);
+
+    const salesAndBranchRecipients = toUniqueEmails([
+        RECIPIENTS.salesOfficer,
+        branchManager,
+    ]);
+
     const attachments = [...getDocumentCopyAttachments(options)];
-    const quoteId = (quotation as QuotationPayload & { id?: string | number }).id;
-    const verifyPaymentUrl = options.verifyPaymentUrl || options.contractSendUrl || (
-        quoteId !== undefined && quoteId !== null
-            ? `${getPublicAppBaseUrl()}/api/quotations/${encodeURIComponent(String(quoteId))}/payment-approved?source=payment-verification`
-            : undefined
-    );
 
-    const priceBreakdownRows = buildQuotationPriceBreakdownRows(quotation);
+    const priceBreakdownRows =
+        buildQuotationPriceBreakdownRows(quotation);
 
-    const body = `
-        <p style="font-size:15px;line-height:1.8;color:#475569;">Hi Accounting Team,</p>
+    const quotationReference =
+        quotation.quotation_id ||
+        quotation.id ||
+        "Not available";
+
+    const frontendBaseUrl = getPublicFrontendBaseUrl();
+
+    const reviewUrl =
+        quotation.quotation_id !== undefined &&
+            quotation.quotation_id !== null
+            ? `${frontendBaseUrl}/quotation/payment-verification?id=${encodeURIComponent(
+                String(quotation.quotation_id)
+            )}`
+            : `${frontendBaseUrl}/quotation/payment-verification`;
+
+    const accountingBody = `
         <p style="font-size:15px;line-height:1.8;color:#475569;">
-            A payment proof has been submitted for <strong>${d.full_name}</strong> for the <strong>${quotation.service_name}</strong> quotation.
-            Please review the payment details below and confirm that the payment is correct and verified.
+            Good Day,
         </p>
-        ${verifyPaymentUrl ? `
+
+        <p style="font-size:15px;line-height:1.8;color:#475569;">
+            A payment proof has been submitted for
+            <strong>${d.full_name}</strong>
+            for the
+            <strong>${quotation.service_name}</strong>
+            quotation.
+            Please review the payment details below in the admin workspace
+            before verifying the payment.
+        </p>
+
         <p style="text-align:center;margin:24px 0;">
-            <a href="${verifyPaymentUrl}" style="display:inline-block;padding:14px 24px;background:#0D47A1;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:700;">
-                Payment Verified
+            <a
+                href="${reviewUrl}"
+                class="email-btn"
+            >
+                Review Payment
             </a>
         </p>
-        <p style="font-size:12px;color:#94a3b8;text-align:center;line-height:1.6;">
-            This will notify the admin department that payment has been verified and is correct.
-        </p>` : ""}
-        <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+
+        <p style="
+            font-size:12px;
+            color:#94a3b8;
+            text-align:center;
+            line-height:1.6;
+        ">
+            Payment status can only be changed after an authenticated review action.
+        </p>
+
+        <table class="detail-table">
             ${quotationRow("Client", d.full_name)}
+            ${quotationRow("Company", d.company_name)}
+            ${quotationRow("Quotation Reference", quotationReference)}
+            ${quotationRow("Service", quotation.service_name)}
             ${quotationRow("Email", d.email)}
             ${quotationRow("Phone", formatClickablePhone(d.phone))}
             ${quotationRow("Branch", quotation.branch)}
             ${quotationRow("Payment Method", d.payment_method)}
-            ${quotationRow("Reference No", d.transaction_id)}
+            ${quotationRow("Reference Number", d.transaction_id)}
+            ${quotationRow(
+        "Amount Paid / Total",
+        d.total != null ? formatCurrency(d.total) : null
+    )}
             ${priceBreakdownRows}
-        </table>`;
+        </table>
+    `;
 
-    const mailOptions = {
+
+    const salesAndBranchBody = `
+        <p style="font-size:15px;line-height:1.8;color:#475569;">
+            Good Day,
+        </p>
+
+        <p style="font-size:15px;line-height:1.8;color:#475569;">
+            A payment has been submitted for
+            <strong>${d.full_name}</strong>
+            for the
+            <strong>${quotation.service_name}</strong>
+            quotation.
+            Payment verification is currently pending review by Accounting.
+        </p>
+
+        <table class="detail-table">
+            ${quotationRow("Client", d.full_name)}
+            ${quotationRow("Company", d.company_name)}
+            ${quotationRow("Quotation Reference", quotationReference)}
+            ${quotationRow("Service", quotation.service_name)}
+            ${quotationRow("Email", d.email)}
+            ${quotationRow("Phone", formatClickablePhone(d.phone))}
+            ${quotationRow("Branch", quotation.branch)}
+            ${quotationRow("Payment Method", d.payment_method)}
+            ${quotationRow("Reference Number", d.transaction_id)}
+            ${quotationRow(
+        "Amount Paid / Total",
+        d.total != null ? formatCurrency(d.total) : null
+    )}
+            ${priceBreakdownRows}
+        </table>
+
+        <p style="
+            margin-top:24px;
+            font-size:13px;
+            line-height:1.7;
+            color:#64748b;
+        ">
+            Please note that payment verification can only be completed
+            by an authorized Accounting user.
+        </p>
+    `;
+
+    const accountingMailOptions = {
         from: getSystemMailSender(),
-        to: recipients,
+        to: accountingRecipients,
         replyTo: d.email,
-        subject: `Payment verification for ${quotation.service_name} quotation`,
-        html: quotationWrapper(body),
-        text: `Payment verification for ${quotation.service_name} quotation from ${d.full_name}. Please review the attached payment proof and confirm it is correct.`,
+        subject: `Payment Verification Required - ${quotation.service_name} quotation`,
+        html: quotationWrapper(accountingBody),
+        text: `
+Payment verification required for ${quotation.service_name} quotation from ${d.full_name}.
+
+Review the payment in the authenticated admin workspace:
+${reviewUrl}
+        `.trim(),
         attachments,
     };
 
-    return sendQuotationMailWithErrorHandling(mailOptions);
+    const salesAndBranchMailOptions = {
+        from: getSystemMailSender(),
+        to: salesAndBranchRecipients,
+        replyTo: d.email,
+        subject: `Payment Submitted - ${quotation.service_name}`,
+        html: quotationWrapper(salesAndBranchBody),
+        text: `
+A payment has been submitted for ${quotation.service_name} quotation from ${d.full_name}.
+
+Quotation Reference: ${quotationReference}
+Branch: ${quotation.branch || "Not available"}
+Payment Status: Pending Accounting Verification
+
+Payment verification can only be completed by an authorized Accounting user.
+        `.trim(),
+        attachments,
+    };
+
+    const [
+        accountingResult,
+        salesAndBranchResult,
+    ] = await Promise.allSettled([
+        transporter
+            .sendMail(accountingMailOptions)
+            .then((info) => {
+                console.log(
+                    "Accounting payment verification email:",
+                    {
+                        messageId: info.messageId,
+                        accepted: info.accepted,
+                        rejected: info.rejected,
+                        pending: info.pending,
+                        response: info.response,
+                    }
+                );
+
+                return info;
+            }),
+
+        transporter
+            .sendMail(salesAndBranchMailOptions)
+            .then((info) => {
+                console.log(
+                    "Sales + Branch Manager payment notification email:",
+                    {
+                        messageId: info.messageId,
+                        accepted: info.accepted,
+                        rejected: info.rejected,
+                        pending: info.pending,
+                        response: info.response,
+                    }
+                );
+
+                return info;
+            }),
+    ]);
+
+    if (accountingResult.status === "rejected") {
+        throw accountingResult.reason;
+    }
+
+    if (salesAndBranchResult.status === "rejected") {
+        throw salesAndBranchResult.reason;
+    }
+
+    return {
+        success: true,
+        accountingMessageId: accountingResult.value.messageId,
+        salesAndBranchMessageId: salesAndBranchResult.value.messageId,
+    };
 }
 
 export async function sendQuotationPaymentVerifiedAdminEmail(
@@ -1207,59 +1553,73 @@ export async function sendQuotationPaymentVerifiedAdminEmail(
 
     const d = quotation.detail;
     const recipients = getPaymentVerifiedRecipients(quotation.branch);
+
     if (recipients.length === 0) {
-        throw new Error("No active recipients configured for payment notifications.");
+        throw new Error("No active recipients configured for payment-verified notifications.");
     }
+
     const attachments = [...getDocumentCopyAttachments(options)];
-    const readyForContract = canGenerateContract(quotation, options);
-
-    // Attach Virtual Office contract PDF if payment conditions are met
-    if (readyForContract && isVirtualOfficePaymongo(quotation)) {
-        try {
-            const contractBuffer = await generateVirtualOfficeContractPdf(quotation);
-            attachments.push({
-                filename: "Hero-Virtual-Office-Contract.pdf",
-                content: contractBuffer,
-                contentType: "application/pdf",
-            });
-        } catch (error) {
-            console.error("Failed to generate VO contract for payment verified email:", error);
-        }
-    }
-
-    const receiptRow = quotationRow("Receipt File", d.receipt || d.receipt_url);
     const priceBreakdownRows = buildQuotationPriceBreakdownRows(quotation);
-    const quoteId = (quotation as QuotationPayload & { id?: string | number }).id;
-    const dashboardUrl = options.contractSendUrl || (
-        quoteId !== undefined && quoteId !== null
-            ? `${getPublicAppBaseUrl()}/admin/quotation?status=paid&search=${encodeURIComponent(String(quoteId))}`
-            : `${getPublicAppBaseUrl()}/admin/quotation?status=paid`
-    );
+
+    const quotationReference =
+        quotation.quotation_id ||
+        quotation.id ||
+        "Not available";
 
     const body = `
-        <p style="font-size:15px;line-height:1.8;color:#475569;">Good Day,</p>
         <p style="font-size:15px;line-height:1.8;color:#475569;">
-            Payment for <strong>${d.full_name}</strong> for the <strong>${quotation.service_name}</strong> quotation has been verified and confirmed to be correct and true.
+            Good Day,
         </p>
-        <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+
+        <p style="font-size:15px;line-height:1.8;color:#475569;">
+            Payment has been verified for
+            <strong>${d.full_name}</strong>
+            for the
+            <strong>${quotation.service_name}</strong>
+            quotation. This quotation is now marked as
+            <strong>paid</strong>.
+        </p>
+
+        <table class="detail-table">
             ${quotationRow("Client", d.full_name)}
+            ${quotationRow("Company", d.company_name)}
+            ${quotationRow("Quotation Reference", quotationReference)}
+            ${quotationRow("Service", quotation.service_name)}
             ${quotationRow("Email", d.email)}
             ${quotationRow("Phone", formatClickablePhone(d.phone))}
             ${quotationRow("Branch", quotation.branch)}
             ${quotationRow("Payment Method", d.payment_method)}
-            ${quotationRow("Reference No", d.transaction_id)}
-            ${receiptRow}
+            ${quotationRow("Reference Number", d.transaction_id)}
+            ${quotationRow(
+        "Amount Paid / Total",
+        d.total != null ? formatCurrency(d.total) : null
+    )}
             ${priceBreakdownRows}
         </table>
-        <span style="color:#475569;">${dashboardUrl}</span>`;
+
+        <p style="
+            margin-top:24px;
+            font-size:13px;
+            line-height:1.7;
+            color:#64748b;
+        ">
+            Please proceed with the next steps (e.g. contract preparation) for this client.
+        </p>
+    `;
 
     const mailOptions = {
         from: getSystemMailSender(),
         to: recipients,
         replyTo: d.email,
-        subject: `Payment verified for ${quotation.service_name} quotation`,
+        subject: `Payment Verified - ${quotation.service_name} quotation`,
         html: quotationWrapper(body),
-        text: `Payment for ${d.full_name} (${quotation.service_name}) has been verified and marked as paid. Contract attached.`,
+        text: `
+Payment verified for ${quotation.service_name} quotation from ${d.full_name}.
+
+Quotation Reference: ${quotationReference}
+Branch: ${quotation.branch || "Not available"}
+Status: Paid
+        `.trim(),
         attachments,
     };
 
@@ -1291,13 +1651,9 @@ export async function sendQuotationAdminEmail(
         }
     }
 
-    const englishRecipients = getQuotationRecipients(quotation.branch);
-    const japaneseRecipients = toUniqueEmails([
-        RECIPIENTS.president,
-        RECIPIENTS.chairman,
-    ]);
+    const quotationRecipients = getQuotationRecipients(quotation.branch);
 
-    if (englishRecipients.length === 0 && japaneseRecipients.length === 0) {
+    if (quotationRecipients.length === 0) {
         throw new Error("No active recipients configured for quotation notifications.");
     }
 
@@ -1305,7 +1661,7 @@ export async function sendQuotationAdminEmail(
         <p style="font-size:15px;line-height:1.8;color:#475569;">
             A new ${quotation.service_name.toLowerCase()} quotation request has come in.
         </p>
-        <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+        <table class="detail-table">
             ${quotationRow("Name", d.full_name)}
             ${quotationRow("Company", d.company_name)}
             ${quotationRow("Email", d.email)}
@@ -1314,50 +1670,20 @@ export async function sendQuotationAdminEmail(
             ${buildQuotationDetailRows(quotation, {
         formattedDate: true,
     })}
-            ${quotationRow("Reference No", d.transaction_id)}
+            ${quotationRow("Reference Number", d.transaction_id)}
             ${quotationRow("Receipt File", d.receipt)}
-        </table>`;
-
-    const japaneseBody = `
-        <p style="font-size:15px;line-height:1.8;color:#475569;">
-            新しい${quotation.service_name}の見積依頼が届きました。
-        </p>
-        <p style="font-size:14px;line-height:1.7;color:#64748b;">
-            こちらは担当チームへの通知メールです。支店マネージャー、総務、営業、デジタルマーケティング担当者が確認に入ります。
-        </p>
-        <table style="width:100%;border-collapse:collapse;margin-top:8px;">
-            ${quotationRow("お客様名", d.full_name)}
-            ${quotationRow("会社名", d.company_name)}
-            ${quotationRow("メール", d.email)}
-            ${quotationRow("電話", formatClickablePhone(d.phone))}
-            ${quotationRow("支店", quotation.branch)}
-            ${buildQuotationDetailRows(quotation, {
-        formattedDate: true,
-    })}
         </table>`;
 
     const tasks: Promise<unknown>[] = [];
 
-    if (englishRecipients.length > 0) {
+    if (quotationRecipients.length > 0) {
         tasks.push(sendQuotationMailWithErrorHandling({
             from: getSystemMailSender(),
-            to: englishRecipients,
+            to: quotationRecipients,
             replyTo: d.email,
             subject: `New ${quotation.service_name} request from ${d.full_name}`,
             html: quotationWrapper(englishBody),
             text: `New ${quotation.service_name} request from ${d.full_name} (${d.email}, ${d.phone}).`,
-            attachments,
-        }));
-    }
-
-    if (japaneseRecipients.length > 0) {
-        tasks.push(sendQuotationMailWithErrorHandling({
-            from: getSystemMailSender(),
-            to: japaneseRecipients,
-            replyTo: d.email,
-            subject: `【新規見積】${quotation.service_name} の依頼が届きました`,
-            html: quotationWrapper(japaneseBody),
-            text: `新しい${quotation.service_name}の見積依頼が届きました。`,
             attachments,
         }));
     }
@@ -1396,7 +1722,7 @@ export async function sendQuotationPaymentLinkEmail(
             Click the button below to proceed to your dedicated payment page.
         </p>
         <p style="text-align:center;margin:20px 0;">
-            <a href="${paymentUrl}" style="display:inline-block;padding:12px 20px;background:#0D47A1;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:700;">
+            <a href="${paymentUrl}" class="email-btn">
                 Pay Now
             </a>
         </p>
@@ -1404,11 +1730,11 @@ export async function sendQuotationPaymentLinkEmail(
             This secure link expires in ${expiresInDays} day${expiresInDays === 1 ? "" : "s"}. If it expires,
             please reply to this email and we will send you a new payment link.
         </p>
-        <p style="font-size:12px;color:#64748b;word-break:break-all;margin-top:10px;">${paymentUrl}</p>
+        <p class="word-break" style="font-size:12px;color:#64748b;word-break:break-all;margin-top:10px;">${paymentUrl}</p>
     `;
 
     const mailOptions = {
-        from: process.env.SMTP_FROM || `"Hero Serviced Office" <${process.env.SMTP_USER}>`,
+        from: process.env.SMTP_FROM || `"Hero Serviced Office, Inc." <${process.env.SMTP_USER}>`,
         to: d.email,
         subject: `Payment link — ${quotation.service_name}`,
         html: quotationWrapper(body),

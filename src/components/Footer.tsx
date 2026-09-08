@@ -79,7 +79,7 @@ function PrivacyPolicyContent() {
   return (
     <>
       <p>
-        Thank you very much for using the services provided by Hero PH INC. (hereinafter,
+        Thank you very much for using the services provided by Hero Serviced Office, Inc. (hereinafter,
         "we/our/us").
       </p>
       <p>
@@ -151,7 +151,7 @@ function PrivacyPolicyContent() {
 
       <Section title="08 — Inquiry Contact">
         <p>Contact person: Minoru Kobayashi</p>
-        <p>Company name: Hero Serviced Office Inc.</p>
+        <p>Company name: Hero Serviced Office, Inc.</p>
         <p>Address: 23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines</p>
         <p>
           E-mail:{' '}
@@ -170,7 +170,7 @@ function TermsOfServiceContent() {
   return (
     <>
       <p>
-        By accessing or using the services provided by Hero Serviced Office Inc., you agree to be
+        By accessing or using the services provided by Hero Serviced Office, Inc., you agree to be
         bound by these Terms of Service. Please read them carefully before using our services.
       </p>
 
@@ -193,7 +193,7 @@ function TermsOfServiceContent() {
       </Section>
 
       <Section title="04 — Limitation of Liability">
-        Hero Serviced Office Inc. shall not be liable for any indirect, incidental, or consequential
+        Hero Serviced Office, Inc. Inc. shall not be liable for any indirect, incidental, or consequential
         damages arising from your use of our services. Our total liability shall not exceed the
         amount paid by you for the services in the preceding month.
       </Section>
@@ -218,7 +218,7 @@ function TermsOfServiceContent() {
 
       <Section title="08 — Contact">
         <p>For questions about these Terms, please contact us:</p>
-        <p>Hero Serviced Office Inc.</p>
+        <p>Hero Serviced Office, Inc.</p>
         <p>23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines</p>
         <p>
           <a href="mailto:sales@heroph.net" className="text-[#1565C0] underline underline-offset-2">
@@ -422,7 +422,7 @@ export default function Footer() {
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex flex-col items-center md:items-start gap-1">
                 <p className="text-xs tracking-wide text-gray-400">
-                  &copy; {new Date().getFullYear()} HERO Serviced Office. All rights reserved.
+                  &copy; {new Date().getFullYear()} Hero Serviced Office, Inc.. All rights reserved.
                 </p>
                 <span className="text-xs tracking-wide text-gray-400">
                   Powered by{' '}

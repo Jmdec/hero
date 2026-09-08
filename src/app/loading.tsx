@@ -5,7 +5,7 @@ export default function AppLoading() {
         <Loading
             variant="screen"
             title="Loading page"
-            subtitle="Hero Serviced Office"
+            subtitle="Hero Serviced Office, Inc."
         />
     );
 }

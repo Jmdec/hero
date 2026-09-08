@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import VOContract, {
     mapQuotationDetailToVOContractFields,
     mapVOContractFieldsToQuotationDetail,
@@ -452,36 +453,106 @@ function ClientInfoSection({ detail }: { detail: QuotationDetail }) {
 
 function ServiceDetailsSection({ quote }: { quote: Quotation }) {
     const detail = quote.detail;
+
     const durationLabel =
         detail?.duration_type ??
-        (detail?.duration != null ? `${detail.duration} ${detail.duration === 1 ? "month" : "months"}` : "—");
+        (detail?.duration != null
+            ? `${detail.duration} ${detail.duration === 1 ? "month" : "months"
+            }`
+            : "—");
+
+    const packageName = quote.package ?? detail?.package_name;
+
+    const isVirtualOffice =
+        String(quote.service_name || "")
+            .trim()
+            .toLowerCase()
+            .includes("virtual office");
+
+    const getVirtualOfficeSeatAttendee = (
+        plan?: string | null
+    ): string => {
+        const normalizedPlan = String(plan || "")
+            .trim()
+            .toLowerCase();
+
+        if (normalizedPlan === "basic") {
+            return "N/A";
+        }
+
+        if (
+            normalizedPlan === "standard" ||
+            normalizedPlan === "premium"
+        ) {
+            return "1 person";
+        }
+
+        return "N/A";
+    };
+
+    const seatsAttendees = isVirtualOffice
+        ? getVirtualOfficeSeatAttendee(packageName)
+        : detail?.seats != null
+            ? `${detail.seats} ${detail.seats === 1 ? "person" : "people"
+            }`
+            : null;
 
     return (
         <ReceiptSection>
             <ReceiptHeading>Service Details</ReceiptHeading>
-            <ReceiptRow label="Service" value={quote.service_name} />
-            {(quote.package || detail?.package_name) && (
-                <ReceiptRow label="Package" value={quote.package ?? detail?.package_name} />
+
+            <ReceiptRow label="Service" value={quote.service_name}/>
+
+            {packageName && (
+                <ReceiptRow label="Package" value={packageName}/>
             )}
+
             {detail?.date && (
                 <ReceiptRow
                     label={detail.time ? "Date & Time" : "Start Date"}
-                    value={`${formatDate(detail.date)}${detail.time ? ` · ${detail.time}` : ""}`}
+                    value={`${formatDate(detail.date)}${detail.time ? ` · ${detail.time}` : ""
+                        }`}
                 />
             )}
-            {detail?.seats != null && (
-                <ReceiptRow label="Seats / Attendees" value={`${detail.seats} ${detail.seats === 1 ? "person" : "people"}`} />
+
+            {seatsAttendees && (
+                <ReceiptRow label="Seats / Attendees" value={seatsAttendees} />
             )}
-            {durationLabel && <ReceiptRow label="Duration" value={durationLabel} />}
-            {quote.lease_term && <ReceiptRow label="Lease Term" value={quote.lease_term} />}
-            {quote.event_type && <ReceiptRow label="Event Type" value={quote.event_type} />}
-            {quote.branch && <ReceiptRow label="Branch" value={quote.branch} />}
+
+            {durationLabel && (
+                <ReceiptRow label="Duration" value={durationLabel} />
+            )}
+
+            {quote.lease_term && (
+                <ReceiptRow label="Lease Term" value={quote.lease_term} />
+            )}
+
+            {quote.event_type && (
+                <ReceiptRow label="Event Type" value={quote.event_type}/>
+            )}
+
+            {quote.branch && (
+                <ReceiptRow label="Branch" value={quote.branch}/>
+            )}
+
             {(detail?.request || detail?.other_requirements) && (
-                <div className="mt-2.5 pt-2.5 border-t border-[#F0F4FB] flex justify-between items-start">
-                    <p className="text-sm text-[#64748B]">Notes</p>
-                    <div className="text-sm font-bold text-[#0B1F4A]">
-                        {detail?.request && <p className="text-sm text-[#0B1F4A]">{detail.request}</p>}
-                        {detail?.other_requirements && <p className="text-sm text-[#0B1F4A]">{detail.other_requirements}</p>}
+                <div className="mt-2.5 flex items-start justify-between border-t border-[#F0F4FB] pt-2.5">
+                    <p className="text-sm text-[#64748B]">
+                        Notes
+                    </p>
+
+                    <div className="text-right text-sm font-bold text-[#0B1F4A]">
+                        {detail?.request && (
+                            <p className="text-sm text-[#0B1F4A]">
+                                {detail.request}
+                            </p>
+                        )}
+
+                        {detail?.other_requirements && (
+                            <p className="text-sm text-[#0B1F4A]">
+                                {detail.other_requirements}
+                            </p>
+                        )}
                     </div>
                 </div>
             )}
@@ -773,11 +844,17 @@ function PaymentDetailsSection({ quote, onView }: { quote: Quotation; onView?: (
 }
 
 export default function AdminQuotationsPage() {
+    const searchParams = useSearchParams();
     const [quotations, setQuotations] = useState<Quotation[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [query, setQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
+    const [query, setQuery] = useState(() => searchParams.get("search") ?? "");
+    const [statusFilter, setStatusFilter] = useState<Status | "all">(() => {
+        const requestedStatus = searchParams.get("status");
+        return STATUSES.some((status) => status.value === requestedStatus)
+            ? requestedStatus as Status
+            : "all";
+    });
     const [selected, setSelected] = useState<Quotation | null>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<Quotation | null>(null);
@@ -790,6 +867,7 @@ export default function AdminQuotationsPage() {
     const [idDoc, setIdDoc] = useState<{ title: string; url: string } | null>(null);
     const [sendingPaymentLinkId, setSendingPaymentLinkId] = useState<number | null>(null);
     const [sendingContractId, setSendingContractId] = useState<number | null>(null);
+    const [verifyingPaymentId, setVerifyingPaymentId] = useState<number | null>(null);
     const [contractModalQuote, setContractModalQuote] = useState<Quotation | null>(null);
     const [contractEditMode, setContractEditMode] = useState(false);
     const [voContractFields, setVoContractFields] = useState<ReturnType<typeof mapQuotationDetailToVOContractFields> | null>(null);
@@ -865,6 +943,8 @@ export default function AdminQuotationsPage() {
             if (!matchesStatus) return false;
             if (!q) return true;
             const haystack = [
+                quote.id,
+                quote.quotation_id,
                 quote.service_name,
                 quote.detail?.full_name,
                 quote.detail?.company_name,
@@ -1010,6 +1090,30 @@ export default function AdminQuotationsPage() {
             setQuotations(previous);
             setError("Couldn't update the status. Please try again.");
             pushToast(`Couldn't update ${who} to "${statusLabel}"`, "error");
+        }
+    };
+
+    const handleVerifyPayment = async (quote: Quotation) => {
+        setVerifyingPaymentId(quote.id);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`/api/quotations/${quote.id}/verify-payment`, {
+                method: "POST",
+                headers: {
+                    Accept: "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+            });
+            const payload = await res.json().catch(() => null);
+            if (!res.ok) throw new Error(payload?.message || "Failed to verify payment.");
+
+            setQuotations((items) => items.map((item) => item.id === quote.id ? { ...item, status: "paid" } : item));
+            setSelected((item) => item && item.id === quote.id ? { ...item, status: "paid" } : item);
+            pushToast("Payment verified and quotation marked as paid.", "success");
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : "Failed to verify payment.", "error");
+        } finally {
+            setVerifyingPaymentId(null);
         }
     };
 
@@ -1672,7 +1776,7 @@ export default function AdminQuotationsPage() {
                             ) : !contractEditMode ? (
                                 <div className="mx-auto max-w-3xl bg-white border border-[#D9E2F0] rounded-xl p-6 sm:p-8 shadow-sm">
                                     <div className="text-center mb-6">
-                                        <p className="text-xl font-bold text-[#1B3A8C]">Hero Serviced Office</p>
+                                        <p className="text-xl font-bold text-[#1B3A8C]">Hero Serviced Office, Inc.</p>
                                         <p className="text-sm text-[#64748B] mt-1">{getContractPreviewTitle(contractModalQuote.service_name)}</p>
                                     </div>
                                     <div className="whitespace-pre-wrap text-sm leading-7 text-[#0B1F4A]">{contractDraft}</div>
