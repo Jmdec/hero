@@ -1584,7 +1584,7 @@ const Chatbot = () => {
             setIsStarted(true);
             leadSubmittedRef.current = true;
 
-            const greeting = `Thanks, ${leadInfo.name.trim()}! Your details have been received. How can I help you today?`;
+            const greeting = `Hi, ${leadInfo.name.trim()}! Your details have been received. How can I help you today?`;
             setMessages([
                 {
                     id: makeId(),

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/g, "");
+const API_URL = (
+  process.env.LARAVEL_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://infinitech-api23.site"
+).replace(/\/+$/g, "");
 
 function isValidConversationId(id: string) {
   return /^\d+$/.test(id);
