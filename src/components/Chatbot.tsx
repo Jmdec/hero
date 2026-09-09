@@ -683,6 +683,21 @@ const nextPaint = () =>
         });
     });
 
+function getGoogleTranslateLanguage(): string {
+    const match = document.cookie.match(/(?:^|;\s*)googtrans=\/en\/([^;]+)/);
+    return match?.[1] ?? "en";
+}
+
+function retriggerGoogleTranslate(language: string) {
+    if (language === "en") return;
+
+    const select = document.querySelector<HTMLSelectElement>(".goog-te-combo");
+    if (!select) return;
+
+    select.value = language;
+    select.dispatchEvent(new Event("change"));
+}
+
 function isAgentRequestedStatus(status?: string | null): boolean {
     return status === "waiting_admin" || status === "agent_requested";
 }
@@ -784,6 +799,7 @@ const Chatbot = () => {
     const conversationClosedRef = useRef(false);
     const [conversationClosed, setConversationClosed] = useState(false);
     const [awaitingPreferredContact, setAwaitingPreferredContact] = useState(false);
+    const [locale, setLocale] = useState<"en" | "ja">("en");
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -798,6 +814,35 @@ const Chatbot = () => {
     const pendingLocalUserTextsRef = useRef<Set<string>>(new Set());
 
     const scrollRafRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        const updateLocale = (event?: Event) => {
+            const detail = (event as CustomEvent<string> | undefined)?.detail;
+            const nextLocale = detail === "ja" || detail === "en"
+                ? detail
+                : getGoogleTranslateLanguage() === "ja"
+                    ? "ja"
+                    : "en";
+
+            setLocale(nextLocale);
+        };
+
+        updateLocale();
+        window.addEventListener("localeChanged", updateLocale);
+        return () => window.removeEventListener("localeChanged", updateLocale);
+    }, []);
+
+    // Google Translate translates the current DOM only. Retrigger it after React
+    // inserts chat content so messages added after a locale switch are translated.
+    useEffect(() => {
+        if (locale === "en") return;
+
+        const timeoutId = window.setTimeout(() => {
+            retriggerGoogleTranslate(locale);
+        }, 100);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [locale, messages, isTyping, isChatOpen, isStarted, leadSubmitted]);
 
     const quickReplies = [
         "Private Office",

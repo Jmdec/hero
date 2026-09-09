@@ -1,4 +1,6 @@
 import { PDFDocument, PDFFont, StandardFonts, rgb } from "pdf-lib";
+import fs from "node:fs/promises";
+import path from "node:path";
 import type { QuotationPayload } from "@/lib/nodemailer";
 import { getGuidelineBranchAddress } from "@/lib/guidelineFields";
 
@@ -92,6 +94,22 @@ async function generateGuidelineDocument(quotation: QuotationPayload): Promise<B
     const font = await pdf.embedFont(StandardFonts.Helvetica);
     const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
     const boldItalic = await pdf.embedFont(StandardFonts.HelveticaBoldOblique);
+
+    const logoPath = path.join(
+        process.cwd(),
+        "public",
+        "header_logo_manila.png"
+    );
+
+    let logo = null;
+
+    try {
+        const logoBytes = await fs.readFile(logoPath);
+        logo = await pdf.embedPng(logoBytes);
+    } catch (error) {
+        console.warn("Guideline PDF logo could not be loaded:", error);
+    }
+
     const saved = quotation.detail.guideline_fields || {};
     const effectiveQuotation: QuotationPayload = {
         ...quotation,
@@ -128,6 +146,7 @@ async function generateGuidelineDocument(quotation: QuotationPayload): Promise<B
         page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
         header();
     };
+
     const ensure = (height: number) => {
         if (y - height < 58) addPage();
     };
@@ -280,24 +299,116 @@ async function generateGuidelineDocument(quotation: QuotationPayload): Promise<B
     };
 
     const header = () => {
-        page.drawText("Hero Serviced Office, Inc.", { x: MARGIN, y: PAGE_HEIGHT - 50, size: 10, font: bold, color: TEXT });
-        page.drawText("Tower 6789", { x: MARGIN, y: PAGE_HEIGHT - 64, size: 9, font, color: TEXT });
-        page.drawText("23F Tower 6789, 6789 Ayala Ave., Brgy. Bel Air, Makati, Philippines", { x: MARGIN, y: PAGE_HEIGHT - 77, size: 7.5, font, color: TEXT });
-        page.drawText("(02) 8-801-3417", { x: MARGIN, y: PAGE_HEIGHT - 89, size: 8, font, color: TEXT });
-        page.drawText("Hero Serviced Office, Inc.", { x: PAGE_WIDTH - 215, y: PAGE_HEIGHT - 50, size: 10, font: bold, color: TEXT });
-        page.drawText("Insular Life Building", { x: PAGE_WIDTH - 215, y: PAGE_HEIGHT - 64, size: 9, font, color: TEXT });
-        page.drawText("11F Insular Life Building, Makati, Philippines", { x: PAGE_WIDTH - 215, y: PAGE_HEIGHT - 77, size: 7.5, font, color: TEXT });
-        page.drawText("(02) 8-246-0801", { x: PAGE_WIDTH - 215, y: PAGE_HEIGHT - 89, size: 8, font, color: TEXT });
-        page.drawText("(02) 8-246-0831", { x: PAGE_WIDTH - 215, y: PAGE_HEIGHT - 99, size: 8, font, color: TEXT });
-        y = PAGE_HEIGHT - 126;
+        if (logo) {
+            page.drawImage(logo, {
+                x: MARGIN,
+                y: PAGE_HEIGHT - 60,
+                width: 120,
+                height: 40,
+            });
+        }
+
+        page.drawText("Hero Serviced Office, Inc.", {
+            x: MARGIN,
+            y: PAGE_HEIGHT - 80,
+            size: 10,
+            font: bold,
+            color: TEXT,
+        });
+
+        page.drawText("Tower 6789", {
+            x: MARGIN,
+            y: PAGE_HEIGHT - 94,
+            size: 9,
+            font,
+            color: TEXT,
+        });
+
+        page.drawText(
+            "23F Tower 6789, 6789 Ayala Ave., Brgy.",
+            {
+                x: MARGIN,
+                y: PAGE_HEIGHT - 107,
+                size: 7.5,
+                font,
+                color: TEXT,
+            }
+        );
+
+        page.drawText(
+            "Bel Air, Makati, Philippines",
+            {
+                x: MARGIN,
+                y: PAGE_HEIGHT - 119,
+                size: 7.5,
+                font,
+                color: TEXT,
+            }
+        );
+
+        page.drawText("(02) 8-801-3417", {
+            x: MARGIN,
+            y: PAGE_HEIGHT - 132,
+            size: 8,
+            font,
+            color: TEXT,
+        });
+
+        const rightTextX = PAGE_WIDTH - 215;
+
+        page.drawText("Hero Serviced Office, Inc.", {
+            x: rightTextX,
+            y: PAGE_HEIGHT - 80,
+            size: 10,
+            font: bold,
+            color: TEXT,
+        });
+
+        page.drawText("Insular Life Building", {
+            x: rightTextX,
+            y: PAGE_HEIGHT - 94,
+            size: 9,
+            font,
+            color: TEXT,
+        });
+
+        page.drawText(
+            "11F Insular Life Building, Makati, Philippines",
+            {
+                x: rightTextX,
+                y: PAGE_HEIGHT - 107,
+                size: 7.5,
+                font,
+                color: TEXT,
+            }
+        );
+
+        page.drawText("(02) 8-246-0801", {
+            x: rightTextX,
+            y: PAGE_HEIGHT - 120,
+            size: 8,
+            font,
+            color: TEXT,
+        });
+
+        page.drawText("(02) 8-246-0831", {
+            x: rightTextX,
+            y: PAGE_HEIGHT - 132,
+            size: 8,
+            font,
+            color: TEXT,
+        });
+
+        y = PAGE_HEIGHT - 140;
     };
+
     const footer = () => {
         page.drawRectangle({ x: 0, y: 28, width: PAGE_WIDTH, height: 8, color: BLUE });
         page.drawText("www.hero-jpn.co.jp / https://heroph.net/jp/", { x: PAGE_WIDTH / 2 - 95, y: 12, size: 7.5, font, color: MUTED });
     };
 
     header();
-    centeredText(title, 17, { bold: true, gap: 18 });
+    centeredText(title, 15, { bold: true, gap: 5 });
     heading("REQUIREMENTS:");
     twoColumnNumberedList([
         "Updated and Signed Quotation",
@@ -345,18 +456,8 @@ async function generateGuidelineDocument(quotation: QuotationPayload): Promise<B
     ]);
     numbered("6", "Pantry and Co-working Space Access", "Clients may access the pantry and common area. Pantry access includes unlimited coffee, tea and drinking water, as well as the use of microwave facilities. Proper cleanliness and courtesy must be observed after use. Kindly bring your own glass and mugs. Delivery of foods are allowed at the expense of the User. Cooking, plugging or using heating devices are not allowed.");
     numbered("7", "Bringing of Equipment", "All equipment to be brought inside the office shall be subject to the Provider's approval and may be subject to additional charges.");
-    footer();
 
-    page = pdf.addPage([
-        PAGE_WIDTH,
-        PAGE_HEIGHT,
-    ]);
-
-    header();
-
-    y = PAGE_HEIGHT - 126;
-
-    text("8.   Additional Services", 10, { bold: true, gap: 3 });
+    numbered("8", "Additional Services", "");
 
     drawServicesTable([
         {
@@ -384,14 +485,10 @@ async function generateGuidelineDocument(quotation: QuotationPayload): Promise<B
 
     y -= 8;
 
-    text(
-        "*All rates are subject to 12% VAT",
-        10,
-        {
-            bold: true,
-            gap: 8,
-        }
-    );
+    text("*All rates are subject to 12% VAT", 10, {
+        bold: true,
+        gap: 8,
+    });
 
     for (const currentPage of pdf.getPages()) {
         if (currentPage !== page) {
