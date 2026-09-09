@@ -2,6 +2,9 @@ import nodemailer from "nodemailer";
 import { PDFDocument, StandardFonts, rgb, PDFFont } from "pdf-lib";
 import { mapQuotationToVOContractFields, VOContractFields } from "@/components/contracts/VOContractDocument";
 import { renderVirtualOfficeContractHtml } from "@/lib/renderVOContract.serve";
+import { generateGuidelinePdf } from "@/lib/guidelinePdf";
+import { getDocumentFilename, getDocumentLabel, getQuotationDocumentType } from "@/lib/documentType";
+import type { GuidelineFields } from "@/lib/guidelineFields";
 
 function resolveSmtpTransportConfig() {
     const host = process.env.SMTP_HOST || process.env.MAIL_HOST;
@@ -204,11 +207,12 @@ export interface QuotationDetail {
     receipt?: string | null;
     seats?: number | null;
     date?: string | null;
+    end_date?: string | null;
     time?: string | null;
     duration_type?: string | null;
     duration?: number | string | null;
     other_requirements?: string | null;
-    total?: number;
+    total?: number | string | null;
     subtotal?: number | string | null;
     months?: number | string | null;
     package_name?: string | null;
@@ -221,6 +225,7 @@ export interface QuotationDetail {
     discounts?: number | string | null;
     contract_content?: string | null;
     contract_updated_at?: string | null;
+    guideline_fields?: Partial<GuidelineFields> | null;
 }
 
 export interface QuotationPayload {
@@ -1174,6 +1179,12 @@ async function generateContractPdfByService(quotation: QuotationPayload): Promis
     return generateNonVirtualOfficeContractPdf(quotation);
 }
 
+export async function generateDocumentPdf(quotation: QuotationPayload): Promise<Buffer> {
+    return getQuotationDocumentType(quotation) === "guideline"
+        ? generateGuidelinePdf(quotation)
+        : generateContractPdfByService(quotation);
+}
+
 // User & Admin Notification Emails 
 
 export async function sendQuotationUserEmail(
@@ -1269,33 +1280,33 @@ export async function sendQuotationContractEmail(
 
     const d = quotation.detail;
     const firstName = d.full_name.split(" ")[0] || d.full_name;
-    const contract = normalizeContractData(quotation);
-    const contractRecipients = await getCategoryRecipientList("contract");
+    const documentType = getQuotationDocumentType(quotation);
+    const documentLabel = getDocumentLabel(documentType);
+    const contractRecipients = await getCategoryRecipientList(documentType === "guideline" ? "guideline" : "contract");
     const attachments = [...getDocumentCopyAttachments(options)];
-    const contractBuffer = await generateContractPdfByService(quotation);
+    const documentBuffer = await generateDocumentPdf(quotation);
     const branchManagerEmail = resolveBranchManagerEmail(quotation.branch);
 
-    // Dynamic filename: "[Client Name] - [Service] Service Agreement.pdf"
-    const contractFilename = `${contract.clientName} - ${contract.contractTitle}.pdf`;
+    const documentFilename = getDocumentFilename(quotation, documentType);
 
     attachments.push({
-        filename: contractFilename,
-        content: contractBuffer,
+        filename: documentFilename,
+        content: documentBuffer,
         contentType: "application/pdf",
     });
 
-    const hasContractAttachment = attachments.some((attachment) =>
-        attachment.filename === contractFilename
+    const hasDocumentAttachment = attachments.some((attachment) =>
+        attachment.filename === documentFilename
     );
-    if (!hasContractAttachment) {
-        throw new Error("Contract PDF attachment missing. Contract email not sent.");
+    if (!hasDocumentAttachment) {
+        throw new Error(`${documentLabel} PDF attachment missing. Email not sent.`);
     }
 
     const contractRecipientList = contractRecipients.length > 0
         ? contractRecipients.map((email) => `<li>${email}</li>`).join("")
         : "<li>Contract recipient not configured yet.</li>";
 
-    // For Virtual Office contracts, render the contract document HTML; otherwise use instructions
+    // Only Virtual Office contracts have an inline document preview in the email body.
     let contractContent = "";
     if (isVirtualOfficePaymongo(quotation)) {
         try {
@@ -1309,30 +1320,38 @@ export async function sendQuotationContractEmail(
         }
     }
 
-    const body = `
-        <p style="font-size:15px;line-height:1.8;color:#475569;">Good Day Mr/Ms. ${firstName},</p>
+    const documentInstructions = documentType === "guideline"
+        ? `
         <p style="font-size:15px;line-height:1.8;color:#475569;">
-            Your ${quotation.service_name.toLowerCase()} contract is ready to review. We have attached the contract document for your review.
-        </p>
+            Please review the attached ${documentLabel.toLowerCase()} for the applicable requirements, payment information, building rules, and service guidelines.
+        </p>`
+        : `
         <div style="border-top:1px solid #e5e7eb;padding-top:10px;">
         <h3 style="font-size:16px;font-weight:bold;color:#475569;">Contract Instructions:</h3>
             <ol style="font-size:15px;line-height:1.8;color:#475569;padding-left:20px;">
                 <li style="margin-bottom:8px;">Sign every page of the contract, except the last page, as this page is reserved for notarization.</li>
                 <li style="margin-bottom:8px;">Once the contract has been signed, please send the completed copy to the appropriate email address:</li>
-                <ul style="font-size:15px;line-height:1.8;color:#475569;padding-left:20px;">
+                <ul style="font-size:15px;color:#475569;padding-left:20px;">
                     <li>${branchManagerEmail || "Branch manager email not configured yet."}</li>
                 </ul>
                 <li>Our representatives will acknowledge receipt once the signed contract has been received.</li>
             </ol>
         </div>`;
 
+    const body = `
+        <p style="font-size:15px;line-height:1.8;color:#475569;">Good Day Mr/Ms. ${firstName},</p>
+        <p style="font-size:15px;line-height:1.8;color:#475569;">
+            Your ${quotation.service_name.toLowerCase()} ${documentLabel.toLowerCase()} is ready to review. We have attached the ${documentLabel.toLowerCase()} document for your review.
+        </p>
+        ${documentInstructions}`;
+
     const mailOptions = {
         from: process.env.SMTP_USER ? `"Hero Serviced Office, Inc." <${process.env.SMTP_USER}>` : undefined,
         to: d.email,
         replyTo: d.email,
-        subject: `Your ${quotation.service_name} contract`,
+        subject: `Your ${quotation.service_name} ${documentLabel}`,
         html: quotationWrapper(body),
-        text: `Hi ${firstName},\n\nYour ${quotation.service_name} contract is ready to review. Please reply if you need anything changed.`,
+        text: `Hi ${firstName},\n\nYour ${quotation.service_name} ${documentLabel.toLowerCase()} is ready to review. Please reply if you need anything changed.`,
         attachments,
     };
 
@@ -1664,13 +1683,14 @@ export async function sendQuotationAdminEmail(
     const d = quotation.detail;
     const attachments = getDocumentCopyAttachments(options);
     const readyForContract = canGenerateContract(quotation, options);
+    const documentType = getQuotationDocumentType(quotation);
 
     if (readyForContract) {
         try {
-            const contractBuffer = await generateVirtualOfficeContractPdf(quotation);
+            const documentBuffer = await generateDocumentPdf(quotation);
             attachments.push({
-                filename: "Hero-Virtual-Office-Contract-Reference.pdf",
-                content: contractBuffer,
+                filename: getDocumentFilename(quotation, documentType),
+                content: documentBuffer,
                 contentType: "application/pdf",
             });
         } catch (error) {
@@ -1687,6 +1707,8 @@ export async function sendQuotationAdminEmail(
         ])
         : getQuotationRecipients(quotation.service_name, quotation.branch);
 
+    const isVirtualOfficeRequest = isVirtualOfficePaymongo(quotation);
+
     if (quotationRecipients.length === 0) {
         throw new Error("No active recipients configured for quotation notifications.");
     }
@@ -1702,7 +1724,7 @@ export async function sendQuotationAdminEmail(
             ${quotationRow("Address", d.address)}
             ${quotationRow("Phone", formatClickablePhone(d.phone))}
             ${quotationRow("Branch", quotation.branch)}
-            ${quotationRow("Registered Business", d.registered_business ? "Yes" : "No")}
+            ${isVirtualOfficeRequest ? quotationRow("Registered Business", d.registered_business ? "Yes" : "No") : ""}
             ${buildQuotationDetailRows(quotation, {
         formattedDate: true,
     })}

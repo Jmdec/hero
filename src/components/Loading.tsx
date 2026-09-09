@@ -124,12 +124,6 @@ export function Loading({
 
                 <div className="flex items-center justify-between gap-4">
                     <div>
-                        <p
-                            className={`${plexMono.className} text-[0.6rem] uppercase tracking-[0.28em]`}
-                            style={{ color: tokens.subtle }}
-                        >
-                            {subtitle} · workspace setup
-                        </p>
                         <h2
                             className={`${fraunces.className} mt-2 text-3xl tracking-[0.01em] sm:text-4xl`}
                             style={{ color: tokens.ink }}

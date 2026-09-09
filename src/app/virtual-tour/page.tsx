@@ -116,8 +116,8 @@ export default function VirtualTourPage() {
         ],
       },
       {
-        id: "w-14-office",
-        name: "Office W-14",
+        id: "large-window-side-office",
+        name: "Large Window-Side Office",
         description:
           "A modern office space designed for productivity and collaboration.",
         features: ["Ergonomic furniture", "High-speed Wi-Fi", "Natural lighting", "Quiet environment"],
@@ -131,8 +131,8 @@ export default function VirtualTourPage() {
         ],
       },
       {
-        id: "w-31-office",
-        name: "Office W-31",
+        id: "large-window-side-office-2",
+        name: "Large Window-Side Office",
         description:
           "A modern office space designed for productivity and collaboration.",
         features: ["Ergonomic furniture", "High-speed Wi-Fi", "Natural lighting", "Quiet environment"],
@@ -157,7 +157,7 @@ export default function VirtualTourPage() {
         hotspots: [
           { targetId: "reception", targetName: "Reception", lon: 10, lat: -5, label: "Go back to Reception" },
           { targetId: "conference-room-b", targetName: "Conference Room B", lon: -20, lat: -10, label: "Visit Conference Room B" },
-          { targetId: "w-14-office", targetName: "Office W-14", lon: 40, lat: -10, label: "Visit Office W-14" },
+          { targetId: "large-window-side-office", targetName: "Large Window-Side Office", lon: 40, lat: -10, label: "Visit Large Window-Side Office" },
           { targetId: "hallway-2", targetName: "Hallway", lon: -200, lat: -5, label: "Go to other Hallway" },
         ],
       },
@@ -171,7 +171,7 @@ export default function VirtualTourPage() {
         hotspots: [
           { targetId: "pantry", targetName: "Pantry", lon: -175, lat: -5, label: "Go to Pantry Area" },
           { targetId: "conference-room-a", targetName: "Conference Room A", lon: -130, lat: -5, label: "Visit Conference Room A" },
-          { targetId: "w-31-office", targetName: "Office W-31", lon: 10, lat: -5, label: "Visit Office W-31" },
+          { targetId: "large-window-side-office-2", targetName: "Large Window-Side Office", lon: 10, lat: -5, label: "Visit Large Window-Side Office" },
           { targetId: "hallway-1", targetName: "Hallway", lon: -15, lat: -5, label: "Go to other Hallway" },
         ],
       },
@@ -245,10 +245,10 @@ export default function VirtualTourPage() {
         description: "A connecting hallway providing access between the building's shared spaces and offices.",
         features: ["Wayfinding signage", "Access to offices", "Well-lit corridor", "Clean and maintained"],
         panoramaUrl: "/360-view/IMG_20210318_174407_00_055.webp",
-        connectsTo: ["w-05-office", "hallway-2"],
+        connectsTo: ["large-window-side-office", "hallway-2"],
         hotspots: [
           { targetId: "reception", targetName: "Reception", lon: -5, lat: 0, label: "Return to reception" },
-          { targetId: "w-05-office", targetName: "W-05 Office", lon: -60, lat: 0, label: "Visit W-05 Office" },
+          { targetId: "large-window-side-office", targetName: "Large Window-Side Office", lon: -60, lat: 0, label: "Visit Large Window-Side Office" },
           { targetId: "hallway-2", targetName: "Hallway", lon: -180, lat: 0, label: "Continue deeper into the floor" },
         ],
       },
@@ -262,12 +262,12 @@ export default function VirtualTourPage() {
         hotspots: [
           { targetId: "hallway-1", targetName: "Hallway", lon: -180, lat: 0, label: "Return to the main hall" },
           { targetId: "pantry", targetName: "Pantry", lon: 0, lat: 0, label: "See the pantry" },
-          { targetId: "w-21-office", targetName: "W-21 Office", lon: 35, lat: 0, label: "Visit W-21 Office" },
+          { targetId: "medium-window-side-office", targetName: "Medium Window-Side Office", lon: 35, lat: 0, label: "Visit Medium Window-Side Office" },
         ],
       },
       {
-        id: "w-05-office",
-        name: "W-05 Office",
+        id: "large-window-side-office",
+        name: "Large Window-Side Office",
         description: "A modern office space designed for productivity and collaboration.",
         features: ["High-speed Wi-Fi", "Ergonomic furniture", "Natural lighting", "Quiet environment"],
         panoramaUrl: "/360-view/tower6789/IMG_20210318_181657_00_066.webp",
@@ -282,8 +282,8 @@ export default function VirtualTourPage() {
         ],
       },
       {
-        id: "w-21-office",
-        name: "W-21 Office",
+        id: "medium-window-side-office",
+        name: "Medium Window-Side Office",
         description: "A modern office space designed for productivity and collaboration.",
         features: ["High-speed Wi-Fi", "Ergonomic furniture", "Natural lighting", "Quiet environment"],
         panoramaUrl: "/360-view/tower6789/SO1-OFFIC-W-21-(1).webp",
@@ -356,7 +356,7 @@ export default function VirtualTourPage() {
         hotspots: [
           { targetId: "reception", targetName: "Reception", lon: -10, lat: 0, label: "Head back to the Reception" },
           { targetId: "hallway-2", targetName: "Hallway", lon: 80, lat: 0, label: "Go back to the hall" },
-          { targetId: "", targetName: "Phone Booth", lon: -40, lat: 0, label: "Phone Booth" },
+          { targetId: "large-window-side-office", targetName: "Large Window-Side Office", lon: -40, lat: 0, label: "Large Window-Side Office" },
         ],
       },
     ],
@@ -364,8 +364,8 @@ export default function VirtualTourPage() {
 
   // Featured rooms
   const FEATURED_ROOM_IDS: Record<BuildingId, string[]> = {
-    insularLife: ["reception", "lounge", "phonebooth", "conference-room-a", "conference-room-b", "pantry"],
-    tower6789: ["reception", "lounge", "w-05-office", "w-21-office", "conference-room-a", "conference-room-b", "pantry"],
+    insularLife: ["reception", "lounge", "phonebooth", "large-window-side-office", "large-window-side-office-2", "conference-room-a", "conference-room-b", "pantry"],
+    tower6789: ["reception", "lounge", "large-window-side-office", "medium-window-side-office", "conference-room-a", "conference-room-b", "pantry"],
   };
 
   const activeRooms = roomsByTab[activeTab];

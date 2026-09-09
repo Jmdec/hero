@@ -7,6 +7,13 @@ import VOContract, {
     mapVOContractFieldsToQuotationDetail,
 } from "@/components/contracts/VOContract";
 import VOContractDocument from "@/components/contracts/VOContractDocument";
+import { getDocumentLabel, getQuotationDocumentType } from "@/lib/documentType";
+import GuidelineDocument from "@/components/guidelines/GuidelineDocument";
+import {
+    mapGuidelineFieldsToQuotationDetail,
+    mapQuotationDetailToGuidelineFields,
+    type GuidelineFields,
+} from "@/lib/guidelineFields";
 import {
     Search,
     RefreshCw,
@@ -34,6 +41,7 @@ type Status =
     | "payment_verification"
     | "paid"
     | "contract_sent"
+    | "guideline_sent"
     | "completed"
     | "cancelled";
 
@@ -56,12 +64,14 @@ interface QuotationDetail {
     request: string | null;
     seats: number | null;
     date: string;
+    end_date?: string | null;
     time: string | null;
     duration: number | null;
     duration_type: string | null;
     other_requirements: string | null;
+    registered_business?: boolean | null;
     total: string | number;
-    payment_method: "n/a" | "qrph" | "online_transfer" | "bank" | null;
+    payment_method: "n/a" | "qrph" | "sterling" | "rcbc" | null;
     transaction_id: string | null;
     receipt: string | null;
     payment_link_send_count?: number | null;
@@ -100,6 +110,7 @@ interface QuotationDetail {
     contract_content?: string | null;
     contract_updated_at?: string | null;
     vo_contract_fields?: Partial<ReturnType<typeof mapQuotationDetailToVOContractFields>> | null;
+    guideline_fields?: Partial<GuidelineFields> | null;
 }
 interface Quotation {
     id: number;
@@ -110,6 +121,7 @@ interface Quotation {
     package: string | null;
     event_type: string | null;
     branch?: string | null;
+    registered_business?: boolean | null;
     status: Status;
     paid_at: string | null;
     created_at: string;
@@ -123,6 +135,7 @@ const STATUSES: { value: Status; label: string }[] = [
     { value: "payment_verification", label: "Payment Verification" },
     { value: "paid", label: "Paid" },
     { value: "contract_sent", label: "Contract Sent" },
+    { value: "guideline_sent", label: "Guideline Sent" },
     { value: "completed", label: "Completed" },
     { value: "cancelled", label: "Cancelled" },
 ];
@@ -150,6 +163,7 @@ const STATUS_STYLES: Record<Status, string> = {
     payment_verification: "bg-amber-50 text-amber-700 border-amber-200",
     paid: "bg-green-50 text-green-700 border-green-200",
     contract_sent: "bg-[#EEF2FB] text-[#1B3A8C] border-[#C5D2EC]",
+    guideline_sent: "bg-[#EEF2FB] text-[#1B3A8C] border-[#C5D2EC]",
     completed: "bg-green-50 text-green-700 border-green-200",
     cancelled: "bg-red-50 text-red-600 border-red-200",
 };
@@ -160,6 +174,7 @@ const STATUS_DOT: Record<Status, string> = {
     payment_verification: "bg-amber-500",
     paid: "bg-green-500",
     contract_sent: "bg-[#1B3A8C]",
+    guideline_sent: "bg-[#1B3A8C]",
     completed: "bg-green-500",
     cancelled: "bg-red-500",
 };
@@ -167,8 +182,8 @@ const STATUS_DOT: Record<Status, string> = {
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
     "n/a": "Not Applicable",
     qrph: "QR Ph",
-    online_transfer: "Online Transfer",
-    bank: "Bank Transfer",
+    sterling: "Sterling",
+    rcbc: "RCBC", 
 };
 
 const VIRTUAL_OFFICE_STATUS_FLOW: Status[] = [
@@ -177,6 +192,7 @@ const VIRTUAL_OFFICE_STATUS_FLOW: Status[] = [
     "paid",
     "payment_verification",
     "contract_sent",
+    "guideline_sent",
     "completed",
     "cancelled",
 ];
@@ -227,7 +243,9 @@ function isVirtualOffice(quote: Quotation) {
 }
 
 function getStatusFlowForQuotation(quote: Quotation): Status[] {
-    return isVirtualOffice(quote) ? VIRTUAL_OFFICE_STATUS_FLOW : OTHER_SERVICE_STATUS_FLOW;
+    const flow = isVirtualOffice(quote) ? VIRTUAL_OFFICE_STATUS_FLOW : OTHER_SERVICE_STATUS_FLOW;
+    const documentStatus = getQuotationDocumentType(quote) === "guideline" ? "guideline_sent" : "contract_sent";
+    return flow.map((status) => status === "contract_sent" ? documentStatus : status);
 }
 
 function getStatusOptionsForQuotation(quote: Quotation) {
@@ -441,7 +459,17 @@ function ReceiptSection({ children }: { children: React.ReactNode }) {
     return <div>{children}</div>;
 }
 
-function ClientInfoSection({ detail }: { detail: QuotationDetail }) {
+function ClientInfoSection({
+    detail,
+    serviceName,
+    registeredBusiness,
+}: {
+    detail: QuotationDetail;
+    serviceName?: string | null;
+    registeredBusiness?: boolean | null;
+}) {
+    const isVirtualOffice = String(serviceName || "").trim().toLowerCase().includes("virtual office");
+
     return (
         <ReceiptSection>
             <ReceiptHeading>Client Information</ReceiptHeading>
@@ -449,6 +477,7 @@ function ClientInfoSection({ detail }: { detail: QuotationDetail }) {
             <ReceiptRow label="Name" value={detail.full_name} />
             <ReceiptRow label="Email" value={detail.email} href={detail.email ? `mailto:${detail.email}` : undefined} />
             <ReceiptRow label="Phone" value={detail.phone} href={detail.phone ? `tel:${detail.phone}` : undefined} />
+            {isVirtualOffice && <ReceiptRow label="Registered Business" value={registeredBusiness ? "Yes" : "No"} />}
         </ReceiptSection>
     );
 }
@@ -470,6 +499,10 @@ function ServiceDetailsSection({ quote }: { quote: Quotation }) {
             .trim()
             .toLowerCase()
             .includes("virtual office");
+    const isCoworking = String(quote.service_name || "")
+        .trim()
+        .toLowerCase()
+        .includes("cowork");
 
     const getVirtualOfficeSeatAttendee = (
         plan?: string | null
@@ -517,12 +550,12 @@ function ServiceDetailsSection({ quote }: { quote: Quotation }) {
                 />
             )}
 
-            {seatsAttendees && (
-                <ReceiptRow label="Seats / Attendees" value={seatsAttendees} />
+            {isCoworking && detail?.end_date && (
+                <ReceiptRow label="End Date" value={formatDate(detail.end_date)} />
             )}
 
-            {durationLabel && (
-                <ReceiptRow label="Duration" value={durationLabel} />
+            {seatsAttendees && (
+                <ReceiptRow label={isCoworking ? "Seats" : "Seats / Attendees"} value={seatsAttendees} />
             )}
 
             {quote.lease_term && (
@@ -871,11 +904,17 @@ export default function AdminQuotationsPage() {
     const [idDoc, setIdDoc] = useState<{ title: string; url: string } | null>(null);
     const [sendingPaymentLinkId, setSendingPaymentLinkId] = useState<number | null>(null);
     const [sendingContractId, setSendingContractId] = useState<number | null>(null);
+    const [downloadingContractId, setDownloadingContractId] = useState<number | null>(null);
     const [verifyingPaymentId, setVerifyingPaymentId] = useState<number | null>(null);
     const [contractModalQuote, setContractModalQuote] = useState<Quotation | null>(null);
     const [contractEditMode, setContractEditMode] = useState(false);
     const [voContractFields, setVoContractFields] = useState<ReturnType<typeof mapQuotationDetailToVOContractFields> | null>(null);
     const [voContractInitialFields, setVoContractInitialFields] = useState<ReturnType<typeof mapQuotationDetailToVOContractFields> | null>(null);
+    const [guidelineFields, setGuidelineFields] = useState<GuidelineFields | null>(null);
+    const [guidelineInitialFields, setGuidelineInitialFields] = useState<GuidelineFields | null>(null);
+    const [guidelineEditorKey, setGuidelineEditorKey] = useState(0);
+    const [guidelineEditMode, setGuidelineEditMode] = useState(false);
+    const [guidelinePreviewUrl, setGuidelinePreviewUrl] = useState<string | null>(null);
 
     async function viewQuotationDocument(document: { title: string; type: string }) {
         if (!selected?.detail?.quotation_document_id) return;
@@ -970,6 +1009,7 @@ export default function AdminQuotationsPage() {
             payment_verification: 0,
             paid: 0,
             contract_sent: 0,
+            guideline_sent: 0,
             completed: 0,
             cancelled: 0,
         };
@@ -982,7 +1022,7 @@ export default function AdminQuotationsPage() {
         const currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-        const isConverted = (quote: Quotation) => quote.status === "contract_sent" || quote.status === "completed";
+        const isConverted = (quote: Quotation) => quote.status === "contract_sent" || quote.status === "guideline_sent" || quote.status === "completed";
 
         let currentTotal = 0;
         let previousTotal = 0;
@@ -1019,7 +1059,7 @@ export default function AdminQuotationsPage() {
     }, [quotations]);
 
     const quotationStatsCards = useMemo<QuotationStatCardData[]>(() => {
-        const convertedCount = counts.contract_sent + counts.completed;
+        const convertedCount = counts.contract_sent + counts.guideline_sent + counts.completed;
         const conversionRate = counts.all > 0 ? Math.round((convertedCount / counts.all) * 100) : 0;
 
         return [
@@ -1155,10 +1195,22 @@ export default function AdminQuotationsPage() {
         }
     };
 
+    const loadGuidelinePreview = async (quote: Quotation) => {
+        const response = await fetch(`/api/quotations/${quote.id}/download-contract`, { cache: "no-store" });
+        if (!response.ok) throw new Error("Unable to load guideline preview.");
+
+        const nextUrl = URL.createObjectURL(await response.blob());
+        setGuidelinePreviewUrl((currentUrl) => {
+            if (currentUrl) URL.revokeObjectURL(currentUrl);
+            return nextUrl;
+        });
+    };
+
     const openContractViewer = async (quote: Quotation) => {
         let initial = quote.detail?.contract_content?.trim() || "";
+        const documentType = getQuotationDocumentType(quote);
 
-        if (!initial) {
+        if (!initial && documentType === "contract") {
             try {
                 const res = await fetch(`/api/quotations/${quote.id}/contract-content`, {
                     method: "GET",
@@ -1181,6 +1233,21 @@ export default function AdminQuotationsPage() {
         const initialVOFields = isVirtualOffice(quote) ? mapQuotationDetailToVOContractFields(quote.detail) : null;
         setVoContractInitialFields(initialVOFields);
         setVoContractFields(initialVOFields);
+        const initialGuidelineFields = getQuotationDocumentType(quote) === "guideline"
+            ? mapQuotationDetailToGuidelineFields(quote.detail, quote)
+            : null;
+        setGuidelineInitialFields(initialGuidelineFields);
+        setGuidelineFields(initialGuidelineFields);
+        setGuidelineEditorKey((value) => value + 1);
+        setGuidelineEditMode(false);
+        setGuidelinePreviewUrl(null);
+        if (getQuotationDocumentType(quote) === "guideline") {
+            try {
+                await loadGuidelinePreview(quote);
+            } catch {
+                pushToast("Unable to load guideline preview.", "error");
+            }
+        }
     };
 
     const closeContractViewer = () => {
@@ -1191,6 +1258,13 @@ export default function AdminQuotationsPage() {
         setContractSavedSnapshot("");
         setVoContractFields(null);
         setVoContractInitialFields(null);
+        setGuidelineFields(null);
+        setGuidelineInitialFields(null);
+        setGuidelineEditMode(false);
+        setGuidelinePreviewUrl((currentUrl) => {
+            if (currentUrl) URL.revokeObjectURL(currentUrl);
+            return null;
+        });
     };
 
     const handleSaveContract = async () => {
@@ -1198,19 +1272,26 @@ export default function AdminQuotationsPage() {
 
         setSavingContract(true);
         try {
-            const updatedDetail: QuotationDetail = contractModalQuote.service_name.trim().toLowerCase() === "virtual office" && voContractFields
-                ? (() => {
+            const updatedDetail: QuotationDetail = getQuotationDocumentType(contractModalQuote) === "guideline" && guidelineFields
+                ? {
+                    ...contractModalQuote.detail,
+                    ...mapGuidelineFieldsToQuotationDetail(guidelineFields),
+                    date: guidelineFields.useDate || "",
+                    total: mapGuidelineFieldsToQuotationDetail(guidelineFields).total ?? "",
+                }
+                : contractModalQuote.service_name.trim().toLowerCase() === "virtual office" && voContractFields
+                    ? (() => {
                     const mapped = mapVOContractFieldsToQuotationDetail(voContractFields);
                     return {
                         ...contractModalQuote.detail,
                         ...mapped,
                         date: mapped.date ?? "",
                     };
-                })()
-                : {
-                    ...contractModalQuote.detail,
-                    contract_content: contractDraft,
-                };
+                    })()
+                    : {
+                        ...contractModalQuote.detail,
+                        contract_content: contractDraft,
+                    };
 
             const res = await fetch(`/api/quotations/${contractModalQuote.id}`, {
                 method: "PUT",
@@ -1243,7 +1324,18 @@ export default function AdminQuotationsPage() {
             );
             setSelected((current) => (current && current.id === mergedQuote.id ? mergedQuote : current));
             setContractModalQuote(mergedQuote);
-            if (isVirtualOffice(mergedQuote)) {
+            if (getQuotationDocumentType(mergedQuote) === "guideline") {
+                const savedGuidelineFields = mapQuotationDetailToGuidelineFields(mergedQuote.detail, mergedQuote);
+                setGuidelineInitialFields(savedGuidelineFields);
+                setGuidelineFields(savedGuidelineFields);
+                setGuidelineEditorKey((value) => value + 1);
+                setGuidelineEditMode(false);
+                try {
+                    await loadGuidelinePreview(mergedQuote);
+                } catch {
+                    pushToast("Guideline saved, but the preview could not be refreshed.", "error");
+                }
+            } else if (isVirtualOffice(mergedQuote)) {
                 const savedVOFields = mapQuotationDetailToVOContractFields(mergedQuote.detail);
                 setVoContractInitialFields(savedVOFields);
                 setVoContractFields(savedVOFields);
@@ -1320,6 +1412,7 @@ export default function AdminQuotationsPage() {
 
     const handleSendContract = async (quote: Quotation) => {
         const who = quote.detail?.full_name ?? "the client";
+        const documentLabel = getDocumentLabel(getQuotationDocumentType(quote));
         setSendingContractId(quote.id);
         try {
             const res = await fetch(`/api/quotations/${quote.id}/send-contract`, {
@@ -1328,18 +1421,49 @@ export default function AdminQuotationsPage() {
             });
             const payload = await res.json().catch(() => null);
             if (!res.ok) {
-                const message = payload?.message || "Failed to send contract.";
+                const message = payload?.message || `Failed to send ${documentLabel.toLowerCase()}.`;
                 throw new Error(message);
             }
 
-            setQuotations((previous) => previous.map((item) => item.id === quote.id ? { ...item, status: "contract_sent" } : item));
-            setSelected((current) => current && current.id === quote.id ? { ...current, status: "contract_sent" } : current);
-            pushToast(`Contract sent to ${who}`, "success");
+            const sentStatus: Status = getQuotationDocumentType(quote) === "guideline" ? "guideline_sent" : "contract_sent";
+            setQuotations((previous) => previous.map((item) => item.id === quote.id ? { ...item, status: sentStatus } : item));
+            setSelected((current) => current && current.id === quote.id ? { ...current, status: sentStatus } : current);
+            pushToast(`${documentLabel} sent to ${who}`, "success");
         } catch (error) {
-            const msg = error instanceof Error ? error.message : "Couldn't send the contract to the client.";
+            const msg = error instanceof Error ? error.message : `Couldn't send the ${documentLabel.toLowerCase()} to the client.`;
             pushToast(msg, "error");
         } finally {
             setSendingContractId(null);
+        }
+    };
+
+    const handleDownloadContract = async (quote: Quotation) => {
+        setDownloadingContractId(quote.id);
+        try {
+            const response = await fetch(`/api/quotations/${quote.id}/download-contract`);
+            if (!response.ok) {
+                const payload = await response.json().catch(() => null);
+                throw new Error(payload?.message || "Failed to download contract.");
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            const safeName = (quote.detail?.full_name || "client")
+                .trim()
+                .replace(/[^a-z0-9]+/gi, "-")
+                .replace(/^-+|-+$/g, "")
+                .toLowerCase() || "client";
+            link.href = url;
+            link.download = `${safeName}-${quote.service_name.trim().replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-contract.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : "Failed to download contract.", "error");
+        } finally {
+            setDownloadingContractId(null);
         }
     };
 
@@ -1626,7 +1750,11 @@ export default function AdminQuotationsPage() {
                             {/* Receipt */}
                             {selected.detail && (
                                 <div>
-                                    <ClientInfoSection detail={selected.detail} />
+                                    <ClientInfoSection
+                                        detail={selected.detail}
+                                        serviceName={selected.service_name}
+                                        registeredBusiness={selected.registered_business}
+                                    />
                                     <ReceiptDivider />
                                     {hasGovernmentContent(selected.detail) && (
                                         <>
@@ -1692,37 +1820,58 @@ export default function AdminQuotationsPage() {
                                 </div>
                             )}
 
-                            {selected.detail && (((isVirtualOffice(selected) && (selected.status === "paid" || selected.status === "contract_sent" || selected.status === "completed")) || (!isVirtualOffice(selected) && (selected.status === "paid" || selected.status === "contract_sent" || selected.status === "completed")))) && (
+                            {selected.detail && (selected.status === "paid" || selected.status === "contract_sent" || selected.status === "guideline_sent" || selected.status === "completed") && (
                                 <div className="space-y-2.5">
                                     <PaymentDetailsSection quote={selected} onView={viewQuotationDocument} />
 
-                                    <p className="text-xs font-semibold text-[#64748B]">Contract</p>
+                                    <p className="text-xs font-semibold text-[#64748B]">{getDocumentLabel(getQuotationDocumentType(selected))}</p>
                                     <button
                                         onClick={() => openContractViewer(selected)}
                                         className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg border border-[#C5D2EC] bg-white text-[#1B3A8C] text-sm font-semibold hover:bg-[#EEF2FB] transition"
                                     >
                                         <FileText className="w-4 h-4" />
-                                        Preview Contract
+                                        Preview {getDocumentLabel(getQuotationDocumentType(selected))}
                                     </button>
                                     <button
                                         onClick={() => handleSendContract(selected)}
-                                        disabled={sendingContractId === selected.id || selected.status === "contract_sent" || selected.status === "completed"}
+                                        disabled={sendingContractId === selected.id || selected.status === "contract_sent" || selected.status === "guideline_sent" || selected.status === "completed"}
                                         className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg bg-[#1B3A8C] text-white text-sm font-semibold hover:bg-[#16316F] transition disabled:opacity-60"
                                     >
                                         {sendingContractId === selected.id ? (
                                             <>
                                                 <RefreshCw className="w-4 h-4 animate-spin" />
-                                                Sending contract…
+                                                Sending {getDocumentLabel(getQuotationDocumentType(selected)).toLowerCase()}…
                                             </>
                                         ) : (
                                             <>
                                                 <FileText className="w-4 h-4" />
-                                                {selected.status === "contract_sent" ? "Contract sent" : "Send contract"}
+                                                {selected.status === "contract_sent" || selected.status === "guideline_sent"
+                                                    ? `${getDocumentLabel(getQuotationDocumentType(selected))} sent`
+                                                    : `Send ${getDocumentLabel(getQuotationDocumentType(selected)).toLowerCase()}`}
                                             </>
                                         )}
                                     </button>
+                                    {getQuotationDocumentType(selected) === "contract" && (
+                                        <button
+                                            onClick={() => handleDownloadContract(selected)}
+                                            disabled={downloadingContractId === selected.id}
+                                            className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg border border-[#C5D2EC] bg-white text-[#1B3A8C] text-sm font-semibold hover:bg-[#EEF2FB] transition disabled:opacity-60"
+                                        >
+                                            {downloadingContractId === selected.id ? (
+                                                <>
+                                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                                    Preparing download…
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Download className="w-4 h-4" />
+                                                    Download {getDocumentLabel(getQuotationDocumentType(selected))}
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
                                     <p className="text-[11px] text-[#64748B] text-center">
-                                        Sends the contract PDF directly to {selected.detail.email}.
+                                        Sends the {getDocumentLabel(getQuotationDocumentType(selected)).toLowerCase()} PDF directly to {selected.detail.email}.
                                     </p>
                                 </div>
                             )}
@@ -1747,7 +1896,7 @@ export default function AdminQuotationsPage() {
                     <div className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
                         <div className="px-6 py-4 border-b border-[#E5EAF2] flex items-center justify-between gap-4">
                             <div>
-                                <h3 className="text-base font-semibold text-[#0B1F4A]">Contract Preview</h3>
+                                <h3 className="text-base font-semibold text-[#0B1F4A]">{getDocumentLabel(getQuotationDocumentType(contractModalQuote))} Preview</h3>
                                 <p className="text-xs text-[#64748B]">
                                     {contractModalQuote.detail?.full_name ?? "Client"} · {contractModalQuote.service_name}
                                 </p>
@@ -1763,7 +1912,25 @@ export default function AdminQuotationsPage() {
                         </div>
 
                         <div className="flex-1 overflow-y-auto bg-[#F8FAFD] p-4 sm:p-6">
-                            {isVirtualOffice(contractModalQuote) ? (
+                            {getQuotationDocumentType(contractModalQuote) === "guideline" ? (
+                                guidelineEditMode ? (
+                                    <GuidelineDocument
+                                        key={guidelineEditorKey}
+                                        initialValues={guidelineInitialFields ?? {}}
+                                        onFieldsChange={setGuidelineFields}
+                                    />
+                                ) : guidelinePreviewUrl ? (
+                                    <iframe
+                                        title={`${contractModalQuote.service_name} Guideline`}
+                                        src={guidelinePreviewUrl}
+                                        className="mx-auto h-[75vh] w-full max-w-4xl rounded-xl border border-[#D9E2F0] bg-white"
+                                    />
+                                ) : (
+                                    <div className="flex min-h-[50vh] items-center justify-center text-sm text-[#64748B]">
+                                        Loading guideline preview...
+                                    </div>
+                                )
+                            ) : isVirtualOffice(contractModalQuote) ? (
                                 contractEditMode ? (
                                     <VOContract
                                         hideControls={false}
@@ -1798,7 +1965,36 @@ export default function AdminQuotationsPage() {
                         </div>
 
                         <div className="px-6 py-4 border-t border-[#E5EAF2] flex flex-wrap items-center justify-end gap-2.5">
-                            {contractEditMode ? (
+                            {getQuotationDocumentType(contractModalQuote) === "guideline" ? (
+                                guidelineEditMode ? (
+                                    <>
+                                    <button
+                                        onClick={() => {
+                                            setGuidelineFields(guidelineInitialFields ? { ...guidelineInitialFields } : null);
+                                            setGuidelineEditorKey((value) => value + 1);
+                                            setGuidelineEditMode(false);
+                                        }}
+                                        className="px-4 py-2 rounded-lg border border-[#D9E2F0] text-sm font-medium text-[#0B1F4A] hover:bg-[#F8FAFD] transition"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSaveContract}
+                                        disabled={savingContract}
+                                        className="px-4 py-2 rounded-lg bg-[#1B3A8C] text-white text-sm font-semibold hover:bg-[#16316F] transition disabled:opacity-60"
+                                    >
+                                        {savingContract ? "Saving..." : "Save Guideline"}
+                                    </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        onClick={() => setGuidelineEditMode(true)}
+                                        className="px-4 py-2 rounded-lg bg-[#1B3A8C] text-white text-sm font-semibold hover:bg-[#16316F] transition"
+                                    >
+                                        Edit Guideline
+                                    </button>
+                                )
+                            ) : contractEditMode ? (
                                 <>
                                     <button
                                         onClick={() => setContractEditMode(false)}

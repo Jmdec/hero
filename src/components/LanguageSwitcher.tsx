@@ -30,9 +30,16 @@ export default function LanguageSwitcher() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const writeCookie = (value: string) => {
-    // eslint-disable-next-line react-hooks/immutability
     document.cookie = value;
   };
+
+  // On mount, sync UI state with whatever googtrans cookie is already set
+  useEffect(() => {
+    const match = document.cookie.match(/googtrans=\/en\/(\w+)/);
+    const code = match?.[1];
+    const found = LANGUAGES.find((l) => l.code === code);
+    if (found) setCurrent(found);
+  }, []);
 
   const ensureTranslateReady = () =>
     new Promise<void>((resolve, reject) => {
@@ -41,7 +48,6 @@ export default function LanguageSwitcher() {
         return;
       }
 
-      // Hidden container for Google Translate widget
       if (!document.getElementById("google_translate_element")) {
         const el = document.createElement("div");
         el.id = "google_translate_element";
@@ -72,25 +78,30 @@ export default function LanguageSwitcher() {
         }
       };
 
-      const existingScript = document.getElementById("google-translate-script") as HTMLScriptElement | null;
+      const existingScript = document.getElementById(
+        "google-translate-script",
+      ) as HTMLScriptElement | null;
       if (existingScript) {
         existingScript.addEventListener("load", () => resolve(), { once: true });
-        existingScript.addEventListener("error", () => reject(new Error("Google Translate script failed to load.")), {
-          once: true,
-        });
+        existingScript.addEventListener(
+          "error",
+          () => reject(new Error("Google Translate script failed to load.")),
+          { once: true },
+        );
         return;
       }
 
       const script = document.createElement("script");
       script.id = "google-translate-script";
-      script.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+      script.src =
+        "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
       script.async = true;
-      script.onerror = () => reject(new Error("Google Translate script blocked by browser policy or extension."));
+      script.onerror = () =>
+        reject(new Error("Google Translate script blocked by browser policy or extension."));
       document.body.appendChild(script);
     });
 
   useEffect(() => {
-    // Suppress ALL Google Translate UI chrome
     if (!document.getElementById("gt-suppress-styles")) {
       const style = document.createElement("style");
       style.id = "gt-suppress-styles";
@@ -109,7 +120,6 @@ export default function LanguageSwitcher() {
       document.head.appendChild(style);
     }
 
-    // Re-apply body top suppression whenever GT modifies it
     const observer = new MutationObserver(() => {
       const body = document.body;
       if (body.style.top && body.style.top !== "0px") {
@@ -124,7 +134,6 @@ export default function LanguageSwitcher() {
     return () => observer.disconnect();
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
@@ -144,7 +153,10 @@ export default function LanguageSwitcher() {
 
     if (lang.code === "en") {
       writeCookie("googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;");
-      writeCookie(`googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`);
+      writeCookie(
+        `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`,
+      );
+      window.dispatchEvent(new CustomEvent("localeChanged", { detail: "en" }));
       window.location.reload();
       return;
     }
@@ -168,15 +180,19 @@ export default function LanguageSwitcher() {
       if (select) {
         select.value = lang.code;
         select.dispatchEvent(new Event("change"));
+        // Notify the rest of the app (e.g. Navigation) once translate has actually kicked in
+        window.dispatchEvent(new CustomEvent("localeChanged", { detail: lang.code }));
       } else if (attempts < 30) {
         setTimeout(() => tryTranslate(attempts + 1), 200);
+      } else {
+        setTranslationUnavailable(true);
       }
     };
     tryTranslate();
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative notranslate" ref={dropdownRef}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-[#1B3A8C] hover:bg-[#C5D2EC]/30 rounded-lg transition-colors select-none"
@@ -217,10 +233,11 @@ export default function LanguageSwitcher() {
             <button
               key={lang.code}
               onClick={() => switchLanguage(lang)}
-              className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors ${current.code === lang.code
+              className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
+                current.code === lang.code
                   ? "text-[#1B3A8C] bg-[#C5D2EC]/30 font-medium"
                   : "text-gray-700 hover:bg-gray-50 hover:text-[#1B3A8C]"
-                }`}
+              }`}
             >
               <span className="w-7 text-xs font-mono text-gray-400 uppercase">
                 {lang.label}

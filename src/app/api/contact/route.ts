@@ -69,16 +69,16 @@ function buildJapaneseInternalInquiryHtml(payload: ContactInquiryPayload, openIn
           <h2 style="margin:0 0 12px;color:#1e293b;">新しいお問い合わせが届きました</h2>
           <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.7;">Webサイトのお問い合わせフォームから新規問い合わせが送信されました。内容をご確認ください。</p>
           <table style="width:100%;border-collapse:collapse;">
-            <tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">顧客名</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${payload.name}</td></tr>
-            <tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">メール</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${payload.email}</td></tr>
-            <tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">電話</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${payload.phone}</td></tr>
-            ${payload.company ? `<tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">会社</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${payload.company}</td></tr>` : ""}
+            <tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">担当者名</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${payload.name}</td></tr>
+            <tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">メールアドレス</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${payload.email}</td></tr>
+            <tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">電話番号</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${payload.phone}</td></tr>
+            ${payload.company ? `<tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">会社名</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${payload.company}</td></tr>` : ""}
             <tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">支店</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${getJapaneseBranchLabel(payload.branchInterest ?? extractContactBranchInterest(payload.dynamicData))}</td></tr>
             <tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">お問い合わせ種別</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${getJapaneseInquiryLabel(payload.inquiryType)}</td></tr>
             ${buildJapaneseDetails(payload.dynamicData)}
           </table>
           <div style="margin-top:18px;padding:16px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;">
-            <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;">メッセージ</p>
+            <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;">備考欄</p>
             <p style="margin:0;color:#1e293b;font-size:14px;line-height:1.7;">${payload.message.replace(/\n/g, "<br/>")}</p>
           </div>
           <div style="margin-top:24px;">
@@ -91,7 +91,7 @@ function buildJapaneseInternalInquiryHtml(payload: ContactInquiryPayload, openIn
 
 function getJapaneseInquiryLabel(value?: string | null) {
   const labels: Record<string, string> = {
-    "private-office": "レンタルオフィス",
+    "private-office": "個室オフィス",
     "virtual-office": "バーチャルオフィス",
     "co-working-space": "コワーキングスペース",
     "meeting-room": "会議室",
@@ -115,13 +115,65 @@ function getJapaneseBranchLabel(value?: string | null) {
   return labels[value] || value;
 }
 
+function getJapaneseDynamicLabel(key: string): string {
+  const labels: Record<string, string> = {
+    serviceOfInterest: "サービスへの関心",
+    interestedService: "サービスへの関心",
+    visitDate: "訪問日",
+    visitTime: "訪問時間",
+    preferredTime: "希望時間",
+    schedule: "希望日時",
+    preferredDate: "希望日",
+    numberOfSeats: "座席数",
+    seats: "座席数",
+    participants: "参加人数",
+    duration: "期間",
+    leaseTerm: "リース期間",
+    package: "パッケージ",
+    companyName: "会社名",
+    address: "住所",
+    message: "メッセージ",
+    otherRequirements: "その他のご要望",
+  };
+
+  return labels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (value) => value.toUpperCase());
+}
+
+function getJapaneseDynamicValue(key: string, value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (key === "branchInterest" || key === "interestedBranch") {
+    return getJapaneseBranchLabel(value);
+  }
+
+  if (key === "serviceOfInterest" || key === "interestedService") {
+    const labels: Record<string, string> = {
+      "private-office": "個室オフィス",
+      "virtual-office": "バーチャルオフィス",
+      "co-working-space": "コワーキングスペース",
+      coworking: "コワーキングスペース",
+      "meeting-room": "会議室",
+      "event-space": "イベントスペース",
+    };
+    return labels[normalized] || value;
+  }
+
+  return value;
+}
+
 function buildJapaneseDetails(dynamicData?: Record<string, string> | null) {
   if (!dynamicData) return "";
 
   return Object.entries(dynamicData)
-    .filter(([key]) => key !== "branchInterest")
+    .filter(([key, value]) => key !== "branchInterest" && key !== "interestedBranch" && Boolean(value))
     .map(([key, value]) => `
-            <tr><td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">${key.replace(/([A-Z])/g, " $1")}</td><td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">${value}</td></tr>`)
+            <tr>
+              <td style="padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">
+                ${getJapaneseDynamicLabel(key)}
+              </td>
+              <td style="padding:8px 0 8px 16px;border-bottom:1px solid #eef2f7;font-size:14px;color:#1e293b;text-align:right;">
+              ${getJapaneseDynamicValue(key, value)}
+              </td>
+            </tr>`)
     .join("");
 }
 
@@ -149,7 +201,7 @@ async function sendInquiryNotifications(payload: ContactInquiryPayload, openInqu
   const html = buildInternalInquiryHtml(payload, openInquiryUrl, replyUrl);
   const japaneseHtml = buildJapaneseInternalInquiryHtml(payload, openInquiryUrl);
   const text = `${subject}\n\nBranch: ${getContactBranchLabel(branchInterest)}\nEmail: ${payload.email}\nPhone: ${payload.phone}\n\n${payload.message}`;
-  const japaneseText = `新しいお問い合わせが届きました。\n\n顧客名: ${payload.name}\nメール: ${payload.email}\n電話: ${payload.phone}\n会社: ${payload.company ?? "なし"}\n支店: ${getJapaneseBranchLabel(branchInterest)}\nお問い合わせ種別: ${getJapaneseInquiryLabel(payload.inquiryType)}\n\nメッセージ:\n${payload.message}\n\n詳細: ${openInquiryUrl}`;
+  const japaneseText = `新しいお問い合わせが届きました。\n\n担当者名: ${payload.name}\nメールアドレス: ${payload.email}\n電話番号: ${payload.phone}\n会社名: ${payload.company ?? "なし"}\n支店: ${getJapaneseBranchLabel(branchInterest)}\nお問い合わせ種別: ${getJapaneseInquiryLabel(payload.inquiryType)}\n\n備考欄:\n${payload.message}\n\n詳細: ${openInquiryUrl}`;
   const clientSubject = "We received your Hero Serviced Office, Inc. inquiry";
 
   const tasks: Promise<unknown>[] = [];

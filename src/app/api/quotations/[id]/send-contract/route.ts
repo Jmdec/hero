@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendQuotationContractEmail, QuotationPayload } from "@/lib/nodemailer";
+import { getDocumentLabel, getQuotationDocumentType } from "@/lib/documentType";
 
 export const runtime = "nodejs";
 
@@ -39,6 +40,7 @@ export async function GET(
 
         await sendContractForQuotation(quotation);
 
+        const sentStatus = getQuotationDocumentType(quotation) === "guideline" ? "guideline_sent" : "contract_sent";
         const updateRes = await fetch(`${LARAVEL_API_BASE}/quotations/${encodeURIComponent(id)}`, {
             method: "PUT",
             headers: {
@@ -46,7 +48,7 @@ export async function GET(
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                status: "contract_sent",
+                status: sentStatus,
                 detail: quotation?.detail ?? {},
             }),
         });
@@ -56,7 +58,8 @@ export async function GET(
             throw new Error(`Contract status update failed: ${updateRes.status}${text ? ` - ${text}` : ""}`);
         }
 
-        return new NextResponse(`<!doctype html><html><body style="font-family:Arial,sans-serif;padding:32px;"><h2>Contract email sent successfully.</h2><p>The contract has been sent to the client.</p></body></html>`, {
+        const documentLabel = getDocumentLabel(getQuotationDocumentType(quotation));
+        return new NextResponse(`<!doctype html><html><body style="font-family:Arial,sans-serif;padding:32px;"><h2>${documentLabel} email sent successfully.</h2><p>The ${documentLabel.toLowerCase()} has been sent to the client.</p></body></html>`, {
             status: 200,
             headers: { "content-type": "text/html; charset=utf-8" },
         });
@@ -92,6 +95,7 @@ export async function POST(
 
         await sendContractForQuotation(quotation);
 
+        const sentStatus = getQuotationDocumentType(quotation) === "guideline" ? "guideline_sent" : "contract_sent";
         const updateRes = await fetch(`${LARAVEL_API_BASE}/quotations/${encodeURIComponent(id)}`, {
             method: "PUT",
             headers: {
@@ -99,7 +103,7 @@ export async function POST(
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                status: "contract_sent",
+                status: sentStatus,
                 detail: quotation?.detail ?? {},
             }),
         });
@@ -109,7 +113,7 @@ export async function POST(
             throw new Error(`Contract status update failed: ${updateRes.status}${text ? ` - ${text}` : ""}`);
         }
 
-        return NextResponse.json({ message: "Contract email sent." });
+        return NextResponse.json({ message: `${getDocumentLabel(getQuotationDocumentType(quotation))} email sent.` });
     } catch (error) {
         console.error("send-contract proxy error:", error);
         const detail = error instanceof Error ? error.message : String(error);

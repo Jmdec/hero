@@ -115,14 +115,16 @@ export async function POST(request: NextRequest) {
         // Await notification sending so serverless runtimes do not terminate
         // before the mail operation completes.
         if (savedQuotation) {
+            const isVirtualOfficeRequest = savedQuotation.service_name?.toLowerCase().includes("virtual office") ?? false;
+
             try {
                 notificationResult = await sendQuotationNotifications(savedQuotation, {
                     paymentProofCopy,
                     governmentIdCopy,
                     signatoryGovernmentIdCopy,
                     useBackendDelivery: false,
-                    adminOnly: savedQuotation.registered_business === true,
-                    salesOfficerOnly: savedQuotation.registered_business === true,
+                    adminOnly: isVirtualOfficeRequest && savedQuotation.registered_business === true,
+                    salesOfficerOnly: isVirtualOfficeRequest && savedQuotation.registered_business === true,
                 });
 
                 console.log("Quotation notifications dispatched", {

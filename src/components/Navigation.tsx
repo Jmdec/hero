@@ -5,20 +5,35 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Download } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import LanguageSwitcher from "./LanguageSwitcher";
-// import UserProfileDropdown from "./UserProfileDropdown";
 import { useAuth } from "@/contexts/AuthContext";
 
-const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/about", label: "About" },
-  { href: "/services", label: "Services" },
-  { href: "/virtual-tour", label: "Virtual Tour" },
-  { href: "/announcement", label: "What's New" },
-  { href: "/testimonial", label: "Client's Stories" },
-  { href: "/contact", label: "Contact" },
-];
+const navLinksByLocale = {
+  en: [
+    { href: "/", label: "Home" },
+    { href: "/about", label: "About" },
+    { href: "/services", label: "Services" },
+    { href: "/virtual-tour", label: "Virtual Tour" },
+    { href: "/announcement", label: "What's New" },
+    { href: "/testimonial", label: "Client's Stories" },
+    { href: "/contact", label: "Contact" },
+  ],
+  ja: [
+    { href: "/", label: "ホーム" },
+    { href: "/about", label: "会社概要" },
+    { href: "/services", label: "サービス" },
+    { href: "/virtual-tour", label: "バーチャルツアー" },
+    { href: "/announcement", label: "お知らせ" },
+    { href: "/testimonial", label: "お客様の声" },
+    { href: "/contact", label: "お問い合わせ" },
+  ],
+};
+
+const ctaLabelByLocale = {
+  en: "Get a Quote",
+  ja: "お見積り依頼",
+};
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -27,8 +42,24 @@ interface BeforeInstallPromptEvent extends Event {
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const [locale, setLocale] = useState<"en" | "ja">("en");
   const pathname = usePathname();
+
+  useEffect(() => {
+    const match = document.cookie.match(/googtrans=\/en\/(\w+)/);
+    if (match?.[1] === "ja") setLocale("ja");
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const code = (e as CustomEvent).detail;
+      setLocale(code === "ja" ? "ja" : "en");
+    };
+    window.addEventListener("localeChanged", handler);
+    return () => window.removeEventListener("localeChanged", handler);
+  }, []);
+
+  const navLinks = navLinksByLocale[locale];
 
   const [installPrompt, setInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
@@ -94,7 +125,10 @@ export default function Navigation() {
   }, [isOpen]);
 
   return (
-    <nav className="sticky top-0 z-1000 bg-white/95 backdrop-blur-md shadow-sm">
+    <nav
+      translate="no"
+      className="notranslate sticky top-0 z-1000 bg-white/95 backdrop-blur-md shadow-sm"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
@@ -152,7 +186,7 @@ export default function Navigation() {
               href="/quotation"
               className="px-5 py-2.5 bg-[#FFC107] text-[#1B3A8C] font-bold text-md rounded-full hover:bg-[#FFC107]/80 transition-colors whitespace-nowrap"
             >
-              Get a Quote
+              {ctaLabelByLocale[locale]}
             </Link>
             {/* {showInstallButton && (
               <button
@@ -266,7 +300,7 @@ export default function Navigation() {
                     onClick={() => setIsOpen(false)}
                     className="block w-full text-center px-5 py-3 bg-[#FFC107] text-[#1B3A8C] font-medium rounded-full hover:bg-[#FFC107]/80 transition-colors"
                   >
-                    Get a Quote
+                    {ctaLabelByLocale[locale]}
                   </Link>
                 </motion.div>
               </div>

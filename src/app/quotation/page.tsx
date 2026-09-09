@@ -126,25 +126,8 @@ const VO_STEPS = BASE_STEPS;
 const PRIVATE_TERMS = ["3 Months", "6 Months", "9 Months", "12 Months"];
 const COWORKING_TERMS = ["Daily", "Weekly", "Monthly", "Yearly"];
 
-function getCoworkingTermFromDates(startDate: string, endDate: string): string {
-  if (!startDate || !endDate) return "";
-
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
-    return "";
-  }
-
-  const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffDays <= 1) return "Daily";
-  if (diffDays <= 6) return "Weekly";
-  if (diffDays <= 90) return "Monthly";
-  return "Yearly";
-}
 const TIME_SLOTS = [
-  ["0:00", "7:00 AM"], ["9:00", "9:00 AM"], ["10:00", "10:00 AM"], ["11:00", "11:00 AM"],
+  ["7:00", "7:00 AM"], ["8:00", "8:00 AM"], ["9:00", "9:00 AM"], ["10:00", "10:00 AM"], ["11:00", "11:00 AM"],
   ["13:00", "1:00 PM"], ["14:00", "2:00 PM"], ["15:00", "3:00 PM"], ["16:00", "4:00 PM"],
   ["17:00", "5:00 PM"], ["18:00", "6:00 PM"], ["19:00", "7:00 PM"], ["20:00", "8:00 PM"],
 ];
@@ -850,11 +833,7 @@ function Step2Coworking({
             type="date"
             min={today}
             value={data.startDate}
-            onChange={(e) => {
-              const nextStartDate = e.target.value;
-              const calculatedTerm = getCoworkingTermFromDates(nextStartDate, data.endDate);
-              onChange({ startDate: nextStartDate, terms: calculatedTerm || data.terms });
-            }}
+            onChange={(e) => onChange({ startDate: e.target.value })}
             className={errors.startDate ? inputErrCls : inputCls}
           />
         </Field>
@@ -865,11 +844,7 @@ function Step2Coworking({
             type="date"
             min={data.startDate || today}
             value={data.endDate}
-            onChange={(e) => {
-              const nextEndDate = e.target.value;
-              const calculatedTerm = getCoworkingTermFromDates(data.startDate, nextEndDate);
-              onChange({ endDate: nextEndDate, terms: calculatedTerm || data.terms });
-            }}
+            onChange={(e) => onChange({ endDate: e.target.value })}
             className={errors.endDate ? inputErrCls : inputCls}
           />
         </Field>
@@ -888,7 +863,7 @@ function Step2Coworking({
         <Field label="Terms" required error={errors.terms}>
           <PillSelect
             options={COWORKING_TERMS}
-            value={data.terms || getCoworkingTermFromDates(data.startDate, data.endDate)}
+            value={data.terms}
             onChange={(v) => onChange({ terms: v })}
           />
         </Field>
@@ -1464,7 +1439,7 @@ function VOPricingBreakdown({ pkg, months }: { pkg: string; months: string }) {
         <div className="flex justify-between">
           <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">Contract & Admin Fee</span><span className="text-[#0B1F4A] font-medium">{peso(b.contractAdminFee)}</span></div>
         <div className="flex justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">Contract/Admin Fee VAT (12%)</span><span className="text-[#0B1F4A] font-medium">{peso(b.contractVat)}</span></div>
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B] shrink-0">Contract & Admin Fee VAT (12%)</span><span className="text-[#0B1F4A] font-medium">{peso(b.contractVat)}</span></div>
         <div className="flex justify-between border-t border-[#D9E2F0] pt-2 mt-2">
           <span className="font-bold text-[#0B1F4A]">Total</span><span className="font-bold text-[#1B3A8C]">{peso(b.total)}</span></div>
       </div>
@@ -1926,8 +1901,9 @@ export default function GetAQuotePage() {
       detail.seats = Number(coworking.seats) || null;
       detail.date = coworking.startDate;
       detail.end_date = coworking.endDate || null;
-      detail.duration_type = coworking.terms || getCoworkingTermFromDates(coworking.startDate, coworking.endDate);
+      detail.duration_type = coworking.terms || null;
       detail.other_requirements = coworking.otherRequirements || null;
+      lease_term = coworking.terms || null;
     } else if (selectedService === "meeting-room") {
       detail.seats = Number(meetingRoom.participants) || null;
       detail.date = meetingRoom.date;
