@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { sendMail } from "../../../../../lib/mailer";
 
 const configuredApiUrl = process.env.LARAVEL_API_URL?.trim();
@@ -22,6 +23,82 @@ function escapeHtml(value: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function wrapPdfText(text: string, maxCharacters = 86) {
+  const words = text.replace(/[\r\n\t]+/g, " ").split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > maxCharacters && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  }
+
+  if (current) lines.push(current);
+  return lines;
+}
+
+async function createTranscriptPdf(
+  customerName: string,
+  conversationId: string,
+  messages: Array<{ sender?: string; message?: string; sent_at?: string }>,
+) {
+  const pdf = await PDFDocument.create();
+  const regular = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const pageSize: [number, number] = [595.28, 841.89];
+  const margin = 42;
+  const lineHeight = 14;
+  let page = pdf.addPage(pageSize);
+  let y = pageSize[1] - margin;
+
+  const addPage = () => {
+    page = pdf.addPage(pageSize);
+    y = pageSize[1] - margin;
+  };
+
+  const ensureSpace = (height: number) => {
+    if (y - height < margin) addPage();
+  };
+
+  const drawLines = (lines: string[], options: { bold?: boolean; size?: number } = {}) => {
+    const font = options.bold ? bold : regular;
+    const size = options.size ?? 10;
+    ensureSpace(lines.length * lineHeight + 8);
+    for (const line of lines) {
+      page.drawText(line, { x: margin, y, size, font, color: rgb(0.08, 0.08, 0.08) });
+      y -= lineHeight;
+    }
+    y -= 4;
+  };
+
+  drawLines(["Hero Serviced Office, Inc. Chat Transcript"], { bold: true, size: 16 });
+  drawLines([`Conversation ID: ${conversationId}`, `Customer: ${customerName}`], { size: 10 });
+
+  for (const message of messages) {
+    const sender = message.sender === "user"
+      ? "Client"
+      : message.sender === "admin"
+        ? "HERO Team"
+        : message.sender === "system"
+          ? "System"
+          : "HERO Assistant";
+    const sentAt = message.sent_at
+      ? new Date(message.sent_at).toLocaleString("en-PH")
+      : "";
+
+    ensureSpace(lineHeight * 3);
+    drawLines([`${sender}${sentAt ? ` - ${sentAt}` : ""}`], { bold: true, size: 10 });
+    drawLines(wrapPdfText(message.message ?? ""), { size: 10 });
+  }
+
+  return Buffer.from(await pdf.save());
 }
 
 export async function POST(
@@ -111,11 +188,27 @@ export async function POST(
       })
       .join("");
 
+    const transcriptPdf = await createTranscriptPdf(
+      customerName,
+      conversationId,
+      messages,
+    );
+
     await sendMail({
       to: recipient,
       subject: "Your Hero Serviced Office, Inc. Conversation",
-      text: `Hello ${customerName},\n\nHere is a copy of your chat conversation.\n\n${transcriptText}`,
-      html: `<h2>Hero Serviced Office, Inc. Chat Transcript</h2><p>Hello ${escapeHtml(customerName)},</p><p>Here is a copy of your chat conversation.</p>${htmlTranscript}`,
+      text: `Hello ${customerName},\n\nYour chat transcript is attached as a PDF file.\n\n${transcriptText}`,
+      html:
+        `<h2>Hero Serviced Office, Inc. Chat Transcript</h2>
+      <p>Hello ${escapeHtml(customerName)},</p>
+      <p>Your chat transcript is attached as a PDF file.</p>
+      ${htmlTranscript}`,
+
+      attachments: [{
+        filename: "Hero-Chatbot-Transcript.pdf",
+        content: transcriptPdf,
+        contentType: "application/pdf",
+      }],
     });
 
     return NextResponse.json({ sent: true, to: recipient });
