@@ -554,35 +554,35 @@ function parseRecipientList(input: string | undefined): string[] {
         .filter(Boolean);
 }
 
-// const RECIPIENTS = {
-//     chairman: process.env.CHAIRMAN_EMAIL || "hero.chairman@gmail.com",
-//     president: process.env.PRESIDENT_EMAIL || "hero.president@gmail.com",
-//     generalManager: process.env.GENERAL_MANAGER_EMAIL || "hero.generalmanager@gmail.com",
-//     adminOfficer: process.env.ADMIN_OFFICER_EMAIL || "hero.adminofficer@gmail.com",
-//     salesOfficer: process.env.SALES_OFFICER_EMAIL || "hero.salesofficer@gmail.com",
-//     digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "hero.digitalmarketing@gmail.com",
-//     accounting: process.env.ACCOUNTING_EMAIL || "hero.accounting@gmail.com",
-//     accountingofficer: process.env.ACCOUNTING_OFFICER_EMAIL || "hero.accountingofficer@gmail.com",
-//     branchManagers: {
-//         S01: process.env.BRANCH_MANAGER_S01_EMAIL || "hero.branchmanager.s01@gmail.com",
-//         S02: process.env.BRANCH_MANAGER_S02_EMAIL || "hero.branchmanager.s02@gmail.com",
-//     },
-// };
-
 const RECIPIENTS = {
     chairman: process.env.CHAIRMAN_EMAIL || "hero.chairman@gmail.com",
     president: process.env.PRESIDENT_EMAIL || "hero.president@gmail.com",
-    generalManager: process.env.GENERAL_MANAGER_EMAIL || "rataguibao@rbtconsulting.com.ph",
+    generalManager: process.env.GENERAL_MANAGER_EMAIL || "hero.generalmanager@gmail.com",
     adminOfficer: process.env.ADMIN_OFFICER_EMAIL || "hero.adminofficer@gmail.com",
-    salesOfficer: process.env.SALES_OFFICER_EMAIL || "salesofficer@heroph.net",
-    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "digitalsalesmarketing@heroph.net",
-    accounting: process.env.ACCOUNTING_EMAIL || "accounting@heroph.net",
-    accountingofficer: process.env.ACCOUNTING_OFFICER_EMAIL || "accountingofficer@heroph.net",
+    salesOfficer: process.env.SALES_OFFICER_EMAIL || "hero.salesofficer@gmail.com",
+    digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "hero.digitalmarketing@gmail.com",
+    accounting: process.env.ACCOUNTING_EMAIL || "hero.accounting@gmail.com",
+    accountingofficer: process.env.ACCOUNTING_OFFICER_EMAIL || "hero.accountingofficer@gmail.com",
     branchManagers: {
-        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "sales@heroph.net",
-        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "c_francisco@heroph.net",
+        S01: process.env.BRANCH_MANAGER_S01_EMAIL || "hero.branchmanager.s01@gmail.com",
+        S02: process.env.BRANCH_MANAGER_S02_EMAIL || "hero.branchmanager.s02@gmail.com",
     },
 };
+
+// const RECIPIENTS = {
+//     chairman: process.env.CHAIRMAN_EMAIL || "hero.chairman@gmail.com",
+//     president: process.env.PRESIDENT_EMAIL || "hero.president@gmail.com",
+//     generalManager: process.env.GENERAL_MANAGER_EMAIL || "rataguibao@rbtconsulting.com.ph",
+//     adminOfficer: process.env.ADMIN_OFFICER_EMAIL || "hero.adminofficer@gmail.com",
+//     salesOfficer: process.env.SALES_OFFICER_EMAIL || "salesofficer@heroph.net",
+//     digitalMarketing: process.env.DIGITAL_MARKETING_EMAIL || "digitalsalesmarketing@heroph.net",
+//     accounting: process.env.ACCOUNTING_EMAIL || "accounting@heroph.net",
+//     accountingofficer: process.env.ACCOUNTING_OFFICER_EMAIL || "accountingofficer@heroph.net",
+//     branchManagers: {
+//         S01: process.env.BRANCH_MANAGER_S01_EMAIL || "sales@heroph.net",
+//         S02: process.env.BRANCH_MANAGER_S02_EMAIL || "c_francisco@heroph.net",
+//     },
+// };
 
 async function fetchDatabaseRecipients(category: string): Promise<string[]> {
     console.warn("Frontend database recipient lookup is disabled; Laravel owns notification recipients.", { category });
