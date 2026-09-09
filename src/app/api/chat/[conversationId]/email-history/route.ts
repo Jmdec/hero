@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const configuredApiUrl = process.env.LARAVEL_API_URL?.trim();
+const isLocalApiUrl = /^https?:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\/?$/i.test(
+  configuredApiUrl ?? "",
+);
 const API_URL = (
-  process.env.LARAVEL_API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://infinitech-api23.site"
+  process.env.NODE_ENV === "production" && isLocalApiUrl
+    ? "https://infinitech-api23.site"
+    : configuredApiUrl || "https://infinitech-api23.site"
 ).replace(/\/+$/g, "");
 
 function isValidConversationId(id: string) {
