@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_API_URL || "https://localhost:8000").replace(/\/+$/g, "");
+const configuredApiUrl = process.env.LARAVEL_API_URL?.trim();
+const isLocalApiUrl = /^https?:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\/?$/i.test(
+    configuredApiUrl ?? "",
+);
+const API_URL = (
+    process.env.NODE_ENV === "production" && isLocalApiUrl
+        ? "https://infinitech-api23.site"
+        : configuredApiUrl || "https://infinitech-api23.site"
+).replace(/\/+$/g, "");
 const LARAVEL_API_BASE = API_URL.endsWith("/api") ? API_URL : `${API_URL}/api`;
 
 export async function GET(
@@ -23,7 +31,21 @@ export async function GET(
         );
 
         if (!response.ok) {
-            return NextResponse.json({ message: "Document not found." }, { status: response.status });
+            const responseText = await response.text().catch(() => "");
+            let payload: unknown = null;
+
+            try {
+                payload = responseText ? JSON.parse(responseText) : null;
+            } catch {
+                payload = null;
+            }
+
+            return NextResponse.json(
+                payload && typeof payload === "object"
+                    ? payload
+                    : { message: responseText || "Unable to retrieve document." },
+                { status: response.status },
+            );
         }
 
         return new NextResponse(await response.arrayBuffer(), {

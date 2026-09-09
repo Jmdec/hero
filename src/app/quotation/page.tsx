@@ -315,10 +315,12 @@ function Modal({
 function SuccessModalContent({
   isVO,
   registeredBusiness,
+  withholdingTax,
   onClose,
 }: {
   isVO: boolean;
   registeredBusiness: boolean | null;
+  withholdingTax: boolean | null;
   onClose: () => void;
 }) {
   return (
@@ -332,7 +334,11 @@ function SuccessModalContent({
       </p>
       <h3 className="text-2xl font-bold text-[#0B1F4A] mb-3">Thank You!</h3>
 
-      {isVO && registeredBusiness ? (
+      {withholdingTax ? (
+        <p className="text-[#64748B] text-sm leading-relaxed mb-6">
+          Your inquiry has been submitted. Our Sales Officer will provide the necessary instructions manually via email.
+        </p>
+      ) : isVO && registeredBusiness ? (
         <p className="text-[#64748B] text-sm leading-relaxed mb-6">
           Your request has been submitted. Our Sales Officer will email you the necessary instructions.
         </p>
@@ -349,22 +355,27 @@ function SuccessModalContent({
       )}
 
       <div className="bg-[#F4F6FB] rounded-2xl p-5 text-left mb-6 space-y-3">
-        {(isVO && registeredBusiness
+        {(withholdingTax
           ? [
-            "Your request has been forwarded to our Sales Officer",
+            "Your inquiry has been forwarded to our Sales Officer",
             "The necessary instructions will be sent to you by email",
           ]
-          : isVO
+          : isVO && registeredBusiness
             ? [
-              "Our admin team will review and verify your submitted request",
-              "Once verified, we'll email you a secure link to complete payment",
-              "After payment is confirmed, our admin will formally contact you to finalize your contract",
+              "Your request has been forwarded to our Sales Officer",
+              "The necessary instructions will be sent to you by email",
             ]
-            : [
-              "We'll review your service requirements and preferences",
-              "A customised quotation will be prepared for you",
-              "Our team will reach out via email or phone to discuss next steps",
-            ]
+            : isVO
+              ? [
+                "Our admin team will review and verify your submitted request",
+                "Once verified, we'll email you a secure link to complete payment",
+                "After payment is confirmed, our admin will formally contact you to finalize your contract",
+              ]
+              : [
+                "We'll review your service requirements and preferences",
+                "A customised quotation will be prepared for you",
+                "Our team will reach out via email or phone to discuss next steps",
+              ]
         ).map((s, i) => (
           <div key={i} className="flex items-start gap-3">
             <span className="w-5 h-5 rounded-full bg-[#0B1F4A] text-white text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-bold">
@@ -987,6 +998,9 @@ function Step3({
   setContractIdentity,
   registeredBusiness,
   setRegisteredBusiness,
+  withholdingTax,
+  setWithholdingTax,
+  isSubmitting,
   onBack,
   onNext,
 }: {
@@ -997,6 +1011,9 @@ function Step3({
   setContractIdentity: React.Dispatch<React.SetStateAction<ContractIdentityFields>>;
   registeredBusiness: boolean | null;
   setRegisteredBusiness: (value: boolean) => void;
+  withholdingTax: boolean | null;
+  setWithholdingTax: (value: boolean) => void;
+  isSubmitting: boolean;
   onBack: () => void;
   onNext: () => void;
 }) {
@@ -1025,6 +1042,9 @@ function Step3({
     if (!contact.address.trim()) errs.address = "Address is required.";
     if (isVO && registeredBusiness === null) {
       errs.registeredBusiness = "Please select Yes or No.";
+    }
+    if (isVO && withholdingTax === null) {
+      errs.withholdingTax = "Please select Yes or No.";
     }
 
     return errs;
@@ -1102,38 +1122,58 @@ function Step3({
       </div>
 
       {isVO && (
-        <div className="mt-5">
-          <Field label="Are you a Registered Business?" required error={errors.registeredBusiness}>
-            <PillSelect
-              options={["Yes", "No"]}
-              value={registeredBusiness === true ? "Yes" : registeredBusiness === false ? "No" : ""}
-              onChange={(value) => setRegisteredBusiness(value === "Yes")}
-            />
-          </Field>
-          {registeredBusiness !== null && (
-            <div className="mt-4 rounded-xl border border-[#D9E2F0] bg-[#F8FAFD] px-4 py-3 text-sm text-[#4A5568]">
-              <p className="font-semibold text-[#0B1F4A]">Applicable requirements</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5">
-                {registeredBusiness ? (
-                  <>
-                    <li>DTI or SEC Certificate</li>
-                    <li>BIR Certificate of Registration (COR)</li>
-                    <li>Government-issued ID with signature</li>
-                    <li>Other applicable company documents</li>
-                  </>
-                ) : (
-                  <>
-                    <li>Government-issued ID with signature</li>
-                    <li>Other required documents for registration</li>
-                  </>
-                )}
-              </ul>
-            </div>
-          )}
-        </div>
+        <>
+          <div className="mt-5">
+            <Field label="Is your company name already registered?" required error={errors.registeredBusiness}>
+              <PillSelect
+                options={["Yes", "No"]}
+                value={registeredBusiness === true ? "Yes" : registeredBusiness === false ? "No" : ""}
+                onChange={(value) => setRegisteredBusiness(value === "Yes")}
+              />
+            </Field>
+            {registeredBusiness !== null && (
+              <div className="mt-4 rounded-xl border border-[#D9E2F0] bg-[#F8FAFD] px-4 py-3 text-sm text-[#4A5568]">
+                <p className="font-semibold text-[#0B1F4A]">Applicable requirements</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {registeredBusiness ? (
+                    <>
+                      <li>DTI or SEC Certificate</li>
+                      <li>BIR Certificate of Registration (COR)</li>
+                      <li>Government-issued ID with signature</li>
+                      <li>Other applicable company documents</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>Government-issued ID with signature</li>
+                      <li>Other required documents for registration</li>
+                    </>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5">
+            <Field label="Will your company be withholding tax?" required error={errors.withholdingTax}>
+              <PillSelect
+                options={["Yes", "No"]}
+                value={withholdingTax === true ? "Yes" : withholdingTax === false ? "No" : ""}
+                onChange={(value) => setWithholdingTax(value === "Yes")}
+              />
+            </Field>  
+            {withholdingTax === true && (
+              <>
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900">
+                  This inquiry stops here. Our Sales Officer will provide the necessary instructions manually via email.
+                </div>
+                <NavRow onNext={handleNext} nextLabel={isSubmitting ? "Submitting..." : "Submit"} />
+              </>
+            )}
+          </div>
+        </>
       )}
 
-      {(!isVO || registeredBusiness === false) && (
+      {(!isVO || withholdingTax === false) && (
         <div className="mt-7 border-t border-[#D9E2F0] pt-6">
           <h3 className="text-2xl font-bold text-[#0B1F4A] mb-2">Government & Signatory</h3>
           <p className="text-sm text-[#64748B] mb-5">
@@ -1398,11 +1438,13 @@ function Step3({
         </div>
       )}
 
-      <NavRow
-        onBack={onBack}
-        onNext={handleNext}
-        nextLabel={isVO && registeredBusiness === true ? "Submit" : "Continue"}
-      />
+      {withholdingTax !== true && (
+        <NavRow
+          onBack={onBack}
+          onNext={handleNext}
+          nextLabel="Continue"
+        />
+      )}
 
       <FilePreviewModal target={previewTarget} onClose={() => setPreviewTarget(null)} />
     </div>
@@ -1726,6 +1768,7 @@ export default function GetAQuotePage() {
 
   const [virtualOffice, setVirtualOffice] = useState<VirtualOfficeFields>({ package: "", startDate: "", months: "" });
   const [registeredBusiness, setRegisteredBusiness] = useState<boolean | null>(null);
+  const [withholdingTax, setWithholdingTax] = useState<boolean | null>(null);
   const [coworking, setCoworking] = useState<CoworkingFields>({ seats: "", startDate: "", endDate: "", terms: "", otherRequirements: "" });
   const [meetingRoom, setMeetingRoom] = useState<MeetingRoomFields>({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
   const [eventSpace, setEventSpace] = useState<EventSpaceFields>({ eventDate: "", time: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
@@ -1816,6 +1859,7 @@ export default function GetAQuotePage() {
     setPrivateOffice({ seats: "", moveInDate: "", leaseTerm: "", otherRequirements: "" });
     setVirtualOffice({ package: "", startDate: "", months: "" });
     setRegisteredBusiness(null);
+    setWithholdingTax(null);
     setCoworking({ seats: "", startDate: "", endDate: "", terms: "", otherRequirements: "" });
     setMeetingRoom({ date: "", time: "", participants: "", duration: "", additionalRequirements: "" });
     setEventSpace({ eventDate: "", time: "", attendees: "", duration: "", eventType: "", otherRequirements: "" });
@@ -1936,6 +1980,7 @@ export default function GetAQuotePage() {
       package: pkg,
       event_type,
       registered_business: selectedService === "virtual-office" ? registeredBusiness : null,
+      withholding_tax: isVO ? withholdingTax : null,
       status: "pending",
       detail,
     };
@@ -2126,8 +2171,11 @@ export default function GetAQuotePage() {
                     setContractIdentity={setContractIdentity}
                     registeredBusiness={registeredBusiness}
                     setRegisteredBusiness={setRegisteredBusiness}
+                    withholdingTax={withholdingTax}
+                    setWithholdingTax={setWithholdingTax}
+                    isSubmitting={isSubmitting}
                     onBack={() => setStep(2)}
-                    onNext={() => registeredBusiness === true ? void handleSubmit() : setStep(4)}
+                    onNext={() => isVO && withholdingTax === true ? void handleSubmit() : setStep(4)}
                   />
                 )}
 
@@ -2167,6 +2215,7 @@ export default function GetAQuotePage() {
         <SuccessModalContent
           isVO={isVO}
           registeredBusiness={registeredBusiness}
+          withholdingTax={withholdingTax}
           onClose={handleSuccessClose}
         />
       </Modal>

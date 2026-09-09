@@ -70,6 +70,7 @@ interface QuotationDetail {
     duration_type: string | null;
     other_requirements: string | null;
     registered_business?: boolean | null;
+    withholding_tax?: boolean | null;
     total: string | number;
     payment_method: "n/a" | "qrph" | "sterling" | "rcbc" | null;
     transaction_id: string | null;
@@ -122,6 +123,7 @@ interface Quotation {
     event_type: string | null;
     branch?: string | null;
     registered_business?: boolean | null;
+    withholding_tax?: boolean | null;
     status: Status;
     paid_at: string | null;
     created_at: string;
@@ -463,10 +465,12 @@ function ClientInfoSection({
     detail,
     serviceName,
     registeredBusiness,
+    withholdingTax,
 }: {
     detail: QuotationDetail;
     serviceName?: string | null;
     registeredBusiness?: boolean | null;
+    withholdingTax?: boolean | null;
 }) {
     const isVirtualOffice = String(serviceName || "").trim().toLowerCase().includes("virtual office");
 
@@ -478,6 +482,7 @@ function ClientInfoSection({
             <ReceiptRow label="Email" value={detail.email} href={detail.email ? `mailto:${detail.email}` : undefined} />
             <ReceiptRow label="Phone" value={detail.phone} href={detail.phone ? `tel:${detail.phone}` : undefined} />
             {isVirtualOffice && <ReceiptRow label="Registered Business" value={registeredBusiness ? "Yes" : "No"} />}
+            {isVirtualOffice && <ReceiptRow label="Withholding Tax" value={withholdingTax ? "Yes" : "No"} />}
         </ReceiptSection>
     );
 }
@@ -1754,7 +1759,9 @@ export default function AdminQuotationsPage() {
                                         detail={selected.detail}
                                         serviceName={selected.service_name}
                                         registeredBusiness={selected.registered_business}
+                                        withholdingTax={selected.withholding_tax}
                                     />
+
                                     <ReceiptDivider />
                                     {hasGovernmentContent(selected.detail) && (
                                         <>

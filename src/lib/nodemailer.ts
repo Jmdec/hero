@@ -201,6 +201,7 @@ export interface QuotationDetail {
     phone: string;
     address?: string | null;
     registered_business?: boolean | null;
+    withholding_tax?: boolean | null;
     request?: string | null;
     payment_method?: string | null;
     transaction_id?: string | null;
@@ -628,6 +629,8 @@ function getQuotationRecipients(
 
     if (isPrivateOffice) {
         return toUniqueEmails([
+            RECIPIENTS.generalManager,
+            RECIPIENTS.digitalMarketing,
             RECIPIENTS.salesOfficer,
             ...(normalizedBranch
                 ? [branchManager]
@@ -901,14 +904,13 @@ function resolveContractTemplate(template: string, variables: Record<string, str
 
 function buildOtherServiceContractTemplate(): string {
     return [
-        "Hero Serviced Office, Inc.",
-        "",
         "1. Parties",
         "This {{contract_title_body}} (\"Agreement\") is entered into between Hero PH Inc. (\"Provider\") and {{client_name}}{{company_name_segment}} (\"Client\"), effective as of the date of confirmed payment below.",
         "",
         "2. Service Details",
         "Service: {{service_name}}",
         "Branch: {{branch}}",
+        "Premises Address: {{premises_address}}",
         "Package/Plan: {{package}}",
         "Duration: {{duration}}",
         "Start Date: {{start_date}}",
@@ -1725,6 +1727,7 @@ export async function sendQuotationAdminEmail(
             ${quotationRow("Phone", formatClickablePhone(d.phone))}
             ${quotationRow("Branch", quotation.branch)}
             ${isVirtualOfficeRequest ? quotationRow("Registered Business", d.registered_business ? "Yes" : "No") : ""}
+            ${isVirtualOfficeRequest ? quotationRow("Withholding Tax", d.withholding_tax ? "Yes" : "No") : ""}
             ${buildQuotationDetailRows(quotation, {
         formattedDate: true,
     })}
