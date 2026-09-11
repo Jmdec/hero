@@ -78,15 +78,42 @@ export default function Home() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [servicesLoading, setServicesLoading] = useState(true);
+  const [locale, setLocale] = useState<"en" | "ja">("en");
+
+  useEffect(() => {
+    const getStoredLocale = () => {
+      const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+      return match?.[1] === "ja" ? "ja" : "en";
+    };
+
+    const updateLocale = (event?: Event) => {
+      const detail = (event as CustomEvent<string> | undefined)?.detail;
+      const nextLocale = detail === "ja" || detail === "en"
+        ? detail
+        : getStoredLocale();
+
+      setLocale(nextLocale);
+    };
+
+    updateLocale();
+    window.addEventListener("localeChanged", updateLocale);
+    return () => window.removeEventListener("localeChanged", updateLocale);
+  }, []);
+
+  const isJapanese = locale === "ja";
 
   const heroSlides = [
     {
       image: "/tower_6789.webp",
-      location: "Tower 6789, Ayala Avenue, Makati City",
+      location: isJapanese
+        ? "マカティ市アヤラ通り、タワー6789"
+        : "Tower 6789, Ayala Avenue, Makati City",
     },
     {
       image: "/insular_life.webp",
-      location: "Insular Life Building, Ayala Avenue, Makati City",
+      location: isJapanese
+        ? "インシュラーライフビル、アヤラアベニュー、マカティ市"
+        : "Insular Life Building, Ayala Avenue, Makati City",
     },
   ];
 
@@ -100,59 +127,68 @@ export default function Home() {
   const features = [
     {
       icon: MapPin,
-      title: "Excellent Location",
-      description:
-        "Conveniently located along Ayala Avenue, the central business district of Makati City.",
+      title: isJapanese ? "絶好のロケーション" : "Excellent Location",
+      description: isJapanese
+        ? "マカティ市の中心業務地区であるアヤラ通り沿いの便利な場所に位置しています。"
+        : "Conveniently located along Ayala Avenue, the central business district of Makati City.",
     },
     {
       icon: Users,
-      title: "Full Support System",
-      description:
-        "We provide comprehensive support to ensure your business runs smoothly.",
+      title: isJapanese ? "フルサポートシステム" : "Full Support System",
+      description: isJapanese
+        ? "私たちは、あなたのビジネスがスムーズに運営できるよう、包括的なサポートを提供しています。"
+        : "We provide comprehensive support to ensure your business runs smoothly.",
     },
     {
       icon: Building2,
-      title: "Professional Workspace",
-      description:
-        "Spacious and well-equipped office spaces designed to enhance your productivity.",
+      title: isJapanese ? "プロの作業スペース" : "Professional Workspace",
+      description: isJapanese
+        ? "広々として設備の整ったオフィススペースで、生産性を高めるようにデザインされています。"
+        : "Spacious and well-equipped office spaces designed to enhance your productivity.",
     },
     {
       icon: Headset,
-      title: "Community Engagement",
-      description:
-        "Monthly networking events, seminars, freebies, and community activities designed to help you connect, learn, and grow.",
+      title: isJapanese ? "地域への参加" : "Community Engagement",
+      description: isJapanese
+        ? "月例のネットワーキングイベント、セミナー、無料プレゼント、コミュニティ活動など、つながりを作り、学び、成長するのをサポートするためのものです。"
+        : "Monthly networking events, seminars, freebies, and community activities designed to help you connect, learn, and grow.",
     },
   ];
 
   const services = [
     {
-      title: "Private Offices",
-      description:
-        "Your own professional office, ready for teams of any size.",
+      title: isJapanese ? "個室オフィス" : "Private Offices",
+      description: isJapanese
+        ? "あらゆる規模のチームに対応できる、あなた専用のプロフェッショナルなオフィス。"
+        : "Your own professional office, ready for teams of any size.",
       image: "/spaces/private-office.webp",
     },
     {
-      title: "Virtual Offices",
-      description:
-        "A prestigious Makati business address without the cost of a full office.",
+      title: isJapanese ? "バーチャルオフィス" : "Virtual Offices",
+      description: isJapanese
+        ? "あらゆる規模のチームに対応できる、あなた専用のプロフェッショナルなオフィス。"
+        : "A prestigious Makati business address without the cost of a full office.",
       image: "/spaces/virtual-office.webp",
     },
     {
-      title: "Co-working Spaces",
-      description:
-        "A flexible, professional workspace built for productivity and connection.",
+      title: isJapanese ? "コワーキングスペース" : "Co-working Spaces",
+      description: isJapanese
+        ? "生産性とコミュニケーションを促進するために設計された、柔軟でプロフェッショナルなワークスペース。"
+        : "A flexible, professional workspace built for productivity and connection.",
       image: "/spaces/co-working-space.webp",
     },
     {
-      title: "Meeting Rooms",
-      description:
-        "Professional spaces for meetings, discussions, presentations, and more.",
+      title: isJapanese ? "会議室" : "Meeting Rooms",
+      description: isJapanese
+        ? "会議、ディスカッション、プレゼンテーションなど、様々な用途に利用できるプロフェッショナルな空間。"
+        : "Professional spaces for meetings, discussions, presentations, and more.",
       image: "/spaces/meeting-room.webp",
     },
     {
-      title: "Event Space",
-      description:
-        "A versatile venue for seminars, networking, workshops, and corporate events.",
+      title: isJapanese ? "イベントスペース" : "Event Space",
+      description: isJapanese
+        ? "セミナー、ネットワーキング、ワークショップ、企業イベントなど、多目的に利用できる会場です。"
+        : "A versatile venue for seminars, networking, workshops, and corporate events.",
       image: "/spaces/event-space.webp",
     },
   ];
@@ -170,15 +206,25 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [spacesCarousel.length]);
 
-  const benefits = [
-    "High-speed internet and WiFi connectivity",
-    "24/7 security and access control",
-    "Professional reception and mail handling",
-    "Meeting rooms with video conferencing",
-    "Cafe and lounge areas",
-    "Japanese-speaking support staff",
-    "Printing and copying facilities",
-  ];
+  const benefits = isJapanese
+    ? [
+        "高速インターネットとWi-Fi接続",
+        "24時間365日のセキュリティとアクセス制御",
+        "プロフェッショナルな受付業務と郵便物処理",
+        "ビデオ会議機能を備えた会議室",
+        "カフェとラウンジエリア",
+        "日本語を話せるサポートスタッフ",
+        "印刷・コピー設備",
+      ]
+    : [
+        "High-speed internet and WiFi connectivity",
+        "24/7 security and access control",
+        "Professional reception and mail handling",
+        "Meeting rooms with video conferencing",
+        "Cafe and lounge areas",
+        "Japanese-speaking support staff",
+        "Printing and copying facilities",
+      ];
 
   useEffect(() => {
     let cancelled = false;
@@ -349,14 +395,22 @@ export default function Home() {
                 className="max-w-3xl pb-10"
               >
                 <h1 className="text-5xl lg:text-6xl font-bold leading-tight mb-6">
-                  Establish a Strategic Business Presence in the&nbsp;
-                  <span className="text-[#8FA8D6]">Philippines</span>
+                  {isJapanese ? (
+                    <>
+                      <span className="text-[#8FA8D6]">フィリピン</span>
+                      における戦略的な事業拠点の確立 
+                    </>
+                  ) : (
+                    <>
+                      Establish a Strategic Business Presence in the&nbsp;
+                      <span className="text-[#8FA8D6]">Philippines</span>
+                    </>
+                  )}
                 </h1>
                 <p className="text-md lg:text-xl text-gray-300 mb-8 max-w-2xl text-justify md:text-left">
-                  Located in Makati City, the Philippines&apos; Business and Financial Capital,
-                  HERO offers professional and flexible workspace solutions designed for startups,
-                  SMEs, expanding companies, and businesses ready to establish, operate, and
-                  grow in the Philippines.
+                  {isJapanese
+                    ? "フィリピンのビジネスと金融の中心地であるマカティ市に位置するHEROは、スタートアップ企業、中小企業、成長企業、そしてフィリピンでの事業設立、運営、成長を目指す企業向けに設計された、プロフェッショナルで柔軟なワークスペースソリューションを提供しています。"
+                    : "Located in Makati City, the Philippines&apos; Business and Financial Capital, HERO offers professional and flexible workspace solutions designed for startups, SMEs, expanding companies, and businesses ready to establish, operate, and grow in the Philippines."}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
@@ -364,27 +418,27 @@ export default function Home() {
                     className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-bold hover:bg-gray-200 transition-all duration-200 hover:scale-105 active:scale-95 group"
                   >
                     <Play className="w-5 h-5" />
-                    Virtual Tour
+                    {isJapanese ? "バーチャルツアー" : "Virtual Tour"}
                   </Link>
                   <Link
                     href="/contact"
                     className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#FFC107] text-[#1B3A8C] rounded-full font-bold hover:bg-[#FFC107]/80 transition-all duration-200 hover:scale-105 active:scale-95 group"
                   >
-                    Contact Us
+                    {isJapanese ? "お問い合わせ" : "Contact Us"}
                   </Link>
                 </div>
                 <div className="flex items-center gap-8 mt-10 pt-10 border-t border-white/10">
                   <div>
                     <div className="text-3xl font-bold">10+</div>
-                    <div className="text-sm text-gray-400">Years Experience</div>
+                    <div className="text-sm text-gray-400">{isJapanese ? "年の経験" : "Years Experience"}</div>
                   </div>
                   <div>
                     <div className="text-3xl font-bold">500+</div>
-                    <div className="text-sm text-gray-400">Companies Served</div>
+                    <div className="text-sm text-gray-400">{isJapanese ? "サービス提供対象企業" : "Companies Served"}</div>
                   </div>
                   <div>
                     <div className="text-3xl font-bold">98%</div>
-                    <div className="text-sm text-gray-400">Satisfaction Rate</div>
+                    <div className="text-sm text-gray-400">{isJapanese ? "満足度" : "Satisfaction Rate"}</div>
                   </div>
                 </div>
               </motion.div>
@@ -459,18 +513,19 @@ export default function Home() {
           <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                Our Services
+                {isJapanese ? "当社のサービス" : "Our Services"}
               </h2>
               <p className="text-lg text-gray-600">
-                We offer a range of flexible office solutions to meet the
-                unique needs of your business.
+                {isJapanese
+                  ? "お客様のビジネス固有のニーズにお応えするため、柔軟なオフィスソリューションを幅広くご提供いたします。"
+                  : "We offer a range of flexible office solutions to meet the unique needs of your business."}
               </p>
             </div>
             <Link
               href="/services"
               className="inline-flex items-center gap-2 text-[#1B3A8C] font-semibold hover:text-[#FFC107] transition-all duration-200 hover:scale-105 active:scale-95 group"
             >
-              View All Services
+              {isJapanese ? "すべてのサービスを見る" : "View All Services"}
               <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
@@ -525,7 +580,7 @@ export default function Home() {
                         href="/quotation"
                         className="text-md font-bold text-[#1B3A8C] hover:text-[#FFC107] hover:underline transition-all duration-200 hover:scale-105 active:scale-95 group"
                       >
-                        Get Quotation →
+                        {isJapanese ? "見積もりを見る →" : "Get Quotation →"}
                       </Link>
                     </div>
                   </div>
@@ -564,12 +619,12 @@ export default function Home() {
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div>
                 <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-                  Everything You Need to Succeed
+                  {isJapanese ? "成功するために必要なすべて" : "Everything You Need to Succeed"}
                 </h2>
                 <p className="text-lg text-gray-600 mb-8">
-                  Our offices come fully equipped with modern facilities and
-                  amenities to ensure your business operates smoothly from day
-                  one.
+                  {isJapanese
+                    ? "当社のオフィスは、お客様のビジネスが初日から円滑に運営できるよう、最新の設備とアメニティを完備しています。"
+                    : "Our offices come fully equipped with modern facilities and amenities to ensure your business operates smoothly from day one."}
                 </p>
                 <ul className="space-y-4">
                   {benefits.map((benefit) => (
@@ -585,14 +640,14 @@ export default function Home() {
                     href="/about"
                     className="rounded-full bg-[#FFC107] px-5 py-4 font-bold text-[#1B3A8C] hover:bg-transparent hover:text-[#1B3A8C] hover:border-[#FFC107] hover:border transition-all duration-200 hover:scale-105 active:scale-95 group"
                   >
-                    Learn More
+                    {isJapanese ? "もっと知る" : "Learn More"}
                   </Link>
 
                   <Link
                     href="/services"
                     className="rounded-full border border-[#FFC107] px-5 py-4 font-bold text-[#1B3A8C] hover:bg-[#FFC107] hover:text-[#1B3A8C] transition-all duration-200 hover:scale-105 active:scale-95 group"
                   >
-                    Explore Services
+                    {isJapanese ? "サービスを探す" : "Explore Services"}
                   </Link>
                 </div>
               </div>
@@ -618,9 +673,11 @@ export default function Home() {
                       <CheckCircle2 className="h-6 w-6 text-[#1B3A8C]" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">Ready to Use</h3>
+                      <h3 className="font-semibold text-gray-900">{isJapanese ? "すぐ使える" : "Ready to Use"}</h3>
                       <p className="text-sm text-gray-600">
-                        Move in immediately with all amenities provided
+                        {isJapanese
+                          ? "すぐに入居でき、すべての設備が揃っています"
+                          : "Move in immediately with all amenities provided"}
                       </p>
                     </div>
                   </div>
@@ -636,11 +693,11 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center items-center mb-12">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                What Our Clients Say
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 text-center">
+                {isJapanese ? "お客様の声" : "What Our Clients Say"}
               </h2>
               <p className="text-lg text-gray-600">
-                Trusted by Local and International Companies
+                {isJapanese ? "私たちは地元企業にも海外企業にも信頼されています" : "Trusted by Local and International Companies"}
               </p>
             </div>
           </div>
@@ -698,17 +755,19 @@ export default function Home() {
                 <Inbox className="h-6 w-6 text-gray-400" />
               </div>
               <h3 className="text-base font-semibold text-gray-900 mb-1.5">
-                No testimonials yet
+                {isJapanese ? "まだ口コミはありません" : "No testimonials yet"}
               </h3>
               <p className="text-sm text-gray-500 max-w-sm">
-                Be the first to share your experience at Hero Serviced Office, Inc..
+                {isJapanese
+                  ? "Hero Serviced Office, Inc.での体験をシェアしてね。"
+                  : "Share your experience and help others learn about HERO's services."}
               </p>
 
               <button
                 onClick={() => setModalOpen(true)}
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-semibold hover:bg-gray-100 transition-colors"
               >
-                Tell us your experience
+                {isJapanese ? "あなたの経験を教えてください" : "Tell us your experience"}
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
@@ -769,7 +828,7 @@ export default function Home() {
                   href="/testimonial"
                   className="inline-flex items-center gap-2 mt-4 md:mt-0 bg-[#FFC107] text-[#1B3A8C] rounded-lg px-6 py-3 font-bold hover:bg-[#FFC107]/80"
                 >
-                  View All Testimonials
+                  {isJapanese ? "すべての口コミを見る" : "View All Testimonials"}
                 </Link>
               </div>
             </>
@@ -792,24 +851,25 @@ export default function Home() {
           ) : (
             <>
               <h2 className="text-2xl md:text-4xl font-bold text-white mb-6">
-                Ready to Start Your Business in the Philippines?
+                {isJapanese ? "フィリピンでビジネスを始める準備はできていますか？" : "Ready to Start Your Business in the Philippines?"}
               </h2>
               <p className="text-md text-white/90 mb-8">
-                Contact us today for a personalized tour and discover the perfect
-                office solution for your business.
+                {isJapanese
+                  ? "今すぐご相談いただき、あなただけのツアーを体験して、ビジネスにぴったりのオフィスソリューションを見つけましょう。"
+                  : "Contact us today for a personalized tour and discover the perfect office solution for your business."}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
                   href="/quotation"
                   className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-bold hover:bg-gray-100 transition-all duration-200 hover:scale-105 active:scale-95 group"
                 >
-                  Get a Quote →
+                  {isJapanese ? "見積もりをもらう →" : "Get a Quote →"}
                 </Link>
                 <Link
                   href="/contact"
                   className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-bold hover:bg-white/10 transition-all duration-200 hover:scale-105 active:scale-95 group"
                 >
-                  Contact Us
+                  {isJapanese ? "お問い合わせ" : "Contact Us"}
                 </Link>
               </div>
             </>

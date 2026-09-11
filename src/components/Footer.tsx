@@ -74,8 +74,72 @@ function Modal({
 }
 
 // Privacy Policy Content
+function PrivacyPolicyContent({ isJapanese }: { isJapanese: boolean }) {
+  if (isJapanese) {
+    return (
+      <>
+        <p>
+          いつもHero Serviced Office, Inc.(以下「当社」)のサービスをご利用いただき、誠にありがとうございます。
+        </p>
+        <p>
+          本プライバシーポリシー(以下「本ポリシー」)は、当社の個人情報の取り扱いに関する基本方針を定めるものです。ユーザーは、当社サービスをご利用いただくことで、本ポリシーに同意したものとみなされます。
+        </p>
 
-function PrivacyPolicyContent() {
+        <Section title="01 — プライバシー情報とは">
+          プライバシー情報には、個人情報および履歴情報・特性情報の両方が含まれます。個人情報とは、個人情報の保護に関する法律に定める個人情報、または生存する個人に関する情報であり、具体的には氏名、生年月日、住所、電話番号その他の連絡先情報、その他個人を識別できる記載情報を指します。個人情報以外の情報は履歴情報・特性情報に該当し、利用したサービス、購入した商品、閲覧したページ・広告の履歴、ユーザーが使用した検索キーワード、利用日時、利用方法、利用環境、郵便番号、性別、職業、年齢、ユーザーのIPアドレス、クッキー情報、位置情報、端末識別情報などが含まれます。
+        </Section>
+
+        <Section title="02 — プライバシー情報の収集方法">
+          当社は、ユーザーがユーザー登録を行う際、または当社のいずれかのサービスを利用する際に個人情報を、あるいは当社のサービスを利用する際や当社ウェブサイトの各ページを閲覧する際に履歴情報・特性情報を収集することがあります。ユーザーがサービスの利用を外部サービスと連携させる設定を行った場合、当社は当該外部サービスでユーザーが使用するIDや、外部サービスのプライバシー設定のもとでユーザーが連携先サービスへの開示に同意した情報を収集します。
+        </Section>
+
+        <Section title="03 — プライバシー情報の利用目的">
+          <ul className="list-[upper-alpha] list-inside space-y-2 mt-1">
+            <li>ユーザーが登録情報を閲覧・修正し、利用状況を確認できるよう登録情報を表示するため</li>
+            <li>ユーザーへの通知・連絡、または商品の発送のためにメールアドレスを利用するため</li>
+            <li>氏名、生年月日、住所などの情報をユーザー本人確認のために利用するため</li>
+            <li>決済関連情報を、ユーザーへの請求のために利用するため</li>
+            <li>ユーザーが入力しやすいよう、入力画面に登録情報を表示するため</li>
+            <li>利用規約に違反したユーザーによるサービス利用を拒否するため</li>
+            <li>ユーザーからのお問い合わせに回答するため</li>
+            <li>個人を特定できない形式で処理した統計データを作成するため</li>
+            <li>当社または第三者の広告を配信・表示するため</li>
+            <li>プライバシー情報をマーケティングに利用するため</li>
+            <li>上記利用目的に付随する目的のため</li>
+          </ul>
+        </Section>
+
+        <Section title="04 — プライバシー情報を第三者に提供することはありますか">
+          当社は、法令に基づき必要とされる場合、人の生命・身体・財産の保護に必要な場合、または国の機関が法令の定める事務を遂行することに協力する必要がある場合を除き、ユーザーの事前の承諾なく、プライバシー情報を第三者に提供することはありません。
+        </Section>
+
+        <Section title="05 — 自己のプライバシー情報の確認や訂正を求めることはできますか">
+          ユーザーが自己のプライバシー情報の開示を請求した場合、当該開示がユーザーまたは第三者の利益を害するおそれがある場合、当社の業務の遂行に著しい支障を及ぼすおそれがある場合、または法令に違反することとなる場合を除き、当社は遅滞なく開示します。開示のご請求には1回につき1,000円の手数料がかかります。個人情報に誤りがある場合は、ご請求に応じて訂正または削除いたします。
+        </Section>
+
+        <Section title="06 — 利用停止を請求することはできますか">
+          ユーザーは、自己のプライバシー情報の利用停止を請求することができます。当社は必要な調査を行い、適切な措置を講じたうえで、遅滞なくユーザーにご連絡いたします。
+        </Section>
+
+        <Section title="07 — プライバシーポリシーの変更">
+          本プライバシーポリシーは、予告なく変更されることがあります。変更内容は、当ウェブサイトに掲載された時点で効力を生じます。
+        </Section>
+
+        <Section title="08 — お問い合わせ窓口">
+          <p>担当者: Minoru Kobayashi</p>
+          <p>会社名: Hero Serviced Office, Inc.</p>
+          <p>住所: 23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines</p>
+          <p>
+            Eメール:{' '}
+            <a href="mailto:salesofficer@heroph.net" className="text-[#1565C0] underline underline-offset-2">
+              salesofficer@heroph.net
+            </a>
+          </p>
+        </Section>
+      </>
+    );
+  }
+
   return (
     <>
       <p>
@@ -165,8 +229,56 @@ function PrivacyPolicyContent() {
 }
 
 //  Terms of Service Content 
+function TermsOfServiceContent({ isJapanese }: { isJapanese: boolean }) {
+  if (isJapanese) {
+    return (
+      <>
+        <p>
+          Hero Serviced Office, Inc.が提供するサービスにアクセスまたは利用することにより、お客様は本利用規約に拘束されることに同意したものとします。サービスをご利用になる前に、本規約を注意深くお読みください。
+        </p>
 
-function TermsOfServiceContent() {
+        <Section title="01 — サービスの利用">
+          お客様は、適用法令に従い、合法的な目的のみで当社サービスをご利用いただくことに同意するものとします。適用法令に違反する方法、または有害、詐欺的、もしくは欺瞞的な方法で当社サービスを利用してはなりません。
+        </Section>
+
+        <Section title="02 — ユーザーアカウント">
+          お客様は、ご自身のアカウント認証情報の機密保持、および当該アカウントの下で行われるすべての活動について責任を負うものとします。アカウントの不正利用に気づいた場合は、直ちに当社までご連絡ください。
+        </Section>
+
+        <Section title="03 — お支払いおよび料金">
+          サービスに対するすべての料金は、サービス契約に定めるとおりお支払いいただく必要があります。料金のお支払いがない場合、サービスの停止または終了となることがあります。別段の定めがない限り、すべての料金は返金されません。
+        </Section>
+
+        <Section title="04 — 責任の制限">
+          Hero Serviced Office, Inc.は、お客様による当社サービスの利用から生じる間接損害、付随的損害、結果的損害について責任を負いません。当社の責任総額は、直前月にお客様が当該サービスに対してお支払いいただいた金額を超えないものとします。
+        </Section>
+
+        <Section title="05 — 契約の解除">
+          お客様が本利用規約に違反した場合、または当社が他のユーザーもしくは当社にとって有害であると判断する行為を行った場合、当社は事前の通知なく、直ちに当社サービスへのアクセスを終了または停止する権利を留保します。
+        </Section>
+
+        <Section title="06 — 規約の変更">
+          当社は、いつでも本規約を変更する権利を留保します。変更内容は、当ウェブサイトに掲載された時点で効力を生じます。変更後も当社サービスの利用を継続された場合、新しい規約に同意したものとみなされます。
+        </Section>
+
+        <Section title="07 — 準拠法">
+          本規約は、フィリピン共和国の法律に準拠し、これに従って解釈されるものとします。本規約に関するいかなる紛争も、マカティ市の裁判所の専属管轄に服するものとします。
+        </Section>
+
+        <Section title="08 — お問い合わせ">
+          <p>本規約に関するご質問は、以下までご連絡ください:</p>
+          <p>Hero Serviced Office, Inc.</p>
+          <p>23F TOWER6789, Ayala Avenue 6789, Makati City 1209 Manila, Philippines</p>
+          <p>
+            <a href="mailto:sales@heroph.net" className="text-[#1565C0] underline underline-offset-2">
+              sales@heroph.net
+            </a>
+          </p>
+        </Section>
+      </>
+    );
+  }
+
   return (
     <>
       <p>
@@ -283,22 +395,42 @@ function DirectoryEntry({
 
 export default function Footer() {
   const [modal, setModal] = useState<'privacy' | 'terms' | null>(null);
+  const [locale, setLocale] = useState<'en' | 'ja'>('en');
+  const isJapanese = locale === 'ja';
+
+  useEffect(() => {
+    const getStoredLocale = () => {
+      const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+      return match?.[1] === 'ja' ? 'ja' : 'en';
+    };
+
+    const updateLocale = (event?: Event) => {
+      const detail = (event as CustomEvent<string> | undefined)?.detail;
+      const nextLocale = detail === 'ja' || detail === 'en' ? detail : getStoredLocale();
+      setLocale(nextLocale);
+    };
+
+    updateLocale();
+    window.addEventListener('localeChanged', updateLocale);
+
+    return () => window.removeEventListener('localeChanged', updateLocale);
+  }, []);
 
   const quickLinks = [
-    { href: '/about', label: 'About Us' },
-    { href: '/services', label: 'Our Services' },
-    { href: '/virtual-tour', label: 'Virtual Tour' },
-    { href: '/quotation', label: 'Get a Quote' },
-    { href: '/contact', label: 'Contact Us' },
-    { href: '/login', label: 'Log In' },
+    { href: '/about', label: isJapanese ? '会社概要' : 'About Us' },
+    { href: '/services', label: isJapanese ? 'サービス' : 'Our Services' },
+    { href: '/virtual-tour', label: isJapanese ? 'バーチャルツアー' : 'Virtual Tour' },
+    { href: '/quotation', label: isJapanese ? 'お見積り依頼' : 'Get a Quote' },
+    { href: '/contact', label: isJapanese ? 'お問い合わせ' : 'Contact Us' },
+    { href: '/login', label: isJapanese ? 'ログイン' : 'Log In' },
   ];
 
   const services = [
-    { href: '/services?modal=private', label: 'Private Offices' },
-    { href: '/services?modal=virtual', label: 'Virtual Offices' },
-    { href: '/services?modal=coworking', label: 'Co-working Space' },
-    { href: '/services?modal=conference', label: 'Meeting Rooms' },
-    { href: '/services?modal=event', label: 'Event Space' },
+    { href: '/services?modal=private', label: isJapanese ? '個室オフィス' : 'Private Offices' },
+    { href: '/services?modal=virtual', label: isJapanese ? 'バーチャルオフィス' : 'Virtual Offices' },
+    { href: '/services?modal=coworking', label: isJapanese ? 'コワーキングスペース' : 'Co-working Space' },
+    { href: '/services?modal=conference', label: isJapanese ? '会議室' : 'Meeting Rooms' },
+    { href: '/services?modal=event', label: isJapanese ? 'イベントスペース' : 'Event Space' },
   ];
 
   return (
@@ -326,18 +458,19 @@ export default function Footer() {
                 </div>
               </div>
               <p className="text-md text-gray-400 leading-relaxed italic">
-                Your Workspace for Success.
+                {isJapanese ? '成功のためのワークスペース。' : 'Your Workspace for Success.'}
               </p>
               <p className="text-sm text-gray-400 max-w-xs text-justify">
-                Private offices, meeting rooms, and event space across two Makati
-                addresses — ready when you are.
+                {isJapanese
+                  ? 'マカティにある2つの拠点で、個室オフィス・会議室・イベントスペースをすぐにご利用いただけます。'
+                  : 'Private offices, meeting rooms, and event space across two Makati addresses — ready when you are.'}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-8 lg:gap-10">
               {/* Quick Links */}
               <div>
-                <ColumnHeading>Quick Links</ColumnHeading>
+                <ColumnHeading>{isJapanese ? 'クイックリンク' : 'Quick Links'}</ColumnHeading>
                 <ul className="space-y-3">
                   {quickLinks.filter(link => link.href?.trim()).map((link) => (
                     <li key={link.href}>
@@ -354,7 +487,7 @@ export default function Footer() {
 
               {/* Services */}
               <div>
-                <ColumnHeading>Our Services</ColumnHeading>
+                <ColumnHeading>{isJapanese ? '当社のサービス' : 'Our Services'}</ColumnHeading>
                 <ul className="space-y-3">
                   {services.filter(service => service.href?.trim()).map((service, index) => (
                     <li key={index}>
@@ -372,12 +505,16 @@ export default function Footer() {
 
             {/* Directory / Contact */}
             <div>
-              <ColumnHeading>Visit Us</ColumnHeading>
+              <ColumnHeading>{isJapanese ? 'ぜひお越しください' : 'Visit Us'}</ColumnHeading>
 
               <div className="flex flex-col md:flex-row lg:flex-col gap-3">
                 <DirectoryEntry
                   floor="23F"
-                  lines={['TOWER6789', '6789 Ayala Avenue', 'Makati City 1209, Metro Manila']}
+                  lines={[
+                    'TOWER6789', 
+                    '6789 Ayala Avenue', 
+                    'Makati City 1209, Metro Manila'
+                  ]}
                   href="https://www.google.com/maps/search/?api=1&query=23F+Tower+6789+6789+Ayala+Avenue+Makati+City"
                 />
                 <DirectoryEntry
@@ -422,10 +559,12 @@ export default function Footer() {
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex flex-col items-center md:items-start gap-1">
                 <p className="text-xs tracking-wide text-gray-400">
-                  &copy; {new Date().getFullYear()} Hero Serviced Office, Inc.. All rights reserved.
+                  {isJapanese
+                    ? `© ${new Date().getFullYear()} Hero Serviced Office, Inc. 全著作権所有。`
+                    : `© ${new Date().getFullYear()} Hero Serviced Office, Inc.. All rights reserved.`}
                 </p>
                 <span className="text-xs tracking-wide text-gray-400">
-                  Powered by{' '}
+                  {isJapanese ? '提供：' : 'Powered by'}{' '}
                   <a
                     href="https://www.infinitechphil.com/"
                     className="hover:text-[#FFC107] transition-colors underline underline-offset-2"
@@ -440,13 +579,13 @@ export default function Footer() {
                   onClick={() => setModal('privacy')}
                   className="hover:text-[#FFC107] transition-colors cursor-pointer uppercase"
                 >
-                  Privacy Policy
+                  {isJapanese ? 'プライバシーポリシー' : 'Privacy Policy'}
                 </button>
                 <button
                   onClick={() => setModal('terms')}
                   className="hover:text-[#FFC107] transition-colors cursor-pointer uppercase"
                 >
-                  Terms of Service
+                  {isJapanese ? '利用規約' : 'Terms of Service'}
                 </button>
               </div>
             </div>
@@ -455,12 +594,12 @@ export default function Footer() {
       </footer>
 
       {/* Modals */}
-      <Modal open={modal === 'privacy'} onClose={() => setModal(null)} title="Privacy Policy">
-        <PrivacyPolicyContent />
+      <Modal open={modal === 'privacy'} onClose={() => setModal(null)} title={isJapanese ? 'プライバシーポリシー' : 'Privacy Policy'}>
+        <PrivacyPolicyContent isJapanese={isJapanese} />
       </Modal>
 
-      <Modal open={modal === 'terms'} onClose={() => setModal(null)} title="Terms of Service">
-        <TermsOfServiceContent />
+      <Modal open={modal === 'terms'} onClose={() => setModal(null)} title={isJapanese ? '利用規約' : 'Terms of Service'}>
+        <TermsOfServiceContent isJapanese={isJapanese} />
       </Modal>
     </>
   );

@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Plus, X, MessageCircle } from "lucide-react"
 
 const FacebookIcon = ({ className }: { className?: string }) => (
@@ -41,17 +41,36 @@ const ViberIcon = ({ className }: { className?: string }) => (
 )
 
 const socialLinks = [
-  { name: "Facebook", icon: FacebookIcon, href: "https://www.facebook.com/heroservicedoffice", color: "#1877F2" },
-  { name: "Instagram", icon: InstagramIcon, href: "https://www.instagram.com/heroso.ph", color: "#DD2A7B" },
-  { name: "LinkedIn", icon: LinkedinIcon, href: "https://www.linkedin.com/company/hero-serviced-office-inc/", color: "#0A66C2" },
-  { name: "TikTok", icon: TikTokIcon, href: "https://www.tiktok.com/@heroservicedoffice", color: "#111111" },
-  { name: "YouTube", icon: YouTubeIcon, href: "https://www.youtube.com/@HeroServicedOfficePH", color: "#FF0000" },
-  { name: "WhatsApp", icon: MessageCircle, href: "https://wa.me/639171262939", color: "#25D366" },
-  { name: "Viber", icon: ViberIcon, href: "viber://chat?number=%2B639171262939", color: "#7360F2" },
+  { name: "Facebook", icon: FacebookIcon, href: "https://www.facebook.com/heroservicedoffice", color: "#1877F2", nameJap: "フェイスブック" },
+  { name: "Instagram", icon: InstagramIcon, href: "https://www.instagram.com/heroso.ph", color: "#DD2A7B", nameJap: "インスタグラム" },
+  { name: "LinkedIn", icon: LinkedinIcon, href: "https://www.linkedin.com/company/hero-serviced-office-inc/", color: "#0A66C2", nameJap: "リクルート" },
+  { name: "TikTok", icon: TikTokIcon, href: "https://www.tiktok.com/@heroservicedoffice", color: "#111111", nameJap: "ティックトック" },
+  { name: "YouTube", icon: YouTubeIcon, href: "https://www.youtube.com/@HeroServicedOfficePH", color: "#FF0000", nameJap: "ユーチューブ" },
+  { name: "WhatsApp", icon: MessageCircle, href: "https://wa.me/639171262939", color: "#25D366", nameJap: "ウエチャップ" },
+  { name: "Viber", icon: ViberIcon, href: "viber://chat?number=%2B639171262939", color: "#7360F2", nameJap: "ヴィバー" },
 ].filter((s) => s.href?.trim())
 
 const FloatingSocialMedia = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const [isJapanese, setIsJapanese] = useState(false)
+
+  useEffect(() => {
+    const getStoredLocale = () => {
+      const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/)
+      return match?.[1] === "ja" ? "ja" : "en"
+    }
+
+    const updateLocale = (event?: Event) => {
+      const detail = (event as CustomEvent<string> | undefined)?.detail
+      const nextLocale = detail === "ja" || detail === "en" ? detail : getStoredLocale()
+      setIsJapanese(nextLocale === "ja")
+    }
+
+    updateLocale()
+    window.addEventListener("localeChanged", updateLocale)
+
+    return () => window.removeEventListener("localeChanged", updateLocale)
+  }, [])
 
   return (
     <>
@@ -62,13 +81,14 @@ const FloatingSocialMedia = () => {
       >
         {socialLinks.map((social) => {
           const Icon = social.icon
+          const socialLabel = social.name
           return (
             <a
               key={social.name}
               href={social.href}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`Visit our ${social.name}`}
+              aria-label={isJapanese ? `当社の${socialLabel}を開く` : `Visit our ${socialLabel}`}
               className="group/item relative w-10 h-10 rounded-full flex items-center justify-center
                         text-neutral-500 transition-colors duration-200 hover:text-white"
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = social.color)}
@@ -81,7 +101,7 @@ const FloatingSocialMedia = () => {
                           opacity-0 scale-95 transition-all duration-150
                           group-hover/item:opacity-100 group-hover/item:scale-100"
               >
-                {social.name}
+                {socialLabel}
               </span>
             </a>
           )
@@ -115,6 +135,7 @@ const FloatingSocialMedia = () => {
         >
           {socialLinks.map((social) => {
             const Icon = social.icon
+            const socialLabel = social.name
 
             return (
               <a
@@ -122,7 +143,7 @@ const FloatingSocialMedia = () => {
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`Visit our ${social.name}`}
+                aria-label={isJapanese ? `当社の${socialLabel}を開く` : `Visit our ${socialLabel}`}
                 className="group relative w-10 h-10 rounded-full
                           flex items-center justify-center
                           text-neutral-500 hover:text-white
@@ -150,7 +171,7 @@ const FloatingSocialMedia = () => {
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          aria-label={isOpen ? "Close social menu" : "Open social menu"}
+          aria-label={isJapanese ? (isOpen ? "ソーシャルメニューを閉じる" : "ソーシャルメニューを開く") : (isOpen ? "Close social menu" : "Open social menu")}
           aria-expanded={isOpen}
           className="relative z-50 w-14 h-14 rounded-full
                     bg-neutral-900 text-white

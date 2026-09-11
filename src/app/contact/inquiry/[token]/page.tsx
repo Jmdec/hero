@@ -15,10 +15,10 @@ interface ContactInquiry {
     created_at: string;
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, isJapanese: boolean) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleString("en-US", {
+    return date.toLocaleString(isJapanese ? "ja-JP" : "en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -27,26 +27,26 @@ function formatDate(value: string) {
     });
 }
 
-function getInquiryLabel(value: string) {
+function getInquiryLabel(value: string, isJapanese: boolean) {
     const labels: Record<string, string> = {
-        "private-office": "Private Office",
-        "virtual-office": "Virtual Office",
-        "co-working-space": "Co-Working Space",
-        "meeting-room": "Meeting Room",
-        "event-space": "Event Space",
-        "ocular-visit": "Ocular Visit",
-        partnership: "Partnership",
-        others: "Others",
+        "private-office": isJapanese ? "個室オフィス" : "Private Office",
+        "virtual-office": isJapanese ? "バーチャルオフィス" : "Virtual Office",
+        "co-working-space": isJapanese ? "コワーキングスペース" : "Co-Working Space",
+        "meeting-room": isJapanese ? "会議室" : "Meeting Room",
+        "event-space": isJapanese ? "イベントスペース" : "Event Space",
+        "ocular-visit": isJapanese ? "現地見学" : "Ocular Visit",
+        partnership: isJapanese ? "提携" : "Partnership",
+        others: isJapanese ? "その他" : "Others",
     };
     return labels[value] ?? value;
 }
 
-function getBranchLabel(value?: string | null) {
-    if (!value) return "Not specified";
+function getBranchLabel(value?: string | null, isJapanese: boolean = false) {
+    if (!value) return isJapanese ? "指定なし" : "Not specified";
     const labels: Record<string, string> = {
         "tower-6789": "Tower 6789",
-        "insular-life": "Insular Life Building",
-        both: "Both Branches",
+        "insular-life": isJapanese ? "Insular Life Building" : "Insular Life Building",
+        both: isJapanese ? "両方の支店" : "Both Branches",
     };
     return labels[value] ?? value;
 }
@@ -57,10 +57,30 @@ export default function PublicInquiryPage() {
     const [inquiry, setInquiry] = useState<ContactInquiry | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [locale, setLocale] = useState<"en" | "ja">("en");
+    const isJapanese = locale === "ja";
+
+    useEffect(() => {
+        const getStoredLocale = () => {
+            const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+            return match?.[1] === "ja" ? "ja" : "en";
+        };
+
+        const updateLocale = (event?: Event) => {
+            const detail = (event as CustomEvent<string> | undefined)?.detail;
+            const nextLocale = detail === "ja" || detail === "en" ? detail : getStoredLocale();
+            setLocale(nextLocale);
+        };
+
+        updateLocale();
+        window.addEventListener("localeChanged", updateLocale);
+
+        return () => window.removeEventListener("localeChanged", updateLocale);
+    }, []);
 
     useEffect(() => {
         if (!token) {
-            setError("Invalid inquiry link.");
+            setError(isJapanese ? "無効なお問い合わせリンクです。" : "Invalid inquiry link.");
             setLoading(false);
             return;
         }
@@ -74,19 +94,19 @@ export default function PublicInquiryPage() {
                 const data = await res.json();
 
                 if (!res.ok) {
-                    throw new Error(data?.message || "Failed to load inquiry.");
+                    throw new Error(data?.message || (isJapanese ? "お問い合わせを読み込めませんでした。" : "Failed to load inquiry."));
                 }
 
                 setInquiry(data.data ?? null);
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to load inquiry.");
+                setError(err instanceof Error ? err.message : (isJapanese ? "お問い合わせを読み込めませんでした。" : "Failed to load inquiry."));
             } finally {
                 setLoading(false);
             }
         };
 
         fetchInquiry();
-    }, [token]);
+    }, [token, isJapanese]);
 
     if (loading) {
         return (
@@ -94,7 +114,7 @@ export default function PublicInquiryPage() {
                 <div className="flex flex-col items-center gap-3">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#DCD5C6] border-t-[#A9824C]" />
                     <p className="text-xs uppercase tracking-[0.2em] text-[#5C6B7A]">
-                        Loading Inquiry Details...
+                        {isJapanese ? "お問い合わせ詳細を読み込み中..." : "Loading Inquiry Details..."}
                     </p>
                 </div>
             </div>
@@ -107,10 +127,10 @@ export default function PublicInquiryPage() {
                 <div className="w-full max-w-md border border-[#DCD5C6] bg-white p-10 text-center">
                     <div className="mx-auto mb-4 h-px w-10 bg-[#B4433B]" />
                     <p className="text-2xl font-semibold text-[#12203A]">
-                        Link unavailable
+                        {isJapanese ? "リンクを利用できません" : "Link unavailable"}
                     </p>
                     <p className="mt-3 text-sm leading-6 text-[#5C6B7A]">
-                        {error ?? "This inquiry link may be invalid or expired."}
+                        {error ?? (isJapanese ? "このお問い合わせリンクは無効または期限切れの可能性があります。" : "This inquiry link may be invalid or expired.")}
                     </p>
                 </div>
             </div>
@@ -118,13 +138,13 @@ export default function PublicInquiryPage() {
     }
 
     const infoRows: Array<{ label: string; value: string }> = [
-        { label: "Name", value: inquiry.name },
-        { label: "Email", value: inquiry.email },
-        { label: "Phone", value: inquiry.phone },
-        ...(inquiry.company ? [{ label: "Company", value: inquiry.company }] : []),
-        { label: "Inquiry Type", value: getInquiryLabel(inquiry.inquiry_type) },
-        { label: "Branch Interest", value: getBranchLabel(inquiry.dynamic_data?.branchInterest) },
-        { label: "Submitted", value: formatDate(inquiry.created_at) },
+        { label: isJapanese ? "氏名" : "Name", value: inquiry.name },
+        { label: isJapanese ? "メールアドレス" : "Email", value: inquiry.email },
+        { label: isJapanese ? "電話番号" : "Phone", value: inquiry.phone },
+        ...(inquiry.company ? [{ label: isJapanese ? "会社名" : "Company", value: inquiry.company }] : []),
+        { label: isJapanese ? "お問い合わせ種別" : "Inquiry Type", value: getInquiryLabel(inquiry.inquiry_type, isJapanese) },
+        { label: isJapanese ? "支店希望" : "Branch Interest", value: getBranchLabel(inquiry.dynamic_data?.branchInterest, isJapanese) },
+        { label: isJapanese ? "送信日時" : "Submitted", value: formatDate(inquiry.created_at, isJapanese) },
     ];
 
     return (
@@ -138,12 +158,12 @@ export default function PublicInquiryPage() {
                         <div className="flex items-start justify-between gap-6">
                             <div>
                                 <h1 className="mt-2 text-[34px] font-semibold leading-tight text-[#F7F4EC] sm:text-[40px]">
-                                    Inquiry Summary
+                                    {isJapanese ? "お問い合わせ内容の概要" : "Inquiry Summary"}
                                 </h1>
                             </div>
                         </div>
                         <p className="mt-1 max-w-md text-sm leading-6 text-[#9FADC2]">
-                            Shared for quick reference via a secure view link.
+                            {isJapanese ? "安全な閲覧リンクで簡単に確認できるよう共有されています。" : "Shared for quick reference via a secure view link."}
                         </p>
                     </div>
 
@@ -152,7 +172,7 @@ export default function PublicInquiryPage() {
                             href="/admin/inquiries"
                             className="inline-flex items-center gap-2 rounded-full bg-[#A9824C] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#B47F3D] focus:outline-none focus:ring-2 focus:ring-[#A9824C] focus:ring-offset-2"
                         >
-                            Reply
+                            {isJapanese ? "返信" : "Reply"}
                         </Link>
                     </div>
                 </div>
@@ -198,7 +218,7 @@ export default function PublicInquiryPage() {
                 {/* Message */}
                 <div className="border-x border-t border-[#DCD5C6] bg-white px-8 py-8 sm:px-10">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[#12203A]">
-                        Message
+                        {isJapanese ? "メッセージ" : "Message"}
                     </p>
                     <div className="mt-3 border-l-2 border-[#12203A] pl-5">
                         <p className="whitespace-pre-wrap text-sm md:text-md leading-7 text-[#2A3547]">

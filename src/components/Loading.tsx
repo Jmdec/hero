@@ -18,13 +18,28 @@ interface LoadingProps {
 
 export function Loading({
     variant = "screen",
-    title = "Preparing your workspace",
-    subtitle = "Hero Serviced Office, Inc.",
+    title,
+    subtitle,
     progress,
     showProgress = true,
 }: LoadingProps) {
     const [autoProgress, setAutoProgress] = useState(0);
+    const [isJapanese, setIsJapanese] = useState(false);
+    const resolvedTitle = title ?? (isJapanese ? "ワークスペースを準備しています" : "Preparing your workspace");
+    const resolvedSubtitle = subtitle ?? "Hero Serviced Office, Inc.";
     const resolvedProgress = Math.max(0, Math.min(100, Math.round(progress ?? autoProgress)));
+
+    useEffect(() => {
+        const updateLocale = () => {
+            const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+            setIsJapanese(match?.[1] === "ja");
+        };
+
+        updateLocale();
+        window.addEventListener("localeChanged", updateLocale);
+
+        return () => window.removeEventListener("localeChanged", updateLocale);
+    }, []);
 
     useEffect(() => {
         if (typeof progress === "number") return;
@@ -50,10 +65,6 @@ export function Loading({
         raf = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(raf);
     }, [progress]);
-
-    // fraction (0–1) of a given progress window that's been "drafted" so far
-    const seg = (start: number, end: number) =>
-        Math.max(0, Math.min(1, (resolvedProgress - start) / (end - start)));
 
     const isBlueprint = variant === "panel";
 
@@ -128,13 +139,13 @@ export function Loading({
                             className={`${plexMono.className} text-[0.6rem] uppercase tracking-[0.28em]`}
                             style={{ color: tokens.subtle }}
                         >
-                            {subtitle}
+                            {resolvedSubtitle}
                         </p>
                         <h2
                             className={`${fraunces.className} mt-2 text-3xl tracking-[0.01em] sm:text-4xl`}
                             style={{ color: tokens.ink }}
                         >
-                            {title}
+                            {resolvedTitle}
                         </h2>
                     </div>
 

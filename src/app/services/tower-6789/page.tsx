@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import {
   InfoIcon,
   Building2,
@@ -29,7 +30,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-const facilities = [
+const facilitiesEn = [
   {
     icon: DoorOpen,
     title: "Reception",
@@ -52,7 +53,30 @@ const facilities = [
   },
 ];
 
-const amenities = [
+const facilitiesJa = [
+  {
+    icon: DoorOpen,
+    title: "受付",
+    description: "平日9:00-18:00に日本語対応スタッフがご案内します",
+  },
+  {
+    icon: Users,
+    title: "会議スペース",
+    description: "最大10名まで利用できる共有会議室2室（有料、平日9:00-18:00）",
+  },
+  {
+    icon: Coffee,
+    title: "カフェエリア",
+    description: "気軽な打ち合わせに最適な広いスペース。24/7・365日利用可",
+  },
+  {
+    icon: Printer,
+    title: "複合機スペース",
+    description: "コピー・印刷・スキャンが可能な複合機を設置",
+  },
+];
+
+const amenitiesEn = [
   { icon: Clock, title: "24/7 Access", description: "Card key lock system for complete security" },
   { icon: Wifi, title: "Wired LAN", description: "Major Japanese company line, same speed as Japan" },
   { icon: Snowflake, title: "Air Conditioning", description: "Operating weekdays 8:00-20:00" },
@@ -63,7 +87,53 @@ const amenities = [
   { icon: FileText, title: "Fixtures Included", description: "Desks, chairs, cabinets all provided" },
 ];
 
+const amenitiesJa = [
+  { icon: Clock, title: "24/7アクセス", description: "カードキー錠による完全セキュリティ" },
+  { icon: Wifi, title: "有線LAN", description: "主要日本企業向け回線と同等の速度" },
+  { icon: Snowflake, title: "空調", description: "平日8:00-20:00運転" },
+  { icon: Phone, title: "電話回線", description: "固定月額でご利用いただける固定電話回線" },
+  { icon: Mail, title: "郵便転送", description: "バーチャルオフィス利用者向け郵便転送サービス" },
+  { icon: Car, title: "駐車場", description: "TOWER6789内で駐車場をご利用いただけます" },
+  { icon: Coffee, title: "無制限コーヒー", description: "カフェエリアでコーヒー・ミネラルウォーターを無料提供" },
+  { icon: FileText, title: "備品完備", description: "デスク・椅子・キャビネットをすべてご用意" },
+];
+
 export default function Tower6789Page() {
+  const [locale, setLocale] = useState<"en" | "ja">("en");
+
+  useEffect(() => {
+    const getStoredLocale = (): "en" | "ja" => {
+      const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+
+      if (match?.[1] === "ja" || match?.[1] === "en") {
+        return match[1];
+      }
+
+      if (typeof navigator !== "undefined") {
+        const language = navigator.language || navigator.languages?.[0] || "";
+        if (language.toLowerCase().startsWith("ja")) {
+          return "ja";
+        }
+      }
+
+      return "en";
+    };
+
+    const updateLocale = (event?: Event) => {
+      const detail = (event as CustomEvent<string> | undefined)?.detail;
+      const nextLocale = detail === "ja" || detail === "en" ? detail : getStoredLocale();
+      setLocale(nextLocale);
+    };
+
+    updateLocale();
+    window.addEventListener("localeChanged", updateLocale);
+    return () => window.removeEventListener("localeChanged", updateLocale);
+  }, []);
+
+  const isJapanese = locale === "ja";
+  const facilities = isJapanese ? facilitiesJa : facilitiesEn;
+  const amenities = isJapanese ? amenitiesJa : amenitiesEn;
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -77,10 +147,12 @@ export default function Tower6789Page() {
             className="text-center max-w-3xl mx-auto"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-              Tower 6789 Makati
+              {isJapanese ? "タワー6789" : "TOWER 6789"}
             </h1>
             <p className="text-xl text-gray-300">
-              23rd Floor, 6789 Ayala Avenue, Makati City
+              {isJapanese
+                ? "マカティ市アヤラ通り6789番地、23階"
+                : "23rd Floor, 6789 Ayala Avenue, Makati City"}
             </p>
           </motion.div>
         </div>
@@ -93,10 +165,14 @@ export default function Tower6789Page() {
             <Image src="/peza.png" alt="PEZA Logo" width={100} height={100} />
             <div className="flex flex-col gap-3">
               <h1 className="text-xl font-bold text-gray-900">
-                The building where the service office is located (TOWER6789) is a PEZA certified building.
+                {isJapanese
+                  ? "当サービスオフィスが所在する建物（TOWER6789）はPEZA認定ビルです。"
+                  : "The building where the service office is located (TOWER6789) is a PEZA certified building."}
               </h1>
               <p className="text-gray-500">
-                In districts certified by the Philippine Economic Zone Authority (PEZA), as part of preferential treatment for foreign investment, depending on the type of business, you can receive preferential treatment such as exemption from corporate income tax, customs duty, and value added tax.
+                {isJapanese
+                  ? "フィリピン経済特区庁（PEZA）認定地区では、事業形態により法人所得税・関税・付加価値税の免除などの優遇措置を受けられる場合があります。"
+                  : "In districts certified by the Philippine Economic Zone Authority (PEZA), as part of preferential treatment for foreign investment, depending on the type of business, you can receive preferential treatment such as exemption from corporate income tax, customs duty, and value added tax."}
               </p>
             </div>
           </div>
@@ -114,7 +190,7 @@ export default function Tower6789Page() {
               viewport={{ once: true }}
             >
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-                Base Overview
+                {isJapanese ? "基地概要" : "Base Overview"}
               </h2>
 
               <div className="space-y-6">
@@ -123,9 +199,11 @@ export default function Tower6789Page() {
                     <MapPin className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Address</p>
+                    <p className="font-semibold text-gray-900">{isJapanese ? "所在地" : "Address"}</p>
                     <p className="text-gray-600">
-                      23rd Floor, Tower 6789 Ayala Ave., Makati City, Metro Manila, Philippines
+                      {isJapanese
+                        ? "23階、Tower 6789 Ayala Ave., マカティ市、マニラ首都圏、フィリピン"
+                        : "23rd Floor, Tower 6789 Ayala Ave., Makati City, Metro Manila, Philippines"}
                     </p>
                   </div>
                 </div>
@@ -135,9 +213,9 @@ export default function Tower6789Page() {
                     <Building2 className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Property Classification</p>
+                    <p className="font-semibold text-gray-900">{isJapanese ? "物件区分" : "Property Classification"}</p>
                     <p className="text-gray-600">
-                      Grade A / Premium Office Building
+                      {isJapanese ? "Grade A / プレミアムオフィスビル" : "Grade A / Premium Office Building"}
                     </p>
                   </div>
                 </div>
@@ -147,9 +225,9 @@ export default function Tower6789Page() {
                     <ShieldCheck className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Sustainability Certification</p>
+                    <p className="font-semibold text-gray-900">{isJapanese ? "持続可能性認証" : "Sustainability Certification"}</p>
                     <p className="text-gray-600">
-                      LEED Gold Pre-Certified (Core & Shell)
+                      {isJapanese ? "LEED Gold Pre-Certified（Core & Shell）" : "LEED Gold Pre-Certified (Core & Shell)"}
                     </p>
                   </div>
                 </div>
@@ -159,9 +237,9 @@ export default function Tower6789Page() {
                     <LandPlot className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Typical Floor Plate</p>
+                    <p className="font-semibold text-gray-900">{isJapanese ? "典型フロア面積" : "Typical Floor Plate"}</p>
                     <p className="text-gray-600">
-                      Approximately 1,600sqm
+                      {isJapanese ? "約1,600㎡" : "Approximately 1,600sqm"}
                     </p>
                   </div>
                 </div>
@@ -191,8 +269,8 @@ export default function Tower6789Page() {
                     <CheckCircle2 className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">49 Private Rooms</p>
-                    <p className="text-sm text-gray-600">23rd Floor, Tower 6789</p>
+                    <p className="font-semibold text-gray-900">{isJapanese ? "49個の個室" : "49 Private Rooms"}</p>
+                    <p className="text-sm text-gray-600">{isJapanese ? "23階、Tower 6789" : "23rd Floor, Tower 6789"}</p>
                   </div>
                 </div>
               </div>
@@ -206,11 +284,12 @@ export default function Tower6789Page() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-4xl font-bold text-gray-900">
-              Floor Layout & Office Types
+              {isJapanese ? "フロアレイアウトとオフィスタイプ" : "Floor Layout & Office Types"}
             </h2>
             <p className="mt-5 text-lg text-gray-600">
-              Discover flexible office solutions designed to accommodate businesses
-              of every size.
+              {isJapanese
+                ? "あらゆる規模の事業に対応する、柔軟なオフィスソリューションをご紹介します。"
+                : "Discover flexible office solutions designed to accommodate businesses of every size."}
             </p>
           </div>
 
@@ -220,9 +299,17 @@ export default function Tower6789Page() {
               <InfoIcon className="w-5 h-5 text-yellow-600 shrink-0 mt-1" />
 
               <p className="text-sm text-yellow-800 leading-relaxed">
-                <strong>Initial Costs Include:</strong> Contract fee, security
-                deposit, first month's usage fee, common service fee,
-                security card fee, and applicable taxes.
+                {isJapanese ? (
+                  <>
+                    <strong>初期費用に含まれるもの：</strong> 契約費、敷金、初月利用料、共通サービス料、セキュリティカード費、関連税金
+                  </>
+                ) : (
+                  <>
+                    <strong>Initial Costs Include:</strong> Contract fee, security
+                    deposit, first month's usage fee, common service fee,
+                    security card fee, and applicable taxes.
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -256,10 +343,12 @@ export default function Tower6789Page() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Facilities & Services
+              {isJapanese ? "設備・サービス" : "Facilities & Services"}
             </h2>
             <p className="text-lg text-gray-600">
-              Everything you need for a productive work environment
+              {isJapanese
+                ? "生産性の高い仕事環境に必要なものをすべて揃えています。"
+                : "Everything you need for a productive work environment"}
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -288,10 +377,10 @@ export default function Tower6789Page() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Included Amenities
+              {isJapanese ? "含まれるアメニティ" : "Included Amenities"}
             </h2>
             <p className="text-lg text-gray-600">
-              Premium features for all tenants
+              {isJapanese ? "すべてのテナントにご利用いただける充実設備" : "Premium features for all tenants"}
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -325,15 +414,18 @@ export default function Tower6789Page() {
           <div className="mx-auto max-w-3xl text-center">
 
             <h2 className="mt-6 text-4xl font-bold text-white md:text-5xl">
-              Find Your Ideal Office Space
+              {isJapanese ? "最適なオフィススペースを見つけましょう" : "Find Your Ideal Office Space"}
             </h2>
 
             <p className="mt-4 text-lg leading-relaxed text-blue-100">
-              Whether you're launching a startup or expanding your business,
-              our team is ready to help you find the perfect serviced office at
-              <span className="font-semibold text-white">
-                {" "}Tower 6789 Building.
-              </span>
+              {isJapanese
+                ? "スタートアップの立ち上げから事業拡大まで、当社のチームがTower 6789の最適なサービスオフィスをご提案します。"
+                : "Whether you're launching a startup or expanding your business, our team is ready to help you find the perfect serviced office at"}
+              {!isJapanese && (
+                <span className="font-semibold text-white">
+                  {" "}Tower 6789 Building.
+                </span>
+              )}
             </p>
           </div>
 
@@ -347,7 +439,7 @@ export default function Tower6789Page() {
               <div className="flex-1 space-y-5">
                 <div>
                   <p className="text-sm font-bold uppercase tracking-wider text-blue-200">
-                    Main Contact
+                    {isJapanese ? "代表連絡先" : "Main Contact"}
                   </p>
                   <p className="mt-1 wrap-break-word text-sm lg:text-base text-blue-100">
                     +63 942 639 4128
@@ -355,7 +447,7 @@ export default function Tower6789Page() {
                 </div>
                 <div>
                   <p className="text-sm font-bold uppercase tracking-wider text-blue-200">
-                    Tower 6789 Contact
+                    {isJapanese ? "Tower 6789 連絡先" : "Tower 6789 Contact"}
                   </p>
                   <p className="mt-1 wrap-break-word text-sm lg:text-base text-blue-100">
                     +63 285 283 100
@@ -372,7 +464,7 @@ export default function Tower6789Page() {
               <div className="flex-1 space-y-5">
                 <div>
                   <p className="text-sm font-bold uppercase tracking-wider text-blue-200">
-                    Sales Email
+                    {isJapanese ? "営業メール" : "Sales Email"}
                   </p>
                   <p className="mt-1 wrap-break-word text-sm lg:text-base text-blue-100">
                     salesofficer@heroph.net
@@ -383,7 +475,7 @@ export default function Tower6789Page() {
                 </div>
                 <div>
                   <p className="text-sm font-bold uppercase tracking-wider text-blue-200">
-                    Admin Email
+                    {isJapanese ? "管理メール" : "Admin Email"}
                   </p>
                   <p className="mt-1 wrap-break-word text-sm lg:text-base text-blue-100">
                     admin@heroph.net
@@ -399,7 +491,7 @@ export default function Tower6789Page() {
               href="/quotation?branch=tower-6789"
               className="group inline-flex items-center gap-3 rounded-full bg-[#FFC107] px-8 py-4 font-semibold text-[#0A1E3F] transition-all duration-300 hover:scale-105 hover:bg-[#FFD54F]"
             >
-              Get a Quote Now
+              {isJapanese ? "今すぐ見積もりを依頼" : "Get a Quote Now"}
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>

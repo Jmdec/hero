@@ -17,6 +17,7 @@ import { chatApi, ChatApiError, type ConversationResponse } from "../lib/chatApi
 
 interface CTA {
     label: string;
+    labelJa?: string;
     href: string;
 }
 
@@ -32,6 +33,26 @@ interface Message {
 const SESSION_STORAGE_KEY = "hero_chat_session_id";
 const CHAT_SESSION_COOKIE_KEY = "hero_chat_session_id";
 const CHAT_STATE_KEY = "hero_chat_state";
+
+function getStoredLocale(): "en" | "ja" {
+    if (typeof document === "undefined") return "en";
+
+    const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+    return match?.[1] === "ja" ? "ja" : "en";
+}
+
+function getLocalizedText(text: { en: string; ja: string }): string {
+    return getStoredLocale() === "ja" ? text.ja : text.en;
+}
+
+function getLocalizedCta(cta?: CTA): CTA | undefined {
+    if (!cta) return undefined;
+
+    return {
+        ...cta,
+        label: getStoredLocale() === "ja" ? cta.labelJa ?? cta.label : cta.label,
+    };
+}
 
 function getStoredConversationSessionId(): string | null {
     if (typeof document === "undefined") return null;
@@ -98,7 +119,7 @@ function Modal({ open, onClose, title, children, className }: ModalProps) {
 
     return (
         <div
-            className={`fixed inset-0 z-[1100] flex items-center justify-center p-4 backdrop-blur-xs ${className ?? ""}`}
+            className={`fixed inset-0 z-1100 flex items-center justify-center p-4 backdrop-blur-xs ${className ?? ""}`}
         >
             <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
             <div
@@ -413,95 +434,146 @@ function isAgentAvailableNow(): boolean {
     );
 }
 
-const OUT_OF_HOURS_MESSAGE =
-    "Our live agents are offline right now. Let us know your preferred time and how to reach you (email or phone), and someone from the team will follow up.";
-
-const PREFERRED_CONTACT_RECEIVED_MESSAGE =
-    "Got it, thank you! We've saved your preferred contact details and someone from the team will reach out. Feel free to keep chatting with me in the meantime.";
-
-const LIVE_AGENT_FOLLOW_UP_MESSAGE =
-    "In the meantime, you can also reach us directly: salesofficer@heroph.net\n+63 02 8801 3417 | +63 917 322 4211\n\nMonday to Friday: 8AM - 8PM\n\nWe'll keep this chat open so an agent can pick up right where we left off.";
-
-const CTA_LINKS = {
-    quote: { label: "Request a Quotation", href: "/quotation" },
-    privateOffice: { label: "View Private Offices", href: "/services?modal=private" },
-    virtualOffice: { label: "View Virtual Office", href: "/services?modal=virtual" },
-    coworking: { label: "View Co-working Space", href: "/services?modal=coworking" },
-    meetingRooms: { label: "View Meeting Room", href: "/services?modal=conference" },
-    services: { label: "See All Services", href: "/services" },
-    contact: { label: "Contact Us", href: "/contact" },
+const OUT_OF_HOURS_MESSAGE = {
+    en: "Our live agents are offline right now. Let us know your preferred time and how to reach you (email or phone), and someone from the team will follow up.",
+    ja: "現在、ライブ担当者はオフラインです。ご希望の連絡時間と連絡方法（メールまたは電話）をご入力ください。担当者がご連絡いたします。",
 } as const;
 
-const PREDEFINED_REPLIES: Record<string, { text: string; cta?: CTA }> = {
+const PREFERRED_CONTACT_RECEIVED_MESSAGE = {
+    en: "Got it, thank you! We've saved your preferred contact details and someone from the team will reach out. Feel free to keep chatting with me in the meantime.",
+    ja: "ご希望の連絡先を受け付けました。担当者がご連絡いたします。しばらくはこのまま会話をお楽しみください。",
+} as const;
+
+const LIVE_AGENT_FOLLOW_UP_MESSAGE = {
+    en: "In the meantime, you can also reach us directly: salesofficer@heroph.net\n+63 02 8801 3417 | +63 917 322 4211\n\nMonday to Friday: 8AM - 8PM\n\nWe'll keep this chat open so an agent can pick up right where we left off.",
+    ja: "その間、次の方法でもご連絡いただけます：salesofficer@heroph.net\n+63 02 8801 3417 | +63 917 322 4211\n\n月〜金：8:00〜20:00\n\n担当者が会話の続きをすぐに受け取れるよう、このチャットはそのまま残します。",
+} as const;
+
+const CTA_LINKS = {
+    quote: { label: "Request a Quotation", labelJa: "見積もりを依頼", href: "/quotation" },
+    privateOffice: { label: "View Private Offices", labelJa: "個室オフィスを見る", href: "/services?modal=private" },
+    virtualOffice: { label: "View Virtual Office", labelJa: "バーチャルオフィスを見る", href: "/services?modal=virtual" },
+    coworking: { label: "View Co-working Space", labelJa: "コワーキングスペースを見る", href: "/services?modal=coworking" },
+    meetingRooms: { label: "View Meeting Room", labelJa: "会議室を見る", href: "/services?modal=conference" },
+    services: { label: "See All Services", labelJa: "サービス一覧を見る", href: "/services" },
+    contact: { label: "Contact Us", labelJa: "お問い合わせ", href: "/contact" },
+} as const;
+
+const PREDEFINED_REPLIES: Record<string, { text: { en: string; ja: string }; cta?: CTA }> = {
     "Our Services": {
-        text: "We offer a range of workspace solutions:\n\n• Private Offices\n• Virtual Offices\n• Co-working Spaces\n• Meeting & Conference Rooms\n• Business Support Services\n\nAll designed to help your business operate professionally and efficiently!",
+        text: {
+            en: "We offer a range of workspace solutions:\n\n• Private Offices\n• Virtual Offices\n• Co-working Spaces\n• Meeting & Conference Rooms\n• Business Support Services\n\nAll designed to help your business operate professionally and efficiently!",
+            ja: "以下のようなワークスペースソリューションをご用意しています。\n\n• 個室オフィス\n• バーチャルオフィス\n• コワーキングスペース\n• 会議室・会議スペース\n• ビジネスサポートサービス\n\nビジネスを安心・快適に進められる環境をご提供します。",
+        },
         cta: CTA_LINKS.services,
     },
     "Contact Info": {
-        text: "Hero Serviced Office, Inc. provides premium, fully-equipped workspaces for businesses of all sizes in the Philippines. With 2+ years of experience and 20+ completed projects, we help companies scale without the overhead of a traditional office.\n\n📍 Tower 6789\n23F Tower6789, 6789 Ayala Avenue, Makati City 1209, Metro Manila, Philippines\n🕐 Mon–Fri, 8AM–8PM\n\n📍 Insular Life Building\n11F Insular Life Building, 6781 Ayala Avenue, Corner Paseo de Roxas, Makati City, Metro Manila, Philippines\n🕐 Open 24/7\n\n📧 Email: salesofficer@heroph.net\n📞 Phone: +63 02 8801 3417 | +63 917 322 4211\n\nFeel free to reach out — we'd love to hear from you!",
+        text: {
+            en: "Hero Serviced Office, Inc. provides premium, fully-equipped workspaces for businesses of all sizes in the Philippines. With 2+ years of experience and 20+ completed projects, we help companies scale without the overhead of a traditional office.\n\n📍 Tower 6789\n23F Tower6789, 6789 Ayala Avenue, Makati City 1209, Metro Manila, Philippines\n🕐 Mon–Fri, 8AM–8PM\n\n📍 Insular Life Building\n11F Insular Life Building, 6781 Ayala Avenue, Corner Paseo de Roxas, Makati City, Metro Manila, Philippines\n🕐 Open 24/7\n\n📧 Email: salesofficer@heroph.net\n📞 Phone: +63 02 8801 3417 | +63 917 322 4211\n\nFeel free to reach out — we'd love to hear from you!",
+            ja: "Hero Serviced Office, Inc. は、フィリピンで事業を運営する企業に向けて、プレミアムで整備されたワークスペースを提供しています。2年以上の経験と20件以上の実績を持ち、伝統的なオフィスのオーバーヘッドを抑えながら事業拡大を支えます。\n\n📍 Tower 6789\n23F Tower6789, 6789 Ayala Avenue, Makati City 1209, Metro Manila, Philippines\n🕐 月〜金：8:00〜20:00\n\n📍 Insular Life Building\n11F Insular Life Building, 6781 Ayala Avenue, Corner Paseo de Roxas, Makati City, Metro Manila, Philippines\n🕐 24時間営業\n\n📧 Email: salesofficer@heroph.net\n📞 Phone: +63 02 8801 3417 | +63 917 322 4211\n\nご連絡をお待ちしています。",
+        },
         cta: CTA_LINKS.contact,
     },
     "Private Office": {
-        text: `
+        text: {
+            en: `
 Thank you for your interest in our Private Offices!
 
 Hero Serviced Office, Inc. offers fully furnished and professional office spaces designed for startups, SMEs, and growing businesses. Our private offices include high-speed internet, reception services, meeting room access, business support, and a prestigious Makati business address.
 
 To receive a customized quotation or schedule an office tour, please submit your inquiry here:
 `,
+            ja: `
+個室オフィスへのご興味ありがとうございます。
+
+Hero Serviced Office, Inc. は、スタートアップ企業・中小企業・成長中の事業者向けに、設備が整ったプロフェッショナルな個室オフィスを提供しています。高速インターネット、受付サービス、会議室利用、ビジネスサポート、信頼性の高いマカティの住所などが含まれます。
+
+お見積もりのご相談やオフィス見学をご希望の場合は、こちらからお問い合わせください：
+`,
+        },
         cta: CTA_LINKS.privateOffice,
     },
     "Virtual Office": {
-        text:
-            `Thank you for your interest in our Virtual Office services!
+        text: {
+            en: `Thank you for your interest in our Virtual Office services!
 
 Establish a credible business presence in Makati without leasing a physical office. Our Virtual Office plans include a premium business address, mail handling, business registration support, and professional reception services.
 
 For pricing and plan recommendations, please submit your inquiry here:
 `,
+            ja: `バーチャルオフィスサービスへのご興味ありがとうございます。
+
+マカティで本格的な事業拠点を構えつつ、物理オフィスを借りずに運営できます。バーチャルオフィスでは、上質な事業所住所、郵便物対応、法人登記支援、プロフェッショナルな受付サービスをご利用いただけます。
+
+料金やおすすめプランについては、こちらからお問い合わせください：
+`,
+        },
         cta: CTA_LINKS.virtualOffice,
     },
     "Co-working Space": {
-        text:
-            `Thank you for your interest in our Co-working Space!
+        text: {
+            en: `Thank you for your interest in our Co-working Space!
 
 Enjoy a comfortable and productive workspace with high-speed internet, complimentary coffee, professional amenities, and a collaborative business environment. Flexible daily, weekly, and monthly plans are available.
 
 Reserve your seat or send us your inquiry here:
 `,
+            ja: `コワーキングスペースへのご興味ありがとうございます。
+
+高速インターネット、無料コーヒー、充実した設備と、協働しやすい環境を備えた快適なワークスペースをご利用いただけます。日・週・月単位の柔軟なプランをご用意しています。
+
+席のご予約やお問い合わせは、こちらからどうぞ：
+`,
+        },
         cta: CTA_LINKS.coworking,
     },
     "Meeting Rooms": {
-        text:
-            `Thank you for your interest in our Meeting Rooms!
+        text: {
+            en: `Thank you for your interest in our Meeting Rooms!
 
 Our fully equipped meeting rooms are ideal for client presentations, interviews, team meetings, seminars, and business discussions. Flexible hourly and whole-day rental options are available.
 
 Check availability or submit your reservation request here:
 `,
+            ja: `会議室へのご興味ありがとうございます。
+
+設備が整った会議室は、クライアント面談、面接、チームミーティング、セミナー、商談などに最適です。時間単位や1日単位の柔軟な貸し出しにも対応しています。
+
+空き状況の確認やご予約は、こちらからどうぞ：
+`,
+        },
         cta: CTA_LINKS.meetingRooms,
     },
     "Get a Quote": {
-        text: "You can request a quotation for our services by filling out our quotation request form. We'll get back to you with a detailed quote based on your requirements.",
+        text: {
+            en: "You can request a quotation for our services by filling out our quotation request form. We'll get back to you with a detailed quote based on your requirements.",
+            ja: "サービスの見積もりは、見積もり依頼フォームからご連絡いただけます。ご要望に応じた詳細な見積もりをご案内いたします。",
+        },
         cta: CTA_LINKS.quote,
     },
 };
 
 type BotRule = {
     keywords: string[];
-    reply: string;
+    reply?: { en: string; ja: string };
+    replyKey?: keyof typeof PREDEFINED_REPLIES;
     cta?: CTA;
 };
 
 const BOT_RULES: BotRule[] = [
     {
         keywords: ["thank", "thanks", "thx", "appreciate"],
-        reply:
-            "You're very welcome! Is there anything else I can help you with?",
+        reply: {
+            en: "You're very welcome! Is there anything else I can help you with?",
+            ja: "どういたしまして。その他お手伝いできることはありますか？",
+        },
     },
     {
         keywords: ["bye", "goodbye", "see you"],
-        reply: "Thanks for chatting with us! Have a great day.",
+        reply: {
+            en: "Thanks for chatting with us! Have a great day.",
+            ja: "ご利用ありがとうございました。良い一日をお過ごしください。",
+        },
     },
     {
         keywords: [
@@ -512,18 +584,18 @@ const BOT_RULES: BotRule[] = [
             "good afternoon",
             "good evening",
         ],
-        reply:
-            "Hello! How can I help you today? You can ask about our services, private offices, virtual offices, co-working spaces, meeting rooms, pricing, or how to reach us.",
+        reply: {
+            en: "Hello! How can I help you today? You can ask about our services, private offices, virtual offices, co-working spaces, meeting rooms, pricing, or how to reach us.",
+            ja: "こんにちは！今日はどのようなご用件でしょうか？サービス内容、個室オフィス、バーチャルオフィス、コワーキングスペース、会議室、料金、連絡先など、お気軽にご質問ください。",
+        },
     },
     {
         keywords: ["service", "services", "what do you offer", "offer"],
-        reply: PREDEFINED_REPLIES["Our Services"].text,
-        cta: PREDEFINED_REPLIES["Our Services"].cta,
+        replyKey: "Our Services",
     },
     {
         keywords: ["about", "who are you", "company"],
-        reply: PREDEFINED_REPLIES["Contact Info"].text,
-        cta: PREDEFINED_REPLIES["Contact Info"].cta,
+        replyKey: "Contact Info",
     },
     {
         keywords: [
@@ -535,28 +607,23 @@ const BOT_RULES: BotRule[] = [
             "location",
             "where are you",
         ],
-        reply: PREDEFINED_REPLIES["Contact Info"].text,
-        cta: PREDEFINED_REPLIES["Contact Info"].cta,
+        replyKey: "Contact Info",
     },
     {
         keywords: ["private office", "office space", "desk space"],
-        reply: PREDEFINED_REPLIES["Private Office"].text,
-        cta: PREDEFINED_REPLIES["Private Office"].cta,
+        replyKey: "Private Office",
     },
     {
         keywords: ["virtual office", "virtual address", "mail handling"],
-        reply: PREDEFINED_REPLIES["Virtual Office"].text,
-        cta: PREDEFINED_REPLIES["Virtual Office"].cta,
+        replyKey: "Virtual Office",
     },
     {
         keywords: ["co-working", "coworking", "shared desk", "hot desk"],
-        reply: PREDEFINED_REPLIES["Co-working Space"].text,
-        cta: PREDEFINED_REPLIES["Co-working Space"].cta,
+        replyKey: "Co-working Space",
     },
     {
         keywords: ["meeting room", "conference room", "boardroom"],
-        reply: PREDEFINED_REPLIES["Meeting Rooms"].text,
-        cta: PREDEFINED_REPLIES["Meeting Rooms"].cta,
+        replyKey: "Meeting Rooms",
     },
     {
         keywords: [
@@ -568,18 +635,21 @@ const BOT_RULES: BotRule[] = [
             "quotation",
             "how much",
         ],
-        reply: PREDEFINED_REPLIES["Get a Quote"].text,
-        cta: PREDEFINED_REPLIES["Get a Quote"].cta,
+        replyKey: "Get a Quote",
     },
     {
         keywords: ["agent", "human", "representative", "real person"],
-        reply:
-            'I can connect you with a live team member — just tap "Talk to an Agent" below.',
+        reply: {
+            en: 'I can connect you with a live team member — just tap "Talk to an Agent" below.',
+            ja: '担当者につなぐことができます。下の「担当者と話す」をタップしてください。',
+        },
     },
     {
         keywords: ["hour", "open", "opening time", "business hours"],
-        reply:
-            "Tower 6789's live-chat desk is available Mon–Fri, 8AM–6PM (PHT). Our Insular Life location is staffed 24/7 on-site. You can also email us anytime at salesofficer@heroph.net.",
+        reply: {
+            en: "Tower 6789's live-chat desk is available Mon–Fri, 8AM–6PM (PHT). Our Insular Life location is staffed 24/7 on-site. You can also email us anytime at salesofficer@heroph.net.",
+            ja: "Tower 6789のライブチャット対応は月〜金 8:00〜18:00（PHT）です。Insular Life Buildingは24時間体制で対応しています。メールでもいつでもご連絡いただけます。",
+        },
     },
     {
         keywords: [
@@ -591,13 +661,17 @@ const BOT_RULES: BotRule[] = [
             "copy of this conversation",
             "copy of our chat",
         ],
-        reply:
-            "Sure — I'll email a copy of this conversation to the address you gave us. It should land in your inbox shortly.",
+        reply: {
+            en: "Sure — I'll email a copy of this conversation to the address you gave us. It should land in your inbox shortly.",
+            ja: "もちろんです。ご入力いただいたメールアドレスに会話内容を送信いたします。すぐに届きます。",
+        },
     },
 ];
 
-const FALLBACK_REPLY =
-    "Thanks for your message! I'm not sure I fully understood that, but here's what I can help with — our services, private offices, virtual offices, co-working spaces, meeting rooms, pricing, or contact details. You can also tap one of the quick replies below, or tap \"Talk to an Agent\" for a live team member.";
+const FALLBACK_REPLY = {
+    en: "Thanks for your message! I'm not sure I fully understood that, but here's what I can help with — our services, private offices, virtual offices, co-working spaces, meeting rooms, pricing, or contact details. You can also tap one of the quick replies below, or tap \"Talk to an Agent\" for a live team member.",
+    ja: "メッセージありがとうございます。よく理解できていない可能性がありますが、以下のことならお手伝いできます。サービス内容、個室オフィス、バーチャルオフィス、コワーキングスペース、会議室、料金、連絡先など。下のクイック返信から選ぶか、「担当者と話す」をタップしてください。",
+} as const;
 
 const HISTORY_REQUEST_KEYWORDS = [
     "email me this",
@@ -614,16 +688,26 @@ function getLocalBotReply(userText: string): { text: string; cta?: CTA } {
 
     for (const rule of BOT_RULES) {
         if (rule.keywords.some((kw) => text.includes(kw))) {
+            const replyText = rule.reply
+                ? getLocalizedText(rule.reply)
+                : rule.replyKey
+                    ? getLocalizedText(PREDEFINED_REPLIES[rule.replyKey].text)
+                    : "";
+
             return {
-                text: rule.reply,
-                cta: rule.cta ?? getContextualCta(userText),
+                text: replyText,
+                cta: getLocalizedCta(
+                    rule.cta ??
+                    (rule.replyKey ? PREDEFINED_REPLIES[rule.replyKey].cta : undefined) ??
+                    getContextualCta(userText),
+                ),
             };
         }
     }
 
     return {
-        text: FALLBACK_REPLY,
-        cta: getContextualCta(userText) ?? CTA_LINKS.services,
+        text: getLocalizedText(FALLBACK_REPLY),
+        cta: getLocalizedCta(getContextualCta(userText) ?? CTA_LINKS.services),
     };
 }
 
@@ -683,21 +767,6 @@ const nextPaint = () =>
         });
     });
 
-function getGoogleTranslateLanguage(): string {
-    const match = document.cookie.match(/(?:^|;\s*)googtrans=\/en\/([^;]+)/);
-    return match?.[1] ?? "en";
-}
-
-function retriggerGoogleTranslate(language: string) {
-    if (language === "en") return;
-
-    const select = document.querySelector<HTMLSelectElement>(".goog-te-combo");
-    if (!select) return;
-
-    select.value = language;
-    select.dispatchEvent(new Event("change"));
-}
-
 function isAgentRequestedStatus(status?: string | null): boolean {
     return status === "waiting_admin" || status === "agent_requested";
 }
@@ -715,13 +784,19 @@ function isConversationEndedStatus(status?: string | null): boolean {
 }
 
 function getPersistedMessageCta(text: string): CTA | undefined {
-    const predefined = Object.values(PREDEFINED_REPLIES).find((reply) => reply.text === text && reply.cta);
+    const predefined = Object.values(PREDEFINED_REPLIES).find(
+        (reply) => (reply.text.en === text || reply.text.ja === text) && reply.cta,
+    );
     if (predefined?.cta) return predefined.cta;
 
+    const liveAgentFollowUpText = getLocalizedText(LIVE_AGENT_FOLLOW_UP_MESSAGE);
+    const outOfHoursText = getLocalizedText(OUT_OF_HOURS_MESSAGE);
+    const preferredContactText = getLocalizedText(PREFERRED_CONTACT_RECEIVED_MESSAGE);
+
     if (
-        text === OUT_OF_HOURS_MESSAGE ||
-        text === PREFERRED_CONTACT_RECEIVED_MESSAGE ||
-        text === LIVE_AGENT_FOLLOW_UP_MESSAGE
+        text === outOfHoursText ||
+        text === preferredContactText ||
+        text === liveAgentFollowUpText
     ) {
         return CTA_LINKS.contact;
     }
@@ -730,7 +805,7 @@ function getPersistedMessageCta(text: string): CTA | undefined {
 }
 
 function renderBotMessageText(text: string): React.ReactNode {
-    if (text !== LIVE_AGENT_FOLLOW_UP_MESSAGE) {
+    if (text !== getLocalizedText(LIVE_AGENT_FOLLOW_UP_MESSAGE)) {
         return text;
     }
 
@@ -800,6 +875,7 @@ const Chatbot = () => {
     const [conversationClosed, setConversationClosed] = useState(false);
     const [awaitingPreferredContact, setAwaitingPreferredContact] = useState(false);
     const [locale, setLocale] = useState<"en" | "ja">("en");
+    const isJapanese = locale === "ja";
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -816,13 +892,16 @@ const Chatbot = () => {
     const scrollRafRef = useRef<number | null>(null);
 
     useEffect(() => {
+        const getStoredLocale = () => {
+            const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+            return match?.[1] === "ja" ? "ja" : "en";
+        };
+
         const updateLocale = (event?: Event) => {
             const detail = (event as CustomEvent<string> | undefined)?.detail;
             const nextLocale = detail === "ja" || detail === "en"
                 ? detail
-                : getGoogleTranslateLanguage() === "ja"
-                    ? "ja"
-                    : "en";
+                : getStoredLocale();
 
             setLocale(nextLocale);
         };
@@ -832,28 +911,27 @@ const Chatbot = () => {
         return () => window.removeEventListener("localeChanged", updateLocale);
     }, []);
 
-    // Google Translate translates the current DOM only. Retrigger it after React
-    // inserts chat content so messages added after a locale switch are translated.
-    useEffect(() => {
-        if (locale === "en") return;
-
-        const timeoutId = window.setTimeout(() => {
-            retriggerGoogleTranslate(locale);
-        }, 100);
-
-        return () => window.clearTimeout(timeoutId);
-    }, [locale, messages, isTyping, isChatOpen, isStarted, leadSubmitted]);
-
-    const quickReplies = [
-        "Private Office",
-        "Virtual Office",
-        "Co-working Space",
-        "Meeting Rooms",
-        "Our Services",
-        "Contact Info",
-        "Talk to an Agent",
-        "Send this Chat",
-    ];
+    const quickReplies = isJapanese
+        ? [
+            { value: "Private Office", label: "個室オフィス" },
+            { value: "Virtual Office", label: "バーチャルオフィス" },
+            { value: "Co-working Space", label: "コワーキングスペース" },
+            { value: "Meeting Rooms", label: "会議室" },
+            { value: "Our Services", label: "サービス紹介" },
+            { value: "Contact Info", label: "お問い合わせ" },
+            { value: "Talk to an Agent", label: "担当者と話す" },
+            { value: "Send this Chat", label: "この会話を送る" },
+        ]
+        : [
+            { value: "Private Office", label: "Private Office" },
+            { value: "Virtual Office", label: "Virtual Office" },
+            { value: "Co-working Space", label: "Co-working Space" },
+            { value: "Meeting Rooms", label: "Meeting Rooms" },
+            { value: "Our Services", label: "Our Services" },
+            { value: "Contact Info", label: "Contact Info" },
+            { value: "Talk to an Agent", label: "Talk to an Agent" },
+            { value: "Send this Chat", label: "Send this Chat" },
+        ];
 
     const showResumeNotice = useCallback(() => {
         setResumed(true);
@@ -1194,16 +1272,16 @@ const Chatbot = () => {
         event.stopPropagation();
     };
 
-    const handleQuickReply = async (reply: string) => {
+    const handleQuickReply = async (reply: { value: string; label: string }) => {
         // Live agent owns the chat — quick replies must not fire.
         if (conversationClosed || agentRequested || isLiveAgentOwnedStatus(conversationStatus)) return;
 
-        if (reply === "Talk to an Agent") {
+        if (reply.value === "Talk to an Agent") {
             await handleTalkToAgent();
             return;
         }
 
-        if (reply === "Send this Chat") {
+        if (reply.value === "Send this Chat") {
             isProcessingLocalMessageRef.current = true;
 
             try {
@@ -1211,7 +1289,7 @@ const Chatbot = () => {
 
                 setMessages((prev) => [
                     ...prev,
-                    { id: makeId(), type: "user", text: reply, time },
+                    { id: makeId(), type: "user", text: reply.label, time },
                 ]);
                 setIsTyping(true);
                 await nextPaint();
@@ -1220,13 +1298,13 @@ const Chatbot = () => {
                 const activeConversation = await ensureConversation();
 
                 // Persist the user's quick reply selection so it survives polling.
-                void persistMessage(activeConversation, "user", reply);
+                void persistMessage(activeConversation, "user", reply.value);
 
                 // Email the chat history
                 const targetId =
                     conversation?.remoteConversationId ?? conversation?.id ??
                     activeConversation?.remoteConversationId ?? activeConversation?.id;
-                
+
                 const transcriptSent = targetId
                     ? await requestTranscriptEmail(targetId)
                     : false;
@@ -1235,32 +1313,32 @@ const Chatbot = () => {
                 setIsTyping(false);
                 await nextPaint();
 
+                const transcriptReply = isJapanese
+                    ? transcriptSent
+                        ? "チャット履歴をメールアドレスに送信しました。すぐに届きます。"
+                        : "チャット履歴を送信できませんでした。もう一度お試しいただくか、直接お問い合わせください。"
+                    : transcriptSent
+                        ? "I've sent your chat history to your email address. You should receive it shortly."
+                        : "I couldn't send your chat history right now. Please try again or contact our team directly.";
+
                 setMessages((prev) => [
                     ...prev,
                     {
                         id: makeId(),
                         type: "bot",
-                        text: transcriptSent
-                            ? "I've sent your chat history to your email address. You should receive it shortly."
-                            : "I couldn't send your chat history right now. Please try again or contact our team directly.",
+                        text: transcriptReply,
                         time: formatTime(),
                         source: "HERO Assistant",
                     },
                 ]);
-                void persistMessage(
-                    activeConversation,
-                    "assistant",
-                    transcriptSent
-                        ? "I've sent your chat history to your email address. You should receive it shortly."
-                        : "I couldn't send your chat history right now. Please try again or contact our team directly.",
-                );
+                void persistMessage(activeConversation, "assistant", transcriptReply);
             } finally {
                 isProcessingLocalMessageRef.current = false;
             }
             return;
         }
 
-        const predefined = PREDEFINED_REPLIES[reply];
+        const predefined = PREDEFINED_REPLIES[reply.value];
 
         if (!predefined) {
             console.error(`No predefined reply configured for quick reply: "${reply}"`);
@@ -1274,7 +1352,7 @@ const Chatbot = () => {
 
             setMessages((prev) => [
                 ...prev,
-                { id: makeId(), type: "user", text: reply, time },
+                { id: makeId(), type: "user", text: reply.label, time },
             ]);
             setIsTyping(true);
             await nextPaint();
@@ -1283,7 +1361,7 @@ const Chatbot = () => {
             const activeConversation = await ensureConversation();
 
             // Persist the user's quick reply selection so it survives polling.
-            void persistMessage(activeConversation, "user", reply);
+            void persistMessage(activeConversation, "user", reply.value);
 
             await quickReplyDelay();
             setIsTyping(false);
@@ -1294,13 +1372,13 @@ const Chatbot = () => {
                 {
                     id: makeId(),
                     type: "bot",
-                    text: predefined.text,
+                    text: getLocalizedText(predefined.text),
                     time: formatTime(),
                     source: "Quick Reply",
-                    cta: predefined.cta,
+                    cta: getLocalizedCta(predefined.cta),
                 },
             ]);
-            void persistMessage(activeConversation, "assistant", predefined.text);
+            void persistMessage(activeConversation, "assistant", getLocalizedText(predefined.text));
         } finally {
             isProcessingLocalMessageRef.current = false;
         }
@@ -1324,7 +1402,9 @@ const Chatbot = () => {
                 {
                     id: makeId(),
                     type: "bot",
-                    text: "Before we connect you to a live agent, please provide your contact details so our team can reach you.",
+                    text: isJapanese
+                        ? "担当者につなぐ前に、チームが連絡できるようお問い合わせ情報をご入力ください。"
+                        : "Before we connect you to a live agent, please provide your contact details so our team can reach you.",
                     time: formatTime(),
                     source: "HERO Assistant",
                 },
@@ -1361,13 +1441,13 @@ const Chatbot = () => {
                     {
                         id: makeId(),
                         type: "bot",
-                        text: OUT_OF_HOURS_MESSAGE,
+                        text: getLocalizedText(OUT_OF_HOURS_MESSAGE),
                         time: formatTime(),
                         source: "HERO Assistant",
-                        cta: CTA_LINKS.contact,
+                        cta: getLocalizedCta(CTA_LINKS.contact),
                     },
                 ]);
-                void persistMessage(activeConversation, "assistant", OUT_OF_HOURS_MESSAGE);
+                void persistMessage(activeConversation, "assistant", getLocalizedText(OUT_OF_HOURS_MESSAGE));
                 setAwaitingPreferredContact(true);
             }
 
@@ -1479,16 +1559,16 @@ const Chatbot = () => {
                     {
                         id: makeId(),
                         type: "bot",
-                        text: PREFERRED_CONTACT_RECEIVED_MESSAGE,
+                        text: getLocalizedText(PREFERRED_CONTACT_RECEIVED_MESSAGE),
                         time: formatTime(),
                         source: "HERO Assistant",
-                        cta: CTA_LINKS.contact,
+                        cta: getLocalizedCta(CTA_LINKS.contact),
                     },
                 ]);
                 void persistMessage(
                     activeConversation,
                     "assistant",
-                    PREFERRED_CONTACT_RECEIVED_MESSAGE,
+                    getLocalizedText(PREFERRED_CONTACT_RECEIVED_MESSAGE),
                 );
                 return;
             }
@@ -1629,7 +1709,9 @@ const Chatbot = () => {
             setIsStarted(true);
             leadSubmittedRef.current = true;
 
-            const greeting = `Hi, ${leadInfo.name.trim()}! Your details have been received. How can I help you today?`;
+            const greeting = isJapanese
+                ? `こんにちは、${leadInfo.name.trim()}さん。お問い合わせ情報を受け取りました。今日はどのようなご用件ですか？`
+                : `Hi, ${leadInfo.name.trim()}! Your details have been received. How can I help you today?`;
             setMessages([
                 {
                     id: makeId(),
@@ -1646,7 +1728,7 @@ const Chatbot = () => {
         } catch (err) {
             const detail = err instanceof Error ? err.message : undefined;
             setLeadError(
-                detail || "We couldn't save your details. Please try again.",
+                detail || (isJapanese ? "お問い合わせ情報を保存できませんでした。もう一度お試しください。" : "We couldn't save your details. Please try again."),
             );
         } finally {
             setIsSubmittingLead(false);
@@ -1750,18 +1832,19 @@ const Chatbot = () => {
                                     </div>
                                     <div>
                                         <h2 className="text-lg font-bold text-gray-900">
-                                            Welcome to HERO
+                                            {isJapanese ? "HEROへようこそ" : "Welcome to HERO"}
                                         </h2>
                                         <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                                            I&apos;m your HERO Assistant. Before we begin, we&apos;ll
-                                            collect a few details so we can better serve you.
+                                            {isJapanese
+                                                ? "HEROアシスタントです。ご利用前に、より良いサポートのためにお問い合わせ内容をお伺いします。"
+                                                : "I&apos;m your HERO Assistant. Before we begin, we&apos;ll collect a few details so we can better serve you."}
                                         </p>
                                     </div>
                                     <button
                                         onClick={() => setIsStarted(true)}
                                         className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#1B3A8C] text-white text-sm font-medium hover:bg-[#16318a] active:scale-95 transition-all shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C]"
                                     >
-                                        Get started <ChevronRight className="w-4 h-4" />
+                                        {isJapanese ? "はじめる" : "Get started"} <ChevronRight className="w-4 h-4" />
                                     </button>
                                     <p className="text-xs text-gray-400">
                                         Powered by Hero Serviced Office, Inc.
@@ -1779,25 +1862,27 @@ const Chatbot = () => {
                                 >
                                     <div className="text-center mb-4">
                                         <h2 className="text-lg font-bold text-gray-900">
-                                            Your contact details
+                                            {isJapanese ? "お客様の連絡先" : "Your contact details"}
                                         </h2>
                                         <p className="text-xs text-gray-500 mt-1">
-                                            Please fill in your details before continuing.
+                                            {isJapanese
+                                                ? "続行する前に必要事項をご入力ください。"
+                                                : "Please fill in your details before continuing."}
                                         </p>
                                     </div>
 
                                     {(
                                         [
-                                            { key: "name", placeholder: "Full name", type: "text" },
+                                            { key: "name", placeholder: isJapanese ? "お名前" : "Full name", type: "text" },
                                             {
                                                 key: "email",
-                                                placeholder: "Email address",
+                                                placeholder: isJapanese ? "メールアドレス" : "Email address",
                                                 type: "email",
                                             },
-                                            { key: "phone", placeholder: "Phone number", type: "tel" },
+                                            { key: "phone", placeholder: isJapanese ? "電話番号" : "Phone number", type: "tel" },
                                             {
                                                 key: "company",
-                                                placeholder: "Company name (optional)",
+                                                placeholder: isJapanese ? "会社名（任意）" : "Company name (optional)",
                                                 type: "text",
                                             },
                                         ] as { key: LeadField; placeholder: string; type: string }[]
@@ -1860,23 +1945,23 @@ const Chatbot = () => {
                                                 className="mt-0.5 w-3.5 h-3.5 rounded border-gray-300 text-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/40 shrink-0"
                                             />
                                             <span>
-                                                I agree to the{" "}
+                                                {isJapanese ? "次の内容に同意します：" : "I agree to the"}{" "}
                                                 <button
                                                     type="button"
                                                     onClick={() => setModal("privacy")}
                                                     className="text-[#1565C0] underline hover:text-[#1B3A8C] transition-colors"
                                                 >
-                                                    Privacy Policy
+                                                    {isJapanese ? "プライバシーポリシー" : "Privacy Policy"}
                                                 </button>{" "}
-                                                and{" "}
+                                                {isJapanese ? "および" : "and"}{" "}
                                                 <button
                                                     type="button"
                                                     onClick={() => setModal("terms")}
                                                     className="text-[#1565C0] underline hover:text-[#1B3A8C] transition-colors"
                                                 >
-                                                    Terms of Service
+                                                    {isJapanese ? "利用規約" : "Terms of Service"}
                                                 </button>
-                                                .
+                                                {isJapanese ? "に同意します。" : "."}
                                             </span>
                                         </label>
                                         <AnimatePresence>
@@ -1888,8 +1973,10 @@ const Chatbot = () => {
                                                     transition={{ duration: 0.15 }}
                                                     className="text-[11px] text-red-500 pl-1 flex items-center gap-1"
                                                 >
-                                                    <AlertCircle className="w-3 h-3 shrink-0" /> Please accept
-                                                    the Privacy Policy and Terms of Service to continue.
+                                                    <AlertCircle className="w-3 h-3 shrink-0" />
+                                                    {isJapanese
+                                                        ? "続行するにはプライバシーポリシーおよび利用規約への同意が必要です。"
+                                                        : "Please accept the Privacy Policy and Terms of Service to continue."}
                                                 </motion.p>
                                             )}
                                         </AnimatePresence>
@@ -1910,10 +1997,10 @@ const Chatbot = () => {
                                         {isSubmittingLead ? (
                                             <>
                                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                                <span>Submitting...</span>
+                                                <span>{isJapanese ? "送信中..." : "Submitting..."}</span>
                                             </>
                                         ) : (
-                                            <span>Continue</span>
+                                            <span>{isJapanese ? "続行" : "Continue"}</span>
                                         )}
                                     </button>
                                     <p className="text-[11px] text-gray-400 text-center">
@@ -1947,7 +2034,7 @@ const Chatbot = () => {
                                                             : "bg-white border border-gray-100 text-gray-800 rounded-bl-sm"
                                                             }`}
                                                     >
-                                                        {msg.text === LIVE_AGENT_FOLLOW_UP_MESSAGE ? (
+                                                        {msg.text === getLocalizedText(LIVE_AGENT_FOLLOW_UP_MESSAGE) ? (
                                                             <div className="text-sm leading-relaxed space-y-2">
                                                                 {renderBotMessageText(msg.text)}
                                                             </div>
@@ -2058,7 +2145,7 @@ const Chatbot = () => {
                                                         className="pt-1"
                                                     >
                                                         <p className="text-[11px] text-gray-400 mb-2 pl-9">
-                                                            Quick replies
+                                                            {isJapanese ? 'クイック返信' : 'Quick replies'}
                                                         </p>
                                                         <div className="flex flex-wrap gap-1.5 pl-9">
                                                             {quickReplies.map((reply, idx) => (
@@ -2066,19 +2153,19 @@ const Chatbot = () => {
                                                                     key={idx}
                                                                     onClick={() => handleQuickReply(reply)}
                                                                     disabled={
-                                                                        reply === "Talk to an Agent" &&
+                                                                        reply.value === "Talk to an Agent" &&
                                                                         (agentRequested || agentRequestInFlight)
                                                                     }
                                                                     className="px-3 py-1.5 text-xs border border-[#1B3A8C] text-[#1B3A8C] rounded-full hover:bg-[#1B3A8C] hover:text-white active:scale-95 transition-all font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B3A8C] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#1B3A8C] inline-flex items-center gap-1"
                                                                 >
-                                                                    {reply === "Talk to an Agent" && (
+                                                                    {reply.value === "Talk to an Agent" && (
                                                                         <UserRound className="w-3 h-3" />
                                                                     )}
-                                                                    {reply === "Talk to an Agent" && agentRequestInFlight
-                                                                        ? "Requesting agent…"
-                                                                        : reply === "Talk to an Agent" && agentRequested
-                                                                            ? "Agent requested"
-                                                                            : reply}
+                                                                    {reply.value === "Talk to an Agent" && agentRequestInFlight
+                                                                        ? (isJapanese ? '担当者を呼び出しています…' : 'Requesting agent…')
+                                                                        : reply.value === "Talk to an Agent" && agentRequested
+                                                                            ? (isJapanese ? '担当者を依頼しました' : 'Agent requested')
+                                                                            : reply.label}
                                                                 </button>
                                                             ))}
                                                         </div>
@@ -2097,27 +2184,27 @@ const Chatbot = () => {
                             <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
                                 {isAgentRequestedStatus(conversationStatus) && (
                                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                                        <span>Your live-agent request has been sent.</span>
+                                        <span>{isJapanese ? "担当者への依頼を送信しました。" : "Your live-agent request has been sent."}</span>
                                         <button
                                             type="button"
                                             onClick={() => void handleCancelAgentRequest()}
                                             disabled={cancellingAgentRequest}
                                             className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
                                         >
-                                            {cancellingAgentRequest ? "Cancelling..." : "Cancel"}
+                                            {cancellingAgentRequest ? (isJapanese ? "取り消し中..." : "Cancelling...") : (isJapanese ? "取り消し" : "Cancel")}
                                         </button>
                                     </div>
                                 )}
                                 {isLiveAgentActiveStatus(conversationStatus) && (
                                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-[#1B3A8C]">
-                                        <span>You&apos;re connected to a live agent.</span>
+                                        <span>{isJapanese ? "担当者と接続中です。" : "You&apos;re connected to a live agent."}</span>
                                         <button
                                             type="button"
                                             onClick={() => setEndConversationOpen(true)}
                                             className="inline-flex items-center gap-1.5 rounded-full border border-[#1B3A8C]/20 bg-white px-3 py-1.5 text-xs font-semibold text-[#1B3A8C] transition hover:bg-[#1B3A8C]/5"
                                         >
                                             <X className="h-3.5 w-3.5" />
-                                            End Live Agent Chat
+                                            {isJapanese ? "担当者チャットを終了" : "End Live Agent Chat"}
                                         </button>
                                     </div>
                                 )}
@@ -2130,8 +2217,8 @@ const Chatbot = () => {
                                         onKeyDown={handleKeyPress}
                                         placeholder={
                                             awaitingPreferredContact
-                                                ? "e.g. Weekdays after 6PM, reach me by phone…"
-                                                : "Type a message…"
+                                                ? (isJapanese ? "例：平日18時以降、電話でご連絡ください" : "e.g. Weekdays after 6PM, reach me by phone…")
+                                                : (isJapanese ? "メッセージを入力..." : "Type a message…")
                                         }
                                         aria-label="Type a message"
                                         className="flex-1 px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#1B3A8C] focus:ring-1 focus:ring-[#1B3A8C]/20 bg-gray-50 transition-colors"
@@ -2150,14 +2237,14 @@ const Chatbot = () => {
                                         onClick={() => setModal("privacy")}
                                         className="hover:text-[#1565C0] transition-colors cursor-pointer"
                                     >
-                                        Privacy Policy
+                                        {isJapanese ? "プライバシーポリシー" : "Privacy Policy"}
                                     </button>
                                     <span className="text-gray-200">·</span>
                                     <button
                                         onClick={() => setModal("terms")}
                                         className="hover:text-[#1565C0] transition-colors cursor-pointer"
                                     >
-                                        Terms of Service
+                                        {isJapanese ? "利用規約" : "Terms of Service"}
                                     </button>
                                 </div>
                                 <p className="text-[10px] text-gray-300 text-center mt-1">
@@ -2169,7 +2256,7 @@ const Chatbot = () => {
                         {leadSubmitted && conversationClosed && (
                             <div className="px-4 py-4 bg-white border-t border-gray-100 shrink-0 text-center space-y-2">
                                 <p className="text-xs text-gray-500">
-                                    This conversation has ended.
+                                    {isJapanese ? "この会話は終了しました。" : "This conversation has ended."}
                                 </p>
                                 {sendError && (
                                     <p className="text-[11px] text-red-500 flex items-center justify-center gap-1">
@@ -2187,7 +2274,7 @@ const Chatbot = () => {
             <Modal
                 open={modal === "privacy"}
                 onClose={() => setModal(null)}
-                title="Privacy Policy"
+                title={isJapanese ? "プライバシーポリシー" : "Privacy Policy"}
             >
                 <PrivacyPolicyContent />
             </Modal>
@@ -2195,7 +2282,7 @@ const Chatbot = () => {
             <Modal
                 open={modal === "terms"}
                 onClose={() => setModal(null)}
-                title="Terms of Service"
+                title={isJapanese ? "利用規約" : "Terms of Service"}
             >
                 <TermsOfServiceContent />
             </Modal>
@@ -2203,12 +2290,14 @@ const Chatbot = () => {
             <Modal
                 open={endConversationOpen}
                 onClose={() => !endingConversation && setEndConversationOpen(false)}
-                title="End this conversation?"
-                className="z-[1100]"
+                title={isJapanese ? "この会話を終了しますか？" : "End this conversation?"}
+                className="z-1100"
             >
                 <div className="space-y-4">
                     <p>
-                        Are you sure you want to end the live-agent conversation?
+                        {isJapanese
+                            ? "担当者との会話を終了してもよろしいですか？"
+                            : "Are you sure you want to end the live-agent conversation?"}
                     </p>
                     <div className="flex justify-end gap-2">
                         <button
@@ -2217,7 +2306,7 @@ const Chatbot = () => {
                             disabled={endingConversation}
                             className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Cancel
+                            {isJapanese ? "キャンセル" : "Cancel"}
                         </button>
                         <button
                             type="button"
@@ -2226,7 +2315,9 @@ const Chatbot = () => {
                             className="inline-flex items-center gap-2 rounded-full bg-[#1B3A8C] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#16318a] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {endingConversation && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {endingConversation ? "Ending…" : "End Conversation"}
+                            {endingConversation
+                                ? (isJapanese ? "終了中…" : "Ending…")
+                                : (isJapanese ? "会話を終了" : "End Conversation")}
                         </button>
                     </div>
                 </div>

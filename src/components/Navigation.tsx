@@ -46,8 +46,13 @@ export default function Navigation() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const match = document.cookie.match(/googtrans=\/en\/(\w+)/);
-    if (match?.[1] === "ja") setLocale("ja");
+    const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+    if (match?.[1] === "ja") {
+      setLocale("ja");
+      return;
+    }
+
+    setLocale("en");
   }, []);
 
   useEffect(() => {

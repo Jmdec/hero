@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import {
   InfoIcon,
   Building2,
@@ -28,7 +29,7 @@ import {
   LandPlot,
 } from "lucide-react";
 
-const facilities = [
+const facilitiesEn = [
   {
     icon: DoorOpen,
     title: "Reception",
@@ -61,7 +62,40 @@ const facilities = [
   },
 ];
 
-const amenities = [
+const facilitiesJa = [
+  {
+    icon: DoorOpen,
+    title: "受付",
+    description: "平日9:00-18:00に日本語対応スタッフがご案内します",
+  },
+  {
+    icon: Users,
+    title: "会議スペース",
+    description: "共有会議室2室で最大20名まで利用可能（有料、平日9:00-18:00）",
+  },
+  {
+    icon: Coffee,
+    title: "カフェエリア",
+    description: "気軽な打ち合わせや交流に最適な広いスペース",
+  },
+  {
+    icon: Armchair,
+    title: "ラウンジ",
+    description: "来客の待機スペースやテナント休憩のための24/7利用可能エリア",
+  },
+  {
+    icon: Mail,
+    title: "メールボックス",
+    description: "居住者向け個別メールボックス。24/7・365日利用可",
+  },
+  {
+    icon: Package,
+    title: "ロッカー室",
+    description: "大きな荷物用レンタルロッカー。24/7・365日利用可",
+  },
+];
+
+const amenitiesEn = [
   { icon: Clock, title: "24/7 Access", description: "Use office anytime, perfect security" },
   { icon: Wifi, title: "Wired LAN", description: "Japan-equivalent line speeds" },
   { icon: Snowflake, title: "24H Air Conditioning", description: "No limits, available 24 hours daily" },
@@ -74,7 +108,55 @@ const amenities = [
   { icon: Globe, title: "Global IP Address", description: "Global IP addresses available for rent" },
 ];
 
+const amenitiesJa = [
+  { icon: Clock, title: "24/7アクセス", description: "いつでも利用できる安心設計" },
+  { icon: Wifi, title: "有線LAN", description: "日本並みの高速回線" },
+  { icon: Snowflake, title: "24時間空調", description: "24時間365日利用可能" },
+  { icon: Phone, title: "電話回線", description: "固定月額でご利用いただけます" },
+  { icon: FileText, title: "郵便転送", description: "バーチャルオフィス利用者向け" },
+  { icon: Car, title: "駐車場", description: "Insular Life Building内でご利用いただけます" },
+  { icon: Coffee, title: "無制限コーヒー", description: "コーヒー・ミネラルウォーターを無料提供" },
+  { icon: Printer, title: "複合機", description: "コピー・印刷・スキャンが可能" },
+  { icon: FileText, title: "備品完備", description: "デスク・椅子・キャビネットをご用意" },
+  { icon: Globe, title: "グローバルIP", description: "レンタル可能なグローバルIPアドレス" },
+];
+
 export default function InsularLifePage() {
+  const [locale, setLocale] = useState<"en" | "ja">("en");
+
+  useEffect(() => {
+    const getStoredLocale = (): "en" | "ja" => {
+      const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+
+      if (match?.[1] === "ja" || match?.[1] === "en") {
+        return match[1];
+      }
+
+      if (typeof navigator !== "undefined") {
+        const language = navigator.language || navigator.languages?.[0] || "";
+        if (language.toLowerCase().startsWith("ja")) {
+          return "ja";
+        }
+      }
+
+      return "en";
+    };
+
+    const updateLocale = (event?: Event) => {
+      const detail = (event as CustomEvent<string> | undefined)?.detail;
+      const nextLocale = detail === "ja" || detail === "en" ? detail : getStoredLocale();
+      setLocale(nextLocale);
+    };
+
+    updateLocale();
+    window.addEventListener("localeChanged", updateLocale);
+    return () => window.removeEventListener("localeChanged", updateLocale);
+  }, []);
+
+  const isJapanese = locale === "ja";
+  const facilities = isJapanese ? facilitiesJa : facilitiesEn;
+  const amenities = isJapanese ? amenitiesJa : amenitiesEn;
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -85,13 +167,15 @@ export default function InsularLifePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-center max-w-3xl mx-auto"
+            className="text-center max-w-4xl mx-auto"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-              Insular Life Building Makati
+              {isJapanese ? "インシュラー・ライフ・ビル" : "Insular Life Building Makati"}
             </h1>
             <p className="text-xl text-gray-300">
-              11th Floor, 6781 Ayala Avenue corner Paseo de Roxas Avenue, Makati City
+              {isJapanese
+                ? "11 階、6781 アヤラ アベニュー コーナー パセオ デ ロハス、マカティ"
+                : "11th Floor, 6781 Ayala Avenue corner Paseo de Roxas Avenue, Makati City"}
             </p>
           </motion.div>
         </div>
@@ -104,10 +188,14 @@ export default function InsularLifePage() {
             <Image src="/peza.png" alt="PEZA Logo" width={100} height={100} />
             <div className="flex flex-col gap-3">
               <h1 className="text-xl font-bold text-gray-900">
-                The building (INSULAR LIFE BUILDING MAKATI) where the service office is located is a PEZA certified building.
+                {isJapanese
+                  ? "当サービスオフィスが所在する建物（INSULAR LIFE BUILDING MAKATI）はPEZA認定ビルです。"
+                  : "The building (INSULAR LIFE BUILDING MAKATI) where the service office is located is a PEZA certified building."}
               </h1>
               <p className="text-gray-500">
-                In districts certified by the Philippine Economic Zone Authority (PEZA), as part of preferential treatment for foreign investment, depending on the type of business, you can receive preferential treatment such as exemption from corporate income tax, customs duty, and value added tax.
+                {isJapanese
+                  ? "フィリピン経済特区庁（PEZA）認定地区では、事業形態により法人所得税・関税・付加価値税の免除などの優遇措置を受けられる場合があります。"
+                  : "In districts certified by the Philippine Economic Zone Authority (PEZA), as part of preferential treatment for foreign investment, depending on the type of business, you can receive preferential treatment such as exemption from corporate income tax, customs duty, and value added tax."}
               </p>
             </div>
           </div>
@@ -125,7 +213,7 @@ export default function InsularLifePage() {
               viewport={{ once: true }}
             >
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-                Base Overview
+                {isJapanese ? "基本情報" : "Base Overview"}
               </h2>
 
               <div className="space-y-6">
@@ -134,15 +222,15 @@ export default function InsularLifePage() {
                     <MapPin className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Address</p>
+                    <p className="font-semibold text-gray-900">{isJapanese ? "所在地" : "Address"}</p>
                     <p className="text-gray-600">
-                      11th Floor, Insular Life Building
+                      {isJapanese ? "11階、Insular Life Building" : "11th Floor, Insular Life Building"}
                     </p>
                     <p className="text-gray-600">
-                      6781 Ayala Avenue corner Paseo de Roxas
+                      {isJapanese ? "6781アヤラ通りとパセオ・デ・ロハス通り角" : "6781 Ayala Avenue corner Paseo de Roxas"}
                     </p>
                     <p className="text-gray-600">
-                      Makati City, Metro Manila, Philippines
+                      {isJapanese ? "マカティ市、マニラ首都圏、フィリピン" : "Makati City, Metro Manila, Philippines"}
                     </p>
                   </div>
                 </div>
@@ -152,9 +240,9 @@ export default function InsularLifePage() {
                     <Building2 className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Property Classification</p>
+                    <p className="font-semibold text-gray-900">{isJapanese ? "物件区分" : "Property Classification"}</p>
                     <p className="text-gray-600">
-                      Grade A / Premium Office Building
+                      {isJapanese ? "Grade A / プレミアムオフィスビル" : "Grade A / Premium Office Building"}
                     </p>
                   </div>
                 </div>
@@ -164,9 +252,11 @@ export default function InsularLifePage() {
                     <ShieldCheck className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Sustainability Certification</p>
+                    <p className="font-semibold text-gray-900">{isJapanese ? "持続可能性認証" : "Sustainability Certification"}</p>
                     <p className="text-gray-600">
-                      LEED Gold Certified for energy-efficient and environmentally friendly building features
+                      {isJapanese
+                        ? "省エネ・環境配慮を備えた建物としてLEED Gold認証取得"
+                        : "LEED Gold Certified for energy-efficient and environmentally friendly building features"}
                     </p>
                   </div>
                 </div>
@@ -176,9 +266,9 @@ export default function InsularLifePage() {
                     <LandPlot className="w-5 h-5 text-[#1B3A8C]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Typical Floor Plate</p>
+                    <p className="font-semibold text-gray-900">{isJapanese ? "典型フロア面積" : "Typical Floor Plate"}</p>
                     <p className="text-gray-600">
-                      Approximately 1,617–1,623 sqm
+                      {isJapanese ? "約1,617～1,623㎡" : "Approximately 1,617–1,623 sqm"}
                     </p>
                   </div>
                 </div>
@@ -208,8 +298,8 @@ export default function InsularLifePage() {
                     <CheckCircle2 className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">49 Private Rooms</p>
-                    <p className="text-sm text-gray-600">11th Floor, Insular Life Building</p>
+                    <p className="font-semibold text-gray-900">{isJapanese ? "49個の個室" : "49 Private Rooms"}</p>
+                    <p className="text-sm text-gray-600">{isJapanese ? "11階、Insular Life Building" : "11th Floor, Insular Life Building"}</p>
                   </div>
                 </div>
               </div>
@@ -223,11 +313,12 @@ export default function InsularLifePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-4xl font-bold text-gray-900">
-              Floor Layout & Office Types
+              {isJapanese ? "フロアレイアウトとオフィスタイプ" : "Floor Layout & Office Types"}
             </h2>
             <p className="mt-5 text-lg text-gray-600">
-              Discover flexible office solutions designed to accommodate businesses
-              of every size.
+              {isJapanese
+                ? "あらゆる規模の事業に対応する、柔軟なオフィスソリューションをご紹介します。"
+                : "Discover flexible office solutions designed to accommodate businesses of every size."}
             </p>
           </div>
 
@@ -237,9 +328,17 @@ export default function InsularLifePage() {
               <InfoIcon className="w-5 h-5 text-yellow-600 shrink-0 mt-1" />
 
               <p className="text-sm text-yellow-800 leading-relaxed">
-                <strong>Initial Costs Include:</strong> Contract fee, security
-                deposit, first month's usage fee, common service fee,
-                security card fee, and applicable taxes.
+                {isJapanese ? (
+                  <>
+                    <strong>初期費用に含まれるもの：</strong> 契約費、敷金、初月利用料、共通サービス料、セキュリティカード費、関連税金
+                  </>
+                ) : (
+                  <>
+                    <strong>Initial Costs Include:</strong> Contract fee, security
+                    deposit, first month's usage fee, common service fee,
+                    security card fee, and applicable taxes.
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -273,10 +372,12 @@ export default function InsularLifePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Facilities & Services
+              {isJapanese ? "設備・サービス" : "Facilities & Services"}
             </h2>
             <p className="text-lg text-gray-600">
-              Everything you need for a productive work environment
+              {isJapanese
+                ? "生産性の高い仕事環境に必要なものをすべて揃えています。"
+                : "Everything you need for a productive work environment"}
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -305,10 +406,10 @@ export default function InsularLifePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Included Amenities
+              {isJapanese ? "含まれるアメニティ" : "Included Amenities"}
             </h2>
             <p className="text-lg text-gray-600">
-              Premium features for all tenants
+              {isJapanese ? "すべてのテナントにご利用いただける充実設備" : "Premium features for all tenants"}
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
@@ -342,15 +443,18 @@ export default function InsularLifePage() {
           <div className="mx-auto max-w-3xl text-center">
 
             <h2 className="mt-6 text-4xl font-bold text-white md:text-5xl">
-              Find Your Ideal Office Space
+              {isJapanese ? "最適なオフィススペースを見つけましょう" : "Find Your Ideal Office Space"}
             </h2>
 
             <p className="mt-4 text-lg leading-relaxed text-blue-100">
-              Whether you're launching a startup or expanding your business,
-              our team is ready to help you find the perfect serviced office at
-              <span className="font-semibold text-white">
-                {" "}Insular Life Building.
-              </span>
+              {isJapanese
+                ? "スタートアップの立ち上げから事業拡大まで、当社のチームがInsular Life Buildingに最適なサービスオフィスをご提案します。"
+                : "Whether you're launching a startup or expanding your business, our team is ready to help you find the perfect serviced office at"}
+              {!isJapanese && (
+                <span className="font-semibold text-white">
+                  {" "}Insular Life Building.
+                </span>
+              )}
             </p>
           </div>
 
@@ -364,7 +468,7 @@ export default function InsularLifePage() {
               <div className="flex-1 space-y-5">
                 <div>
                   <p className="text-sm font-bold uppercase tracking-wider text-blue-200">
-                    Main Contact
+                    {isJapanese ? "代表連絡先" : "Main Contact"}
                   </p>
                   <p className="mt-1 wrap-break-word text-sm lg:text-base text-blue-100">
                     +63 942 639 4128
@@ -372,7 +476,7 @@ export default function InsularLifePage() {
                 </div>
                 <div>
                   <p className="text-sm font-bold uppercase tracking-wider text-blue-200">
-                    Tower 6789 Contact
+                    {isJapanese ? "Tower 6789 連絡先" : "Tower 6789 Contact"}
                   </p>
                   <p className="mt-1 wrap-break-word text-sm lg:text-base text-blue-100">
                     +63 285 283 100
@@ -389,7 +493,7 @@ export default function InsularLifePage() {
               <div className="flex-1 space-y-5">
                 <div>
                   <p className="text-sm font-bold uppercase tracking-wider text-blue-200">
-                    Sales Email
+                    {isJapanese ? "営業メール" : "Sales Email"}
                   </p>
                   <p className="mt-1 wrap-break-word text-sm lg:text-base text-blue-100">
                     salesofficer@heroph.net
@@ -400,7 +504,7 @@ export default function InsularLifePage() {
                 </div>
                 <div>
                   <p className="text-sm font-bold uppercase tracking-wider text-blue-200">
-                    Admin Email
+                    {isJapanese ? "管理メール" : "Admin Email"}
                   </p>
                   <p className="mt-1 wrap-break-word text-sm lg:text-base text-blue-100">
                     admin@heroph.net
@@ -416,7 +520,7 @@ export default function InsularLifePage() {
               href="/quotation?branch=insular-life"
               className="group inline-flex items-center gap-3 rounded-full bg-[#FFC107] px-8 py-4 font-semibold text-[#0A1E3F] transition-all duration-300 hover:scale-105 hover:bg-[#FFD54F]"
             >
-              Get a Quote Now
+              {isJapanese ? "今すぐ見積もりを依頼" : "Get a Quote Now"}
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>

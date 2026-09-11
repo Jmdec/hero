@@ -144,6 +144,26 @@ export default function AnnouncementPopup() {
   const [open, setOpen] = useState(false);
 
   const [imageFailed, setImageFailed] = useState(false);
+  const [locale, setLocale] = useState<"en" | "ja">("en");
+  const isJapanese = locale === "ja";
+
+  useEffect(() => {
+    const getStoredLocale = () => {
+      const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+      return match?.[1] === "ja" ? "ja" : "en";
+    };
+
+    const updateLocale = (event?: Event) => {
+      const detail = (event as CustomEvent<string> | undefined)?.detail;
+      const nextLocale = detail === "ja" || detail === "en" ? detail : getStoredLocale();
+      setLocale(nextLocale);
+    };
+
+    updateLocale();
+    window.addEventListener("localeChanged", updateLocale);
+
+    return () => window.removeEventListener("localeChanged", updateLocale);
+  }, []);
 
   const shouldReduceMotion = useReducedMotion();
 
@@ -408,7 +428,7 @@ export default function AnnouncementPopup() {
                         onClick={handleClose}
                         className="inline-flex items-center gap-1.5 rounded-full border border-[#D9E2F0] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#1B3A8C] shadow-sm transition hover:-translate-y-0.5 hover:border-[#1B3A8C] hover:bg-[#EEF2FB] sm:gap-2 sm:px-4 sm:py-2 sm:text-xs"
                       >
-                        View Announcement
+                        {isJapanese ? 'お知らせを見る' : 'View Announcement'}
                       </Link>
 
                       {socialPlatforms.map((entry) =>

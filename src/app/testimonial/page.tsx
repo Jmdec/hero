@@ -107,6 +107,7 @@ export default function TestimonialPage() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [locale, setLocale] = useState<"en" | "ja">("en");
   const [retryCount, setRetryCount] = useState(0);
 
   // Search / filter / pagination
@@ -118,12 +119,31 @@ export default function TestimonialPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<FormData>(empty);
   const [hoveredStar, setHoveredStar] = useState(0);
+  const isJapanese = locale === "ja";
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const set = (field: keyof FormData, value: string | number) =>
     setForm((f) => ({ ...f, [field]: value }));
+
+  useEffect(() => {
+    const getStoredLocale = () => {
+      const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+      return match?.[1] === "ja" ? "ja" : "en";
+    };
+
+    const updateLocale = (event?: Event) => {
+      const detail = (event as CustomEvent<string> | undefined)?.detail;
+      const nextLocale = detail === "ja" || detail === "en" ? detail : getStoredLocale();
+      setLocale(nextLocale);
+    };
+
+    updateLocale();
+    window.addEventListener("localeChanged", updateLocale);
+
+    return () => window.removeEventListener("localeChanged", updateLocale);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -277,12 +297,12 @@ export default function TestimonialPage() {
             className="w-full text-center mx-auto"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
-              Trusted by Growing Companies in Makati
+              {isJapanese ? "マカティの成長企業から信頼されています" : "Trusted by Growing Companies in Makati"}
             </h1>
             <p className="text-xl text-gray-300 max-w-4xl mx-auto font-semibold text-shadow-sm">
-              From international expansions to homegrown startups, our members
-              choose Hero Serviced Office, Inc. for the address, the service, and the
-              community.
+              {isJapanese
+                ? "海外展開から国内発のスタートアップまで、当社の会員企業は、住所、サービス、そしてコミュニティを理由にHero Serviced Office, Inc.を選んでいます。"
+                : "From international expansions to homegrown startups, our members choose Hero Serviced Office, Inc. for the address, the service, and the community."}
             </p>
           </motion.div>
         </div>
@@ -302,7 +322,7 @@ export default function TestimonialPage() {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by name, company, or keyword…"
+                  placeholder={isJapanese ? "名前、会社、またはキーワードで検索…" : "Search by name, company, or keyword…"}
                   className="w-full rounded-full border border-gray-200 bg-white pl-11 pr-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                 />
               </div>
@@ -316,12 +336,12 @@ export default function TestimonialPage() {
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                   {ratingFilter === 0 ? (
-                    "Filter by rating"
+                    isJapanese ? "評価で絞り込む" : "Filter by rating"
                   ) : (
                     <span className="inline-flex items-center gap-1">
                       {ratingFilter}
                       <Star className="h-3 w-3 fill-white text-white" />
-                      only
+                      {isJapanese ? "だけ" : "only"}
                     </span>
                   )}
                   <ChevronDown
@@ -355,7 +375,7 @@ export default function TestimonialPage() {
                             : "text-gray-600 hover:bg-gray-50"
                             }`}
                         >
-                          All ratings
+                          {isJapanese ? "すべての評価" : "All ratings"}
                         </button>
                         {[5, 4, 3, 2, 1].map((r) => (
                           <button
@@ -370,7 +390,7 @@ export default function TestimonialPage() {
                               }`}
                           >
                             <span className="inline-flex items-center gap-1.5">
-                              {r} {r === 1 ? "star" : "stars"}
+                              {r} {isJapanese ? (r === 1 ? "星" : "星2つ以上") : (r === 1 ? "star" : "stars")}
                             </span>
                             <Star
                               className={`h-3.5 w-3.5 ${ratingFilter === r
@@ -431,7 +451,7 @@ export default function TestimonialPage() {
                 <AlertCircle className="h-6 w-6 text-red-500" />
               </div>
               <h3 className="text-base font-semibold text-gray-900 mb-1.5">
-                Something went wrong
+                {isJapanese ? "読み込みに失敗しました" : "Something went wrong"}
               </h3>
               <p className="text-sm text-gray-500 max-w-sm mb-6">
                 {loadError}
@@ -441,7 +461,7 @@ export default function TestimonialPage() {
                 className="inline-flex items-center gap-2 rounded-full bg-[#1B3A8C] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#2a4fa8] transition-colors"
               >
                 <RefreshCw className="h-4 w-4" />
-                Try again
+                {isJapanese ? "もう一度試す" : "Try again"}
               </button>
             </div>
           )}
@@ -454,27 +474,29 @@ export default function TestimonialPage() {
               </div>
               <h3 className="text-base font-semibold text-gray-900 mb-1.5">
                 {testimonials.length === 0
-                  ? "No testimonials yet"
-                  : "No matches found"}
+                  ? (isJapanese ? "まだ口コミはありません" : "No testimonials yet")
+                  : (isJapanese ? "条件に一致する口コミはありません" : "No matches found")}
               </h3>
               <p className="text-sm text-gray-500 max-w-sm mb-6">
                 {testimonials.length === 0
-                  ? "Be the first to share your experience at Hero Serviced Office, Inc.."
-                  : "Try a different search term or clear your filters."}
+                  ? (isJapanese ? "Hero Serviced Office, Inc.での体験談をぜひ最初に共有してください。" 
+                                : "Be the first to share your experience at Hero Serviced Office, Inc..")
+                  : (isJapanese ? "別の検索ワードを試すか、フィルターをクリアしてみて。" 
+                                : "Try a different search term or clear your filters.")}
               </p>
               {testimonials.length === 0 ? (
                 <button
                   onClick={() => setModalOpen(true)}
                   className="inline-flex items-center gap-2 rounded-full bg-[#1B3A8C] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#2a4fa8] transition-colors"
                 >
-                  Share your experience
+                  {isJapanese ? "あなたの体験を共有してください" : "Share your experience"}
                 </button>
               ) : (
                 <button
                   onClick={clearFilters}
                   className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Clear filters
+                  {isJapanese ? "フィルターをクリア" : "Clear filters"}
                 </button>
               )}
             </div>
@@ -537,8 +559,7 @@ export default function TestimonialPage() {
               {totalPages > 1 && (
                 <div className="mt-10 flex flex-col items-center justify-between gap-3 md:flex-row">
                   <p className="text-sm text-gray-400">
-                    {filtered.length} total{" "}
-                    {filtered.length === 1 ? "testimonial" : "testimonials"}
+                    {filtered.length} {isJapanese ? (filtered.length === 1 ? "件の口コミ" : "件の口コミ") : (filtered.length === 1 ? "testimonial" : "testimonials")}
                   </p>
 
                   <div className="flex items-center gap-2">
@@ -548,7 +569,7 @@ export default function TestimonialPage() {
                       className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Prev
+                      {isJapanese ? "前へ" : "Prev"}
                     </button>
 
                     <div className="hidden items-center gap-1 sm:flex">
@@ -584,7 +605,7 @@ export default function TestimonialPage() {
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                       className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Next
+                      {isJapanese ? "次へ" : "Next"}
                       <ChevronRight className="h-4 w-4" />
                     </button>
                   </div>
@@ -599,25 +620,26 @@ export default function TestimonialPage() {
       <section className="py-20 bg-linear-to-r from-[#0D47A1] to-[#00ACC1]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Love working at Hero?
+            {isJapanese ? "Hero で働くのが好きですか？" : "Love working at Hero?"}
           </h2>
           <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Share your experience and help other businesses discover the right
-            workspace in Makati.
+            {isJapanese
+              ? "あなたの経験を共有して、他の企業がマカティで最適なワークスペースを見つける手助けをしましょう。"
+              : "Share your experience and help other businesses discover the right workspace in Makati."}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
               onClick={() => setModalOpen(true)}
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1B3A8C] rounded-full font-semibold hover:bg-gray-100 transition-all duration-200 hover:scale-105 active:scale-95 group"
             >
-              Tell us your experience
+              {isJapanese ? "あなたの体験談を聞かせてください" : "Tell us your experience"}
               <ArrowRight className="h-4 w-4" />
             </button>
             <Link
               href="/quotation"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-semibold hover:bg-white/10 transition-all duration-200 hover:scale-105 active:scale-95 group"
             >
-              Get a quote
+              {isJapanese ? "見積もりを取得する" : "Get a quote"}
             </Link>
           </div>
         </div>
@@ -656,10 +678,10 @@ export default function TestimonialPage() {
                   <div className="flex items-center justify-between px-7 py-4 shrink-0">
                     <div>
                       <h2 className="text-lg font-bold text-gray-900">
-                        Share your experience
+                        {isJapanese ? "体験を共有する" : "Share your experience"}
                       </h2>
                       <p className="text-sm text-gray-400 mt-0.5">
-                        We&rsquo;d love to hear from you
+                        {isJapanese ? "ぜひご意見をお聞かせください" : "We&rsquo;d love to hear from you"}
                       </p>
                     </div>
                     <button
@@ -686,10 +708,12 @@ export default function TestimonialPage() {
                             <Star className="h-7 w-7 fill-green-500 text-green-500" />
                           </div>
                           <h3 className="text-lg font-bold text-gray-900 mb-2">
-                            Thank you, {(form.name.trim() || "there").split(" ")[0]}!
+                            {isJapanese
+                              ? `${(form.name.trim() || "皆様").split(" ")[0]}様、ありがとうございます！`
+                              : `Thank you, ${(form.name.trim() || "there").split(" ")[0]}!`}
                           </h3>
                           <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">
-                            Your testimonial has been submitted!
+                            {isJapanese ? "口コミが送信されました。" : "Your testimonial has been submitted!"}
                           </p>
                         </motion.div>
                       ) : (
@@ -708,7 +732,7 @@ export default function TestimonialPage() {
                           {/* Rating */}
                           <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-2">
-                              Overall rating
+                              {isJapanese ? "総合評価" : "Overall rating"}
                             </label>
                             <div className="flex gap-1">
                               {[1, 2, 3, 4, 5].map((s) => (
@@ -734,7 +758,7 @@ export default function TestimonialPage() {
                             {/* Name */}
                             <div>
                               <label htmlFor="testimonial-name" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                Full name <span className="text-red-400">*</span>
+                                {isJapanese ? "氏名" : "Full name"} <span className="text-red-400">*</span>
                               </label>
                               <input
                                 required
@@ -743,7 +767,7 @@ export default function TestimonialPage() {
                                 type="text"
                                 value={form.name}
                                 onChange={(e) => set("name", e.target.value)}
-                                placeholder="e.g. Maria Santos"
+                                placeholder={isJapanese ? "例：山田 太郎" : "e.g. Maria Santos"}
                                 className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                               />
                             </div>
@@ -751,7 +775,7 @@ export default function TestimonialPage() {
                             {/* Email */}
                             <div>
                               <label htmlFor="testimonial-email" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                Email address
+                                {isJapanese ? "メールアドレス" : "Email address"}
                               </label>
                               <input
                                 id="testimonial-email"
@@ -759,7 +783,7 @@ export default function TestimonialPage() {
                                 type="email"
                                 value={form.email}
                                 onChange={(e) => set("email", e.target.value)}
-                                placeholder="you@company.com"
+                                placeholder={isJapanese ? "you@company.com" : "you@company.com"}
                                 className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                               />
                             </div>
@@ -769,7 +793,7 @@ export default function TestimonialPage() {
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label htmlFor="testimonial-title" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                Job title
+                                {isJapanese ? "役職" : "Job title"}
                               </label>
                               <input
                                 id="testimonial-title"
@@ -777,13 +801,13 @@ export default function TestimonialPage() {
                                 type="text"
                                 value={form.title}
                                 onChange={(e) => set("title", e.target.value)}
-                                placeholder="e.g. CEO"
+                                placeholder={isJapanese ? "例：代表取締役" : "e.g. CEO"}
                                 className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                               />
                             </div>
                             <div>
                               <label htmlFor="testimonial-company" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                Company
+                                {isJapanese ? "会社名" : "Company"}
                               </label>
                               <input
                                 id="testimonial-company"
@@ -791,7 +815,7 @@ export default function TestimonialPage() {
                                 type="text"
                                 value={form.company}
                                 onChange={(e) => set("company", e.target.value)}
-                                placeholder="e.g. Bayanihan Digital"
+                                placeholder={isJapanese ? "例：株式会社ヒーロー" : "e.g. Bayanihan Digital"}
                                 className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                               />
                             </div>
@@ -799,7 +823,7 @@ export default function TestimonialPage() {
 
                           <div>
                             <label htmlFor="testimonial-service-type" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                              Service type
+                              {isJapanese ? "サービス種別" : "Service type"}
                             </label>
                             <select
                               id="testimonial-service-type"
@@ -808,7 +832,7 @@ export default function TestimonialPage() {
                               onChange={(e) => set("service_type", e.target.value)}
                               className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                             >
-                              <option value="">Select service type</option>
+                              <option value="">{isJapanese ? "サービス種別を選択" : "Select service type"}</option>
                               {SERVICE_TYPE_OPTIONS.map((service) => (
                                 <option key={service} value={service}>
                                   {service}
@@ -820,7 +844,7 @@ export default function TestimonialPage() {
                           {/* quote */}
                           <div>
                             <label htmlFor="testimonial-quote" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                              Your testimonial{" "}
+                              {isJapanese ? "口コミ" : "Your testimonial"}{" "}
                               <span className="text-red-400">*</span>
                             </label>
                             <textarea
@@ -830,14 +854,15 @@ export default function TestimonialPage() {
                               rows={4}
                               value={form.quote}
                               onChange={(e) => set("quote", e.target.value)}
-                              placeholder="Tell us about your experience working at Hero Serviced Office, Inc.…"
+                              placeholder={isJapanese ? "Hero Serviced Office, Inc. での体験を教えてください…" : "Tell us about your experience working at Hero Serviced Office, Inc.…"}
                               className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all resize-none"
                             />
                           </div>
 
                           <p className="text-[11px] text-gray-400">
-                            Your testimonial may be published on our website after
-                            review. We&rsquo;ll never share your email address.
+                            {isJapanese
+                              ? "ご投稿いただいた口コミは審査のうえ、当サイトに掲載される場合があります。メールアドレスは公開されません。"
+                              : "Your testimonial may be published on our website after review. We&rsquo;ll never share your email address."}
                           </p>
 
                           {/* Submit */}
@@ -849,11 +874,11 @@ export default function TestimonialPage() {
                             {isSubmitting ? (
                               <>
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                Submitting…
+                                {isJapanese ? "送信中…" : "Submitting…"}
                               </>
                             ) : (
                               <>
-                                Submit testimonial
+                                {isJapanese ? "口コミを送信" : "Submit testimonial"}
                                 <Send className="h-4 w-4" />
                               </>
                             )}
@@ -870,7 +895,7 @@ export default function TestimonialPage() {
                         onClick={handleClose}
                         className="w-full rounded-xl bg-[#1B3A8C] py-2.5 text-sm font-medium text-white hover:bg-[#2a4fa8] transition-colors"
                       >
-                        Done
+                        {isJapanese ? "完了" : "Done"}
                       </button>
                     </div>
                   )}

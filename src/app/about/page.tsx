@@ -247,8 +247,8 @@ export default function AboutPage() {
     };
 
     const updateLanguage = () => {
-      const googtrans = getCookie('googtrans');
-      if (googtrans?.includes('/ja')) {
+      const languageCookie = getCookie('hero_lang');
+      if (languageCookie === 'ja') {
         setLanguage('ja');
       } else {
         setLanguage('en');
@@ -264,59 +264,115 @@ export default function AboutPage() {
   }, []);
 
   const messages = language === 'ja' ? messagejp : messageen;
-  const values = [
-    {
-      icon: Briefcase,
-      title: "Professionalism",
-      description:
-        "We create and maintain work environments that reflect credibility, quality, and respect for business standards.",
-    },
-    {
-      icon: Move,
-      title: "Flexibility",
-      description:
-        "We design our services to adapt to the changing needs of modern businesses, whether they are scaling up, downsizing, or transitioning to new ways of working.",
-    },
-    {
-      icon: ShieldCheck,
-      title: "Reliability",
-      description:
-        "We ensure consistent service delivery and dependable workspace solutions that clients can rely on every day.",
-    },
-    {
-      icon: Handshake,
-      title: "Customer Commitment",
-      description:
-        "We prioritize understanding our clients’ needs and delivering solutions that support their goals and operations.",
-    },
-    {
-      icon: Scale,
-      title: "Integrity",
-      description:
-        "We operate with honesty, transparency, and fairness in every client relationship and business decision.",
-    },
-    {
-      icon: Gauge,
-      title: "Efficiency",
-      description:
-        "We simplify the way businesses work by providing complete workspace solutions that reduce operational burden and improve productivity.",
-    },
-  ];
+  const isJapanese = language === 'ja';
 
-  const whyHero = [
-    { num: "01", title: "Prime Business Location", desc: "Located at the heart of the business district, Hero Serviced Office, Inc. provides convenient access to major companies, transportation hubs, restaurants, and essential business establishments." },
-    { num: "02", title: "Japanese & English Staff Support", desc: "Our professional team provides Japanese and English communication support to ensure smooth coordination and assistance for local and international clients." },
-    { num: "03", title: "24/7 Office Access", desc: "Enjoy flexible working hours with round-the-clock access to your workspace whenever your business requires it." },
-    { num: "04", title: "Fully Furnished, Ready to Use Offices", desc: "Move in and start working immediately with fully equipped private offices designed for productivity and convenience." },
-    { num: "05", title: "Professional Corporate Environment", desc: "Create a strong business impression with a premium office setting that reflects professionalism and credibility." },
-    { num: "06", title: "Flexible Office Solutions", desc: "Choose from various office options that can adapt to your company’s needs, whether for startups, growing businesses, or established companies." },
-    { num: "07", title: "Dedicated Reception & Administrative Support", desc: "Receive professional front desk assistance and reliable administrative support to help manage your daily office operations." },
-    { num: "08", title: "Meeting Rooms & Business Facilities", desc: "Conduct meetings and client presentations in well-equipped spaces designed for productive business discussions." },
-    { num: "09", title: "Cost-Efficient Business Setup", desc: "Reduce the hassle and expenses of traditional office setup with a complete workspace solution that includes essential amenities." },
-    { num: "10", title: "Reliable Internet & Office Amenities", desc: "Stay connected and productive with high-speed internet and essential office facilities prepared for your business needs." },
-    { num: "11", title: "Ideal for Local & International Companies", desc: "A strategic workspace solution designed to support businesses expanding, establishing, or operating in the Philippines." },
-    { num: "12", title: "Secure & Comfortable Workspace", desc: "Work with peace of mind in a safe, professional, and comfortable office environment built for business success." },
-  ];
+  const values = isJapanese
+    ? [
+        {
+          icon: Briefcase,
+          title: "プロ意識",
+          description:
+            "私たちは、信頼性、品質、そしてビジネス基準への敬意を反映した職場環境を構築し、維持します。",
+        },
+        {
+          icon: Move,
+          title: "柔軟性",
+          description:
+            "私たちは、事業規模の拡大、縮小、あるいは新たな働き方への移行など、現代企業の変化するニーズに対応できるようサービスを設計しています。",
+        },
+        {
+          icon: ShieldCheck,
+          title: "信頼性",
+          description:
+            "当社は、お客様が日々安心してご利用いただける、一貫したサービス提供と信頼性の高いワークスペースソリューションを保証します。",
+        },
+        {
+          icon: Handshake,
+          title: "顧客へのコミットメント",
+          description:
+            "私たちは、お客様のニーズを理解し、お客様の目標と事業運営を支援するソリューションを提供することを最優先事項としています。",
+        },
+        {
+          icon: Scale,
+          title: "誠実さ",
+          description:
+            "私たちは、あらゆる顧客関係およびビジネス上の意思決定において、誠実さ、透明性、公平さを重んじます。",
+        },
+        {
+          icon: Gauge,
+          title: "効率",
+          description:
+            "当社は、業務負担を軽減し生産性を向上させる包括的なワークスペースソリューションを提供することで、企業の働き方を簡素化します。",
+        },
+      ]
+    : [
+        {
+          icon: Briefcase,
+          title: "Professionalism",
+          description:
+            "We create and maintain work environments that reflect credibility, quality, and respect for business standards.",
+        },
+        {
+          icon: Move,
+          title: "Flexibility",
+          description:
+            "We design our services to adapt to the changing needs of modern businesses, whether they are scaling up, downsizing, or transitioning to new ways of working.",
+        },
+        {
+          icon: ShieldCheck,
+          title: "Reliability",
+          description:
+            "We ensure consistent service delivery and dependable workspace solutions that clients can rely on every day.",
+        },
+        {
+          icon: Handshake,
+          title: "Customer Commitment",
+          description:
+            "We prioritize understanding our clients’ needs and delivering solutions that support their goals and operations.",
+        },
+        {
+          icon: Scale,
+          title: "Integrity",
+          description:
+            "We operate with honesty, transparency, and fairness in every client relationship and business decision.",
+        },
+        {
+          icon: Gauge,
+          title: "Efficiency",
+          description:
+            "We simplify the way businesses work by providing complete workspace solutions that reduce operational burden and improve productivity.",
+        },
+      ];
+
+  const whyHero = isJapanese
+    ? [
+        { num: "01", title: "一等地にあるビジネス拠点", desc: "ビジネス街の中心部に位置するHero Serviced Office, Inc.は、主要企業、交通機関の拠点、レストラン、そして生活に不可欠なビジネス施設へのアクセスに大変便利です。" },
+        { num: "02", title: "日本語と英語のスタッフサポート", desc: "当社の専門チームは、国内外のお客様との円滑な連携とサポートを確保するため、日本語と英語によるコミュニケーション支援を提供しています。" },
+        { num: "03", title: "24時間365日オフィスアクセス可能", desc: "ビジネスに必要な時にいつでも、24時間いつでもワークスペースにアクセスできる、柔軟な勤務時間をお楽しみください。" },
+        { num: "04", title: "家具完備、すぐに使用可能なオフィス", desc: "すぐに入居して、生産性と利便性を追求して設計された設備完備の個室オフィスで仕事を開始できます。" },
+        { num: "05", title: "プロフェッショナルな企業環境", desc: "プロ意識と信頼性を反映する上質なオフィス環境で、力強いビジネス印象を与えましょう。" },
+        { num: "06", title: "柔軟なオフィスソリューション", desc: "スタートアップ企業、成長企業、老舗企業など、貴社のニーズに合わせて選べる様々なオフィスオプションをご用意しています。" },
+        { num: "07", title: "専任の受付および事務サポート", desc: "プロフェッショナルな受付業務と信頼できる事務サポートにより、日々のオフィス業務を円滑に進めることができます。" },
+        { num: "08", title: "会議室およびビジネス施設", desc: "生産的なビジネス議論のために設計された、設備が整ったスペースで会議や顧客プレゼンテーションを実施します。" },
+        { num: "09", title: "費用対効果の高い事業設立", desc: "必要な設備がすべて揃った包括的なワークスペースソリューションで、従来のオフィス環境構築に伴う手間と費用を削減しましょう。" },
+        { num: "10", title: "信頼性の高いインターネット接続とオフィス設備", desc: "高速インターネットとビジネスニーズに対応した必須オフィス設備で、常に接続状態を維持し、生産性を高めましょう。" },
+        { num: "11", title: "国内外の企業に最適", desc: "フィリピンで事業を拡大、設立、または運営する企業を支援するために設計された、戦略的なワークスペースソリューション。" },
+        { num: "12", title: "安全で快適なワークスペース", desc: "ビジネスの成功のために設計された、安全でプロフェッショナルかつ快適なオフィス環境で、安心して仕事に取り組んでください。" },
+      ]
+    : [
+        { num: "01", title: "Prime Business Location", desc: "Located at the heart of the business district, Hero Serviced Office, Inc. provides convenient access to major companies, transportation hubs, restaurants, and essential business establishments." },
+        { num: "02", title: "Japanese & English Staff Support", desc: "Our professional team provides Japanese and English communication support to ensure smooth coordination and assistance for local and international clients." },
+        { num: "03", title: "24/7 Office Access", desc: "Enjoy flexible working hours with round-the-clock access to your workspace whenever your business requires it." },
+        { num: "04", title: "Fully Furnished, Ready to Use Offices", desc: "Move in and start working immediately with fully equipped private offices designed for productivity and convenience." },
+        { num: "05", title: "Professional Corporate Environment", desc: "Create a strong business impression with a premium office setting that reflects professionalism and credibility." },
+        { num: "06", title: "Flexible Office Solutions", desc: "Choose from various office options that can adapt to your company’s needs, whether for startups, growing businesses, or established companies." },
+        { num: "07", title: "Dedicated Reception & Administrative Support", desc: "Receive professional front desk assistance and reliable administrative support to help manage your daily office operations." },
+        { num: "08", title: "Meeting Rooms & Business Facilities", desc: "Conduct meetings and client presentations in well-equipped spaces designed for productive business discussions." },
+        { num: "09", title: "Cost-Efficient Business Setup", desc: "Reduce the hassle and expenses of traditional office setup with a complete workspace solution that includes essential amenities." },
+        { num: "10", title: "Reliable Internet & Office Amenities", desc: "Stay connected and productive with high-speed internet and essential office facilities prepared for your business needs." },
+        { num: "11", title: "Ideal for Local & International Companies", desc: "A strategic workspace solution designed to support businesses expanding, establishing, or operating in the Philippines." },
+        { num: "12", title: "Secure & Comfortable Workspace", desc: "Work with peace of mind in a safe, professional, and comfortable office environment built for business success." },
+      ];
 
   return (
     <div className="min-h-screen">
@@ -341,10 +397,12 @@ export default function AboutPage() {
             className="w-full text-center mx-auto text-shadow-4xl"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
-              About Hero Serviced Office, Inc.
+              {isJapanese ? "Hero Serviced Office, Inc. について" : "About Hero Serviced Office, Inc."}
             </h1>
             <p className="text-xl text-gray-300 text-semibold text-shadow-sm">
-              Your trusted partner for premium office solutions in the heart of Makati's business district
+              {isJapanese
+                ? "マカティのビジネス街の中心に位置する、プレミアムオフィスソリューションを提供する信頼できるパートナー"
+                : "Your trusted partner for premium office solutions in the heart of Makati's business district"}
             </p>
           </motion.div>
         </div>
@@ -360,30 +418,28 @@ export default function AboutPage() {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-              Our Story
+              {isJapanese ? "私たちの物語" : "Our Story"}
             </h2>
             <div className="space-y-4 text-gray-600 text-justify">
               <p>
-                Hero Serviced Office, Inc. traces its roots to a Japan-based business group established with the
-                goal of developing service-oriented enterprises that support modern commercial activity. The
-                group initially operated across multiple business sectors, gradually building expertise in service
-                management, operational efficiency, and client-centered solutions.
+                {isJapanese
+                  ? "Hero Serviced Office, Inc. は、代の商業活動を支えるサービス指向型企業を育成することを目標に設立された、日本を拠点とする企業グループをルーツとしています。同グループは当初、複数の事業分野で事業を展開し、サービスマネジメント、業務効率化、顧客中心のソリューションに関する専門知識を徐々に蓄積してきました。"
+                  : "Hero Serviced Office, Inc. traces its roots to a Japan-based business group established with the goal of developing service-oriented enterprises that support modern commercial activity. The group initially operated across multiple business sectors, gradually building expertise in service management, operational efficiency, and client-centered solutions."}
               </p>
               <p>
-                In 2015, the serviced office division was formally established in response to the increasing
-                global demand for flexible workspace solutions. At a time when businesses were shifting toward
-                more agile and cost-efficient operating models, HERO introduced fully serviced office
-                environments that eliminated the complexity of traditional leasing structures.
+                {isJapanese
+                  ? "2015年、柔軟なワークスペースソリューションに対する世界的な需要の高まりに応えるため、サービスオフィス部門が正式に設立されました。企業がより機敏でコスト効率の高い運営モデルへと移行する中で、HEROは従来のリース契約の複雑さを解消した、フルサービスのオフィス環境を提供しました。"
+                  : "In 2015, the serviced office division was formally established in response to the increasing global demand for flexible workspace solutions. At a time when businesses were shifting toward more agile and cost-efficient operating models, HERO introduced fully serviced office environments that eliminated the complexity of traditional leasing structures."}
               </p>
               <p>
-                Starting from its early operations in Japan, the company expanded its concept internationally,
-                refining its offerings to suit different business cultures and market environments. Over time, its
-                services evolved to include private offices, virtual office packages, coworking spaces, and
-                meeting facilities—forming a complete workspace ecosystem.
+                {isJapanese
+                  ? "同社は日本での事業開始を皮切りに、国際的に事業を拡大し、多様なビジネス文化や市場環境に合わせてサービスを洗練させてきた。時を経て、個室オフィス、バーチャルオフィスパッケージ、コワーキングスペース、会議施設などを含むサービスへと進化し、包括的なワークスペースエコシステムを構築した。"
+                  : "Starting from its early operations in Japan, the company expanded its concept internationally, refining its offerings to suit different business cultures and market environments. Over time, its services evolved to include private offices, virtual office packages, coworking spaces, and meeting facilities—forming a complete workspace ecosystem."}
               </p>
               <p className="font-semibold">
-                Today, Hero Serviced Office, Inc. continues to operate, focusing on service quality, operational
-                efficiency, and business enablement across diverse industries and markets.
+                {isJapanese
+                  ? "現在もHero Serviced Office, Inc.は事業を継続しており、多様な業界や市場において、サービス品質、業務効率、そしてビジネスの活性化に重点を置いています。"
+                  : "Today, Hero Serviced Office, Inc. continues to operate, focusing on service quality, operational efficiency, and business enablement across diverse industries and markets."}
               </p>
             </div>
           </motion.div>
@@ -404,13 +460,13 @@ export default function AboutPage() {
                     <Eye className="w-7 h-7 text-white" />
                   </div>
                   <h3 className="text-3xl font-bold text-gray-900 mb-4">
-                    Our Vision
+                    {isJapanese ? "私たちのビジョン" : "Our Vision"}
                   </h3>
                 </div>
                 <p className="text-gray-600 leading-relaxed text-justify">
-                  To be one of the most trusted serviced office providers in the Philippines, recognized for
-                  delivering reliable workspace solutions that support business growth and redefine how modern
-                  companies work in dynamic urban environments.
+                  {isJapanese
+                    ? "フィリピンで最も信頼されるサービスオフィスプロバイダーの一つとなり、ビジネスの成長を支援し、ダイナミックな都市環境における現代企業の働き方を再定義する、信頼性の高いワークスペースソリューションを提供することで認知されることを目指します。"
+                    : "To be one of the most trusted serviced office providers in the Philippines, recognized for delivering reliable workspace solutions that support business growth and redefine how modern companies work in dynamic urban environments."}
                 </p>
               </motion.div>
               <motion.div
@@ -425,13 +481,13 @@ export default function AboutPage() {
                     <Award className="w-7 h-7 text-white" />
                   </div>
                   <h3 className="text-3xl font-bold text-gray-900 mb-4">
-                    Our Mission
+                    {isJapanese ? "私たちの使命" : "Our Mission"}
                   </h3>
                 </div>
                 <p className="text-gray-600 leading-relaxed text-justify">
-                  To provide accessible, flexible, and fully serviced workspace solutions that empower
-                  businesses to operate efficiently, grow confidently, and establish a strong professional presence
-                  in the heart of Makati City
+                  {isJapanese
+                    ? "マカティ市の中心部で、企業が効率的に事業を運営し、自信を持って成長し、強力なプロフェッショナルな存在感を確立できるよう、アクセスしやすく、柔軟で、フルサービスのワークスペースソリューションを提供します。"
+                    : "To provide accessible, flexible, and fully serviced workspace solutions that empower businesses to operate efficiently, grow confidently, and establish a strong professional presence in the heart of Makati City"}
                 </p>
               </motion.div>
             </div>
@@ -449,7 +505,9 @@ export default function AboutPage() {
               />
 
               <div className="absolute bottom-3 right-3 z-20 px-3 py-1.5 rounded-full bg-[#0A1E3F] backdrop-blur-sm border border-white/60 shadow-sm">
-                <span className="text-sm font-bold text-white">Our Team</span>
+                <span className="text-sm font-bold text-white">
+                  {isJapanese ? "私たちのチーム" : "Our Team"}
+                </span>
               </div>
             </div>
           </div>
@@ -461,10 +519,10 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Core Values
+              {isJapanese ? "中核的価値観" : "Core Values"}
             </h2>
             <p className="text-lg text-gray-600">
-              The principles that guide everything we do
+              {isJapanese ? "私たちが行うすべてのことを導く原則" : "The principles that guide everything we do"}
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-8">
@@ -501,7 +559,7 @@ export default function AboutPage() {
             className="text-center max-w-2xl mx-auto mb-14"
           >
             <h2 className="mt-3 text-3xl md:text-4xl font-bold text-gray-900">
-              A Message From Our Leadership
+              {isJapanese ? "経営陣からのメッセージ" : "A Message From Our Leadership"}
             </h2>
           </motion.div>
 
@@ -516,8 +574,12 @@ export default function AboutPage() {
             >
               <div className="flex flex-row items-center gap-4 md:flex-col md:items-start md:gap-3">
                 <div>
-                  <p className="font-bold text-gray-900">Mr. Minoru Kobayashi</p>
-                  <p className="text-md text-[#1B3A8C]">HERO President</p>
+                  <p className="font-bold text-gray-900">
+                    {isJapanese ? "小林 実 氏" : "Mr. Minoru Kobayashi"}
+                  </p>
+                  <p className="text-md text-[#1B3A8C]">
+                    {isJapanese ? "HERO社長" : "HERO President"}
+                  </p>
                 </div>
               </div>
               <div className="relative">
@@ -544,8 +606,12 @@ export default function AboutPage() {
               </div>
               <div className="flex flex-row items-center gap-4 md:order-2 md:flex-col md:items-start md:gap-3">
                 <div>
-                  <p className="font-bold text-gray-900">Mr. Makoto Kinoshita</p>
-                  <p className="text-md text-[#1B3A8C]">HERO Chairman</p>
+                  <p className="font-bold text-gray-900">\
+                    {isJapanese ? "木下 誠 氏" : "Mr. Makoto Kinoshita"}
+                    </p>
+                  <p className="text-md text-[#1B3A8C]">
+                    {isJapanese ? "HERO会長" : "HERO Chairman"}
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -564,11 +630,12 @@ export default function AboutPage() {
             className="text-center max-w-3xl mx-auto mb-10"
           >
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              One Group, Working across Borders
+              {isJapanese ? "国境を越えて活動する、一つのグループ" : "One Group, Working across Borders"}
             </h2>
             <p className="text-lg text-gray-600">
-              Bringing reliable, service-first
-              business solutions to companies operating in Japan and the Philippines.
+              {isJapanese
+                ? "日本とフィリピンで事業を展開する企業に対し、信頼性の高い、顧客第一のビジネスソリューションを提供します。"
+                : "Bringing reliable, service-first business solutions to companies operating in Japan and the Philippines."}
             </p>
           </motion.div>
 
@@ -652,10 +719,10 @@ export default function AboutPage() {
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-10 text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-200">
-              Why Choose HERO
+              {isJapanese ? "HEROを選ぶ理由" : "Why Choose HERO"}
             </p>
             <h2 className="mt-3 text-3xl font-black tracking-[-0.01em] text-white md:text-4xl">
-              A workspace experience designed for progress
+              {isJapanese ? "進歩のために設計されたワークスペース体験" : "A workspace experience designed for progress"}
             </h2>
           </div>
 

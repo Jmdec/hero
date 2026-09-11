@@ -235,10 +235,12 @@ function AnnouncementCard({
   item,
   index,
   onSelect,
+  isJapanese,
 }: {
   item: Announcement;
   index: number;
   onSelect: (item: Announcement) => void;
+  isJapanese: boolean;
 }) {
   const socialPlatforms = normalizeSocialMedia(
     item.social_platforms,
@@ -310,7 +312,7 @@ function AnnouncementCard({
         )}
 
         <div className="inline-flex items-center gap-1.5 text-sm font-bold text-[#1B3A8C] transition-all duration-200 group-hover:scale-105 group-hover:text-[#FFC107] group-hover:underline">
-          Read more
+          {isJapanese ? "続きを読む" : "Read more"}
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
         </div>
       </div>
@@ -429,6 +431,7 @@ export default function AnnouncementPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [locale, setLocale] = useState<"en" | "ja">("en");
   const [retryCount, setRetryCount] = useState(0);
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterStatus, setNewsletterStatus] = useState<string | null>(null);
@@ -443,6 +446,25 @@ export default function AnnouncementPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isJapanese = locale === "ja";
+
+  useEffect(() => {
+    const getStoredLocale = () => {
+      const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+      return match?.[1] === "ja" ? "ja" : "en";
+    };
+
+    const updateLocale = (event?: Event) => {
+      const detail = (event as CustomEvent<string> | undefined)?.detail;
+      const nextLocale = detail === "ja" || detail === "en" ? detail : getStoredLocale();
+      setLocale(nextLocale);
+    };
+
+    updateLocale();
+    window.addEventListener("localeChanged", updateLocale);
+
+    return () => window.removeEventListener("localeChanged", updateLocale);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -587,12 +609,12 @@ export default function AnnouncementPage() {
             className="w-full text-center mx-auto"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
-              News, Updates & Exclusive Offers
+              {isJapanese ? "ニュース、最新情報、限定オファー" : "News, Updates & Exclusive Offers"}
             </h1>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto font-semibold text-shadow-sm">
-              Get the latest from Hero Serviced Office, Inc. — new locations, events,
-              member benefits, and special promotions delivered straight to your
-              inbox.
+              {isJapanese
+                ? "Hero Serviced Office, Inc.からの最新情報（新店舗情報、イベント情報、会員特典、特別プロモーションなど）をメールで直接お届けします。"
+                : "Get the latest from Hero Serviced Office, Inc. — new locations, events, member benefits, and special promotions delivered straight to your inbox."}
             </p>
           </motion.div>
         </div>
@@ -610,7 +632,7 @@ export default function AnnouncementPage() {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by title, keyword, or tag…"
+                  placeholder={isJapanese ? "タイトル、キーワード、タグで検索…" : "Search by title, keyword, or tag…"}
                   className="w-full rounded-full border border-gray-200 bg-white pl-11 pr-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1B3A8C] focus:border-transparent transition-all"
                 />
               </div>
@@ -624,7 +646,7 @@ export default function AnnouncementPage() {
                     }`}
                 >
                   <SlidersHorizontal className="h-4 w-4" />
-                  {tagFilter ? `Tag: ${tagFilter}` : "Filter by tag"}
+                  {tagFilter ? `${isJapanese ? "タグ:" : "Tag:"} ${tagFilter}` : isJapanese ? "タグで絞り込み" : "Filter by tag"}
                   <ChevronDown
                     className={`h-4 w-4 transition-transform ${filtersOpen ? "rotate-180" : ""
                       }`}
@@ -656,7 +678,7 @@ export default function AnnouncementPage() {
                             : "text-gray-600 hover:bg-gray-50"
                             }`}
                         >
-                          All tags
+                          {isJapanese ? "すべてのタグ" : "All tags"}
                         </button>
                         {availableTags.map((t) => (
                           <button
@@ -712,7 +734,7 @@ export default function AnnouncementPage() {
                 <AlertCircle className="h-6 w-6 text-red-500" />
               </div>
               <h3 className="text-base font-semibold text-gray-900 mb-1.5">
-                Something went wrong
+                {isJapanese ? "エラーが発生しました" : "Something went wrong"}
               </h3>
               <p className="text-sm text-gray-500 max-w-sm mb-6">{error}</p>
               <button
@@ -720,7 +742,7 @@ export default function AnnouncementPage() {
                 className="inline-flex items-center gap-2 rounded-full bg-[#1B3A8C] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#2a4fa8] transition-colors"
               >
                 <RefreshCw className="h-4 w-4" />
-                Try again
+                {isJapanese ? "再試行" : "Try again"}
               </button>
             </div>
           )}
@@ -733,20 +755,24 @@ export default function AnnouncementPage() {
               </div>
               <h3 className="text-base font-semibold text-gray-900 mb-1.5">
                 {announcements.length === 0
-                  ? "No announcements yet"
-                  : "No matches found"}
+                  ? isJapanese ? "まだ発表はありません" : "No announcements yet"
+                  : isJapanese ? "一致するものは見つかりませんでした" : "No matches found"}
               </h3>
               <p className="text-sm text-gray-500 max-w-sm mb-6">
                 {announcements.length === 0
-                  ? "Check back soon for news and updates from Hero Serviced Office, Inc.."
-                  : "Try a different search term or clear your filters."}
+                  ? isJapanese
+                    ? "Hero Serviced Office, Inc.からのニュースや最新情報については、近日中に再度ご確認ください。"
+                    : "Check back soon for news and updates from Hero Serviced Office, Inc.."
+                  : isJapanese
+                    ? "別の検索ワードを試すか、フィルターをクリアしてみて。"
+                    : "Try a different search term or clear your filters."}
               </p>
               {announcements.length > 0 && (
                 <button
                   onClick={clearFilters}
                   className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Clear filters
+                  {isJapanese ? "フィルターをクリア" : "Clear filter"}
                 </button>
               )}
             </div>
@@ -761,6 +787,7 @@ export default function AnnouncementPage() {
                     item={item}
                     index={i}
                     onSelect={handleSelectAnnouncement}
+                    isJapanese={isJapanese}
                   />
                 ))}
               </div>
@@ -769,8 +796,7 @@ export default function AnnouncementPage() {
               {totalPages > 1 && (
                 <div className="mt-10 flex flex-col items-center justify-between gap-3 md:flex-row">
                   <p className="text-sm text-gray-400">
-                    {filtered.length} total{" "}
-                    {filtered.length === 1 ? "announcement" : "announcements"}
+                    {filtered.length} {isJapanese ? (filtered.length === 1 ? "件の投稿" : "件の投稿") : (filtered.length === 1 ? "announcement" : "announcements")}
                   </p>
 
                   <div className="flex items-center gap-2">
@@ -780,7 +806,7 @@ export default function AnnouncementPage() {
                       className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Prev
+                      {isJapanese ? "前へ" : "Prev"}
                     </button>
 
                     <div className="hidden items-center gap-1 sm:flex">
@@ -816,7 +842,7 @@ export default function AnnouncementPage() {
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                       className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Next
+                      {isJapanese ? "次へ" : "Next"}
                       <ChevronRight className="h-4 w-4" />
                     </button>
                   </div>
@@ -837,21 +863,28 @@ export default function AnnouncementPage() {
               </span>
 
               <h2 className="mt-4 text-2xl lg:text-5xl font-bold text-white leading-tight">
-                Subscribe to the Hero
+                {isJapanese ? "Hero に登録する" : "Subscribe to the Hero"}
               </h2>
 
               <p className="mt-5 text-md text-blue-100 leading-relaxed max-w-xl">
-                One curated email per month with new spaces, member perks,
-                exclusive promos, and Makati business insights. No spam —
-                unsubscribe anytime.
+                {isJapanese
+                  ? "毎月1回、最新のスペース情報、会員特典、限定プロモーション、マカティのビジネス情報を厳選してお届けします。迷惑メールではなく、いつでも解除できます。"
+                  : "One curated email per month with new spaces, member perks, exclusive promos, and Makati business insights. No spam — unsubscribe anytime."}
               </p>
 
               <div className="mt-5 space-y-2">
-                {[
-                  "Early access to promotional rates",
-                  "Invitations to member-only events",
-                  "Tips for setting up your business in the Philippines",
-                ].map((item) => (
+                {(isJapanese
+                  ? [
+                      "プロモーション価格の先行案内",
+                      "会員限定イベントへのご招待",
+                      "フィリピンでの事業立ち上げに役立つ情報",
+                    ]
+                  : [
+                      "Early access to promotional rates",
+                      "Invitations to member-only events",
+                      "Tips for setting up your business in the Philippines",
+                    ]
+                ).map((item) => (
                   <div
                     key={item}
                     className="flex items-center gap-3 text-blue-100"
@@ -902,14 +935,14 @@ export default function AnnouncementPage() {
               >
                 <div>
                   <label className="block text-sm font-semibold text-white mb-2">
-                    Email address
+                    {isJapanese ? "メールアドレス" : "Email address"}
                   </label>
 
                   <input
                     value={newsletterEmail}
                     onChange={(e) => setNewsletterEmail(e.target.value)}
                     type="email"
-                    placeholder="you@company.com"
+                    placeholder={isJapanese ? "you@company.com" : "you@company.com"}
                     className="w-full rounded-xl bg-white px-5 py-4 text-gray-800 placeholder:text-gray-400 outline-none focus:ring-4 focus:ring-white/20"
                     required
                   />
@@ -920,13 +953,14 @@ export default function AnnouncementPage() {
                   disabled={newsletterSubmitting || newsletterEmail.trim() === ""}
                   className="w-full rounded-xl bg-white py-4 font-semibold text-[#0D47A1] hover:bg-gray-100 flex items-center justify-center gap-2 disabled:opacity-60 transition-all duration-200 hover:scale-105 active:scale-95 group"
                 >
-                  {newsletterSubmitting ? "Subscribing..." : "Subscribe"}
+                  {newsletterSubmitting ? (isJapanese ? "登録中..." : "Subscribing...") : isJapanese ? "登録する" : "Subscribe"}
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
                 <p className="text-md text-blue-100 leading-relaxed">
-                  By subscribing you agree to receive marketing emails from Hero
-                  Serviced Office.
+                  {isJapanese
+                    ? "登録することで、Hero Serviced Office からのマーケティングメールを受け取ることに同意したものとみなします。"
+                    : "By subscribing you agree to receive marketing emails from Hero Serviced Office."}
                 </p>
 
                 {newsletterStatus && (

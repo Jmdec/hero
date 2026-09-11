@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
@@ -63,10 +63,10 @@ function SelectWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StepProgress({ step }: { step: 1 | 2 }) {
+function StepProgress({ step, isJapanese }: { step: 1 | 2; isJapanese: boolean }) {
   const steps = [
-    { n: 1, label: "Your Details" },
-    { n: 2, label: "Requirements" },
+    { n: 1, label: isJapanese ? "ご入力" : "Your Details" },
+    { n: 2, label: isJapanese ? "要件" : "Requirements" },
   ];
   return (
     <div className="flex items-center justify-center gap-3 mb-8">
@@ -116,20 +116,44 @@ const SERVICES_WITH_FIELDS = [
 ];
 
 const BRANCH_OPTIONS = [
-  { value: "", label: "Select Branch" },
+  { value: "", label: "Select Branch",  },
   { value: "tower-6789", label: "Tower 6789" },
   { value: "insular-life", label: "Insular Life Building" },
   { value: "both", label: "Both Branches" },
 ];
 
+function branchLabel(value: string, isJapanese: boolean) {
+  if (value === "") return isJapanese ? "支店を選択" : "Select Branch";
+  if (value === "tower-6789") return isJapanese ? "タワー6789" : "Tower 6789";
+  if (value === "insular-life") return isJapanese ? "インシュラー・ライフ・ビル" : "Insular Life Building";
+  return isJapanese ? "両支店" : "Both Branches";
+}
+
+function inquiryTypeLabel(value: string, isJapanese: boolean) {
+  const labels: Record<string, string> = {
+    "": isJapanese ? "お問い合わせ種別を選択" : "Select Inquiry Type",
+    "private-office": isJapanese ? "個室オフィス" : "Private Office",
+    "virtual-office": isJapanese ? "バーチャルオフィス" : "Virtual Office",
+    "co-working-space": isJapanese ? "コワーキングスペース" : "Co-Working Space",
+    "meeting-room": isJapanese ? "会議室" : "Meeting Room",
+    "event-space": isJapanese ? "イベントスペース" : "Event Space",
+    "ocular-visit": isJapanese ? "現地見学" : "Ocular Visit",
+    partnership: isJapanese ? "提携" : "Partnership",
+    others: isJapanese ? "その他" : "Others",
+  };
+  return labels[value] ?? value;
+}
+
 function DynamicFields({
   inquiryType,
   dynamicData,
   onChange,
+  isJapanese,
 }: {
   inquiryType: string;
   dynamicData: Record<string, string>;
   onChange: (name: string, value: string) => void;
+  isJapanese: boolean;
 }) {
   const input = (name: string, type: string, placeholder?: string) => (
     <input
@@ -182,23 +206,23 @@ function DynamicFields({
         <div className="space-y-6">
           {field(
             "seats",
-            "Number of Seats",
-            input("seats", "number", "e.g. 50"),
+            isJapanese ? "席数" : "Number of Seats",
+            input("seats", "number", isJapanese ? "例：50" : "e.g. 50"),
           )}
           {field(
             "moveInDate",
-            "Target Move-in Date",
+            isJapanese ? "入居希望日" : "Target Move-in Date",
             input("moveInDate", "date"),
           )}
           {field(
             "leaseTerm",
-            "Lease Term",
+            isJapanese ? "契約期間" : "Lease Term",
             select("leaseTerm", [
-              { value: "1-month", label: "1 month" },
-              { value: "3-months", label: "3 months" },
-              { value: "6-months", label: "6 months" },
-              { value: "12-months", label: "12 months" },
-              { value: "12-months-plus", label: "12+ months" },
+              { value: "1-month", label: isJapanese ? "1か月" : "1 month" },
+              { value: "3-months", label: isJapanese ? "3か月" : "3 months" },
+              { value: "6-months", label: isJapanese ? "6か月" : "6 months" },
+              { value: "12-months", label: isJapanese ? "12か月" : "12 months" },
+              { value: "12-months-plus", label: isJapanese ? "12か月以上" : "12+ months" },
             ]),
           )}
         </div>
@@ -209,7 +233,7 @@ function DynamicFields({
         <div className="space-y-6">
           {field(
             "package",
-            "Package",
+            isJapanese ? "プラン" : "Package",
             select("package", [
               { value: "basic", label: "Basic" },
               { value: "standard", label: "Standard" },
@@ -229,21 +253,21 @@ function DynamicFields({
         <div className="space-y-6">
           {field(
             "seats",
-            "Number of Seats",
-            input("seats", "number", "e.g. 50"),
+            isJapanese ? "席数" : "Number of Seats",
+            input("seats", "number", isJapanese ? "例：50" : "e.g. 50"),
           )}
           {field(
             "startDate",
-            "Preferred Start Date",
+            isJapanese ? "開始希望日" : "Preferred Start Date",
             input("startDate", "date"),
           )}
           {field(
             "durationType",
-            "Duration",
+            isJapanese ? "利用期間" : "Duration",
             select("durationType", [
-              { value: "daily", label: "Daily" },
-              { value: "weekly", label: "Weekly" },
-              { value: "monthly", label: "Monthly" },
+              { value: "daily", label: isJapanese ? "日単位" : "Daily" },
+              { value: "weekly", label: isJapanese ? "週単位" : "Weekly" },
+              { value: "monthly", label: isJapanese ? "月単位" : "Monthly" },
             ]),
           )}
         </div>
@@ -253,16 +277,16 @@ function DynamicFields({
       return (
         <div className="space-y-6">
           <div className="rounded-xl border border-[#1B3A8C]/15 bg-[#1B3A8C]/5 px-4 py-3 text-sm text-[#1B3A8C]">
-            We&apos;ll check the availability.
+            {isJapanese ? "空き状況を確認します。" : "We&apos;ll check the availability."}
           </div>
           {field(
             "participants",
-            "Number of Participants",
-            input("participants", "number", "e.g. 50"),
+            isJapanese ? "参加人数" : "Number of Participants",
+            input("participants", "number", isJapanese ? "例：50" : "e.g. 50"),
           )}
           {field(
             "reservationDate",
-            "Reservation Date",
+            isJapanese ? "予約日" : "Reservation Date",
             input("reservationDate", "date"),
           )}
         </div>
@@ -273,17 +297,17 @@ function DynamicFields({
         <div className="space-y-6">
           {field(
             "attendees",
-            "Number of Attendees",
-            input("attendees", "number", "e.g. 50"),
+            isJapanese ? "参加人数" : "Number of Attendees",
+            input("attendees", "number", isJapanese ? "例：50" : "e.g. 50"),
           )}
-          {field("eventDate", "Event Date", input("eventDate", "date"))}
+          {field(isJapanese ? "イベント日" : "Event Date", isJapanese ? "イベント日" : "Event Date", input("eventDate", "date"))}
           {field(
             "eventDuration",
-            "Event Duration",
+            isJapanese ? "イベント時間" : "Event Duration",
             select("eventDuration", [
-              { value: "half-day", label: "Half day (up to 4 hrs)" },
-              { value: "full-day", label: "Full day (up to 8 hrs)" },
-              { value: "multi-day", label: "Multi-day" },
+              { value: "half-day", label: isJapanese ? "半日（4時間まで）" : "Half day (up to 4 hrs)" },
+              { value: "full-day", label: isJapanese ? "1日（8時間まで）" : "Full day (up to 8 hrs)" },
+              { value: "multi-day", label: isJapanese ? "複数日" : "Multi-day" },
             ]),
           )}
         </div>
@@ -294,18 +318,18 @@ function DynamicFields({
         <div className="space-y-6">
           {field(
             "visitDate",
-            "Preferred Visit Date",
+            isJapanese ? "見学希望日" : "Preferred Visit Date",
             input("visitDate", "date"),
           )}
           {field(
             "serviceOfInterest",
-            "Service of Interest",
+            isJapanese ? "興味のあるサービス" : "Service of Interest",
             select("serviceOfInterest", [
-              { value: "private-office", label: "Private Office" },
-              { value: "virtual-office", label: "Virtual Office" },
-              { value: "co-working-space", label: "Co-Working Space" },
-              { value: "meeting-room", label: "Meeting Room" },
-              { value: "event-space", label: "Event Space" },
+              { value: "private-office", label: isJapanese ? "個室オフィス" : "Private Office" },
+              { value: "virtual-office", label: isJapanese ? "バーチャルオフィス" : "Virtual Office" },
+              { value: "co-working-space", label: isJapanese ? "コワーキングスペース" : "Co-Working Space" },
+              { value: "meeting-room", label: isJapanese ? "会議室" : "Meeting Room" },
+              { value: "event-space", label: isJapanese ? "イベントスペース" : "Event Space" },
             ]),
           )}
         </div>
@@ -400,6 +424,8 @@ function Modal({
 function MultiStepForm() {
   const [step, setStep] = useState<1 | 2>(1);
   const [direction, setDirection] = useState<1 | -1>(1); // 1 = forward, -1 = back
+  const [locale, setLocale] = useState<'en' | 'ja'>('en');
+  const isJapanese = locale === 'ja';
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [formData, setFormData] = useState({
@@ -419,6 +445,24 @@ function MultiStepForm() {
   const [lastSubmittedWasVO, setLastSubmittedWasVO] = useState(false);
 
   const hasDynamicFields = SERVICES_WITH_FIELDS.includes(formData.inquiryType);
+
+  useEffect(() => {
+    const getStoredLocale = () => {
+      const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+      return match?.[1] === "ja" ? "ja" : "en";
+    };
+
+    const updateLocale = (event?: Event) => {
+      const detail = (event as CustomEvent<string> | undefined)?.detail;
+      const nextLocale = detail === "ja" || detail === "en" ? detail : getStoredLocale();
+      setLocale(nextLocale);
+    };
+
+    updateLocale();
+    window.addEventListener("localeChanged", updateLocale);
+
+    return () => window.removeEventListener("localeChanged", updateLocale);
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -528,22 +572,25 @@ function MultiStepForm() {
   return (
     <div className="bg-white rounded-3xl border border-gray-200 shadow-xl shadow-gray-200/50 p-6 sm:p-8 lg:p-10">
       <h2 className="text-2xl font-bold text-gray-900 mb-2">
-        Send Us a Message
+        {isJapanese ? "メッセージを送る" : "Send Us a Message"}
       </h2>
       <p className="text-gray-600 mb-6">
-        Fill out the form below, and our team will get back to you as soon as possible.
+        {isJapanese
+          ? "下記のフォームにご記入ください。担当者よりできるだけ早くご連絡いたします。"
+          : "Fill out the form below, and our team will get back to you as soon as possible."}
       </p>
 
-      <StepProgress step={step} />
+      <StepProgress step={step} isJapanese={isJapanese} />
 
       {/* Success modal, shown after a successful submit */}
       <Modal
         open={modal === "success"}
         onClose={handleSuccessClose}
-        title="Request Submitted"
+        title={isJapanese ? "送信完了" : "Request Submitted"}
       >
         <SuccessModalContent
           isVO={lastSubmittedWasVO}
+          isJapanese={isJapanese}
           onClose={handleSuccessClose}
         />
       </Modal>
@@ -560,7 +607,9 @@ function MultiStepForm() {
             <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
             <div>
               <p className="font-medium text-red-900">
-                Failed to send. Please try again or contact us directly.
+                {isJapanese
+                  ? "送信に失敗しました。再度お試しいただくか、直接お問い合わせください。"
+                  : "Failed to send. Please try again or contact us directly."}
               </p>
             </div>
           </motion.div>
@@ -586,7 +635,7 @@ function MultiStepForm() {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="name" required>
-                      Name
+                      {isJapanese ? "名前" : "Full Name"}
                     </Label>
                     <input
                       type="text"
@@ -602,7 +651,7 @@ function MultiStepForm() {
 
                   <div>
                     <Label htmlFor="phone" required>
-                      Phone Number
+                      {isJapanese ? "電話番号" : "Phone Number"}
                     </Label>
                     <input
                       type="tel"
@@ -627,7 +676,7 @@ function MultiStepForm() {
 
                 <div>
                   <Label htmlFor="email" required>
-                    Email
+                    {isJapanese ? "メールアドレス" : "Email"}
                   </Label>
                   <input
                     type="email"
@@ -642,7 +691,7 @@ function MultiStepForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="company">Company</Label>
+                  <Label htmlFor="company">{isJapanese ? "会社" : "Company"}</Label>
                   <input
                     type="text"
                     id="company"
@@ -656,7 +705,7 @@ function MultiStepForm() {
 
                 <div>
                   <Label htmlFor="branchInterest" required>
-                    Branch Interested In
+                    {isJapanese ? "関心のある支店" : "Branch Interested In"}
                   </Label>
                   <SelectWrapper>
                     <select
@@ -669,7 +718,7 @@ function MultiStepForm() {
                     >
                       {BRANCH_OPTIONS.map((branch) => (
                         <option key={branch.value} value={branch.value}>
-                          {branch.label}
+                          {branchLabel(branch.value, isJapanese)}
                         </option>
                       ))}
                     </select>
@@ -678,7 +727,7 @@ function MultiStepForm() {
 
                 <div>
                   <Label htmlFor="inquiryType" required>
-                    Inquiry Type
+                    {isJapanese ? "お問い合わせ種別" : "Inquiry Type"}
                   </Label>
                   <SelectWrapper>
                     <select
@@ -691,7 +740,7 @@ function MultiStepForm() {
                     >
                       {inquiryTypes.map((t) => (
                         <option key={t.value} value={t.value}>
-                          {t.label}
+                          {inquiryTypeLabel(t.value, isJapanese)}
                         </option>
                       ))}
                     </select>
@@ -703,7 +752,7 @@ function MultiStepForm() {
                 {!hasDynamicFields && formData.inquiryType && (
                   <div>
                     <Label htmlFor="message" required>
-                      Message
+                      {isJapanese ? "メッセージ" : "Message"}
                     </Label>
                     <textarea
                       id="message"
@@ -736,7 +785,7 @@ function MultiStepForm() {
                       }
                       className="w-full md:w-auto px-8 py-4 bg-[#FFC107] text-[#1B3A8C] rounded-full font-semibold hover:bg-[#FFC107]/80 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      Next: {selectedLabel} Details
+                      {isJapanese ? `${selectedLabel} の詳細へ` : `Next: ${selectedLabel} Details`}
                       <ArrowRight className="w-5 h-5" />
                     </button>
                   ) : (
@@ -757,11 +806,11 @@ function MultiStepForm() {
                       {isSubmitting ? (
                         <>
                           <span className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                          Sending...
+                          {isJapanese ? "送信中..." : "Sending..."}
                         </>
                       ) : (
                         <>
-                          Send Message
+                          {isJapanese ? "送信する" : "Send Message"}
                           <Send className="w-5 h-5" />
                         </>
                       )}
@@ -781,15 +830,13 @@ function MultiStepForm() {
               transition={{ duration: 0.3, ease: "easeInOut" }}
               onSubmit={handleSubmit}
             >
-              {/* ── Step 2: Dynamic service fields + message ──
-                  Only reached for inquiry types in SERVICES_WITH_FIELDS.
-                  Partnership / Others never navigate here. */}
+              {/* Step 2: Dynamic service fields + message */}
               <div className="space-y-6">
                 {/* Summary chip */}
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#1B3A8C]/8 rounded-full border border-[#1B3A8C]/20">
                   <span className="w-2 h-2 rounded-full bg-[#1B3A8C]" />
                   <span className="text-xs font-semibold text-[#1B3A8C] uppercase tracking-widest">
-                    {selectedLabel}
+                    {isJapanese ? inquiryTypeLabel(formData.inquiryType, true) : selectedLabel}
                   </span>
                 </div>
 
@@ -797,11 +844,12 @@ function MultiStepForm() {
                   inquiryType={formData.inquiryType}
                   dynamicData={dynamicData}
                   onChange={handleDynamicChange}
+                  isJapanese={isJapanese}
                 />
 
                 <div>
                   <Label htmlFor="message" required>
-                    Message
+                    {isJapanese ? "メッセージ" : "Message"}
                   </Label>
                   <textarea
                     id="message"
@@ -825,7 +873,7 @@ function MultiStepForm() {
                     className="flex items-center gap-2 px-8 py-4 rounded-full border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
                   >
                     <ArrowLeft className="w-4 h-4" />
-                    Back
+                    {isJapanese ? "戻る" : "Back"}
                   </button>
 
                   <button
@@ -980,6 +1028,129 @@ const faqTabs = [
   },
 ];
 
+const faqTabsJa = [
+  {
+    id: "service",
+    label: "Hero Serviced Office, Inc.について",
+    faqs: [
+      {
+        q: "サービスオフィスを利用するメリットは何ですか？",
+        a: "Hero Serviced Office, Inc.は、事業開始に必要な設備とサービスを完備しているため、オフィス開設の初期費用を抑え、すぐに事業を開始できます。また、用途に合わせて部屋の広さや利用期間を柔軟に選択することも可能です。",
+      },
+      {
+        q: "オフィスの場所はどこですか？",
+        a: "Hero Serviced Office, Inc. は、フィリピン・マカティ市の中心部、Ayala Avenue沿いにあり、Ayala Triangle Parkの近くに位置しています。",
+      },
+      {
+        q: "周辺環境はどのような感じですか？",
+        a: "弊社のオフィスはフィリピンの経済中心地であるマカティ市にあります。多くの日本企業や外資系企業が近隣に拠点を構えており、空港から約20分でアクセスできます。さまざまな国の飲食店や大型ショッピングモールも近くにあります。",
+      },
+      {
+        q: "日本語を話せるスタッフはいますか？",
+        a: "はい。弊社には日本人駐在員や日本語を話せるスタッフが在籍しています。",
+      },
+      {
+        q: "サービスオフィスを会社登記（SEC）の住所として使用できますか？",
+        a: "はい、可能です。法人登記（SEC 登記）のための住所登録が必要な場合は、お知らせください。必要な書類をご案内いたします。",
+      },
+      {
+        q: "契約期間はどのくらいですか？",
+        a: "契約期間は1か月から開始可能です。契約書式はサービス利用契約になります。",
+      },
+      {
+        q: "喫煙ポリシーはどうなっていますか？",
+        a: "すべてのオフィスビル内では喫煙は禁止です。",
+      },
+    ],
+  },
+  {
+    id: "payment",
+    label: "契約・支払い",
+    faqs: [
+      {
+        q: "サービスオフィス契約に必要な書類は何ですか？",
+        a: "契約前に審査が必要です。法人契約の場合は、審査申請書、SEC 登記証明書（または設立前の日本会社登記証明書）、代表者のパスポートの写しが必要です。個人契約の場合は、審査申請書、事業内容、利用者全員の身分証明書の写しが必要です。",
+      },
+      {
+        q: "支払いに使う通貨は何ですか？",
+        a: "支払いはフィリピン・ペソ（PHP）です。日本円や米ドルでもお支払いいただけます。",
+      },
+      {
+        q: "毎月の支払いはどうすればいいですか？",
+        a: "毎月、請求書をお送りします。現金、チェック、銀行振込のいずれでもご利用いただけます。",
+      },
+      {
+        q: "退去時に契約料は返金されますか？",
+        a: "いいえ。契約料にはオフィスの基本セットアップ費用が含まれており、返金はできません。",
+      },
+      {
+        q: "電気代やインターネット使用料は別料金ですか？",
+        a: "いいえ。月額利用料（賃料および共通サービス料）には、電気代とインターネット使用料（共用回線）が含まれています。追加料金は発生しません。",
+      },
+    ],
+  },
+  {
+    id: "rooms",
+    label: "個室",
+    faqs: [
+      {
+        q: "どのような個室がありますか？",
+        a: "TOWER6789 MAKATI では1名から最大12名までの部屋をご用意しています。INSULAR LIFE BUILDING MAKATI では3名から最大35名までの部屋をご用意しています。各フロアレイアウトは詳細をご確認ください。",
+      },
+      {
+        q: "個室にはどのような設備がありますか？",
+        a: "すべての個室には、デスク、キャビネット、および有線・無線のインターネット接続が備わっています。",
+      },
+      {
+        q: "個室以外のスペースはありますか？",
+        a: "はい。個人利用向けのブース型デスクを備えた共有オフィスがあります。共有スペースには、受付スペース、カフェスペース、ラウンジ、会議スペースがあります。",
+      },
+      {
+        q: "個室契約にはどのようなサービスが含まれますか？",
+        a: "個室利用者は、受付サービス、カフェスペース、ラウンジ、無線・有線インターネットを追加料金なしでご利用いただけます。オプションとして、電話回線、電話応対サービス、駐車場、クラウドサービス、多機能機の利用があります。",
+      },
+    ],
+  },
+  {
+    id: "facilities",
+    label: "サービス・施設",
+    faqs: [
+      {
+        q: "専用の電話番号を取得できますか？",
+        a: "はい。専用の固定電話はオプションサービスとしてご利用いただけます（VAT別 PHP 2,400/月）。通話料は実費で請求されます。",
+      },
+      {
+        q: "スタッフが私の代わりに電話に出られますか？",
+        a: "はい。電話応対サービスは VAT 別 PHP 2,000/月でご利用いただけます。電話番号取得費用は別途発生します。",
+      },
+      {
+        q: "オフィスは24時間利用できますか？",
+        a: "はい。24時間365日いつでも出入り可能です。ただし、スタッフや受付はフィリピンの営業時間である平日（月〜金）に対応しており、土日、フィリピンの祝日、年末年始は休業します。",
+      },
+      {
+        q: "会議スペースは利用できますか？",
+        a: "はい。会議スペースは時間単位でご利用いただけます。",
+      },
+      {
+        q: "無料のお飲み物がある休憩スペースはありますか？",
+        a: "はい。共有カフェやラウンジには、コーヒーやミネラルウォーターが無料で提供されています。自動販売機もあります。",
+      },
+      {
+        q: "駐車場はありますか？",
+        a: "はい。車両制限や空き状況により利用条件が異なるため、事前にご連絡ください。",
+      },
+      {
+        q: "プリンターやスキャナーは使えますか？",
+        a: "はい。コピー、スキャン、印刷に対応した複合機をご利用いただけます。",
+      },
+      {
+        q: "バーチャルオフィス利用者に郵便物を転送できますか？",
+        a: "はい。サービスオフィス宛てに届いた郵便物は、事前に指定した住所へ転送できます。固定月額料金と実際の郵送料が別途かかります。",
+      },
+    ],
+  },
+];
+
 function FaqItem({ faq }: { faq: { q: string; a: string } }) {
   const [open, setOpen] = useState(false);
   return (
@@ -1022,11 +1193,34 @@ function FaqItem({ faq }: { faq: { q: string; a: string } }) {
 
 function FaqTabs() {
   const [activeTab, setActiveTab] = useState("service");
-  const active = faqTabs.find((t) => t.id === activeTab)!;
+  const [locale, setLocale] = useState<"en" | "ja">("en");
+  const isJapanese = locale === "ja";
+  const tabs = isJapanese ? faqTabsJa : faqTabs;
+
+  useEffect(() => {
+    const getStoredLocale = () => {
+      const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+      return match?.[1] === "ja" ? "ja" : "en";
+    };
+
+    const updateLocale = (event?: Event) => {
+      const detail = (event as CustomEvent<string> | undefined)?.detail;
+      const nextLocale = detail === "ja" || detail === "en" ? detail : getStoredLocale();
+      setLocale(nextLocale);
+    };
+
+    updateLocale();
+    window.addEventListener("localeChanged", updateLocale);
+
+    return () => window.removeEventListener("localeChanged", updateLocale);
+  }, []);
+
+  const active = tabs.find((t) => t.id === activeTab) ?? tabs[0];
+
   return (
     <div>
       <div className="flex flex-wrap gap-2 mb-8 justify-center">
-        {faqTabs.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -1102,9 +1296,11 @@ function MapCard({
 
 function SuccessModalContent({
   isVO,
+  isJapanese,
   onClose,
 }: {
   isVO: boolean;
+  isJapanese: boolean;
   onClose: () => void;
 }) {
   const steps = isVO
@@ -1117,6 +1313,17 @@ function SuccessModalContent({
       "We'll review your service requirements and preferences",
       "A customised quotation will be prepared for you",
       "Our team will reach out via email or phone to discuss next steps",
+    ];
+    const stepsJA = isVO
+    ? [
+      "管理チームが送信されたリクエストを確認・検証します",
+      "検証が完了次第、支払いを完了するための安全なリンクをメールでお送りします",
+      "支払いが確認され次第、管理チームが契約を完了するためにご連絡いたします",
+    ]
+    : [
+      "サービスの要件とご希望を確認します",
+      "お客様に合わせた見積書を作成します",
+      "次のステップについて、メールまたは電話でご連絡いたします",
     ];
 
   return (
@@ -1131,11 +1338,11 @@ function SuccessModalContent({
       {/* Heading */}
       <div className="mt-5 text-center">
         <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#64748B]">
-          Inquiry Received
+          {isJapanese ? "お問い合わせを受け取りました" : "Inquiry Received"}
         </p>
 
         <h3 className="lg:text-[26px] font-bold leading-tight text-[#0B1F4A] text-[28px]">
-          Thank You!
+          {isJapanese ? "ありがとうございます！" : "Thank You!"}
         </h3>
 
         <p className="mx-auto mt-2 max-w-sm lg:max-w-[470px] text-sm lg:text-[14px] text-[#64748B]">
@@ -1150,7 +1357,7 @@ function SuccessModalContent({
       {/* Next steps */}
       <div className="mt-4 rounded-[20px] bg-[#F4F6FB] px-4 py-4 sm:px-5 sm:py-5">
         <div className="space-y-4">
-          {steps.map((text, index) => (
+          {(isJapanese ? stepsJA : steps).map((text, index) => (
             <div
               key={index}
               className="flex items-start gap-3.5"
@@ -1193,6 +1400,27 @@ function SuccessModalContent({
 }
 
 export default function ContactPage() {
+  const [locale, setLocale] = useState<"en" | "ja">("en");
+  const isJapanese = locale === "ja";
+
+  useEffect(() => {
+    const getStoredLocale = () => {
+      const match = document.cookie.match(/(?:^|;\s*)hero_lang=([^;]+)/);
+      return match?.[1] === "ja" ? "ja" : "en";
+    };
+
+    const updateLocale = (event?: Event) => {
+      const detail = (event as CustomEvent<string> | undefined)?.detail;
+      const nextLocale = detail === "ja" || detail === "en" ? detail : getStoredLocale();
+      setLocale(nextLocale);
+    };
+
+    updateLocale();
+    window.addEventListener("localeChanged", updateLocale);
+
+    return () => window.removeEventListener("localeChanged", updateLocale);
+  }, []);
+
   return (
     <div className="min-h-screen">
       {/* Hero */}
@@ -1216,10 +1444,12 @@ export default function ContactPage() {
             className="w-full text-center mx-auto"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-shadow-md">
-              Contact Us
+              {isJapanese ? "お問い合わせ" : "Contact Us"}
             </h1>
             <p className="text-xl text-gray-300 font-semibold text-shadow-sm">
-              Reach out to us for inquiries, reservations, or support.
+              {isJapanese
+                ? "ご相談・ご予約・サポートのご依頼はこちらからお問い合わせください。"
+                : "Reach out to us for inquiries, reservations, or support."}
             </p>
           </motion.div>
         </div>
@@ -1264,11 +1494,13 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-widest text-gray-500 font-medium">
-                    Office Location
+                    {isJapanese ? "オフィス所在地" : "Office Location"}
                   </p>
-                  <h4 className="font-semibold text-gray-900">Hero Serviced Office, Inc.</h4>
+                  <h4 className="font-semibold text-gray-900">
+                    Hero Serviced Office, Inc.
+                  </h4>
                   <p className="text-sm text-gray-600">
-                    Ayala Avenue, Makati City, Philippines
+                    {isJapanese ? "フィリピン、マカティ市、アヤラ通り" : "Ayala Avenue, Makati City, Philippines"}
                   </p>
                 </div>
               </div>
@@ -1282,7 +1514,7 @@ export default function ContactPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Frequently Asked Questions
+              {isJapanese ? "よくある質問" : "Frequently Asked Questions"}
             </h2>
           </div>
           <FaqTabs />
