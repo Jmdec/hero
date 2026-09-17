@@ -81,7 +81,7 @@ const FloatingSocialMedia = () => {
       >
         {socialLinks.map((social) => {
           const Icon = social.icon
-          const socialLabel = social.name
+          const socialLabel = isJapanese ? (social.nameJap ?? social.name) : social.name
           return (
             <a
               key={social.name}
@@ -135,7 +135,7 @@ const FloatingSocialMedia = () => {
         >
           {socialLinks.map((social) => {
             const Icon = social.icon
-            const socialLabel = social.name
+            const socialLabel = isJapanese ? (social.nameJap ?? social.name) : social.name
 
             return (
               <a

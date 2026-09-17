@@ -410,7 +410,7 @@ export default function Home() {
                 <p className="text-md lg:text-xl text-gray-300 mb-8 max-w-2xl text-justify md:text-left">
                   {isJapanese
                     ? "フィリピンのビジネスと金融の中心地であるマカティ市に位置するHEROは、スタートアップ企業、中小企業、成長企業、そしてフィリピンでの事業設立、運営、成長を目指す企業向けに設計された、プロフェッショナルで柔軟なワークスペースソリューションを提供しています。"
-                    : "Located in Makati City, the Philippines&apos; Business and Financial Capital, HERO offers professional and flexible workspace solutions designed for startups, SMEs, expanding companies, and businesses ready to establish, operate, and grow in the Philippines."}
+                    : "Located in Makati City, the Philippines' Business and Financial Capital, HERO offers professional and flexible workspace solutions designed for startups, SMEs, expanding companies, and businesses ready to establish, operate, and grow in the Philippines."}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link

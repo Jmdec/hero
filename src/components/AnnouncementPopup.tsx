@@ -33,6 +33,36 @@ const SOCIAL_MEDIA_OPTIONS = [
   { value: "tiktok", label: "TikTok" },
 ];
 
+const SOCIAL_MEDIA_OPTIONS_JA: Record<string, string> = {
+  facebook: "Facebook",
+  x: "X (Twitter)",
+  instagram: "Instagram",
+  linkedin: "LinkedIn",
+  youtube: "YouTube",
+  tiktok: "TikTok",
+};
+
+const TAG_TRANSLATIONS: Record<string, string> = {
+  announcement: "お知らせ",
+  announcements: "お知らせ",
+  event: "イベント",
+  events: "イベント",
+  news: "ニュース",
+  blog: "ブログ",
+  promo: "プロモーション",
+  promotion: "プロモーション",
+  promotional: "プロモーション",
+  offer: "特典",
+  deals: "特典",
+  deal: "特典",
+  sale: "セール",
+  sales: "セール",
+  discount: "割引",
+  discounts: "割引",
+  others: "その他",
+  other: "その他",
+};
+
 const PROMO_TAG_KEYWORDS = [
   "promo",
   "promotion",
@@ -46,10 +76,54 @@ const PROMO_TAG_KEYWORDS = [
 const FALLBACK_IMAGE =
   "/pop-up-image-fallback.png";
 
-function formatSocialPlatform(value: string) {
+function formatSocialPlatform(value: string, isJapanese = false) {
+  const normalizedValue = value.trim().toLowerCase();
+
+  if (isJapanese) {
+    return SOCIAL_MEDIA_OPTIONS_JA[normalizedValue] ?? value;
+  }
+
   return (
-    SOCIAL_MEDIA_OPTIONS.find((opt) => opt.value === value)?.label ?? value
+    SOCIAL_MEDIA_OPTIONS.find((opt) => opt.value === normalizedValue)?.label ?? value
   );
+}
+
+function localizeTag(value: string, isJapanese = false) {
+  if (!isJapanese || !value) return value;
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return value;
+
+  return TAG_TRANSLATIONS[normalized] ?? value;
+}
+
+function localizeAnnouncementText(value: string, isJapanese = false) {
+  if (!isJapanese || !value) return value;
+
+  const patterns: Array<[RegExp, string]> = [
+    [/Announcement/gi, "お知らせ"],
+    [/Announcements/gi, "お知らせ"],
+    [/News/gi, "ニュース"],
+    [/Event/gi, "イベント"],
+    [/Events/gi, "イベント"],
+    [/Blog/gi, "ブログ"],
+    [/Promotion/gi, "プロモーション"],
+    [/Promotional/gi, "プロモーション"],
+    [/Offer/gi, "特典"],
+    [/Deal/gi, "特典"],
+    [/Sale/gi, "セール"],
+    [/Discount/gi, "割引"],
+    [/Special/gi, "特別"],
+    [/Limited/gi, "限定"],
+    [/Exclusive/gi, "限定"],
+    [/Open/gi, "開催"],
+    [/Register/gi, "登録"],
+    [/Join/gi, "参加"],
+  ];
+
+  return patterns.reduce((translated, [pattern, replacement]) => {
+    return translated.replace(pattern, replacement);
+  }, value);
 }
 
 function normalizeSocialMedia(
@@ -73,14 +147,14 @@ function normalizeSocialMedia(
   }).filter((item): item is SocialMediaEntry => item !== null);
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, isJapanese = false) {
   const date = new Date(value);
 
   if (isNaN(date.getTime())) {
     return value;
   }
 
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString(isJapanese ? "ja-JP" : "en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -257,12 +331,19 @@ export default function AnnouncementPopup() {
   const imageSrc =
     uploadedImageSrc && !imageFailed ? uploadedImageSrc : FALLBACK_IMAGE;
 
+  const viewAnnouncementLabel = isJapanese ? "お知らせを見る" : "View Announcement";
+  const closeAnnouncementLabel = isJapanese ? "お知らせを閉じる" : "Close announcement";
+
   const socialPlatforms = announcement
     ? normalizeSocialMedia(
       announcement.social_platforms,
       announcement.social_links,
     )
     : [];
+
+  const localizedTag = localizeTag(announcement?.tag ?? "", isJapanese);
+  const localizedTitle = localizeAnnouncementText(announcement?.title ?? "", isJapanese);
+  const localizedContent = localizeAnnouncementText(announcement?.content ?? "", isJapanese);
 
   return (
     <AnimatePresence>
@@ -343,7 +424,7 @@ export default function AnnouncementPopup() {
             <button
               type="button"
               onClick={handleClose}
-              aria-label="Close announcement"
+              aria-label={closeAnnouncementLabel}
               className="absolute right-3 top-3 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-[#0B1F4A]/85 text-white shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-[#1B3A8C] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C] sm:right-4 sm:top-4 sm:h-10 sm:w-10 md:h-11 md:w-11"
             >
               <X className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -384,7 +465,7 @@ export default function AnnouncementPopup() {
                 {/* Category / date */}
                 <div className="flex flex-wrap items-center gap-2 mb-5">
                   <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#1B3A8C] sm:text-xs sm:tracking-[0.18em]">
-                    {announcement.tag}
+                    {localizedTag}
                   </span>
 
                   <span className="h-1 w-1 rounded-full bg-[#C9A84C]" />
@@ -392,7 +473,7 @@ export default function AnnouncementPopup() {
                   <span className="flex items-center gap-1.5 text-xs text-slate-500 sm:text-sm">
                     <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
 
-                    {formatDate(announcement.date)}
+                    {formatDate(announcement.date, isJapanese)}
                   </span>
                 </div>
 
@@ -401,7 +482,7 @@ export default function AnnouncementPopup() {
                   id="announcement-title"
                   className="max-w-2xl font-serif text-2xl font-bold leading-[1.2] text-[#1E2A3A] sm:text-3xl sm:leading-[1.15] md:text-xl lg:text-2xl"
                 >
-                  {announcement.title}
+                  {localizedTitle}
                 </h3>
 
                 {/* Accent */}
@@ -414,7 +495,7 @@ export default function AnnouncementPopup() {
                 {/* Announcement content */}
                 <div className="max-w-2xl">
                   <p className="whitespace-pre-wrap text-slate-600 text-sm lg:text-md">
-                    {announcement.content}
+                    {localizedContent}
                   </p>
                 </div>
 
@@ -428,7 +509,7 @@ export default function AnnouncementPopup() {
                         onClick={handleClose}
                         className="inline-flex items-center gap-1.5 rounded-full border border-[#D9E2F0] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#1B3A8C] shadow-sm transition hover:-translate-y-0.5 hover:border-[#1B3A8C] hover:bg-[#EEF2FB] sm:gap-2 sm:px-4 sm:py-2 sm:text-xs"
                       >
-                        {isJapanese ? 'お知らせを見る' : 'View Announcement'}
+                        {viewAnnouncementLabel}
                       </Link>
 
                       {socialPlatforms.map((entry) =>
@@ -440,7 +521,7 @@ export default function AnnouncementPopup() {
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 rounded-full border border-[#D9E2F0] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#1B3A8C] shadow-sm transition hover:-translate-y-0.5 hover:border-[#1B3A8C] hover:bg-[#EEF2FB] sm:gap-2 sm:px-4 sm:py-2 sm:text-xs"
                           >
-                            {formatSocialPlatform(entry.platform)}
+                            {formatSocialPlatform(entry.platform, isJapanese)}
 
                             <ExternalLink className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                           </Link>

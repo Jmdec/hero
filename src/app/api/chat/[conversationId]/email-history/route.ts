@@ -202,7 +202,7 @@ export async function POST(
         `<h2>Hero Serviced Office, Inc. Chat Transcript</h2>
       <p>Hello ${escapeHtml(customerName)},</p>
       <p>Your chat transcript is attached as a PDF file.</p>
-      ${htmlTranscript}`,
+      `,
 
       attachments: [{
         filename: "Hero-Chatbot-Transcript.pdf",
